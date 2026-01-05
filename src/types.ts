@@ -35,6 +35,7 @@ export interface ThemeClasses {
 export enum ParserMode {
   Basic = 'basic',
   AI = 'ai',
+  LlamacoderHtml = 'llamacoder-html',
 }
 
 export interface SavedChatSession {

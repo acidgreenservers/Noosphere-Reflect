@@ -74,6 +74,7 @@ const BasicConverter: React.FC = () => {
     const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
     const [showSavedSessions, setShowSavedSessions] = useState<boolean>(false);
     const [isConversing, setIsConverting] = useState<boolean>(false);
+    const [parserMode, setParserMode] = useState<ParserMode>(ParserMode.Basic);
 
     // Load sessions from localStorage
     useEffect(() => {
@@ -115,15 +116,14 @@ const BasicConverter: React.FC = () => {
         await new Promise(r => setTimeout(r, 300));
 
         try {
-            // FORCE ParserMode.Basic
-            const chatData = await parseChat(inputContent, fileType, ParserMode.Basic);
+            const chatData = await parseChat(inputContent, fileType, parserMode);
             const html = generateHtml(
                 chatData,
                 chatTitle,
                 selectedTheme,
                 userName,
                 aiName,
-                ParserMode.Basic
+                parserMode
             );
             setGeneratedHtml(html);
         } catch (err: any) {
@@ -131,7 +131,7 @@ const BasicConverter: React.FC = () => {
         } finally {
             setIsConverting(false);
         }
-    }, [inputContent, fileType, chatTitle, selectedTheme, userName, aiName]);
+    }, [inputContent, fileType, chatTitle, selectedTheme, userName, aiName, parserMode]);
 
     const handleSaveChat = useCallback((sessionName: string) => {
         if (!generatedHtml) return;
@@ -145,13 +145,13 @@ const BasicConverter: React.FC = () => {
             userName,
             aiName,
             selectedTheme,
-            parserMode: ParserMode.Basic // Force Basic
+            parserMode
         };
 
         const updatedSessions = [newSession, ...savedSessions];
         setSavedSessions(updatedSessions);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
-    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, savedSessions]);
+    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, savedSessions, parserMode]);
 
     const deleteSession = (id: string) => {
         const updated = savedSessions.filter(s => s.id !== id);
@@ -165,6 +165,7 @@ const BasicConverter: React.FC = () => {
         setUserName(session.userName);
         setAiName(session.aiName);
         setSelectedTheme(session.selectedTheme);
+        setParserMode(session.parserMode || ParserMode.Basic);
         setGeneratedHtml(null);
         setShowSavedSessions(false);
     }, []);
@@ -174,6 +175,7 @@ const BasicConverter: React.FC = () => {
         setChatTitle('AI Chat Export');
         setUserName('User');
         setAiName('AI');
+        setParserMode(ParserMode.Basic);
         setGeneratedHtml(null);
         setError(null);
     }, []);
@@ -216,7 +218,9 @@ const BasicConverter: React.FC = () => {
                                     <div key={session.id} className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-blue-500/50 transition-colors group">
                                         <div className="flex justify-between items-start mb-2">
                                             <p className="font-medium text-sm text-gray-200 truncate pr-2">{session.name}</p>
-                                            <span className="text-[10px] uppercase tracking-wider text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20">Basic</span>
+                                            <span className="text-[10px] uppercase tracking-wider text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20">
+                                                {session.parserMode === ParserMode.LlamacoderHtml ? 'Llamacoder' : 'Basic'}
+                                            </span>
                                         </div>
                                         <p className="text-xs text-gray-500 mb-3">{new Date(session.date).toLocaleDateString()}</p>
                                         <div className="flex gap-2">
@@ -263,13 +267,40 @@ const BasicConverter: React.FC = () => {
                                                     key={theme}
                                                     onClick={() => setSelectedTheme(theme)}
                                                     className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${selectedTheme === theme
-                                                            ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20'
-                                                            : 'bg-gray-800 border-gray-600 text-gray-400 hover:bg-gray-700'
+                                                        ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20'
+                                                        : 'bg-gray-800 border-gray-600 text-gray-400 hover:bg-gray-700'
                                                         }`}
                                                 >
                                                     {theme}
                                                 </button>
                                             ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">Parser Mode</label>
+                                        <div className="flex flex-wrap gap-4">
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="parserMode"
+                                                    value={ParserMode.Basic}
+                                                    checked={parserMode === ParserMode.Basic}
+                                                    onChange={() => setParserMode(ParserMode.Basic)}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
+                                                />
+                                                <span className={`text-sm ${parserMode === ParserMode.Basic ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Basic/MD</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="parserMode"
+                                                    value={ParserMode.LlamacoderHtml}
+                                                    checked={parserMode === ParserMode.LlamacoderHtml}
+                                                    onChange={() => setParserMode(ParserMode.LlamacoderHtml)}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
+                                                />
+                                                <span className={`text-sm ${parserMode === ParserMode.LlamacoderHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Llamacoder HTML</span>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
@@ -306,15 +337,17 @@ const BasicConverter: React.FC = () => {
                                 <textarea
                                     value={inputContent}
                                     onChange={(e) => setInputContent(e.target.value)}
-                                    placeholder="Paste your chat here (Markdown or JSON)..."
+                                    placeholder={parserMode === ParserMode.LlamacoderHtml
+                                        ? "Paste raw HTML source from Llamacoder here..."
+                                        : "Paste your chat here (Markdown or JSON)..."}
                                     className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
                                 />
                                 <button
                                     onClick={handleConvert}
                                     disabled={isConversing}
                                     className={`mt-4 w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${isConversing
-                                            ? 'bg-gray-600 cursor-not-allowed opacity-75'
-                                            : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-cyan-500/25'
+                                        ? 'bg-gray-600 cursor-not-allowed opacity-75'
+                                        : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-cyan-500/25'
                                         }`}
                                 >
                                     {isConversing ? (

@@ -83,6 +83,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseChatWithAI(input, apiKey || '');
   }
 
+  if (mode === ParserMode.LlamacoderHtml) {
+    return parseLlamacoderHtml(input);
+  }
+
   // Basic Mode (Regex / JSON Detection)
   let detectedType: 'markdown' | 'json';
 
@@ -166,6 +170,107 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return { messages };
   }
 };
+
+/**
+ * Specialized parser for Llamacoder HTML exports.
+ * Extracts messages from the specific DOM structure used by Llamacoder.
+ */
+const parseLlamacoderHtml = (htmlContent: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Look for the main chat container
+  const container = doc.querySelector('.mx-auto.flex.w-full.max-w-prose.flex-col');
+
+  if (!container) {
+    // Fallback: try to find all prose and user bubbles regardless of container
+    const allUserBubbles = Array.from(doc.querySelectorAll('.whitespace-pre-wrap.rounded.bg-white'));
+    const allAiProse = Array.from(doc.querySelectorAll('.prose'));
+
+    // This is tricky without a container to preserve order. 
+    // Usually they are siblings in the same parent.
+    const sections = Array.from(doc.querySelectorAll('.whitespace-pre-wrap.rounded.bg-white, .prose'));
+
+    sections.forEach(el => {
+      const isUser = el.classList.contains('whitespace-pre-wrap');
+      messages.push({
+        type: isUser ? ChatMessageType.Prompt : ChatMessageType.Response,
+        content: isUser ? (el as HTMLElement).innerText.trim() : extractMarkdownFromHtml(el as HTMLElement)
+      });
+    });
+  } else {
+    // Iterate through children to preserve order
+    for (const child of Array.from(container.children)) {
+      const userBubble = child.querySelector('.whitespace-pre-wrap.rounded.bg-white');
+      const aiProse = child.querySelector('.prose');
+
+      if (userBubble) {
+        messages.push({
+          type: ChatMessageType.Prompt,
+          content: (userBubble as HTMLElement).innerText.trim()
+        });
+      } else if (aiProse || child.classList.contains('prose') || child.querySelector('[class*="prose"]')) {
+        // If it's an AI turn, the entire child might contain multiple blocks (prose + badges)
+        messages.push({
+          type: ChatMessageType.Response,
+          content: extractMarkdownFromHtml(child as HTMLElement)
+        });
+      }
+    }
+  }
+
+  if (messages.length === 0) {
+    throw new Error('No Llamacoder-style messages found in the provided HTML. Please ensure you pasted the full page source or at least the chat container.');
+  }
+
+  return { messages };
+};
+
+/**
+ * Helper to convert complex HTML (like Llamacoder prose) back to Markdown-ish content.
+ * Focuses on preserving code blocks and basic formatting.
+ */
+const extractMarkdownFromHtml = (element: HTMLElement): string => {
+  const clone = element.cloneNode(true) as HTMLElement;
+
+  // 1. Handle Code Blocks
+  clone.querySelectorAll('pre').forEach(pre => {
+    const code = pre.querySelector('code');
+    const lang = code?.className.match(/language-(\w+)/)?.[1] || '';
+    const codeText = pre.innerText.trim();
+    const mdBlock = `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
+    pre.replaceWith(document.createTextNode(mdBlock));
+  });
+
+  // 2. Handle Inline Code
+  clone.querySelectorAll('code').forEach(code => {
+    if (code.parentElement?.tagName !== 'PRE') {
+      const text = code.innerText.trim();
+      code.replaceWith(document.createTextNode(` \`${text}\` `));
+    }
+  });
+
+  // 3. Handle File Name Badges (Llamacoder specific)
+  clone.querySelectorAll('span.text-gray-700').forEach(el => {
+    const span = el as HTMLElement;
+    const parent = span.parentElement as HTMLElement;
+    if (parent && (parent.classList.contains('text-sm') || parent.innerText?.includes(span.innerText))) {
+      const fileName = span.innerText.trim();
+      if (fileName && (fileName.includes('.') || fileName.includes('/'))) {
+        parent.replaceWith(document.createTextNode(`\n\n**📄 File: ${fileName}**\n`));
+      }
+    }
+  });
+
+  // 4. Clean up extra buttons/SVGs (like "Copy" buttons injected into UI)
+  clone.querySelectorAll('button, svg').forEach(el => el.remove());
+
+  // 5. Final cleanup of resulting text
+  return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
+};
+
+const doc = () => document;
 
 
 /**
@@ -581,8 +686,8 @@ export const generateHtml = (
 
 
       return `
-        <div class="flex ${justify} mb-4">
-          <div class="max-w-xl md:max-w-2xl lg:max-w-3xl rounded-xl p-4 shadow-lg ${bgColor} text-white break-words">
+        <div class="flex ${justify} mb-4 w-full">
+          <div class="max-w-xl md:max-w-2xl lg:max-w-3xl rounded-xl p-4 shadow-lg ${bgColor} text-white break-words w-auto">
             <p class="font-semibold text-sm opacity-80 mb-1">${speakerName}</p>
             <div class="markdown-content">${contentHtml}</div>
           </div>
@@ -738,7 +843,7 @@ export const generateHtml = (
 <body class="p-8">
     <div class="max-w-4xl mx-auto my-8 p-6 ${containerBg} rounded-lg shadow-xl">
         <h1 class="text-4xl font-extrabold text-center ${titleText} mb-8">${title}</h1>
-        <div class="space-y-4">
+        <div class="space-y-4 flex flex-col w-full">
             ${chatMessagesHtml}
         </div>
     </div>
