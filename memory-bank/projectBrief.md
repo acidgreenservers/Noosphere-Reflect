@@ -6,9 +6,9 @@
 ## Core Requirements
 1.  **Multi-Platform Parsing**: Surgical extraction from Claude, LeChat, and Llamacoder HTML structures.
 2.  **Metadata Management**: Ability to add/edit chat titles, models, dates, and custom tags for categorization.
-3.  **Local Persistence**: Automated saving to local storage for multi-session editing and batch export.
+3.  **Local Persistence**: High-capacity `IndexedDB` storage for large archives and rich message histories.
 4.  **Archival Formats**: Export structured data as HTML (standalone), Markdown (Git-friendly), and JSON (machine-readable).
-5.  **Centralized Hub**: A main interface to browse and filter the entire archived history.
+5.  **Centralized Hub**: A functional dashboard to browse, filter, batch-export, and manage the entire archived history.
 6.  **Chrome Extension/Bridge**: (Future) Real-time extraction buttons injected directly into AI chat platforms.
 
 ## Goals

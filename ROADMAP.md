@@ -17,6 +17,8 @@
     *   [x] Multi-select interface in Archive Hub.
     *   [x] Batch Export (1 Chat = 1 File) for archiving.
     *   [x] Batch Delete.
+*   **Infrastructure**:
+    *   [x] **IndexedDB**: Transition from `localStorage` to structured `IndexedDB` storage.
 *   **Deep Merging**:
     *   [ ] **Full Session Merge**: Combine Selected Chat A + Chat B -> New Chat C.
     *   [ ] **Granular Selection**: "Surgical Merge" - Open a source chat, select specific messages (e.g., "Just the code blocks" or "Just the final prompt"), and inject them into a target session.

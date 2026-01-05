@@ -11,8 +11,9 @@
 - [x] **Internal Formatting**: Full HTML-to-Markdown conversion (Tables, Lists, Bold/Italic).
 
 ## Roadmap: AI Chat Archival System
-- [ ] **Metadata Module**: Add UI for Title, Date, Model, and Tags.
-- [ ] **Multi-Session Hub**: dashboard to browse and manage the entire `localStorage` library.
+- [x] **Metadata Module**: Add UI for Title, Date, Model, and Tags.
+- [x] **Multi-Session Hub**: dashboard to browse and manage the entire `IndexedDB` library.
+- [x] **Batch Operations**: Selection mode, Batch Export, and Batch Delete.
 - [ ] **Batch Export**: Export whole repositories into Markdown, JSON, and HTML.
 - [ ] **Chrome Extension / Bridge**: Surgical "Export to App" button injection logic.
 - [ ] **Deployment**: Finalize GitHub Pages strategy.

@@ -5,20 +5,25 @@
 
 ## Tech Stack
 - **Framework**: React 19
-- **Build Tool**: Vite 6.2.0
+- **Build Tool**: Vite 6.0+
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS (Classes present, but dependencies currently missing)
+- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`)
 
 ## Current Status
-- The project allows for local development (`npm run dev`).
-- **Critical Gap**: While Tailwind utility classes are found in `App.tsx`, the actual `tailwindcss` package and configuration are missing.
-- **Goal**: Polish the UI to a premium standard and configure for GitHub Pages deployment.
+- The project is valid and functional (`npm run dev` works).
+- **Core Pivot**: Transitioned from a simple "Converter" to a full "Archival System" (`ArchiveHub`).
+- **Data Layer**: Robust `IndexedDB` implementation for large-scale storage.
+- **Goal**: Implement "Phase 2: Context Composition" (Merging) and prepare for Chrome Extension.
 
 ## Architecture
-- **Entry**: `index.html` -> `src/main.tsx` (inferred) -> `App.tsx`
-- **Key Components**:
-  - `ChatConverter.tsx`: Main logic for parsing and conversion.
-  - `GeneratedHtmlDisplay.tsx`: Preview/Export component.
+- **Entry**: `index.html` -> `src/main.tsx` -> `App.tsx` (Router)
+- **Routes**:
+  - `/`: `ArchiveHub` (Main Dashboard)
+  - `/basic`: `BasicConverter` (Legacy Regex mode)
+  - `/ai`: `AIConverter` (Gemini Studio mode)
+- **Key Services**:
+  - `storageService.ts`: IndexedDB wrapper for all persistence.
+  - `converterService.ts`: Core HTML parsing logic.
 
 ## Communication Style
 - **Formatting**. Format your responses in github-style markdown to make your responses easier for the USER to parse. For example, use headers to organize your responses and bolded or italicized text to highlight important keywords. Use backticks to format file, directory, function, and class names. If providing a URL to the user, format this in markdown as well, for example `[label](example.com)`.

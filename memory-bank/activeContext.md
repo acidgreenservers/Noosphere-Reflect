@@ -8,12 +8,11 @@ We are pivoting from a simple "HTML Converter" utility to a comprehensive **AI C
 - **Extension Guide**: Documented the "Export to App" logic for a future Chrome extension bridge.
 
 ## Next Steps
-1.  **Metadata Schema**: Update `types.ts` to include chat-level metadata (Title, Model, Date, Tags).
-2.  **Archival Dashboard**: Create a centralized "Library" view to manage saved sessions.
-3.  **Enhanced Persistence**: Ensure metadata is persisted in `localStorage`.
-4.  **Batch Export**: Implement multi-format export for archiving to Git.
+1.  **Deep Merging**: Implement the UI and logic for combining multiple chat sessions into one.
+2.  **Granular Control**: Add functionality to select specific messages for merging/exporting.
+3.  **Chrome Bridge**: Begin research and prototyping for the browser extension.
 
 ## Active Decisions
-- **Persistence**: Using `localStorage` as the primary database for the local-first hub.
+- **Persistence**: Switched from `localStorage` to `IndexedDB` to support larger archives and avoid quota limits.
 - **Design**: Maintaining the "Premium Dark/Glassmorphism" aesthetic for the new Hub UI.
 - **Parser Architecture**: Specialized parsers are preferred over a single generic one to ensure surgical precision.

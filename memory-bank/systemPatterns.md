@@ -3,7 +3,7 @@
 ## Architecture
 - **Framework**: React 19 (Vite).
 - **Core Engine (`converterService.ts`)**: Surgical extraction logic with specialized strategies for Claude, LeChat, and Llamacoder.
-- **Persistence Layer**: Storing `SavedChatSession` objects (including metadata and edited `chatData`) in `localStorage`.
+- **Persistence Layer**: `IndexedDB` based storage using `storageService.ts` for handling `SavedChatSession` objects, replacing `localStorage` to support large datasets.
 - **Archival Hub**: The main entry point for managing the chat library, merging sessions, and browsing archives.
 - **Legacy Modes**: `BasicConverter` and `AIConverter` are maintained as standalone "Quick Tools" accessible from the Hub.
 - **Export Formats**: Standardized generation for HTML (Self-contained), Markdown (Git-friendly), and JSON.
