@@ -521,13 +521,21 @@ const BasicConverter: React.FC = () => {
                                 )}
 
                                 <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl">
-                                    <div className="flex items-start gap-3">
-                                        <div className="text-blue-400 text-xl">💡</div>
-                                        <p className="text-sm text-blue-200/80 leading-relaxed">
-                                            <strong>Basic Mode Tip:</strong> Ensure your chat log uses clear markers like:
-                                            <br />
-                                            <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Prompt:</code> or <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## User:</code> and <br /> <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Response:</code>.
-                                        </p>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-blue-400 text-xl">💡</div>
+                                            <p className="text-sm text-blue-200/80 leading-relaxed">
+                                                <strong>Basic Mode Rule:</strong> Ensure your chat log uses these clear markers for prompts and responses:
+                                                <br />
+                                                <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Prompt:</code> or <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## User:</code> and <br /> <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Response:</code>.
+                                            </p>
+                                        </div>
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-blue-400 text-xl">🧠</div>
+                                            <p className="text-sm text-blue-200/80 leading-relaxed">
+                                                <strong>Thought Process:</strong> Wrap text in <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">&lt;thought&gt;...&lt;/thought&gt;</code> to create collapsible thought sections.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 
