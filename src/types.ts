@@ -40,13 +40,11 @@ export enum ParserMode {
 export interface SavedChatSession {
   id: string;
   name: string;
+  date: string; // ISO string
   inputContent: string;
   chatTitle: string;
-  fileType: 'markdown' | 'json' | 'auto';
-  parserMode: ParserMode; // New field
-  generatedHtml: string;
-  theme: ChatTheme;
-  timestamp: number; // Unix timestamp for sorting
-  userName: string; // Custom name for the user
-  aiName: string; // Custom name for the AI
+  userName: string;
+  aiName: string;
+  selectedTheme: ChatTheme;
+  parserMode: ParserMode;
 }

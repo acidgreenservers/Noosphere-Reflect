@@ -707,10 +707,18 @@ export const generateHtml = (
         background: ${scrollbarThumb};
         border-radius: 4px;
       }
-      ::-webkit-scrollbar-thumb:hover {
-        background: ${scrollbarThumbHover};
-      }
     </style>
+    <!-- MathJax for rendering equations -->
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+        svg: { fontCache: 'global' },
+        startup: {
+            typeset: false // We will typeset manually if needed, or rely on auto - auto is default actually
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>
     function copyToClipboard(btn) {
       const container = btn.parentElement;

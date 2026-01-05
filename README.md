@@ -1,87 +1,65 @@
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" alt="AI Chat HTML Converter Banner" width="100%" />
+# AI Chat HTML Converter
 
-  # AI Chat HTML Converter
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-0.0.6-green.svg)
 
-  <p>
-    <a href="#features">Features</a> •
-    <a href="#installation">Installation</a> •
-    <a href="#usage">Usage</a> •
-    <a href="#license">License</a>
-  </p>
+Transform your AI chat logs (ChatGPT, Claude, Gemini, etc.) into beautiful, standalone, offline-viewable HTML files.
 
-  <p>
-    <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React 19" />
-    <img src="https://img.shields.io/badge/Vite-6-orange?style=for-the-badge&logo=vite" alt="Vite 6" />
-    <img src="https://img.shields.io/badge/Tailwind-CSS-cyan?style=for-the-badge&logo=tailwindcss" alt="Tailwind CSS" />
-    <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License MIT" />
-  </p>
-</div>
+## 🚀 Features
 
----
+*   **Dual Workflow Architecture**:
+    *   **⚡ Basic Mode**: Instant, offline regex-based parsing using standard separators (`## Prompt`, `## Response`). Includes syntax highlighting and a "Copy Code" feature.
+    *   **🤖 AI Studio**: Powered by Google Gemini. Intelligently parses messy or unstructured logs, detecting "thought chains" and collapsible sections automatically.
+*   **Premium UI**: A modern, "Glassmorphism" interface built with Tailwind CSS v4.
+*   **Math Support**: Built-in MathJax support for rendering LaTeX equations ($E=mc^2$).
+*   **Privacy First**: Your chats are processed locally (Basic Mode) or sent directly to Gemini via your own API key (AI Mode). No intermediate servers.
+*   **Offline Ready**: The generated HTML files are self-contained (bundled CSS via CDN fallback design for portability).
 
-## 📖 Overview
+## 🛠️ Tech Stack
 
-**AI Chat HTML Converter** is a premium utility tool designed to transform your raw AI chat logs (Markdown or JSON) into beautiful, offline-viewable HTML files. Built with React 19, Vite, and Tailwind CSS, it ensures your conversation history is preserved in an elegant, readable format that you can share with anyone.
+*   **Frontend**: React 19, TypeScript, Vite 6.0
+*   **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`)
+*   **Routing**: React Router DOM (Single Page App)
+*   **AI Integration**: Google Generative AI SDK (Gemini 2.0 Flash)
 
-## ✨ Features
+## 📦 Installation
 
-- **Markdown & JSON Support**: seamless parsing of standard chat formats.
-- **Premium Styling**: Glassmorphism UI with dark mode support and smooth animations.
-- **Offline HTML Export**: Generates a single, self-contained HTML file.
-- **Privacy First**: All processing happens locally in your browser.
-- **Responsive Design**: Optimized for desktop, tablet, and mobile viewing.
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/acidgreenservers/AI-Chat-HTML-Converter.git
+    cd AI-Chat-HTML-Converter
+    ```
 
-## 🚀 Installation
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-### Prerequisites
-- Node.js 18+
-- npm 9+
+3.  Configure Environment:
+    Create a `.env` file in the root directory:
+    ```env
+    VITE_GEMINI_API_KEY=your_api_key_here
+    ```
 
-### Steps
+4.  Run Development Server:
+    ```bash
+    npm run dev
+    ```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/ai-chat-html-converter.git
-   cd ai-chat-html-converter
-   ```
+## 📖 Usage
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### Basic Mode
+1.  Paste your chat log into the input area.
+2.  Ensure you use markers like `## Prompt:` and `## Response:` (or `User:` / `Model:`).
+3.  Click **Convert**.
+4.  Download the generated HTML file.
 
-3. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+### AI Studio
+1.  Enter your Gemini API Key (if not set in `.env`).
+2.  Paste *any* raw text or JSON.
+3.  The AI will restructure it, organize code blocks, and collapse "thought process" sections.
+4.  Export to HTML.
 
-## 🛠️ Usage
+## 📜 License
 
-1. Open the application in your browser (default: `http://localhost:3000`).
-2. **Upload** a `.md` or `.json` chat log file, OR **Paste** your content directly into the text area.
-3. Select your desired **Theme** (Dark/Light).
-4. Click **Convert to HTML**.
-5. Preview the result and click **Download HTML** or **Save Chat** to store it locally.
-
-## 🏗️ Project Structure
-
-```
-ai-chat-html-converter/
-├── public/              # Static assets
-├── src/
-│   ├── components/      # React components (ChatConverter, etc.)
-│   ├── services/        # Logic for parsing and HTML generation
-│   ├── types/           # TypeScript definitions
-│   ├── App.tsx          # Main application component
-│   ├── main.tsx         # Entry point
-│   └── index.css        # Tailwind and global styles
-├── checklists/          # Project compliance checklists
-├── package.json         # Dependencies and scripts
-├── vite.config.ts       # Vite configuration
-└── tailwind.config.js   # Tailwind configuration
-```
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
