@@ -8,7 +8,7 @@ import {
     ThemeClasses,
 } from '../types';
 
-const STORAGE_KEY = 'ai_chat_sessions';
+import { storageService } from '../services/storageService';
 
 const AIConverter: React.FC = () => {
     const [inputContent, setInputContent] = useState<string>('');
@@ -24,14 +24,12 @@ const AIConverter: React.FC = () => {
 
     // Load sessions
     useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            try {
-                setSavedSessions(JSON.parse(stored));
-            } catch (e) {
-                console.error('Failed to load sessions', e);
-            }
-        }
+        const init = async () => {
+            await storageService.migrateLegacyData();
+            const sessions = await storageService.getAllSessions();
+            setSavedSessions(sessions);
+        };
+        init();
     }, []);
 
     const handleConvert = useCallback(async () => {
@@ -69,7 +67,7 @@ const AIConverter: React.FC = () => {
         }
     }, [inputContent, chatTitle, selectedTheme, userName, aiName]);
 
-    const handleSaveSession = useCallback((sessionName: string) => {
+    const handleSaveSession = useCallback(async (sessionName: string) => {
         if (!generatedHtml) return;
         const newSession: SavedChatSession = {
             id: Date.now().toString(),
@@ -82,10 +80,11 @@ const AIConverter: React.FC = () => {
             selectedTheme,
             parserMode: ParserMode.AI
         };
-        const updated = [newSession, ...savedSessions];
+
+        await storageService.saveSession(newSession);
+        const updated = await storageService.getAllSessions();
         setSavedSessions(updated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, savedSessions]);
+    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme]);
 
     const loadSession = useCallback((session: SavedChatSession) => {
         setInputContent(session.inputContent);
@@ -166,8 +165,8 @@ const AIConverter: React.FC = () => {
                                     onClick={handleConvert}
                                     disabled={isConverting}
                                     className={`flex-1 py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 relative overflow-hidden ${isConverting
-                                            ? 'bg-gray-700 cursor-not-allowed'
-                                            : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-purple-500/40'
+                                        ? 'bg-gray-700 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-purple-500/40'
                                         }`}
                                 >
                                     {isConverting && (

@@ -1,21 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { SavedChatSession, ChatTheme } from '../types';
+import { generateHtml } from '../services/converterService';
+import { storageService } from '../services/storageService';
 
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSession[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadSessions();
+        const init = async () => {
+            setIsLoading(true);
+            await storageService.migrateLegacyData();
+            await loadSessions();
+            setIsLoading(false);
+        };
+        init();
     }, []);
 
-    const loadSessions = () => {
+    const loadSessions = async () => {
         try {
-            const saved = localStorage.getItem('chatSessions');
-            if (saved) {
-                setSessions(JSON.parse(saved));
-            }
+            const allSessions = await storageService.getAllSessions();
+            setSessions(allSessions.sort((a, b) =>
+                new Date(b.metadata?.date || b.date).getTime() -
+                new Date(a.metadata?.date || a.date).getTime()
+            ));
         } catch (e) {
             console.error('Failed to load sessions', e);
         }
@@ -28,18 +39,80 @@ const ArchiveHub: React.FC = () => {
         return title.includes(searchLower) || tags.includes(searchLower);
     });
 
-    const handleDelete = (id: string, e: React.MouseEvent) => {
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         if (confirm('Are you sure you want to delete this archive?')) {
-            const updated = sessions.filter(s => s.id !== id);
-            localStorage.setItem('chatSessions', JSON.stringify(updated));
-            setSessions(updated);
+            await storageService.deleteSession(id);
+            await loadSessions();
+            if (selectedIds.has(id)) {
+                const newSelected = new Set(selectedIds);
+                newSelected.delete(id);
+                setSelectedIds(newSelected);
+            }
         }
     };
 
+    const toggleSelection = (id: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleBatchDelete = async () => {
+        if (confirm(`Are you sure you want to delete ${selectedIds.size} selected archives?`)) {
+            for (const id of selectedIds) {
+                await storageService.deleteSession(id);
+            }
+            await loadSessions();
+            setSelectedIds(new Set());
+        }
+    };
+
+    const handleBatchExport = () => {
+        const selectedSessions = sessions.filter(s => selectedIds.has(s.id));
+        selectedSessions.forEach(session => {
+            // Re-generate HTML for the session.
+            // Default values if missing
+            const theme = session.selectedTheme || ChatTheme.DarkDefault;
+            const userName = session.userName || 'User';
+            const aiName = session.aiName || 'AI';
+            // We use the parser mode saved in session
+
+            if (session.chatData) {
+                const htmlContent = generateHtml(
+                    session.chatData, // chatData
+                    session.metadata?.title || session.chatTitle || 'AI Chat Export', // title
+                    theme, // theme
+                    userName, // userName
+                    aiName, // aiName
+                    session.parserMode // parserMode
+                );
+
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Sanitize filename
+                const filename = (session.metadata?.title || session.chatTitle || 'exported_chat').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                a.download = `${filename}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+        // Deselect after export? optional. Let's keep selection for now in case user wants to do something else.
+    };
+
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30 pb-24">
             {/* Header */}
             <header className="sticky top-0 z-50 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -87,13 +160,37 @@ const ArchiveHub: React.FC = () => {
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredSessions.length > 0 ? (
+                    {isLoading ? (
+                        <div className="col-span-full py-20 text-center">
+                            <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-gray-400">Archiving system initialization...</p>
+                        </div>
+                    ) : filteredSessions.length > 0 ? (
                         filteredSessions.map(session => (
                             <Link
                                 key={session.id}
                                 to={`/converter?load=${session.id}`}
-                                className="group relative bg-gray-800/30 hover:bg-gray-800/50 border border-white/5 hover:border-blue-500/30 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-900/10 block"
+                                className={`group relative border rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block
+                                    ${selectedIds.has(session.id)
+                                        ? 'bg-blue-900/20 border-blue-500/50 shadow-blue-900/10'
+                                        : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-blue-500/30 hover:shadow-blue-900/10'
+                                    }`}
                             >
+                                {/* Selection Checkbox */}
+                                <div className="absolute top-4 right-4 z-10">
+                                    <button
+                                        onClick={(e) => toggleSelection(session.id, e)}
+                                        className={`w-6 h-6 rounded border flex items-center justify-center transition-all
+                                            ${selectedIds.has(session.id)
+                                                ? 'bg-blue-500 border-blue-500 text-white'
+                                                : 'bg-gray-900/50 border-gray-600 hover:border-blue-400 text-transparent'
+                                            }`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </button>
+                                </div>
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex gap-2">
                                         <span className="px-2 py-1 rounded-md bg-white/5 text-xs font-medium text-gray-400 border border-white/5">
@@ -159,6 +256,58 @@ const ArchiveHub: React.FC = () => {
                     )}
                 </div>
             </main>
+
+            {/* Floating Action Bar (Batch Actions) */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-lg border border-white/10 rounded-full shadow-2xl px-6 py-3 flex items-center gap-4 z-50 animate-fade-in-up">
+                    <span className="text-sm font-medium text-gray-300 border-r border-white/10 pr-4">
+                        {selectedIds.size} selected
+                    </span>
+
+                    <button
+                        onClick={handleBatchExport}
+                        className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                        title="Export each selected chat as a separate HTML file"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export Selected
+                    </button>
+
+                    <button
+                        className="flex items-center gap-2 text-sm font-medium text-purple-400/50 cursor-not-allowed"
+                        title="Merge feature coming soon"
+                        disabled
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Merge
+                    </button>
+
+                    <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+                    <button
+                        onClick={handleBatchDelete}
+                        className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                    </button>
+
+                    <button
+                        onClick={() => setSelectedIds(new Set())}
+                        className="ml-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

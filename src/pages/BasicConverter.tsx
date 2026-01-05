@@ -11,6 +11,7 @@ import {
     ChatMessageType,
     ChatMetadata,
 } from '../types';
+import { storageService } from '../services/storageService';
 
 // Theme definitions (reused to ensure consistency within component state usage)
 const themeMap: Record<ChatTheme, ThemeClasses> = {
@@ -64,7 +65,6 @@ const themeMap: Record<ChatTheme, ThemeClasses> = {
     },
 };
 
-const STORAGE_KEY = 'ai_chat_sessions';
 
 const BasicConverter: React.FC = () => {
     const [inputContent, setInputContent] = useState<string>('');
@@ -86,31 +86,68 @@ const BasicConverter: React.FC = () => {
         date: new Date().toISOString(),
         tags: []
     });
+    // Move loadSession before useEffect to avoid TDZ
+    const loadSession = useCallback((session: SavedChatSession) => {
+        setInputContent(session.inputContent);
+        setChatTitle(session.chatTitle);
+        setUserName(session.userName);
+        setAiName(session.aiName);
+        setSelectedTheme(session.selectedTheme);
+        setParserMode(session.parserMode || ParserMode.Basic);
+
+        if (session.metadata) {
+            setMetadata(session.metadata);
+        } else {
+            // Backfill for legacy
+            setMetadata({
+                title: session.chatTitle,
+                model: session.parserMode || '',
+                date: session.date,
+                tags: []
+            });
+        }
+
+        if (session.chatData) {
+            setChatData(session.chatData);
+            const html = generateHtml(
+                session.chatData,
+                session.chatTitle,
+                session.selectedTheme,
+                session.userName,
+                session.aiName,
+                session.parserMode || ParserMode.Basic
+            );
+            setGeneratedHtml(html);
+        } else {
+            setGeneratedHtml(null);
+            setChatData(null);
+        }
+
+        setShowSavedSessions(false);
+    }, []);
+
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editContent, setEditContent] = useState<string>('');
 
-    // Load sessions from localStorage
+    // Load sessions from storage
     useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            try {
-                const sessions = JSON.parse(stored);
-                setSavedSessions(sessions);
+        const init = async () => {
+            await storageService.migrateLegacyData();
+            const sessions = await storageService.getAllSessions();
+            setSavedSessions(sessions);
 
-                // Check if we requested a specific session to load via URL
-                const params = new URLSearchParams(window.location.search);
-                const loadId = params.get('load');
-                if (loadId) {
-                    const sessionToLoad = sessions.find((s: SavedChatSession) => s.id === loadId);
-                    if (sessionToLoad) {
-                        loadSession(sessionToLoad);
-                    }
+            // Check if we requested a specific session to load via URL
+            const params = new URLSearchParams(window.location.search);
+            const loadId = params.get('load');
+            if (loadId) {
+                const sessionToLoad = await storageService.getSessionById(loadId);
+                if (sessionToLoad) {
+                    loadSession(sessionToLoad);
                 }
-            } catch (e) {
-                console.error('Failed to load sessions', e);
             }
-        }
-    }, []);
+        };
+        init();
+    }, [loadSession]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -167,7 +204,7 @@ const BasicConverter: React.FC = () => {
         }
     }, [inputContent, fileType, chatTitle, selectedTheme, userName, aiName, parserMode]);
 
-    const handleSaveChat = useCallback((sessionName: string) => {
+    const handleSaveChat = useCallback(async (sessionName: string) => {
         if (!generatedHtml) return;
 
         const newSession: SavedChatSession = {
@@ -187,55 +224,16 @@ const BasicConverter: React.FC = () => {
             }
         };
 
-        const updatedSessions = [newSession, ...savedSessions];
+        await storageService.saveSession(newSession);
+        const updatedSessions = await storageService.getAllSessions();
         setSavedSessions(updatedSessions);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
-    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, savedSessions, parserMode, metadata, chatData]);
+    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, chatData]);
 
-    const deleteSession = (id: string) => {
-        const updated = savedSessions.filter(s => s.id !== id);
+    const deleteSession = async (id: string) => {
+        await storageService.deleteSession(id);
+        const updated = await storageService.getAllSessions();
         setSavedSessions(updated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     };
-
-    const loadSession = useCallback((session: SavedChatSession) => {
-        setInputContent(session.inputContent);
-        setChatTitle(session.chatTitle);
-        setUserName(session.userName);
-        setAiName(session.aiName);
-        setSelectedTheme(session.selectedTheme);
-        setParserMode(session.parserMode || ParserMode.Basic);
-
-        if (session.metadata) {
-            setMetadata(session.metadata);
-        } else {
-            // Backfill for legacy
-            setMetadata({
-                title: session.chatTitle,
-                model: session.parserMode || '',
-                date: session.date,
-                tags: []
-            });
-        }
-
-        if (session.chatData) {
-            setChatData(session.chatData);
-            const html = generateHtml(
-                session.chatData,
-                session.chatTitle,
-                session.selectedTheme,
-                session.userName,
-                session.aiName,
-                session.parserMode || ParserMode.Basic
-            );
-            setGeneratedHtml(html);
-        } else {
-            setGeneratedHtml(null);
-            setChatData(null);
-        }
-
-        setShowSavedSessions(false);
-    }, []);
 
     const clearForm = useCallback(() => {
         setInputContent('');
