@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { parseChat, generateHtml } from '../services/converterService';
+import MetadataEditor from '../components/MetadataEditor';
 import {
     ChatTheme,
     SavedChatSession,
@@ -8,6 +9,7 @@ import {
     ThemeClasses,
     ChatData,
     ChatMessageType,
+    ChatMetadata,
 } from '../types';
 
 // Theme definitions (reused to ensure consistency within component state usage)
@@ -78,6 +80,12 @@ const BasicConverter: React.FC = () => {
     const [isConversing, setIsConverting] = useState<boolean>(false);
     const [parserMode, setParserMode] = useState<ParserMode>(ParserMode.Basic);
     const [chatData, setChatData] = useState<ChatData | null>(null);
+    const [metadata, setMetadata] = useState<ChatMetadata>({
+        title: '',
+        model: '',
+        date: new Date().toISOString(),
+        tags: []
+    });
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editContent, setEditContent] = useState<string>('');
 
@@ -86,7 +94,18 @@ const BasicConverter: React.FC = () => {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             try {
-                setSavedSessions(JSON.parse(stored));
+                const sessions = JSON.parse(stored);
+                setSavedSessions(sessions);
+
+                // Check if we requested a specific session to load via URL
+                const params = new URLSearchParams(window.location.search);
+                const loadId = params.get('load');
+                if (loadId) {
+                    const sessionToLoad = sessions.find((s: SavedChatSession) => s.id === loadId);
+                    if (sessionToLoad) {
+                        loadSession(sessionToLoad);
+                    }
+                }
             } catch (e) {
                 console.error('Failed to load sessions', e);
             }
@@ -123,6 +142,15 @@ const BasicConverter: React.FC = () => {
         try {
             const data = await parseChat(inputContent, fileType, parserMode);
             setChatData(data);
+
+            // Auto-populate metadata if not already set (or if converting fresh)
+            setMetadata(prev => ({
+                ...prev,
+                title: chatTitle,
+                model: parserMode,
+                date: new Date().toISOString()
+            }));
+
             const html = generateHtml(
                 data,
                 chatTitle,
@@ -145,20 +173,24 @@ const BasicConverter: React.FC = () => {
         const newSession: SavedChatSession = {
             id: Date.now().toString(),
             name: sessionName,
-            date: new Date().toISOString(),
+            date: metadata.date,
             inputContent,
             chatTitle,
             userName,
             aiName,
             selectedTheme,
             parserMode,
-            chatData: chatData || undefined
+            chatData: chatData || undefined,
+            metadata: {
+                ...metadata,
+                title: chatTitle // Ensure title stays synced
+            }
         };
 
         const updatedSessions = [newSession, ...savedSessions];
         setSavedSessions(updatedSessions);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
-    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, savedSessions, parserMode]);
+    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, savedSessions, parserMode, metadata, chatData]);
 
     const deleteSession = (id: string) => {
         const updated = savedSessions.filter(s => s.id !== id);
@@ -173,6 +205,18 @@ const BasicConverter: React.FC = () => {
         setAiName(session.aiName);
         setSelectedTheme(session.selectedTheme);
         setParserMode(session.parserMode || ParserMode.Basic);
+
+        if (session.metadata) {
+            setMetadata(session.metadata);
+        } else {
+            // Backfill for legacy
+            setMetadata({
+                title: session.chatTitle,
+                model: session.parserMode || '',
+                date: session.date,
+                tags: []
+            });
+        }
 
         if (session.chatData) {
             setChatData(session.chatData);
@@ -203,6 +247,12 @@ const BasicConverter: React.FC = () => {
         setError(null);
         setChatData(null);
         setEditingIndex(null);
+        setMetadata({
+            title: '',
+            model: '',
+            date: new Date().toISOString(),
+            tags: []
+        });
     }, []);
 
     const handleEditMessage = (index: number) => {
@@ -389,190 +439,198 @@ const BasicConverter: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Messages Editing Section */}
-                            {chatData && (
-                                <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg">
-                                    <h2 className="text-xl font-bold mb-4 text-blue-300 flex items-center justify-between">
-                                        2. Edit Messages
-                                        <span className="text-xs font-normal text-gray-500 bg-gray-900/50 px-2 py-1 rounded border border-gray-700">
-                                            {chatData.messages.length} turns parsed
-                                        </span>
-                                    </h2>
-                                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-3 custom-scrollbar">
-                                        {chatData.messages.map((msg, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`p-4 rounded-xl border transition-all ${editingIndex === idx
-                                                    ? 'bg-blue-600/10 border-blue-500/50 ring-1 ring-blue-500/20'
-                                                    : msg.type === ChatMessageType.Prompt
-                                                        ? 'bg-gray-900/40 border-gray-700 hover:border-blue-500/30'
-                                                        : 'bg-gray-800/40 border-gray-700 hover:border-cyan-500/30'
-                                                    }`}
-                                            >
-                                                <div className="flex justify-between items-center mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`w-2 h-2 rounded-full ${msg.type === ChatMessageType.Prompt ? 'bg-blue-400' : 'bg-cyan-400'}`}></span>
-                                                        <span className={`text-[10px] uppercase tracking-wider font-bold ${msg.type === ChatMessageType.Prompt ? 'text-blue-400' : 'text-cyan-400'}`}>
-                                                            {msg.type === ChatMessageType.Prompt ? userName : aiName}
-                                                            {msg.isEdited && <span className="ml-2 text-yellow-500/80 normal-case font-normal">(Edited)</span>}
-                                                        </span>
+                                {/* 3. Metadata Editor */}
+                                <MetadataEditor
+                                    metadata={metadata}
+                                    onChange={setMetadata}
+                                />
+
+
+
+                                {/* Messages Editing Section */}
+                                {chatData && (
+                                    <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg">
+                                        <h2 className="text-xl font-bold mb-4 text-blue-300 flex items-center justify-between">
+                                            4. Edit Messages
+                                            <span className="text-xs font-normal text-gray-500 bg-gray-900/50 px-2 py-1 rounded border border-gray-700">
+                                                {chatData.messages.length} turns parsed
+                                            </span>
+                                        </h2>
+                                        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-3 custom-scrollbar">
+                                            {chatData.messages.map((msg, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`p-4 rounded-xl border transition-all ${editingIndex === idx
+                                                        ? 'bg-blue-600/10 border-blue-500/50 ring-1 ring-blue-500/20'
+                                                        : msg.type === ChatMessageType.Prompt
+                                                            ? 'bg-gray-900/40 border-gray-700 hover:border-blue-500/30'
+                                                            : 'bg-gray-800/40 border-gray-700 hover:border-cyan-500/30'
+                                                        }`}
+                                                >
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`w-2 h-2 rounded-full ${msg.type === ChatMessageType.Prompt ? 'bg-blue-400' : 'bg-cyan-400'}`}></span>
+                                                            <span className={`text-[10px] uppercase tracking-wider font-bold ${msg.type === ChatMessageType.Prompt ? 'text-blue-400' : 'text-cyan-400'}`}>
+                                                                {msg.type === ChatMessageType.Prompt ? userName : aiName}
+                                                                {msg.isEdited && <span className="ml-2 text-yellow-500/80 normal-case font-normal">(Edited)</span>}
+                                                            </span>
+                                                        </div>
+
+                                                        {editingIndex !== idx ? (
+                                                            <button
+                                                                onClick={() => handleEditMessage(idx)}
+                                                                className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-blue-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                        ) : (
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={handleSaveEdit}
+                                                                    className="text-[10px] uppercase tracking-wider font-bold text-green-400 hover:text-green-300 transition-colors bg-green-400/10 px-2 py-1 rounded border border-green-400/20"
+                                                                >
+                                                                    Save
+                                                                </button>
+                                                                <button
+                                                                    onClick={handleCancelEdit}
+                                                                    className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-gray-300 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
 
-                                                    {editingIndex !== idx ? (
-                                                        <button
-                                                            onClick={() => handleEditMessage(idx)}
-                                                            className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-blue-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
-                                                        >
-                                                            Edit
-                                                        </button>
+                                                    {editingIndex === idx ? (
+                                                        <textarea
+                                                            className="w-full bg-gray-900/80 text-gray-200 p-3 rounded-lg border border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-sm font-mono min-h-[120px] resize-y"
+                                                            value={editContent}
+                                                            onChange={(e) => setEditContent(e.target.value)}
+                                                            autoFocus
+                                                        />
                                                     ) : (
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={handleSaveEdit}
-                                                                className="text-[10px] uppercase tracking-wider font-bold text-green-400 hover:text-green-300 transition-colors bg-green-400/10 px-2 py-1 rounded border border-green-400/20"
-                                                            >
-                                                                Save
-                                                            </button>
-                                                            <button
-                                                                onClick={handleCancelEdit}
-                                                                className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-gray-300 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
-                                                            >
-                                                                Cancel
-                                                            </button>
+                                                        <div className="text-gray-300 text-sm line-clamp-4 overflow-hidden whitespace-pre-wrap leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+                                                            {msg.content}
                                                         </div>
                                                     )}
                                                 </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
-                                                {editingIndex === idx ? (
-                                                    <textarea
-                                                        className="w-full bg-gray-900/80 text-gray-200 p-3 rounded-lg border border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-sm font-mono min-h-[120px] resize-y"
-                                                        value={editContent}
-                                                        onChange={(e) => setEditContent(e.target.value)}
-                                                        autoFocus
-                                                    />
-                                                ) : (
-                                                    <div className="text-gray-300 text-sm line-clamp-4 overflow-hidden whitespace-pre-wrap leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
-                                                        {msg.content}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl">
+                                    <div className="flex items-start gap-3">
+                                        <div className="text-blue-400 text-xl">💡</div>
+                                        <p className="text-sm text-blue-200/80 leading-relaxed">
+                                            <strong>Basic Mode Tip:</strong> Ensure your chat log uses clear markers like:
+                                            <br />
+                                            <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Prompt:</code> or <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## User:</code> and <br /> <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Response:</code>.
+                                        </p>
                                     </div>
                                 </div>
-                            )}
 
-                            <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl">
-                                <div className="flex items-start gap-3">
-                                    <div className="text-blue-400 text-xl">💡</div>
-                                    <p className="text-sm text-blue-200/80 leading-relaxed">
-                                        <strong>Basic Mode Tip:</strong> Ensure your chat log uses clear markers like:
-                                        <br />
-                                        <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Prompt:</code> or <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## User:</code> and <br /> <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Response:</code>.
-                                    </p>
-                                </div>
                             </div>
 
-                        </div>
-
-                        {/* Right Column: Content */}
-                        <div className="space-y-6">
-                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg h-full flex flex-col">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h2 className="text-xl font-bold text-blue-300">2. Chat Content</h2>
-                                    <div className="flex gap-2">
-                                        <label className="cursor-pointer px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-xs font-medium text-gray-200 border border-gray-600 transition-colors">
-                                            Upload File
-                                            <input type="file" className="hidden" accept=".txt,.md,.json" onChange={handleFileUpload} />
-                                        </label>
-                                        <button onClick={clearForm} className="px-3 py-1.5 bg-gray-700 hover:bg-red-900/50 hover:text-red-200 hover:border-red-800 rounded-md text-xs font-medium text-gray-200 border border-gray-600 transition-all">
-                                            Clear
-                                        </button>
+                            {/* Right Column: Content */}
+                            <div className="space-y-6">
+                                <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-blue-300">2. Chat Content</h2>
+                                        <div className="flex gap-2">
+                                            <label className="cursor-pointer px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-xs font-medium text-gray-200 border border-gray-600 transition-colors">
+                                                Upload File
+                                                <input type="file" className="hidden" accept=".txt,.md,.json" onChange={handleFileUpload} />
+                                            </label>
+                                            <button onClick={clearForm} className="px-3 py-1.5 bg-gray-700 hover:bg-red-900/50 hover:text-red-200 hover:border-red-800 rounded-md text-xs font-medium text-gray-200 border border-gray-600 transition-all">
+                                                Clear
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                                <textarea
-                                    value={inputContent}
-                                    onChange={(e) => setInputContent(e.target.value)}
-                                    placeholder={parserMode === ParserMode.LlamacoderHtml
-                                        ? "Paste raw HTML source from Llamacoder here..."
-                                        : parserMode === ParserMode.ClaudeHtml
-                                            ? "Paste full HTML source from Claude chat here..."
-                                            : parserMode === ParserMode.LeChatHtml
-                                                ? "Paste full HTML source from LeChat (Mistral) here..."
-                                                : "Paste your chat here (Markdown or JSON)..."}
-                                    className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
-                                />
-                                <button
-                                    onClick={handleConvert}
-                                    disabled={isConversing}
-                                    className={`mt-4 w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${isConversing
-                                        ? 'bg-gray-600 cursor-not-allowed opacity-75'
-                                        : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-cyan-500/25'
-                                        }`}
-                                >
-                                    {isConversing ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Processing...
-                                        </span>
-                                    ) : 'Convert to HTML'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Error Message */}
-                    {error && (
-                        <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-xl animate-shake">
-                            <p className="flex items-center gap-2">
-                                <span className="text-xl">⚠️</span> {error}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Generated Output */}
-                    {generatedHtml && (
-                        <div className="animate-fade-in-up">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-2xl font-bold text-white">Preview & Export</h2>
-                                <div className="flex gap-3">
-                                    {/* Quick Save Session UI */}
+                                    <textarea
+                                        value={inputContent}
+                                        onChange={(e) => setInputContent(e.target.value)}
+                                        placeholder={parserMode === ParserMode.LlamacoderHtml
+                                            ? "Paste raw HTML source from Llamacoder here..."
+                                            : parserMode === ParserMode.ClaudeHtml
+                                                ? "Paste full HTML source from Claude chat here..."
+                                                : parserMode === ParserMode.LeChatHtml
+                                                    ? "Paste full HTML source from LeChat (Mistral) here..."
+                                                    : "Paste your chat here (Markdown or JSON)..."}
+                                        className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
+                                    />
                                     <button
-                                        onClick={() => {
-                                            const name = prompt('Enter a name for this session:', chatTitle);
-                                            if (name) handleSaveChat(name);
-                                        }}
-                                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg border border-gray-600 text-sm font-medium transition-colors"
+                                        onClick={handleConvert}
+                                        disabled={isConversing}
+                                        className={`mt-4 w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${isConversing
+                                            ? 'bg-gray-600 cursor-not-allowed opacity-75'
+                                            : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-cyan-500/25'
+                                            }`}
                                     >
-                                        Save Session
+                                        {isConversing ? (
+                                            <span className="flex items-center justify-center gap-2">
+                                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Processing...
+                                            </span>
+                                        ) : 'Convert to HTML'}
                                     </button>
                                 </div>
                             </div>
-                            {/* We can reuse the Display component later, but for now inline simpler logic + the iframe */}
-                            <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
-                                <div className="bg-gray-900/50 p-4 border-b border-gray-700 flex justify-between items-center">
-                                    <span className="text-sm text-gray-400">Preview (Sandbox)</span>
-                                    <a
-                                        href={URL.createObjectURL(new Blob([generatedHtml], { type: 'text/html' }))}
-                                        download={`${chatTitle.replace(/\s+/g, '_')}.html`}
-                                        className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2"
-                                    >
-                                        <span>⬇️</span> Download HTML
-                                    </a>
-                                </div>
-                                <iframe
-                                    title="Preview"
-                                    srcDoc={generatedHtml}
-                                    className={`w-full h-[600px] bg-white`} // iframe bg should be white initially unless themed inside
-                                    sandbox="allow-scripts"
-                                />
-                            </div>
                         </div>
-                    )}
+
+                        {/* Error Message */}
+                        {error && (
+                            <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-xl animate-shake">
+                                <p className="flex items-center gap-2">
+                                    <span className="text-xl">⚠️</span> {error}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Generated Output */}
+                        {generatedHtml && (
+                            <div className="animate-fade-in-up">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-2xl font-bold text-white">Preview & Export</h2>
+                                    <div className="flex gap-3">
+                                        {/* Quick Save Session UI */}
+                                        <button
+                                            onClick={() => {
+                                                const name = prompt('Enter a name for this session:', chatTitle);
+                                                if (name) handleSaveChat(name);
+                                            }}
+                                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg border border-gray-600 text-sm font-medium transition-colors"
+                                        >
+                                            Save Session
+                                        </button>
+                                    </div>
+                                </div>
+                                {/* We can reuse the Display component later, but for now inline simpler logic + the iframe */}
+                                <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+                                    <div className="bg-gray-900/50 p-4 border-b border-gray-700 flex justify-between items-center">
+                                        <span className="text-sm text-gray-400">Preview (Sandbox)</span>
+                                        <a
+                                            href={URL.createObjectURL(new Blob([generatedHtml], { type: 'text/html' }))}
+                                            download={`${chatTitle.replace(/\s+/g, '_')}.html`}
+                                            className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2"
+                                        >
+                                            <span>⬇️</span> Download HTML
+                                        </a>
+                                    </div>
+                                    <iframe
+                                        title="Preview"
+                                        srcDoc={generatedHtml}
+                                        className={`w-full h-[600px] bg-white`} // iframe bg should be white initially unless themed inside
+                                        sandbox="allow-scripts"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

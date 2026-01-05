@@ -3,6 +3,15 @@ export enum ChatMessageType {
   Response = 'response',
 }
 
+export interface ChatMetadata {
+  title: string;
+  model: string;
+  date: string; // ISO string
+  tags: string[];
+  author?: string;
+  sourceUrl?: string;
+}
+
 export interface ChatMessage {
   type: ChatMessageType;
   content: string;
@@ -11,6 +20,7 @@ export interface ChatMessage {
 
 export interface ChatData {
   messages: ChatMessage[];
+  metadata?: ChatMetadata;
 }
 
 export enum ChatTheme {
@@ -21,16 +31,16 @@ export enum ChatTheme {
 }
 
 export interface ThemeClasses {
-  htmlClass: string; // e.g., 'dark' or ''
-  bodyBg: string; // e.g., 'bg-gray-900'
-  bodyText: string; // e.g., 'text-gray-100'
-  containerBg: string; // e.g., 'bg-gray-800'
-  titleText: string; // e.g., 'text-blue-400'
-  promptBg: string; // e.g., 'bg-blue-700'
-  responseBg: string; // e.g., 'bg-gray-700'
-  blockquoteBorder: string; // e.g., 'border-gray-500'
-  codeBg: string; // e.g., 'bg-gray-800'
-  codeText: string; // e.g., 'text-yellow-300'
+  htmlClass: string;
+  bodyBg: string;
+  bodyText: string;
+  containerBg: string;
+  titleText: string;
+  promptBg: string;
+  responseBg: string;
+  blockquoteBorder: string;
+  codeBg: string;
+  codeText: string;
 }
 
 export enum ParserMode {
@@ -43,8 +53,8 @@ export enum ParserMode {
 
 export interface SavedChatSession {
   id: string;
-  name: string;
-  date: string; // ISO string
+  name: string; // Legacy name (often same as chatTitle)
+  date: string; // Legacy ISO string
   inputContent: string;
   chatTitle: string;
   userName: string;
@@ -52,4 +62,5 @@ export interface SavedChatSession {
   selectedTheme: ChatTheme;
   parserMode: ParserMode;
   chatData?: ChatData;
+  metadata?: ChatMetadata; // Explicit metadata for easier hub access
 }

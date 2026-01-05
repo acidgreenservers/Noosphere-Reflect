@@ -16,3 +16,6 @@
 - **Git Integration**: Optimized file naming and structure for version control.
 - **Premium Discovery UI**: A beautiful, glassmorphic dashboard to manage the entire chat library.
 - **Granular Control**: User or AI message-level selection for precision archiving.
+- **Merging Capabilities**: Ability to merge selected individual chat messages, or entire chats together, then save the merged files as a new file.
+- **Editing Capabilities**: Ability to edit the content of the chat messages, add links to the files that were created, and edit the metadata of the chat.
+
