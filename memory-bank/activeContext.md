@@ -1,25 +1,19 @@
-# Active Context
-
 ## Current Work Focus
-Refining the specialized parsers (LeChat, Claude) to handle complex HTML structures, ensuring full fidelity exports (tables, lists, thought blocks) and exploring further enhancements for the reading experience.
+We are pivoting from a simple "HTML Converter" utility to a comprehensive **AI Chat Archival System**. The goal is a Git-ready archival hub where users can scrape, edit, enrich with metadata, and export chats for centralized organization.
 
 ## Recent Changes
-## Recent Changes
-- **Claude Parser Refinement**: Enhanced with deep DOM support for "Viewed memory edits", Action steps (Creating/Running/Reading), Artifacts, and specialized code snippet structures. Robust sidebar filtering added.
-- **LeChat (Mistral) Support**: Implemented `ParserMode.LeChatHtml` with support for "Reasoning" blocks, "Tool Executions", "Context Badges", and "Searched Libraries".
-- **Full HTML Fidelity**: Upgraded `extractMarkdownFromHtml` to convert HTML lists, tables, links, and formatting back to Markdown, serving all parser modes.
-- **Inline Editing**: Added "Edit" functionality for messages before export, with an "(Edited)" badge.
-- **Layout Fixes**: Resolved layout issues caused by unescaped HTML in code blocks for LeChat exports.
-- **Tailwind Mitigation**: Successfully migrated to Tailwind v4.
-- **Service Layer**: Robust `converterService.ts` supporting multiple specialized parser modes.
+- **Surgical Extraction**: Improved Claude/LeChat parsers to isolate thoughts and tool executions with high fidelity.
+- **Thought Bleed Fix**: Resolved issues in the markdown engine that swallowed text after `<thought>` blocks.
+- **Universal Collapsibility**: Enabled `<details>` based thinking blocks for all HTML parser modes.
+- **Extension Guide**: Documented the "Export to App" logic for a future Chrome extension bridge.
 
 ## Next Steps
-1.  **Refine Export Styling**: Ensure the generated HTML is as beautiful as the source logs.
-2.  **Add More Parsers**: Investigate other AI chat exports (ChatGPT, etc.) if requested.
-3.  **Final Polish**: Review all UI elements for consistency.
+1.  **Metadata Schema**: Update `types.ts` to include chat-level metadata (Title, Model, Date, Tags).
+2.  **Archival Dashboard**: Create a centralized "Library" view to manage saved sessions.
+3.  **Enhanced Persistence**: Ensure metadata is persisted in `localStorage`.
+4.  **Batch Export**: Implement multi-format export for archiving to Git.
 
 ## Active Decisions
-- **Architecture**: Split approach (Option B) chosen over unified UI.
-- **Styling**: Tailwind v4 is the standard. Design language is "Premium Dark/Glassmorphism".
-- **State Management**: LocalStorage is used for saving sessions.
-- **Parser Architecture**: Specialized parsers (Llamacoder, Claude, LeChat) added seamlessly alongside Basic/AI modes.
+- **Persistence**: Using `localStorage` as the primary database for the local-first hub.
+- **Design**: Maintaining the "Premium Dark/Glassmorphism" aesthetic for the new Hub UI.
+- **Parser Architecture**: Specialized parsers are preferred over a single generic one to ensure surgical precision.
