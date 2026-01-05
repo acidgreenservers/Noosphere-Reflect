@@ -32,12 +32,18 @@ export interface ThemeClasses {
   codeText: string; // e.g., 'text-yellow-300'
 }
 
+export enum ParserMode {
+  Basic = 'basic',
+  AI = 'ai',
+}
+
 export interface SavedChatSession {
   id: string;
   name: string;
   inputContent: string;
   chatTitle: string;
   fileType: 'markdown' | 'json' | 'auto';
+  parserMode: ParserMode; // New field
   generatedHtml: string;
   theme: ChatTheme;
   timestamp: number; // Unix timestamp for sorting

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { parseChat, generateHtml, isJson } from '../services/converterService';
 import { GeneratedHtmlDisplay } from './GeneratedHtmlDisplay';
-import { ChatTheme, SavedChatSession } from '../types';
+import { ChatTheme, SavedChatSession, ParserMode } from '../types';
 
 const LOCAL_STORAGE_KEY = 'saved_chat_sessions';
 
@@ -62,8 +62,10 @@ const ChatConverter: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'markdown' | 'json' | 'auto'>('auto');
   const [selectedTheme, setSelectedTheme] = useState<ChatTheme>(ChatTheme.DarkDefault);
+  const [parserMode, setParserMode] = useState<ParserMode>(ParserMode.Basic); // New state for parser mode
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
   const [showSavedSessions, setShowSavedSessions] = useState<boolean>(false);
+  const [isConverting, setIsConverting] = useState<boolean>(false); // Loading state
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,8 +120,11 @@ const ChatConverter: React.FC = () => {
   const handleConvert = useCallback(async () => {
     setError(null);
     setGeneratedHtml(null);
+    setIsConverting(true); // Start loading
+
     if (!inputContent.trim()) {
       setError('Input content cannot be empty.');
+      setIsConverting(false);
       return;
     }
 
@@ -130,13 +135,18 @@ const ChatConverter: React.FC = () => {
         effectiveFileType = isJson(inputContent) ? 'json' : 'markdown';
       }
 
-      const chatData = parseChat(inputContent, effectiveFileType);
-      const htmlOutput = generateHtml(chatData, chatTitle, selectedTheme, userName, aiName);
+      // Call service with mode and API key
+      const apiKey = process.env.GEMINI_API_KEY;
+      const chatData = await parseChat(inputContent, effectiveFileType, parserMode, apiKey);
+
+      const htmlOutput = generateHtml(chatData, chatTitle, selectedTheme, userName, aiName, parserMode);
       setGeneratedHtml(htmlOutput);
     } catch (e: any) {
       setError(e.message || 'An unknown error occurred during conversion.');
+    } finally {
+      setIsConverting(false); // Stop loading
     }
-  }, [inputContent, chatTitle, fileType, selectedTheme, userName, aiName]);
+  }, [inputContent, chatTitle, fileType, selectedTheme, userName, aiName, parserMode]);
 
   const handleSaveChat = useCallback((sessionName: string) => {
     if (!generatedHtml) {
@@ -149,6 +159,7 @@ const ChatConverter: React.FC = () => {
       inputContent,
       chatTitle,
       fileType,
+      parserMode, // Save parser mode
       generatedHtml,
       theme: selectedTheme,
       timestamp: Date.now(),
@@ -158,12 +169,13 @@ const ChatConverter: React.FC = () => {
     const updatedSessions = [...savedSessions, newSession];
     saveSessionsToLocalStorage(updatedSessions);
     alert(`Chat "${sessionName}" saved successfully!`);
-  }, [generatedHtml, inputContent, chatTitle, fileType, selectedTheme, userName, aiName, savedSessions]);
+  }, [generatedHtml, inputContent, chatTitle, fileType, parserMode, selectedTheme, userName, aiName, savedSessions]);
 
   const loadSession = useCallback((session: SavedChatSession) => {
     setInputContent(session.inputContent);
     setChatTitle(session.chatTitle);
     setFileType(session.fileType);
+    setParserMode(session.parserMode || ParserMode.Basic); // Load parser mode, default to basic
     setSelectedTheme(session.theme);
     setGeneratedHtml(session.generatedHtml);
     setUserName(session.userName || 'User'); // Load custom user name, default if not present
@@ -194,6 +206,7 @@ const ChatConverter: React.FC = () => {
     setGeneratedHtml(null);
     setError(null);
     setFileType('auto');
+    setParserMode(ParserMode.Basic); // Reset mode
     setSelectedTheme(ChatTheme.DarkDefault); // Reset theme
     if (fileInputRef.current) {
       fileInputRef.current.value = ''; // Clear file input
@@ -202,85 +215,95 @@ const ChatConverter: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Top Controls: Title, User Names, Parser Mode */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="lg:col-span-2">
           <label htmlFor="chatTitle" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">
-            Chat Title for HTML Export
+            Chat Title
           </label>
           <input
             type="text"
             id="chatTitle"
-            className="w-full p-3 transition-colors border rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent outline-none placeholder-[var(--text-primary)]/40"
+            className="w-full p-3 transition-colors border rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] outline-none placeholder-[var(--text-primary)]/40"
             value={chatTitle}
             onChange={(e) => setChatTitle(e.target.value)}
-            placeholder="e.g., My Awesome AI Conversation"
-            aria-label="Chat title"
+            placeholder="Conversation Title"
           />
         </div>
         <div>
-          <label htmlFor="userName" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">
-            User Name
-          </label>
-          <input
-            type="text"
-            id="userName"
-            className="w-full p-3 transition-colors border rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent outline-none placeholder-[var(--text-primary)]/40"
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-            placeholder="e.g., Alice"
-            aria-label="Custom user name"
-          />
+          <label className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">Parser Mode</label>
+          <div className="flex bg-[var(--bg-tertiary)] p-1 rounded-xl border border-[var(--border)]">
+            <button
+              onClick={() => setParserMode(ParserMode.Basic)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${parserMode === ParserMode.Basic ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-primary)]'}`}
+            >
+              Basic
+            </button>
+            <button
+              onClick={() => setParserMode(ParserMode.AI)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${parserMode === ParserMode.AI ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-primary)]'}`}
+              title="Requires Gemini API Key"
+            >
+              AI Powered
+            </button>
+          </div>
         </div>
         <div>
-          <label htmlFor="aiName" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">
-            AI Name
-          </label>
-          <input
-            type="text"
-            id="aiName"
-            className="w-full p-3 transition-colors border rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent outline-none placeholder-[var(--text-primary)]/40"
-            value={aiName}
-            onChange={(e) => setAiName(e.target.value)}
-            placeholder="e.g., Gemini"
-            aria-label="Custom AI name"
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-6 md:flex-row">
-        <div className="flex-1">
           <label htmlFor="theme-select" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">
-            Output HTML Theme
+            Theme
           </label>
           <div className="relative">
             <select
               id="theme-select"
               value={selectedTheme}
               onChange={(e) => setSelectedTheme(e.target.value as ChatTheme)}
-              className="w-full p-3 pr-8 transition-colors border appearance-none rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent outline-none cursor-pointer"
-              aria-label="Select output HTML theme"
+              className="w-full p-3 pr-8 transition-colors border appearance-none rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] outline-none cursor-pointer"
             >
               <option value={ChatTheme.DarkDefault}>Dark (Default)</option>
               <option value={ChatTheme.LightDefault}>Light</option>
-              <option value={ChatTheme.DarkGreen}>Dark (Green Accent)</option>
-              <option value={ChatTheme.DarkPurple}>Dark (Purple Accent)</option>
+              <option value={ChatTheme.DarkGreen}>Dark (Green)</option>
+              <option value={ChatTheme.DarkPurple}>Dark (Purple)</option>
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-[var(--text-secondary)]">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
-            </div>
           </div>
         </div>
-        <div className="flex-1">
-          <label htmlFor="file-upload" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">
-            Upload Markdown (.md) or JSON (.json) File
-          </label>
+      </div>
+
+      {/* Names Row */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div>
+          <label htmlFor="userName" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">User Name</label>
           <input
-            id="file-upload"
-            ref={fileInputRef}
-            type="file"
-            accept=".md,.json"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-[var(--text-secondary)]
+            type="text"
+            id="userName"
+            className="w-full p-3 transition-colors border rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] outline-none"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="aiName" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">AI Name</label>
+          <input
+            type="text"
+            id="aiName"
+            className="w-full p-3 transition-colors border rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)] outline-none"
+            value={aiName}
+            onChange={(e) => setAiName(e.target.value)}
+          />
+        </div>
+      </div>
+
+
+      <div>
+        <label htmlFor="file-upload" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">
+          Input Content (Paste below or Upload File)
+        </label>
+        <input
+          id="file-upload"
+          ref={fileInputRef}
+          type="file"
+          accept=".md,.json"
+          onChange={handleFileChange}
+          className="block w-full text-sm text-[var(--text-secondary)] mb-4
                      file:mr-4 file:py-2.5 file:px-4
                      file:rounded-xl file:border-0
                      file:text-sm file:font-semibold
@@ -289,48 +312,53 @@ const ChatConverter: React.FC = () => {
                      hover:cursor-pointer
                      transition-colors
                      focus:outline-none"
-            aria-label="Upload chat file"
-          />
-        </div>
-      </div>
+        />
 
-
-      <div>
-        <label htmlFor="chat-input" className="block mb-2 text-sm font-semibold text-[var(--text-secondary)]">
-          Or Paste Markdown/JSON Chat Content Here
-        </label>
         <textarea
           id="chat-input"
-          className="w-full h-64 p-4 transition-colors border resize-y rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] placeholder-[var(--text-primary)]/40 focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent outline-none font-mono text-sm"
+          className="w-full h-64 p-4 transition-colors border resize-y rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] placeholder-[var(--text-primary)]/40 focus:ring-2 focus:ring-[var(--accent)] outline-none font-mono text-sm"
           value={inputContent}
           onChange={(e) => {
             setInputContent(e.target.value);
-            // Reset file type to auto when pasting, or keep if explicitly set
-            if (fileType === 'json' || fileType === 'markdown') {
-              // Do nothing, user might have chosen a file type explicitly
-            } else {
-              setFileType('auto'); // Auto-detect for pasted content
+            if (fileType !== 'json' && fileType !== 'markdown') {
+              setFileType('auto');
             }
           }}
           placeholder={TEXTAREA_PLACEHOLDER}
-          aria-label="Paste Markdown or JSON chat content"
         ></textarea>
+        {parserMode === ParserMode.Basic && (
+          <p className="mt-2 text-xs text-[var(--text-secondary)] opacity-70">
+            Tip: Basic mode requires strictly formatted inputs ("## Prompt:" / "## Response:"). For messy logs or thought chain processing, switch to AI Powered mode.
+          </p>
+        )}
       </div>
 
       <div className="flex justify-end gap-4">
         <button
           onClick={clearForm}
           className="px-6 py-2.5 font-medium transition-colors border rounded-xl bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          aria-label="Clear all input fields and generated HTML"
         >
           Clear
         </button>
         <button
           onClick={handleConvert}
-          className="px-8 py-2.5 font-bold text-white transition-all transform rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 shadow-lg shadow-[var(--accent)]/20 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-secondary)]"
-          aria-label="Convert input to HTML"
+          disabled={isConverting}
+          className={`px-8 py-2.5 font-bold text-white transition-all transform rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-secondary)] ${isConverting
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 shadow-[var(--accent)]/20'
+            }`}
         >
-          Convert to HTML
+          {isConverting ? (
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing...
+            </span>
+          ) : (
+            'Convert to HTML'
+          )}
         </button>
       </div>
 
@@ -348,8 +376,6 @@ const ChatConverter: React.FC = () => {
         <button
           onClick={() => setShowSavedSessions(!showSavedSessions)}
           className="flex items-center justify-between w-full p-4 transition-colors border rounded-xl bg-[var(--bg-tertiary)] border-[var(--border)] hover:bg-[var(--bg-primary)] group focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          aria-expanded={showSavedSessions}
-          aria-controls="saved-sessions-list"
         >
           <h3 className="text-xl font-bold text-[var(--accent)] group-hover:text-[var(--accent-hover)] transition-colors">
             Saved Sessions ({savedSessions.length})
@@ -372,21 +398,19 @@ const ChatConverter: React.FC = () => {
                         <div className="flex-grow mb-2 sm:mb-0">
                           <p className="font-semibold text-[var(--text-primary)]">{session.name}</p>
                           <p className="text-xs text-[var(--text-secondary)] opacity-70">
-                            {new Date(session.timestamp).toLocaleString()}
+                            {new Date(session.timestamp).toLocaleString()} • {session.parserMode === ParserMode.AI ? '🤖 AI Mode' : '⚡ Basic'}
                           </p>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => loadSession(session)}
                             className="px-3 py-1.5 text-sm font-medium text-white rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                            aria-label={`Load chat session: ${session.name}`}
                           >
                             Load
                           </button>
                           <button
                             onClick={() => deleteSession(session.id, session.name)}
                             className="px-3 py-1.5 text-sm font-medium text-red-200 rounded-lg bg-red-900/30 hover:bg-red-900/50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
-                            aria-label={`Delete chat session: ${session.name}`}
                           >
                             Delete
                           </button>

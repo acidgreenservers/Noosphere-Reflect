@@ -1,4 +1,4 @@
-import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses } from '../types';
+import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode } from '../types';
 
 /**
  * Checks if a string is valid JSON.
@@ -15,14 +15,75 @@ export const isJson = (text: string): boolean => {
 };
 
 /**
+ * Parses chat content using Gemini AI for intelligent structure detection.
+ */
+const parseChatWithAI = async (input: string, apiKey: string): Promise<ChatData> => {
+  if (!apiKey) {
+    throw new Error('Gemini API Key is required for AI Mode. Please check your .env file or configuration.');
+  }
+
+  const prompt = `
+    You are an expert chat log parser. Your task is to analyze the following unstructured or semi-structured text and convert it into a strictly valid JSON object.
+    
+    The JSON object MUST have a single property "messages" which is an array of objects.
+    Each message object MUST have:
+    - "type": either "prompt" (for user) or "response" (for AI).
+    - "content": the raw strings content of the turn.
+    
+    CRITICAL INSTRUCTIONS:
+    1. Identify the speakers distinctively. User turns usually start with "## Prompt:", "User:", or simple text questions. AI turns usually start with "## Response:", "Model:", or "AI:".
+    2. PRESERVE ALL CONTENT, including code blocks, markdown tables, and specifically "Thought process" blocks (often wrapped in \`\`\`plaintext or <thought> tags).
+    3. Do NOT summarize. Copy the content exactly as it appears for each turn.
+    4. If the text is already JSON, just validate and return it.
+    
+    Input Text:
+    ${input.substring(0, 30000)} // Truncate to avoid context window limits if massive
+    `;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Gemini API Error: ${response.status} - ${err}`);
+    }
+
+    const data = await response.json();
+    const jsonString = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!jsonString) throw new Error('No content returned from AI');
+
+    const parsed = JSON.parse(jsonString);
+    return parsed as ChatData;
+
+  } catch (error: any) {
+    throw new Error(`AI Parsing Failed: ${error.message}`);
+  }
+};
+
+/**
  * Parses raw input (Markdown or JSON) into structured ChatData.
- * It detects messages starting with "## Prompt:" or "## Response:".
+ * It detects messages starting with "## Prompt:", "## Response:", or "## User:".
  * @param input The raw chat content string.
  * @param fileType The explicit type of the input ('markdown' or 'json'), or 'auto' to detect.
+ * @param mode The parsing mode (Basic or AI).
+ * @param apiKey Optional API key for AI mode.
  * @returns A ChatData object.
  * @throws Error if parsing fails or input format is invalid.
  */
-export const parseChat = (input: string, fileType: 'markdown' | 'json' | 'auto'): ChatData => {
+export const parseChat = async (input: string, fileType: 'markdown' | 'json' | 'auto', mode: ParserMode, apiKey?: string): Promise<ChatData> => {
+  if (mode === ParserMode.AI) {
+    return parseChatWithAI(input, apiKey || '');
+  }
+
+  // Basic Mode (Regex / JSON Detection)
   let detectedType: 'markdown' | 'json';
 
   if (fileType === 'auto') {
@@ -47,9 +108,6 @@ export const parseChat = (input: string, fileType: 'markdown' | 'json' | 'auto')
         if (type !== ChatMessageType.Prompt && type !== ChatMessageType.Response) {
           throw new Error(`Invalid message type: ${msg.type}. Must be 'prompt' or 'response'.`);
         }
-        // Fix: Use template literal for string conversion to avoid potential
-        // 'Type 'String' has no call signatures' error if `String` constructor is
-        // misidentified as a non-callable type in certain TypeScript configurations.
         return {
           type: type as ChatMessageType,
           content: `${msg.content}`,
@@ -65,7 +123,7 @@ export const parseChat = (input: string, fileType: 'markdown' | 'json' | 'auto')
     let currentMessage: ChatMessage | null = null;
 
     for (const line of lines) {
-      const trimmedLine = line.trim(); // Trim for robust detection
+      const trimmedLine = line.trim();
 
       if (trimmedLine.startsWith('## Prompt:')) {
         if (currentMessage) {
@@ -83,17 +141,17 @@ export const parseChat = (input: string, fileType: 'markdown' | 'json' | 'auto')
           type: ChatMessageType.Response,
           content: trimmedLine.substring('## Response:'.length).trim(),
         };
+      } else if (trimmedLine.startsWith('## User:')) {
+        if (currentMessage) {
+          messages.push(currentMessage);
+        }
+        currentMessage = {
+          type: ChatMessageType.Prompt,
+          content: trimmedLine.substring('## User:'.length).trim(),
+        };
       } else {
         if (currentMessage) {
-          // Append line to current message, ensuring proper newline handling
-          // Only add newline if content isn't empty and current line isn't empty
           currentMessage.content += `\n${line}`;
-        } else {
-          // If no message has started yet, ignore leading lines or append to a default "prompt" if desired.
-          // For now, we'll ignore.
-          if (line.trim().length > 0) {
-            console.warn('Ignoring leading line before first recognized chat turn:', line);
-          }
         }
       }
     }
@@ -102,7 +160,7 @@ export const parseChat = (input: string, fileType: 'markdown' | 'json' | 'auto')
     }
 
     if (messages.length === 0) {
-      throw new Error('No chat messages found. Ensure messages start with "## Prompt:" or "## Response:".');
+      throw new Error('No chat messages found. Ensure messages start with "## Prompt:", "## User:", or "## Response:".');
     }
 
     return { messages };
@@ -131,115 +189,115 @@ const applyInlineFormatting = (text: string): string => {
 
 // Helper for parsing a list block (supports basic nesting)
 interface ListParseResult {
-    html: string;
-    newIndex: number;
+  html: string;
+  newIndex: number;
 }
 const parseListBlock = (lines: string[], startIndex: number): ListParseResult => {
-    const listHtml: string[] = [];
-    const listStack: Array<{ type: 'ul' | 'ol'; indent: number }> = [];
-    let i = startIndex;
+  const listHtml: string[] = [];
+  const listStack: Array<{ type: 'ul' | 'ol'; indent: number }> = [];
+  let i = startIndex;
 
-    while (i < lines.length) {
-        const line = lines[i];
-        const listItemMatch = line.match(/^(\s*)([*-+]|\d+\.)\s+(.*)/);
-        // This regex ensures we only consider a line a list item if it starts with *, -, +, or 1. etc.
-        // It also captures the leading whitespace for indent calculation.
-        
-        if (listItemMatch) {
-            const indent = listItemMatch[1].length;
-            const marker = listItemMatch[2];
-            const content = listItemMatch[3];
-            const type: 'ul' | 'ol' = marker.match(/^\d+\./) ? 'ol' : 'ul';
+  while (i < lines.length) {
+    const line = lines[i];
+    const listItemMatch = line.match(/^(\s*)([*-+]|\d+\.)\s+(.*)/);
+    // This regex ensures we only consider a line a list item if it starts with *, -, +, or 1. etc.
+    // It also captures the leading whitespace for indent calculation.
 
-            // Check if we need to close existing lists due to decreasing indent or change of list type
-            while (listStack.length > 0 &&
-                   (indent <= listStack[listStack.length - 1].indent || type !== listStack[listStack.length - 1].type) ) {
-                listHtml.push(`</li></${listStack.pop()!.type}>`);
-            }
+    if (listItemMatch) {
+      const indent = listItemMatch[1].length;
+      const marker = listItemMatch[2];
+      const content = listItemMatch[3];
+      const type: 'ul' | 'ol' = marker.match(/^\d+\./) ? 'ol' : 'ul';
 
-            // Open new list if it's the first item or indent increased
-            if (listStack.length === 0 || indent > listStack[listStack.length - 1].indent) {
-                listHtml.push(`<${type}>`);
-                listStack.push({ type, indent });
-            } else { // Same list type, same indent - just close previous <li> and open new one
-                listHtml.push(`</li>`);
-            }
-
-            // Add the list item
-            listHtml.push(`<li>${applyInlineFormatting(content)}`);
-            i++;
-        } else if (listStack.length > 0 && line.trim() === '') {
-            // Empty line within a list item context, treat as a break if no subsequent list item
-            // For now, just absorb, a more advanced parser would handle continued text
-            listHtml.push('<br/>'); // Add a line break for empty lines within a list
-            i++;
-        }
-        else {
-            // Not a list item or empty line within a list, so end of the list block
-            break;
-        }
-    }
-
-    // Close any remaining open lists and list items
-    while (listStack.length > 0) {
+      // Check if we need to close existing lists due to decreasing indent or change of list type
+      while (listStack.length > 0 &&
+        (indent <= listStack[listStack.length - 1].indent || type !== listStack[listStack.length - 1].type)) {
         listHtml.push(`</li></${listStack.pop()!.type}>`);
-    }
+      }
 
-    return { html: listHtml.join('\n'), newIndex: i };
+      // Open new list if it's the first item or indent increased
+      if (listStack.length === 0 || indent > listStack[listStack.length - 1].indent) {
+        listHtml.push(`<${type}>`);
+        listStack.push({ type, indent });
+      } else { // Same list type, same indent - just close previous <li> and open new one
+        listHtml.push(`</li>`);
+      }
+
+      // Add the list item
+      listHtml.push(`<li>${applyInlineFormatting(content)}`);
+      i++;
+    } else if (listStack.length > 0 && line.trim() === '') {
+      // Empty line within a list item context, treat as a break if no subsequent list item
+      // For now, just absorb, a more advanced parser would handle continued text
+      listHtml.push('<br/>'); // Add a line break for empty lines within a list
+      i++;
+    }
+    else {
+      // Not a list item or empty line within a list, so end of the list block
+      break;
+    }
+  }
+
+  // Close any remaining open lists and list items
+  while (listStack.length > 0) {
+    listHtml.push(`</li></${listStack.pop()!.type}>`);
+  }
+
+  return { html: listHtml.join('\n'), newIndex: i };
 };
 
 // Helper for parsing a table block
 interface TableParseResult {
-    html: string;
-    newIndex: number;
+  html: string;
+  newIndex: number;
 }
 const parseTableBlock = (lines: string[], startIndex: number): TableParseResult => {
-    const tableLines: string[] = [];
-    let i = startIndex;
+  const tableLines: string[] = [];
+  let i = startIndex;
 
-    // Collect all table-like lines (starting with '|')
-    while (i < lines.length && lines[i].trim().startsWith('|')) {
-        tableLines.push(lines[i]);
-        i++;
-    }
+  // Collect all table-like lines (starting with '|')
+  while (i < lines.length && lines[i].trim().startsWith('|')) {
+    tableLines.push(lines[i]);
+    i++;
+  }
 
-    if (tableLines.length < 2) { // Need at least header and separator
-        return { html: '', newIndex: startIndex };
-    }
+  if (tableLines.length < 2) { // Need at least header and separator
+    return { html: '', newIndex: startIndex };
+  }
 
-    const headerLine = tableLines[0];
-    const separatorLine = tableLines[1];
+  const headerLine = tableLines[0];
+  const separatorLine = tableLines[1];
 
-    const headerCells = headerLine.split('|').slice(1, -1).map(s => s.trim());
-    const alignments = separatorLine.split('|').slice(1, -1).map(s => {
-        const trimmed = s.trim();
-        if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center';
-        if (trimmed.endsWith(':')) return 'right';
-        return 'left'; // Default
+  const headerCells = headerLine.split('|').slice(1, -1).map(s => s.trim());
+  const alignments = separatorLine.split('|').slice(1, -1).map(s => {
+    const trimmed = s.trim();
+    if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center';
+    if (trimmed.endsWith(':')) return 'right';
+    return 'left'; // Default
+  });
+
+  let tableHtml = '<table class="min-w-full divide-y divide-gray-700 my-4 table-auto">';
+  tableHtml += '<thead class="bg-gray-700"><tr>';
+  headerCells.forEach((cell, idx) => {
+    const alignStyle = alignments[idx] !== 'left' ? `text-align: ${alignments[idx]};` : '';
+    tableHtml += `<th class="px-3 py-2 text-${alignments[idx]} text-xs font-medium text-gray-200 uppercase tracking-wider" style="${alignStyle}">${applyInlineFormatting(cell)}</th>`;
+  });
+  tableHtml += '</tr></thead>';
+  tableHtml += '<tbody class="bg-gray-800 divide-y divide-gray-700">';
+
+  for (let rowIdx = 2; rowIdx < tableLines.length; rowIdx++) {
+    const rowCells = tableLines[rowIdx].split('|').slice(1, -1).map(s => s.trim());
+    tableHtml += '<tr>';
+    rowCells.forEach((cell, idx) => {
+      const alignStyle = alignments[idx] !== 'left' ? `text-align: ${alignments[idx]};` : '';
+      tableHtml += `<td class="px-3 py-2 whitespace-normal text-sm text-gray-100" style="${alignStyle}">${applyInlineFormatting(cell)}</td>`;
     });
+    tableHtml += '</tr>';
+  }
 
-    let tableHtml = '<table class="min-w-full divide-y divide-gray-700 my-4 table-auto">';
-    tableHtml += '<thead class="bg-gray-700"><tr>';
-    headerCells.forEach((cell, idx) => {
-        const alignStyle = alignments[idx] !== 'left' ? `text-align: ${alignments[idx]};` : '';
-        tableHtml += `<th class="px-3 py-2 text-${alignments[idx]} text-xs font-medium text-gray-200 uppercase tracking-wider" style="${alignStyle}">${applyInlineFormatting(cell)}</th>`;
-    });
-    tableHtml += '</tr></thead>';
-    tableHtml += '<tbody class="bg-gray-800 divide-y divide-gray-700">';
+  tableHtml += '</tbody></table>';
 
-    for (let rowIdx = 2; rowIdx < tableLines.length; rowIdx++) {
-        const rowCells = tableLines[rowIdx].split('|').slice(1, -1).map(s => s.trim());
-        tableHtml += '<tr>';
-        rowCells.forEach((cell, idx) => {
-            const alignStyle = alignments[idx] !== 'left' ? `text-align: ${alignments[idx]};` : '';
-            tableHtml += `<td class="px-3 py-2 whitespace-normal text-sm text-gray-100" style="${alignStyle}">${applyInlineFormatting(cell)}</td>`;
-        });
-        tableHtml += '</tr>';
-    }
-
-    tableHtml += '</tbody></table>';
-
-    return { html: tableHtml, newIndex: i };
+  return { html: tableHtml, newIndex: i };
 };
 
 
@@ -247,9 +305,10 @@ const parseTableBlock = (lines: string[], startIndex: number): TableParseResult 
  * Converts a markdown string to basic HTML.
  * Supports bold, italic, links, blockquotes, inline code, code blocks, lists (unordered/ordered, basic nesting), and tables.
  * @param markdown The markdown string to convert.
+ * @param enableThoughts Whether to render collapsible thinking blocks.
  * @returns The HTML string.
  */
-const convertMarkdownToHtml = (markdown: string): string => {
+const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): string => {
   const lines = markdown.split('\n');
   const htmlOutput: string[] = [];
   let i = 0;
@@ -259,21 +318,22 @@ const convertMarkdownToHtml = (markdown: string): string => {
     const trimmedLine = line.trim();
 
     // 0. Collapsible "Thought process" blocks (four backticks with 'plaintext') - Highest precedence
-    if (trimmedLine.startsWith('````plaintext')) {
-        let blockContent = '';
-        let j = i + 1;
-        while (j < lines.length && !lines[j].trim().startsWith('````')) {
-            blockContent += lines[j] + '\n';
-            j++;
-        }
-        if (j < lines.length) j++; // Move past the closing ````
+    // ONLY enabled if checked
+    if (enableThoughts && trimmedLine.startsWith('````plaintext')) {
+      let blockContent = '';
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim().startsWith('````')) {
+        blockContent += lines[j] + '\n';
+        j++;
+      }
+      if (j < lines.length) j++; // Move past the closing ````
 
-        // Split content by double newlines for paragraphs within the block
-        const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
-            return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
-        }).join('');
+      // Split content by double newlines for paragraphs within the block
+      const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
+        return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
+      }).join('');
 
-        htmlOutput.push(`
+      htmlOutput.push(`
             <details class="markdown-thought-block my-4">
               <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
                 Thought process: <span class="text-xs ml-2 opacity-70">(Click to expand/collapse)</span>
@@ -283,8 +343,8 @@ const convertMarkdownToHtml = (markdown: string): string => {
               </div>
             </details>
         `);
-        i = j;
-        continue;
+      i = j;
+      continue;
     }
 
     // 1. Code Blocks (three backticks)
@@ -299,7 +359,27 @@ const convertMarkdownToHtml = (markdown: string): string => {
         j++;
       }
       if (j < lines.length) j++; // Move past the closing ```
-      htmlOutput.push(`<pre class="p-2 bg-gray-900 rounded-md my-2 overflow-x-auto"><code class="${languageClass}">${codeBlockContent.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`);
+
+      const preHtml = `<pre class="p-2 bg-gray-900 rounded-md my-2 overflow-x-auto"><code class="${languageClass}">${codeBlockContent.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+
+      // Feature: Add Copy Button ONLY for Basic Mode (i.e., when thoughts are disabled aka not AI Mode)
+      if (!enableThoughts) {
+        htmlOutput.push(`
+            <div class="relative group my-2">
+                <button 
+                    onclick="copyToClipboard(this)" 
+                    class="absolute top-2 right-2 p-1.5 text-xs font-medium text-gray-200 bg-gray-700/80 hover:bg-gray-600 rounded opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none z-10"
+                    title="Copy code"
+                >
+                    Copy
+                </button>
+                ${preHtml}
+            </div>
+          `);
+      } else {
+        htmlOutput.push(preHtml);
+      }
+
       i = j;
       continue;
     }
@@ -307,31 +387,31 @@ const convertMarkdownToHtml = (markdown: string): string => {
     // 2. Tables
     // Check if the current line starts a table (must contain '|' and not be a list item/blockquote, etc.)
     // And has a separator line below it.
-    if (trimmedLine.startsWith('|') && i + 1 < lines.length && lines[i+1].trim().match(/^\|?:?-+:?\|/)) {
-        const tableResult = parseTableBlock(lines, i);
-        if (tableResult.html) {
-            htmlOutput.push(tableResult.html);
-            i = tableResult.newIndex;
-            continue;
-        }
+    if (trimmedLine.startsWith('|') && i + 1 < lines.length && lines[i + 1].trim().match(/^\|?:?-+:?\|/)) {
+      const tableResult = parseTableBlock(lines, i);
+      if (tableResult.html) {
+        htmlOutput.push(tableResult.html);
+        i = tableResult.newIndex;
+        continue;
+      }
     }
 
     // 3. Horizontal Rules
     const hrMatch = trimmedLine.match(/^\s*((\*{3,})|(-){3,}|(_){3,})\s*$/);
     if (hrMatch) {
-        htmlOutput.push('<hr class="my-6 border-gray-600" />');
-        i++;
-        continue;
+      htmlOutput.push('<hr class="my-6 border-gray-600" />');
+      i++;
+      continue;
     }
 
     // 4. Headings
     const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
-        const level = headingMatch[1].length;
-        const headingContent = applyInlineFormatting(headingMatch[2].trim());
-        htmlOutput.push(`<h${level}>${headingContent}</h${level}>`);
-        i++;
-        continue;
+      const level = headingMatch[1].length;
+      const headingContent = applyInlineFormatting(headingMatch[2].trim());
+      htmlOutput.push(`<h${level}>${headingContent}</h${level}>`);
+      i++;
+      continue;
     }
 
     // 5. Lists (Unordered and Ordered)
@@ -344,24 +424,24 @@ const convertMarkdownToHtml = (markdown: string): string => {
     }
 
     // 6. Blockquotes
-    if (trimmedLine.startsWith('>')) {
-        let blockquoteContent = '';
-        let j = i;
-        while (j < lines.length && lines[j].trim().startsWith('>')) {
-            // Remove the '>' and any leading/trailing space immediately after
-            const contentLine = lines[j].trim().substring(1).trim();
-            blockquoteContent += contentLine + '\n';
-            j++;
-        }
-        // Apply inline formatting and handle potential paragraph breaks within a blockquote
-        // Split by empty lines to create paragraphs within the blockquote
-        const blockquoteParagraphs = blockquoteContent.trim().split(/\n\s*\n/).map(p => {
-            // Replace remaining single newlines with <br/> within each paragraph
-            return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
-        }).join('');
-        htmlOutput.push(`<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">${blockquoteParagraphs}</blockquote>`);
-        i = j;
-        continue;
+    if (trimmedLine.startsWith('>') && !trimmedLine.match(/^>\s*$/)) { // Handle empty blockquotes gracefully
+      let blockquoteContent = '';
+      let j = i;
+      while (j < lines.length && lines[j].trim().startsWith('>')) {
+        // Remove the '>' and any leading/trailing space immediately after
+        const contentLine = lines[j].trim().substring(1).trim();
+        blockquoteContent += contentLine + '\n';
+        j++;
+      }
+      // Apply inline formatting and handle potential paragraph breaks within a blockquote
+      // Split by empty lines to create paragraphs within the blockquote
+      const blockquoteParagraphs = blockquoteContent.trim().split(/\n\s*\n/).map(p => {
+        // Replace remaining single newlines with <br/> within each paragraph
+        return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
+      }).join('');
+      htmlOutput.push(`<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">${blockquoteParagraphs}</blockquote>`);
+      i = j;
+      continue;
     }
 
     // 7. Paragraphs (or other non-block content)
@@ -370,18 +450,18 @@ const convertMarkdownToHtml = (markdown: string): string => {
       let paragraphContent = line;
       let j = i + 1;
       while (j < lines.length && lines[j].trim().length > 0
-             // Ensure we don't accidentally consume lines belonging to other block types
-             && !lines[j].trim().startsWith('## ') // Not a new chat turn
-             && !lines[j].trim().startsWith('```') // Not a code block
-             && !lines[j].trim().startsWith('````') // Not a thought block
-             && !lines[j].trim().startsWith('|')   // Not a table
-             && !lines[j].trim().match(/^(\s*)([*-+]|\d+\.)\s+(.*)/) // Not a list item
-             && !lines[j].trim().startsWith('>') // Not a blockquote
-             && !lines[j].trim().match(/^(#{1,6})\s+(.*)$/) // Not a heading
-             && !lines[j].trim().match(/^\s*((\*{3,})|(-){3,}|(_){3,})\s*$/) // Not a horizontal rule
-            ) {
-          paragraphContent += '\n' + lines[j];
-          j++;
+        // Ensure we don't accidentally consume lines belonging to other block types
+        && !lines[j].trim().startsWith('## ') // Not a new chat turn
+        && !lines[j].trim().startsWith('```') // Not a code block
+        && !lines[j].trim().startsWith('````') // Not a thought block
+        && !lines[j].trim().startsWith('|')   // Not a table
+        && !lines[j].trim().match(/^(\s*)([*-+]|\d+\.)\s+(.*)/) // Not a list item
+        && !lines[j].trim().startsWith('>') // Not a blockquote
+        && !lines[j].trim().match(/^(#{1,6})\s+(.*)$/) // Not a heading
+        && !lines[j].trim().match(/^\s*((\*{3,})|(-){3,}|(_){3,})\s*$/) // Not a horizontal rule
+      ) {
+        paragraphContent += '\n' + lines[j];
+        j++;
       }
       htmlOutput.push(`<p>${applyInlineFormatting(paragraphContent.replace(/\n/g, '<br/>'))}</p>`);
       i = j;
@@ -454,14 +534,16 @@ const themeMap: Record<ChatTheme, ThemeClasses> = {
  * @param theme The chosen theme for the HTML output.
  * @param userName Custom name for the user in the output.
  * @param aiName Custom name for the AI in the output.
+ * @param parserMode The parser mode used (affects structure/collapsibility)
  * @returns A string containing the full HTML content.
  */
 export const generateHtml = (
   chatData: ChatData,
   title: string = 'AI Chat Export',
   theme: ChatTheme = ChatTheme.DarkDefault,
-  userName: string = 'User', // Default user name
-  aiName: string = 'AI',     // Default AI name
+  userName: string = 'User',
+  aiName: string = 'AI',
+  parserMode: ParserMode = ParserMode.Basic
 ): string => {
   const selectedThemeClasses = themeMap[theme];
   const {
@@ -477,6 +559,8 @@ export const generateHtml = (
     codeText,
   } = selectedThemeClasses;
 
+  const enableThoughts = parserMode === ParserMode.AI;
+
   const chatMessagesHtml = chatData.messages
     .map((message) => {
       const isPrompt = message.type === ChatMessageType.Prompt;
@@ -485,12 +569,12 @@ export const generateHtml = (
       const speakerName = isPrompt ? userName : aiName; // Use custom names
 
       // Apply theme-specific classes to code blocks and blockquotes generated by convertMarkdownToHtml
-      const contentHtml = convertMarkdownToHtml(message.content)
+      const contentHtml = convertMarkdownToHtml(message.content, enableThoughts)
         .replace(/<pre class="p-2 bg-gray-900 rounded-md my-2 overflow-x-auto">/g, `<pre class="p-2 ${codeBg} rounded-md my-2 overflow-x-auto">`)
         .replace(/<code class="language-/g, `<code class="${codeText} language-`) // For fenced code blocks
         .replace(/<code class="inline-code">/g, `<code class="${codeBg} ${codeText} px-1 py-0.5 rounded text-sm">`) // For inline code
         .replace(/<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">/g, `<blockquote class="border-l-4 ${blockquoteBorder} pl-4 italic text-gray-300 my-2">`)
-        // Apply theme-specific classes to the collapsible thought block
+        // Apply theme-specific classes to the collapsible thought block (only if present)
         .replace(/<details class="markdown-thought-block my-4">/g, `<details class="markdown-thought-block my-4">`) // Base details tag
         .replace(/<summary class="markdown-thought-summary/g, `<summary class="markdown-thought-summary bg-gray-600 text-gray-200 hover:bg-gray-500 active:bg-gray-700`) // Summary
         .replace(/<div class="markdown-thought-content/g, `<div class="markdown-thought-content bg-gray-700 text-gray-100 border-gray-600`); // Content div
@@ -507,9 +591,9 @@ export const generateHtml = (
     })
     .join('');
 
-    const scrollbarTrack = htmlClass === 'dark' ? '#1a202c' : '#e2e8f0'; // Darker track for dark, lighter for light
-    const scrollbarThumb = htmlClass === 'dark' ? '#4a5568' : '#cbd5e0'; // Gray thumb for dark, lighter gray for light
-    const scrollbarThumbHover = htmlClass === 'dark' ? '#6b7280' : '#a0aec0'; // Lighter gray on hover
+  const scrollbarTrack = htmlClass === 'dark' ? '#1a202c' : '#e2e8f0'; // Darker track for dark, lighter for light
+  const scrollbarThumb = htmlClass === 'dark' ? '#4a5568' : '#cbd5e0'; // Gray thumb for dark, lighter gray for light
+  const scrollbarThumbHover = htmlClass === 'dark' ? '#6b7280' : '#a0aec0'; // Lighter gray on hover
 
   return `<!DOCTYPE html>
 <html lang="en" class="${htmlClass}">
@@ -575,6 +659,8 @@ export const generateHtml = (
         .markdown-content tbody tr:nth-child(even) {
             @apply bg-gray-700;
         }
+        
+        /* Thought Block Styles (dependent on parser mode) */
         .markdown-content .markdown-thought-summary {
             @apply bg-gray-600 text-gray-200 hover:bg-gray-500 active:bg-gray-700 transition-colors;
         }
@@ -625,6 +711,21 @@ export const generateHtml = (
         background: ${scrollbarThumbHover};
       }
     </style>
+    <script>
+    function copyToClipboard(btn) {
+      const container = btn.parentElement;
+      const pre = container.querySelector('pre');
+      const code = pre.innerText;
+      navigator.clipboard.writeText(code).then(() => {
+         const originalText = btn.innerText;
+         btn.innerText = 'Copied!';
+         setTimeout(() => { btn.innerText = originalText; }, 2000);
+      }).catch(err => {
+         console.error('Failed to copy:', err);
+         btn.innerText = 'Error';
+      });
+    }
+    </script>
 </head>
 <body class="p-8">
     <div class="max-w-4xl mx-auto my-8 p-6 ${containerBg} rounded-lg shadow-xl">
