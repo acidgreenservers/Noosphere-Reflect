@@ -1,18 +1,18 @@
 # Project Brief
 
 ## Project Overview
-**AI Chat HTML Converter** is a React-based application designed to convert AI chat logs (Markdown/JSON) into standalone, offline-viewable HTML files. The application is evolving from a single-page utility into a dual-mode platform offering both a basic, fast converter and a premium, AI-driven chat studio.
+**AI Chat Archival System** is a React-based platform designed to scrape, organize, and archive AI chat logs (from Claude, LeChat, Llamacoder, etc.) into a structured Git-ready repository. It transforms raw HTML exports into clean Markdown, JSON, and standalone HTML files, providing a centralized "hub" for long-term chat preservation and discovery.
 
 ## Core Requirements
-1.  **Dual Parsing Modes**:
-    *   **Basic Mode**: Fast, offline, regex-based parsing. Supports Markdown/JSON input and standard color-coded HTML output. Includes a "Copy" button for code blocks.
-    *   **AI Mode**: Premium, API-driven (Gemini) parsing. Supports detection of complex structures, "thought process" blocks, and potentially interactive functionality.
-2.  **Standalone Output**: The generated HTML files must be self-contained (bundled CSS/JS where necessary) for easy sharing and offline access.
-3.  **Modern UI/UX**: Built with a "premium," glassmorphism-inspired design using Tailwind CSS v4.
-4.  **Security**: API keys (Gemini) are handled via environment variables (`.env`).
-5.  **Deployment**: Target deployment is GitHub Pages.
+1.  **Multi-Platform Parsing**: Surgical extraction from Claude, LeChat, and Llamacoder HTML structures.
+2.  **Metadata Management**: Ability to add/edit chat titles, models, dates, and custom tags for categorization.
+3.  **Local Persistence**: Automated saving to local storage for multi-session editing and batch export.
+4.  **Archival Formats**: Export structured data as HTML (standalone), Markdown (Git-friendly), and JSON (machine-readable).
+5.  **Centralized Hub**: A main interface to browse and filter the entire archived history.
+6.  **Chrome Extension/Bridge**: (Future) Real-time extraction buttons injected directly into AI chat platforms.
 
 ## Goals
-- **Refactor Architecture**: Split the current monolithic component into a "Home" dashboard and separate "Basic" vs "AI" converter modules.
-- **Enhance AI Mode**: capabilities to be "EXTREMELY rich" and native-app-like.
-- **Maintain Basic Mode**: Ensure the original offline functionality remains robust and fast.
+- **Full Archival Workflow**: From scraping/import to metadata enrichment and repository-ready export.
+- **Git Integration**: Optimized file naming and structure for version control.
+- **Premium Discovery UI**: A beautiful, glassmorphic dashboard to manage the entire chat library.
+- **Granular Control**: User or AI message-level selection for precision archiving.

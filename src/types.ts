@@ -38,6 +38,7 @@ export enum ParserMode {
   AI = 'ai',
   LlamacoderHtml = 'llamacoder-html',
   ClaudeHtml = 'claude-html',
+  LeChatHtml = 'lechat-html',
 }
 
 export interface SavedChatSession {

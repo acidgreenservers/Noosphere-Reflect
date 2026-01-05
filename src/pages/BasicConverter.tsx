@@ -280,7 +280,7 @@ const BasicConverter: React.FC = () => {
                                         <div className="flex justify-between items-start mb-2">
                                             <p className="font-medium text-sm text-gray-200 truncate pr-2">{session.name}</p>
                                             <span className="text-[10px] uppercase tracking-wider text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20">
-                                                {session.parserMode === ParserMode.LlamacoderHtml ? 'Llamacoder' : session.parserMode === ParserMode.ClaudeHtml ? 'Claude' : 'Basic'}
+                                                {session.parserMode === ParserMode.LlamacoderHtml ? 'Llamacoder' : session.parserMode === ParserMode.ClaudeHtml ? 'Claude' : session.parserMode === ParserMode.LeChatHtml ? 'LeChat' : 'Basic'}
                                             </span>
                                         </div>
                                         <p className="text-xs text-gray-500 mb-3">{new Date(session.date).toLocaleDateString()}</p>
@@ -372,6 +372,19 @@ const BasicConverter: React.FC = () => {
                                                     className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
                                                 />
                                                 <span className={`text-sm ${parserMode === ParserMode.ClaudeHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Claude HTML</span>
+                                            </label>
+                                        </div>
+                                        <div className="flex flex-wrap gap-4 mt-2">
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="parserMode"
+                                                    value={ParserMode.LeChatHtml}
+                                                    checked={parserMode === ParserMode.LeChatHtml}
+                                                    onChange={() => setParserMode(ParserMode.LeChatHtml)}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
+                                                />
+                                                <span className={`text-sm ${parserMode === ParserMode.LeChatHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>LeChat (Mistral)</span>
                                             </label>
                                         </div>
                                     </div>
@@ -485,7 +498,9 @@ const BasicConverter: React.FC = () => {
                                         ? "Paste raw HTML source from Llamacoder here..."
                                         : parserMode === ParserMode.ClaudeHtml
                                             ? "Paste full HTML source from Claude chat here..."
-                                            : "Paste your chat here (Markdown or JSON)..."}
+                                            : parserMode === ParserMode.LeChatHtml
+                                                ? "Paste full HTML source from LeChat (Mistral) here..."
+                                                : "Paste your chat here (Markdown or JSON)..."}
                                     className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
                                 />
                                 <button

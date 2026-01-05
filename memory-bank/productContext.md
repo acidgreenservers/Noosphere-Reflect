@@ -1,15 +1,19 @@
 # Product Context
 
 ## Why this project exists
-Users frequently interact with AI LLMs (ChatGPT, Gemini, Claude) and want to save these conversations in a readable, sharable format. Raw Markdown or JSON exports are often hard to read for non-technical users. This tool bridges that gap by converting these logs into beautiful, styled, offline HTML web pages.
+AI chat logs are ephemeral, scattered across platforms (Claude, ChatGPT, etc.), and difficult to organize for long-term reference. Existing export options are often limited or rely on proprietary formats.
+
+**AI Chat Archival System** provides a high-fidelity, standalone, and privacy-focused way to scrape, refine, and archive conversations into a centralized hub that is perfect for Git-based backups.
 
 ## Problems it solves
-1.  **Readability**: Transforms raw text into chat-bubble layouts.
-2.  **Portability**: Creates single-file HTML outputs that work anywhere (no server needed).
-3.  **Preservation**: Allows users to archive "thought processes" and code blocks with syntax highlighting.
-4.  **Complexity Management**: The new "AI Mode" solves the issue of messy/unstructured logs by using an LLM to parse them intelligently.
+1.  **Platform Fragmentation**: Consolidates chats from various AI providers into a single, unified format.
+2.  **Ephemerality**: Prevents loss of valuable insights by converting dynamic web views into permanent, offline-viewable files.
+3.  **UI Data Loss**: Captures "thoughts," artifacts, and structured data that basic copy-pasting misses.
+4.  **Lack of Organization**: Adds metadata (titles, tags, models) that AI platforms don't inherently provide for exports.
+5.  **Git Incompatibility**: Standardizes formats (Markdown/JSON) to allow for clear version history and diff tracking in repositories.
 
 ## User Experience Goals
-- **"Wowed" First Impression**: The UI should feel premium, modern, and high-tech (Glassmorphism, dark mode).
-- **Clear Separation**: Users should immediately understand the choice between "Quick/Offline" (Basic) and "Smart/Rich" (AI).
-- **Seamless Flow**: From paste -> convert -> preview -> download should be frictionless.
+- **Effortless Ingestion**: Surgical HTML parsing and a future Chrome extension "bridge."
+- **Full Creative Control**: Inline editing of messages and metadata to "perfect" the archive before final export.
+- **Visual Excellence**: A premium, "studio-like" dashboard for managing the library.
+- **Portability**: Standalone output that looks identical to the original chat but works anywhere without an internet connection.

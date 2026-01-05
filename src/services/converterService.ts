@@ -91,6 +91,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseClaudeHtml(input);
   }
 
+  if (mode === ParserMode.LeChatHtml) {
+    return parseLeChatHtml(input);
+  }
+
   // Basic Mode (Regex / JSON Detection)
   let detectedType: 'markdown' | 'json';
 
@@ -248,6 +252,12 @@ const parseClaudeHtml = (input: string): ChatData => {
     if (visited.has(el)) return;
     const htmlEl = el as HTMLElement;
 
+    // Skip Sidebar / Nav / Menus / STARRED content
+    if (htmlEl.closest('nav, .sidebar, [role="navigation"], .starred-list, h3[aria-hidden="true"]')) {
+      visited.add(el);
+      return;
+    }
+
     // User Message
     if (htmlEl.getAttribute('data-testid') === 'user-message' || htmlEl.classList.contains('font-user-message')) {
       const content = extractMarkdownFromHtml(htmlEl);
@@ -298,6 +308,112 @@ const parseClaudeHtml = (input: string): ChatData => {
 };
 
 /**
+ * Specialized parser for LeChat (Mistral) HTML content.
+ */
+const parseLeChatHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // LeChat structure:
+  // User messages: <div class="... ms-auto ... bg-basic-gray-alpha-4 ..."> or data-message-author-role="user"
+  // AI messages: data-message-author-role="assistant"
+  //   > Reasoning: data-message-part-type="reasoning"
+  //   > Answer: data-message-part-type="answer"
+
+  const visited = new Set<Element>();
+
+  // Process all likely message containers in document order
+  // LeChat messages are usually top-level siblings in a container, but finding them via attributes is safer
+  const allElements = doc.querySelectorAll('*');
+
+  allElements.forEach(el => {
+    if (visited.has(el)) return;
+    const htmlEl = el as HTMLElement;
+
+    // User Message
+    // LeChat user bubbles often have 'ms-auto' for right alignment and a specific bg
+    // Or explicit role attribute if available
+    const isUserRole = htmlEl.getAttribute('data-message-author-role') === 'user';
+    const isUserStyle = htmlEl.classList.contains('ms-auto') && htmlEl.classList.contains('bg-basic-gray-alpha-4');
+
+    if (isUserRole || isUserStyle) {
+      // Avoid capturing the wrapper if we already captured inner parts, 
+      // but usually the wrapper IS the buble.
+      // We need to find the text content. User text is often in a span with whitespace-pre-wrap
+      const contentEl = htmlEl.querySelector('.whitespace-pre-wrap') as HTMLElement || htmlEl;
+      const content = extractMarkdownFromHtml(contentEl);
+      if (content) {
+        messages.push({ type: ChatMessageType.Prompt, content });
+        // Mark children as visited
+        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+        visited.add(htmlEl);
+      }
+    }
+
+    // LeChat "Thinking Process" Time Header (e.g. "Thought for 1s")
+    // Structure: div with text "Thought", "for", "1s" in spans
+    if (htmlEl.textContent?.includes('Thought') && htmlEl.textContent?.includes('for') && htmlEl.textContent?.match(/\d+s/)) {
+      // This is likely the header. We can capture it as a system message or append it to the next thought block?
+      // Or better, just format it nicely if it's not inside a reasoning block.
+      // Actually, let's treat it as a small "System" note if it appears on its own.
+      // It's often a sibling to the actual reasoning.
+      const text = htmlEl.innerText.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
+      if (text.startsWith('Thought for')) {
+        // We can maybe just skip it if we handle it inside the reasoning block, 
+        // but usually it's separate. Let's add it as a small italic line.
+        // messages.push({ type: ChatMessageType.Response, content: `_<small>${text}</small>_` });
+        // Actually, let's ignore it effectively to keep clean, OR prepend to next AI message?
+        // LeChat logic below handles 'reasoning' parts. 
+      }
+    }
+
+    // AI Message
+    if (htmlEl.getAttribute('data-message-author-role') === 'assistant') {
+      let fullContent = '';
+
+      // AI messages can have multiple parts: reasoning and answer
+      // We look for them inside this container
+      const parts = htmlEl.querySelectorAll('[data-message-part-type]');
+
+      if (parts.length > 0) {
+        parts.forEach(part => {
+          const type = part.getAttribute('data-message-part-type');
+          // For now, we trust extractMarkdownFromHtml to clean up, but we might need specific handling
+          // for the reasoning block to ensure it's wrapped in <thought> if not handled yet.
+
+          let partContent = extractMarkdownFromHtml(part as HTMLElement);
+
+          if (type === 'reasoning') {
+            // Wrap in thought tag if strictly identified as reasoning
+            // remove any existing thought tags to avoid double wrapping if extractMarkdown does it
+            partContent = partContent.replace(/<\/?thought>/g, '');
+            partContent = `\n<thought>\n${partContent}\n</thought>\n`;
+          }
+
+          fullContent += partContent + '\n\n';
+        });
+      } else {
+        // Fallback if no specific parts found
+        fullContent = extractMarkdownFromHtml(htmlEl);
+      }
+
+      if (fullContent.trim()) {
+        messages.push({ type: ChatMessageType.Response, content: fullContent.trim() });
+        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+        visited.add(htmlEl);
+      }
+    }
+  });
+
+  if (messages.length === 0) {
+    throw new Error('No LeChat messages found. Please ensure you copied the full conversation HTML.');
+  }
+
+  return { messages };
+};
+
+/**
  * Helper to convert complex HTML (like Llamacoder prose) back to Markdown-ish content.
  * Focuses on preserving code blocks and basic formatting.
  */
@@ -305,12 +421,42 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   const clone = element.cloneNode(true) as HTMLElement;
 
   // 1. Handle Code Blocks
+  // Standard PRE > CODE
   clone.querySelectorAll('pre').forEach(pre => {
     const code = pre.querySelector('code');
     const lang = code?.className.match(/language-(\w+)/)?.[1] || '';
     const codeText = pre.innerText.trim();
     const mdBlock = `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
     pre.replaceWith(document.createTextNode(mdBlock));
+  });
+
+  // LeChat specific "Code Block" (div[data-testid="code-block"] containing code)
+  clone.querySelectorAll('div[data-testid="code-block"]').forEach(div => {
+    const code = div.querySelector('code');
+    if (code) {
+      const lang = code.className.match(/language-(\w+)/)?.[1] || '';
+      const codeText = code.innerText.trim();
+      const mdBlock = `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
+      div.replaceWith(document.createTextNode(mdBlock));
+    }
+  });
+
+  // Claude specific code blocks (div with code-block__code class)
+  clone.querySelectorAll('.code-block__code').forEach(el => {
+    const code = el.querySelector('code');
+    const container = (el as HTMLElement).closest('.flex-col');
+    const langEl = container?.querySelector('.font-mono, .p-3.pb-0');
+    const lang = langEl?.textContent?.trim() || '';
+    const codeText = code ? code.innerText.trim() : (el as HTMLElement).innerText.trim();
+    if (codeText) {
+      const mdBlock = `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
+      // If we have a container with a language label, replace the whole thing
+      if (container && (container.querySelector('.font-mono') || container.querySelector('.p-3.pb-0'))) {
+        container.replaceWith(document.createTextNode(mdBlock));
+      } else {
+        el.replaceWith(document.createTextNode(mdBlock));
+      }
+    }
   });
 
   // 2. Handle Inline Code
@@ -338,33 +484,188 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   clone.querySelectorAll('button').forEach(btn => {
     const btnText = btn.innerText.toLowerCase();
     if (btnText.includes('thought process') || btnText.includes('extra thought')) {
-      // Find the sibling or parent that contains the actual thought content
-      // In updated Claude exports, it's often the next sibling or a container inside the parent
-      const parent = btn.closest('.border-border-300');
-      if (parent) {
-        const thoughtContentEl = parent.querySelector('.text-text-300.text-sm, .font-claude-response div');
+      // Find the primary container for this thinking block
+      const container = btn.closest('.border-border-300, .rounded-lg');
+      if (container) {
+        // We look for the HIDDEN content area specifically to avoid catching the button label
+        // Claude's thought content is usually in a div that follows the button or is deep in a sibling div.
+        const thoughtContentEl = container.querySelector('.font-claude-response div.standard-markdown, .text-text-300 .standard-markdown');
+
         if (thoughtContentEl) {
           const thoughtText = (thoughtContentEl as HTMLElement).innerText.trim();
-          if (thoughtText) {
-            btn.replaceWith(document.createTextNode(`\n<thought>\n${thoughtText}\n</thought>\n`));
-            thoughtContentEl.remove();
+          if (thoughtText && thoughtText.toLowerCase() !== 'thought process') {
+            // Replace the ENTIRE container with the thought tag
+            container.replaceWith(document.createTextNode(`\n\n<thought>\n${thoughtText}\n</thought>\n\n`));
+            return;
           }
         }
+      }
+    }
+
+    // Handle Claude "Viewed memory edits" or other tool-like buttons
+    if (btnText.includes('viewed memory edits') || btnText.includes('used ') || btnText.includes('results') || btnText.includes('presented')) {
+      const parent = btn.closest('.border-border-300, .rounded-lg, .flex-col');
+      if (parent) {
+        const results = Array.from(parent.querySelectorAll('.text-text-000, .text-text-200, .line-clamp-1'))
+          .map(el => (el as HTMLElement).innerText.trim())
+          .filter(txt => txt && !txt.toLowerCase().includes('viewed') && !txt.toLowerCase().includes('presented'));
+
+        const resultsMd = results.length > 0 ? `\n> ${results.join('\n> ')}` : '';
+        const actionTitle = btn.innerText.trim() || 'Tool Action';
+        btn.replaceWith(document.createTextNode(`\n\n> 🛠️ **${actionTitle}**${resultsMd}\n\n`));
+        // Remove the container elements we processed
+        parent.querySelectorAll('*').forEach(c => { if (c !== btn && (document.contains(c) || clone.contains(c))) (c as HTMLElement).remove() });
+      }
+    }
+  });
+
+  // Handle Claude Action Steps (Creating..., Running...)
+  clone.querySelectorAll('.text-text-200, .text-text-100').forEach(el => {
+    const parent = el.closest('.flex-row.min-h-\\[2\\.125rem\\], .hover\\:bg-bg-200');
+    if (parent) {
+      const text = (el as HTMLElement).innerText.trim();
+      const subTextEl = parent.querySelector('.text-xs');
+      const subText = subTextEl ? ` [${(subTextEl as HTMLElement).innerText.trim()}]` : '';
+      const triggerWords = ['creating', 'running', 'reading', 'analyzing', 'executing', 'presented'];
+      if (triggerWords.some(word => text.toLowerCase().startsWith(word))) {
+        parent.replaceWith(document.createTextNode(`\n> ⚙️ **Action**: ${text}${subText}\n`));
       }
     }
   });
 
   // 5. Handle Claude "Artifacts" (Previews)
-  clone.querySelectorAll('.artifact-block-cell').forEach(art => {
+  clone.querySelectorAll('.artifact-block-cell, [aria-label*="Preview"]').forEach(art => {
     const title = art.querySelector('.line-clamp-1')?.innerHTML.trim() || 'Artifact';
     const subtitle = (art.querySelector('.text-xs.line-clamp-1') as HTMLElement)?.innerText.trim() || '';
     art.replaceWith(document.createTextNode(`\n\n> 📦 **Artifact: ${title}**\n> ${subtitle}\n\n`));
   });
 
-  // 6. Clean up extra buttons/SVGs (like "Copy" buttons, "Retry", "Show more")
-  clone.querySelectorAll('button, svg, [aria-label*="Copy"], [aria-label*="Retry"], [data-testid*="action-bar"]').forEach(el => {
+  // 6. Handle LeChat "Context" badges (e.g. Personal Library)
+  // Usually in a span with 'bg-state-soft' and 'rounded-full'
+  clone.querySelectorAll('.bg-state-soft.rounded-full').forEach(badge => {
+    const text = (badge as HTMLElement).innerText.trim();
+    if (text) {
+      badge.replaceWith(document.createTextNode(`\n> 📎 **Context: ${text}**\n`));
+    }
+  });
+
+  // 7. Handle LeChat "Tool Executed"
+  // Structure: div with text "Tool" and "executed" split. Often has a Wrench icon somewhere.
+  // We can look for the container that has "Tool" and "executed" in text-subtle
+  const toolExecutors = clone.querySelectorAll('.text-subtle');
+  toolExecutors.forEach(el => {
+    if (el.textContent?.trim() === 'Tool' || el.textContent?.trim() === 'executed') {
+      // Find the main wrapper for this tool event interaction seems hard without a stable class.
+      // However, the provided structure shows they are often in a container with 'text-muted'.
+      // Let's look for the wrench icon SVG specifically as a marker if possible, or just text pattern.
+    }
+  });
+  // Alternative: Replace specific repetitive structures found in LeChat logs
+  // "Tool executed" often appears as text content.
+  if (clone.innerText.includes('Tool') && clone.innerText.includes('executed')) {
+    // This is too broad for the whole element, but let's try to target the visual rows
+  }
+
+  // Better approach for Tool/Libraries:
+  // Look for the specific icons or the text-subtle wrappers.
+  // LeChat specific: "Tool" "executed"
+  // We can try to match the specific construct for Tools
+  clone.querySelectorAll('.text-md.font-medium.text-subtle').forEach(el => {
+    const text = el.textContent?.trim();
+    if (text === 'Tool') {
+      // Check sibling or next element for 'executed'
+      // For now, let's just mark it.
+      const container = el.closest('.w-full.overflow-hidden');
+      if (container) {
+        container.replaceWith(document.createTextNode('\n> 🛠️ **Tool Executed**\n'));
+      }
+    }
+    if (text === 'Searched') {
+      const container = el.closest('.w-full.overflow-hidden');
+      if (container) {
+        // Try to find the query content if possible, usually in a button/text-medium
+        const queryEl = container.querySelector('.text-medium');
+        const query = queryEl ? queryEl.textContent?.trim() : '';
+        container.replaceWith(document.createTextNode(`\n> 📚 **Searched Libraries**: ${query}\n`));
+      }
+    }
+  });
+
+
+  // 8. Handle Basic HTML Formatting to Markdown
+  // Bold
+  clone.querySelectorAll('b, strong').forEach(el => {
+    el.replaceWith(document.createTextNode(`**${el.textContent}**`));
+  });
+  // Italic
+  clone.querySelectorAll('i, em').forEach(el => {
+    el.replaceWith(document.createTextNode(`*${el.textContent}*`));
+  });
+  // Links
+  clone.querySelectorAll('a').forEach(el => {
+    const anchor = el as HTMLAnchorElement;
+    const text = anchor.innerText.trim() || anchor.href;
+    if (text && anchor.href) {
+      anchor.replaceWith(document.createTextNode(`[${text}](${anchor.href})`));
+    }
+  });
+  // Headings
+  ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach((tag, idx) => {
+    clone.querySelectorAll(tag).forEach(el => {
+      const hashes = '#'.repeat(idx + 1);
+      el.replaceWith(document.createTextNode(`\n${hashes} ${el.textContent}\n`));
+    });
+  });
+
+  // 9. Handle Lists
+  clone.querySelectorAll('ul, ol').forEach(list => {
+    const isOrdered = list.tagName.toLowerCase() === 'ol';
+    const children = Array.from(list.children);
+    let mdList = '\n';
+    children.forEach((li, idx) => {
+      if (li.tagName.toLowerCase() === 'li') {
+        const marker = isOrdered ? `${idx + 1}.` : '*';
+        // We use simple replacing here; nested lists might need recursion but this suffices for single-level
+        // For correct nesting, we'd need to check ancestors.
+        // But innerText will flatten it anyway. Let's prepend newline to ensure separation.
+        mdList += `${marker} ${(li as HTMLElement).innerText.trim()}\n`;
+      }
+    });
+    mdList += '\n';
+    list.replaceWith(document.createTextNode(mdList));
+  });
+
+  // 10. Handle Tables
+  clone.querySelectorAll('table').forEach(table => {
+    let mdTable = '\n';
+    const rows = Array.from(table.querySelectorAll('tr'));
+
+    rows.forEach((row, rowIndex) => {
+      const cells = Array.from(row.querySelectorAll('th, td'));
+      const cellTexts = cells.map(c => (c as HTMLElement).innerText.trim().replace(/\n/g, ' ')); // Single line cells
+
+      if (cellTexts.length > 0) {
+        mdTable += `| ${cellTexts.join(' | ')} |\n`;
+      }
+
+      // Add separator after header
+      if (rowIndex === 0 && row.querySelector('th')) {
+        const separators = cells.map(() => '---');
+        mdTable += `| ${separators.join(' | ')} |\n`;
+      }
+    });
+    mdTable += '\n';
+    table.replaceWith(document.createTextNode(mdTable));
+  });
+
+  // 11. Clean up extra buttons/SVGs (like "Copy" buttons, "Retry", "Show more", "Edit", "Delete")
+  clone.querySelectorAll('button, svg, [aria-label*="Copy"], [aria-label*="Retry"], [aria-label*="Edit"], [aria-label*="Delete"], [data-testid*="action-bar"]').forEach(el => {
     // Keep internal text if relevant, but usually these are just UI noise
-    el.remove();
+    // Exception: If we just turned it into a Markdown block (like Tool Executed), don't delete it again if it's new text node... 
+    // but here we are iterating elements.
+    if (document.contains(el) || clone.contains(el)) {
+      el.remove();
+    }
   });
 
 
@@ -381,8 +682,12 @@ const doc = () => document;
  * @returns The HTML string with inline formatting.
  */
 const applyInlineFormatting = (text: string): string => {
-  // Convert inline code (single backticks) - MUST BE FIRST to avoid parsing bold/italic inside code
-  text = text.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+  // Convert inline code (single backticks) - MUST BE FIRST
+  // escape HTML in the code capture group
+  text = text.replace(/`([^`]+)`/g, (match, codeContent) => {
+    const escaped = codeContent.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    return `<code class="inline-code">${escaped}</code>`;
+  });
   // Convert bold (**text** or __text__)
   text = text.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
   // Convert italic (*text* or _text_)
@@ -535,7 +840,25 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
         blockContent += lines[j] + '\n';
         j++;
       }
-      if (j < lines.length) j++; // Move past the closing marker
+
+      if (j < lines.length) {
+        // Handle text appearing on the same line after the end marker
+        const closingLine = lines[j].trim();
+        const markerIndex = closingLine.indexOf(endMarker);
+        const tailContent = closingLine.substring(markerIndex + endMarker.length).trim();
+        if (tailContent) {
+          // Push tail content to the next lines or handle it
+          // For simplicity, we'll replace the closing line in the array if it has tail content
+          // but we are already past it in terms of j.
+          // Actually, we'll just prepend it to the next line if it exists, or push a new line.
+          if (j + 1 < lines.length) {
+            lines[j + 1] = tailContent + '\n' + lines[j + 1];
+          } else {
+            lines.push(tailContent);
+          }
+        }
+        j++;
+      }
 
       // Split content by double newlines for paragraphs within the block
       const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
@@ -762,7 +1085,7 @@ export const generateHtml = (
     codeText,
   } = selectedThemeClasses;
 
-  const enableThoughts = parserMode === ParserMode.AI;
+  const enableThoughts = [ParserMode.AI, ParserMode.ClaudeHtml, ParserMode.LeChatHtml, ParserMode.LlamacoderHtml].includes(parserMode);
 
   const chatMessagesHtml = chatData.messages
     .map((message) => {

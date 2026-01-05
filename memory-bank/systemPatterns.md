@@ -2,21 +2,16 @@
 
 ## Architecture
 - **Framework**: React 19 (Vite).
-- **Routing**: Client-side routing (planned: `react-router-dom`).
-- **Styling**: Tailwind CSS v4 with CSS variables for theming (Dark/Light/Colored).
-- **Data Flow**:
-    - **Inputs**: User pastes text/files -> State (React `useState`).
-    - **Processing**: `converterService.ts` handles logic (Regex or API call).
-    - **Output**: Generates a string (HTML) -> Rendered in `iframe` (Preview) -> Blob (Download).
+- **Core Engine (`converterService.ts`)**: Surgical extraction logic with specialized strategies for Claude, LeChat, and Llamacoder.
+- **Persistence Layer**: Storing `SavedChatSession` objects (including metadata and edited `chatData`) in `localStorage`.
+- **Organized Hub**: A centralized dashboard to manage, filter, and batch-export Archived chats.
+- **Export Formats**: Standardized generation for HTML (Self-contained), Markdown (Git-friendly), and JSON.
 
-## Key Components
-1.  **`App.tsx`**: Root layout and Router provider.
-2.  **`Home.tsx`** (Planned): Landing page for mode selection.
-3.  **`BasicConverter.tsx`**: Handles standard Regex parsing and HTML generation.
-4.  **`AIConverter.tsx`**: Handles LLM-based parsing and "rich" features.
-5.  **`GeneratedHtmlDisplay.tsx`**: Reusable component for previewing/downloading the output.
-
-## Design Patterns
+## Key Design Patterns
+- **Surgical Extraction**: Using specific DOM selectors (classes/attributes) to isolate message content from UI noise.
+- **Theme-Aware Generation**: The HTML exporter applies a unified CSS theme to diverse inbound structures.
+- **Metadata Enrichment**: Enhancing raw logs with `title`, `model`, `date`, and `tags` via the `ChatData` and `SavedChatSession` types.
+- **Multi-Session Management**: Storing an array of `SavedChatSession` objects in local storage, indexed by a unique ID.
+- **Granular Message Selection**: (Planned) Allowing users to toggle individual messages for inclusion in the final archive.
 - **Service Pattern**: Parsing logic is isolated in `services/converterService.ts`, keeping UI components clean.
-- **Theme Config**: Themes are defined as objects in `types.ts` and mapped to CSS classes, allowing easy extension.
 - **Scoped CSS**: The generated HTML includes its own `<style>` block (Tailwind CDN + Custom CSS) to ensure it looks identical offline.

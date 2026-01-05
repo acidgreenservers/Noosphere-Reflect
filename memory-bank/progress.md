@@ -1,23 +1,18 @@
 # Progress
 
-## Completed Features
-- [x] Project Setup (React 19 + Vite + TS).
-- [x] Tailwind CSS v4 Migration (Fixed config issues).
-- [x] Basic Chat Parsing (Regex for `## Prompt`, `## Response`).
-- [x] Theme System (Dark, Light, Green, Purple).
-- [x] "Copy Code" Button in Generated HTML.
-- [x] Initial Service Layer Refactor (Dual Mode logic).
-- [x] Memory Bank Initialization.
-
 ## In Progress
-- [ ] Refactoring Architecture to Split Basic/AI Modes (Implementation Plan pending).
-- [ ] Installing `react-router-dom`.
-- [ ] Creating Dashboard/Home UI.
+- [/] **AI Chat Archival Vision**: Transitioning to a full repository-ready archival system.
+- [/] **Surgical Extraction**: Refining Claude, LeChat, and Llamacoder parsers for bleed-free capture.
 
-## Planned / Roadmap
-- [ ] **AI Converter "Rich" Experience**:
-    - [ ] Interactive thought blocks.
-    - [ ] Metadata extraction (Tone, tags).
-    - [ ] Editable chat nodes before export.
-- [ ] **Deployment**:
-    - [ ] Finalize GitHub Pages workflow.
+## Completed Features
+- [x] **Core Features**: React 19 + Vite + TS + Tailwind v4.
+- [x] **Specialized Parsers**: Claude (with thoughts/artifacts), LeChat (tools/context), Llamacoder (badges).
+- [x] **Interactive Editing**: Inline message editing with persistence.
+- [x] **Internal Formatting**: Full HTML-to-Markdown conversion (Tables, Lists, Bold/Italic).
+
+## Roadmap: AI Chat Archival System
+- [ ] **Metadata Module**: Add UI for Title, Date, Model, and Tags.
+- [ ] **Multi-Session Hub**: dashboard to browse and manage the entire `localStorage` library.
+- [ ] **Batch Export**: Export whole repositories into Markdown, JSON, and HTML.
+- [ ] **Chrome Extension / Bridge**: Surgical "Export to App" button injection logic.
+- [ ] **Deployment**: Finalize GitHub Pages strategy.
