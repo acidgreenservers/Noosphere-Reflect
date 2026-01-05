@@ -38,12 +38,15 @@
 ## 🚀 Phase 4: The Bridge (Chrome Extension)
 **Goal:** Remove the friction of manual copy-pasting by bridging the browser's active tab directly to the Archival System.
 
-*   **Communication Protocol**:
-    *   Design a secure message passing scheme between the Extension (Content Script) and the Web App (Archive Hub).
-    *   *Mechanism*: `window.postMessage` or Shared LocalStorage (if on same domain/extension scheme).
-*   **Live Capture**:
-    *   "Save to Archive" button injected directly into ChatGPT/Claude UI.
-    *   **Auto-Sync**: (Optional) Watch for new messages and auto-update the archive in the background.
+*   **Architecture**:
+    *   **Lightweight Extension**: A Manifest V3 Chrome Extension containing ported `converterService` logic.
+    *   **Content Scripts**: Inject "Archive This Chat" buttons directly into Claude and ChatGPT interfaces.
+*   **Data Flow**:
+    *   **Scrape**: Extension extracts DOM content using surgical selectors.
+    *   **Transfer**: Send payload to `chrome.storage.local` or via `runtime.sendMessage`.
+    *   **Ingest**: ArchiveHub opens/refreshes, detects incoming data, and auto-imports.
+*   **Verification**:
+    *   One-click archiving from `claude.ai` directly to local ArchiveHub.
 
 ---
 

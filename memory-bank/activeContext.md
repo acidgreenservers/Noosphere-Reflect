@@ -11,7 +11,11 @@ We are pivoting from a simple "HTML Converter" utility to a comprehensive **AI C
 - **Verification**: Confirmed `ArchiveHub` batch export and persistence are fully functional.
 
 ## Next Steps
-1.  **Chrome Bridge**: Begin research and prototyping for the browser extension (Phase 4).
+1.  **Chrome Bridge (Phase 4)**: 
+    -   Scaffold Manifest V3 extension.
+    -   Port `converterService` logic to content scripts.
+    -   Implement "Archive" button injection for Claude/ChatGPT.
+2.  **Deep Merging**: Deferred to Phase 5.
 2.  **Deep Merging**: Deferred to Phase 5 for better architectural planning.
 
 ## Active Decisions

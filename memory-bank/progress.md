@@ -16,5 +16,9 @@
 - [x] **Multi-Session Hub**: dashboard to browse and manage the entire `IndexedDB` library.
 - [x] **Batch Operations**: Selection mode, Batch Export (Verified working: individual files), and Batch Delete.
 - [ ] **Batch Export**: Export whole repositories into Markdown, JSON, and HTML.
-- [ ] **Chrome Extension / Bridge**: Surgical "Export to App" button injection logic.
+- [ ] **Chrome Extension / Bridge**:
+    - [ ] Extension Scaffold (Manifest V3).
+    - [ ] Ported Parser Logic.
+    - [ ] DOM Injection (Claude/ChatGPT Buttons).
+    - [ ] Data Handoff (Storage/Runtime Messaging).
 - [ ] **Deployment**: Finalize GitHub Pages strategy.

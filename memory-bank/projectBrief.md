@@ -9,7 +9,7 @@
 3.  **Local Persistence**: High-capacity `IndexedDB` storage for large archives and rich message histories.
 4.  **Archival Formats**: Export structured data as HTML (standalone), Markdown (Git-friendly), and JSON (machine-readable).
 5.  **Centralized Hub**: A functional dashboard to browse, filter, batch-export, and manage the entire archived history.
-6.  **Chrome Extension/Bridge**: (Future) Real-time extraction buttons injected directly into AI chat platforms.
+6.  **Chrome Extension/Bridge**: Real-time extraction buttons injected into AI chat platforms, communicating directly with the ArchiveHub.
 
 ## Goals
 - **Full Archival Workflow**: From scraping/import to metadata enrichment and repository-ready export.
