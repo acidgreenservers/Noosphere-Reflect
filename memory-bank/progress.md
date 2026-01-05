@@ -2,7 +2,8 @@
 
 ## In Progress
 - [/] **AI Chat Archival Vision**: Transitioning to a full repository-ready archival system.
-- [/] **Surgical Extraction**: Refining Claude, LeChat, and Llamacoder parsers for bleed-free capture.
+- [x] **Surgical Extraction**: Refining Claude, LeChat, and Llamacoder parsers for bleed-free capture.
+- [x] **Security**: XSS prevention and safe rendering logic.
 
 ## Completed Features
 - [x] **Core Features**: React 19 + Vite + TS + Tailwind v4.
@@ -13,7 +14,7 @@
 ## Roadmap: AI Chat Archival System
 - [x] **Metadata Module**: Add UI for Title, Date, Model, and Tags.
 - [x] **Multi-Session Hub**: dashboard to browse and manage the entire `IndexedDB` library.
-- [x] **Batch Operations**: Selection mode, Batch Export, and Batch Delete.
+- [x] **Batch Operations**: Selection mode, Batch Export (Verified working: individual files), and Batch Delete.
 - [ ] **Batch Export**: Export whole repositories into Markdown, JSON, and HTML.
 - [ ] **Chrome Extension / Bridge**: Surgical "Export to App" button injection logic.
 - [ ] **Deployment**: Finalize GitHub Pages strategy.

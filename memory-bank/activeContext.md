@@ -3,14 +3,16 @@ We are pivoting from a simple "HTML Converter" utility to a comprehensive **AI C
 
 ## Recent Changes
 - **Surgical Extraction**: Improved Claude/LeChat parsers to isolate thoughts and tool executions with high fidelity.
-- **Thought Bleed Fix**: Resolved issues in the markdown engine that swallowed text after `<thought>` blocks.
+- **Strict Thought Process**: Refined Claude parser to strictly identify thinking blocks and wrap them in `<thought>` tags without UI residue.
+- **Security Hardening**: Implemented robust HTML escaping in `applyInlineFormatting` to prevent XSS.
+- **Renderer Fix**: Resolved issue where escaped `<br/>` tags appeared as visible text.
 - **Universal Collapsibility**: Enabled `<details>` based thinking blocks for all HTML parser modes.
 - **Extension Guide**: Documented the "Export to App" logic for a future Chrome extension bridge.
+- **Verification**: Confirmed `ArchiveHub` batch export and persistence are fully functional.
 
 ## Next Steps
-1.  **Deep Merging**: Implement the UI and logic for combining multiple chat sessions into one.
-2.  **Granular Control**: Add functionality to select specific messages for merging/exporting.
-3.  **Chrome Bridge**: Begin research and prototyping for the browser extension.
+1.  **Chrome Bridge**: Begin research and prototyping for the browser extension (Phase 4).
+2.  **Deep Merging**: Deferred to Phase 5 for better architectural planning.
 
 ## Active Decisions
 - **Persistence**: Switched from `localStorage` to `IndexedDB` to support larger archives and avoid quota limits.

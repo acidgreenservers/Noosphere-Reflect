@@ -485,15 +485,18 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
     const btnText = btn.innerText.toLowerCase();
     if (btnText.includes('thought process') || btnText.includes('extra thought')) {
       // Find the primary container for this thinking block
-      const container = btn.closest('.border-border-300, .rounded-lg');
+      // Find the primary container for this thinking block
+      // We look for the specific wrapper class combination seen in Claude exports
+      const container = btn.closest('.border-border-300.rounded-lg');
       if (container) {
         // We look for the HIDDEN content area specifically to avoid catching the button label
         // Claude's thought content is usually in a div that follows the button or is deep in a sibling div.
-        const thoughtContentEl = container.querySelector('.font-claude-response div.standard-markdown, .text-text-300 .standard-markdown');
+        const thoughtContentEl = container.querySelector('.font-claude-response, .standard-markdown');
 
         if (thoughtContentEl) {
           const thoughtText = (thoughtContentEl as HTMLElement).innerText.trim();
-          if (thoughtText && thoughtText.toLowerCase() !== 'thought process') {
+          // Verify we aren't just capturing the button text again
+          if (thoughtText && !thoughtText.toLowerCase().includes('thought process') && !thoughtText.toLowerCase().includes('viewed memory')) {
             // Replace the ENTIRE container with the thought tag
             container.replaceWith(document.createTextNode(`\n\n<thought>\n${thoughtText}\n</thought>\n\n`));
             return;
@@ -682,21 +685,33 @@ const doc = () => document;
  * @returns The HTML string with inline formatting.
  */
 const applyInlineFormatting = (text: string): string => {
-  // Convert inline code (single backticks) - MUST BE FIRST
-  // escape HTML in the code capture group
-  text = text.replace(/`([^`]+)`/g, (match, codeContent) => {
-    const escaped = codeContent.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    return `<code class="inline-code">${escaped}</code>`;
+  // 1. Escape HTML FIRST (prevents XSS)
+  // We escape & first to avoid double-escaping entities later
+  let escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  // 2. Apply formatting to the already-escaped text
+
+  // Convert inline code (single backticks)
+  // Note: codeContent is already escaped by step 1, so we just wrap it.
+  escaped = escaped.replace(/`([^`]+)`/g, (match, codeContent) => {
+    return `<code class="inline-code">${codeContent}</code>`;
   });
+
   // Convert bold (**text** or __text__)
-  text = text.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
+  escaped = escaped.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
   // Convert italic (*text* or _text_)
-  text = text.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
+  escaped = escaped.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
   // Convert images ( ![alt text](url) ) - MUST BE BEFORE links
-  text = text.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="responsive-image inline-block my-1" />');
+  escaped = escaped.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="responsive-image inline-block my-1" />');
   // Convert links ([text](url))
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>');
-  return text;
+  escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>');
+
+  return escaped;
 };
 
 // Helper for parsing a list block (supports basic nesting)
@@ -862,7 +877,7 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
 
       // Split content by double newlines for paragraphs within the block
       const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
-        return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
+        return `<p>${applyInlineFormatting(p).replace(/\n/g, '<br/>')}</p>`;
       }).join('');
 
       htmlOutput.push(`
@@ -963,7 +978,7 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
       // Split by empty lines to create paragraphs within the blockquote
       const blockquoteParagraphs = blockquoteContent.trim().split(/\n\s*\n/).map(p => {
         // Replace remaining single newlines with <br/> within each paragraph
-        return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
+        return `<p>${applyInlineFormatting(p).replace(/\n/g, '<br/>')}</p>`;
       }).join('');
       htmlOutput.push(`<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">${blockquoteParagraphs}</blockquote>`);
       i = j;
@@ -989,7 +1004,7 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
         paragraphContent += '\n' + lines[j];
         j++;
       }
-      htmlOutput.push(`<p>${applyInlineFormatting(paragraphContent.replace(/\n/g, '<br/>'))}</p>`);
+      htmlOutput.push(`<p>${applyInlineFormatting(paragraphContent).replace(/\n/g, '<br/>')}</p>`);
       i = j;
       continue;
     } else {

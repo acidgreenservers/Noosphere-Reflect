@@ -9,6 +9,7 @@
 - **Export Formats**: Standardized generation for HTML (Self-contained), Markdown (Git-friendly), and JSON.
 
 ## Key Design Patterns
+- **Security Pre-Escaping**: Prevents XSS by escaping HTML entities in raw text *before* applying markdown formatting or inserting structural tags like `<br/>`.
 - **Surgical Extraction**: Using specific DOM selectors (classes/attributes) to isolate message content from UI noise.
 - **Theme-Aware Generation**: The HTML exporter applies a unified CSS theme to diverse inbound structures.
 - **Metadata Enrichment**: Enhancing raw logs with `title`, `model`, `date`, and `tags` via the `ChatData` and `SavedChatSession` types.

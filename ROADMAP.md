@@ -19,9 +19,7 @@
     *   [x] Batch Delete.
 *   **Infrastructure**:
     *   [x] **IndexedDB**: Transition from `localStorage` to structured `IndexedDB` storage.
-*   **Deep Merging**:
-    *   [ ] **Full Session Merge**: Combine Selected Chat A + Chat B -> New Chat C.
-    *   [ ] **Granular Selection**: "Surgical Merge" - Open a source chat, select specific messages (e.g., "Just the code blocks" or "Just the final prompt"), and inject them into a target session.
+*   **Deep Merging**: (Moved to Phase 5)
 
 ---
 
@@ -46,3 +44,13 @@
 *   **Live Capture**:
     *   "Save to Archive" button injected directly into ChatGPT/Claude UI.
     *   **Auto-Sync**: (Optional) Watch for new messages and auto-update the archive in the background.
+
+---
+
+## 🧩 Phase 5: Deep Context Composition
+**Goal:** Advanced remixing and merging of chat sessions.
+
+*   **Deep Merging**:
+    *   **Full Session Merge**: Combine Selected Chat A + Chat B -> New Chat C.
+    *   **Granular Selection**: "Surgical Merge" - Open a source chat, select specific messages (e.g., "Just the code blocks" or "Just the final prompt"), and inject them into a target session.
+    *   **Conflict Resolution**: Handling timestamp overlaps and model author continuity.
