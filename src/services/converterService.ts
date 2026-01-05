@@ -87,6 +87,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseLlamacoderHtml(input);
   }
 
+  if (mode === ParserMode.ClaudeHtml) {
+    return parseClaudeHtml(input);
+  }
+
   // Basic Mode (Regex / JSON Detection)
   let detectedType: 'markdown' | 'json';
 
@@ -228,6 +232,72 @@ const parseLlamacoderHtml = (htmlContent: string): ChatData => {
 };
 
 /**
+ * Specialized parser for Claude HTML content.
+ */
+const parseClaudeHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Claude's structure can be nested, so we'll look for the primary message containers
+  // but ensure we don't get duplicates if we traverse too deeply.
+  const visited = new Set<Element>();
+
+  const allElements = doc.querySelectorAll('*');
+  allElements.forEach(el => {
+    if (visited.has(el)) return;
+    const htmlEl = el as HTMLElement;
+
+    // User Message
+    if (htmlEl.getAttribute('data-testid') === 'user-message' || htmlEl.classList.contains('font-user-message')) {
+      const content = extractMarkdownFromHtml(htmlEl);
+      if (content) {
+        messages.push({ type: ChatMessageType.Prompt, content });
+        // Mark children as visited to avoid double-parsing
+        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+      }
+    }
+
+    // AI Message
+    // Claude often Uses font-claude-response as the main wrapper for the whole turn content
+    if (htmlEl.classList.contains('font-claude-response')) {
+      // Check if it's already inside another response we processed
+      let parent = htmlEl.parentElement;
+      let isNested = false;
+      while (parent) {
+        if (parent.classList.contains('font-claude-response')) {
+          isNested = true;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      if (isNested) return;
+
+      const content = extractMarkdownFromHtml(htmlEl);
+      if (content) {
+        messages.push({ type: ChatMessageType.Response, content });
+        // Mark children as visited
+        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+      }
+    }
+  });
+
+  if (messages.length === 0) {
+    // Fallback search for simpler structures if the heavy ones failed
+    const prompts = doc.querySelectorAll('.font-user-message, [data-testid="user-message"]');
+    const responses = doc.querySelectorAll('.font-claude-response');
+
+    if (prompts.length > 0 || responses.length > 0) {
+      // If we found them but they weren't caught in the main loop for some reason
+      // this fallback might help, but the main loop above is document-order aware.
+    }
+  }
+
+
+  return { messages };
+};
+
+/**
  * Helper to convert complex HTML (like Llamacoder prose) back to Markdown-ish content.
  * Focuses on preserving code blocks and basic formatting.
  */
@@ -263,8 +333,40 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
     }
   });
 
-  // 4. Clean up extra buttons/SVGs (like "Copy" buttons injected into UI)
-  clone.querySelectorAll('button, svg').forEach(el => el.remove());
+  // 4. Handle Claude "Thought Process" blocks
+  // These are often in a container with a button saying "Thought process"
+  clone.querySelectorAll('button').forEach(btn => {
+    const btnText = btn.innerText.toLowerCase();
+    if (btnText.includes('thought process') || btnText.includes('extra thought')) {
+      // Find the sibling or parent that contains the actual thought content
+      // In updated Claude exports, it's often the next sibling or a container inside the parent
+      const parent = btn.closest('.border-border-300');
+      if (parent) {
+        const thoughtContentEl = parent.querySelector('.text-text-300.text-sm, .font-claude-response div');
+        if (thoughtContentEl) {
+          const thoughtText = (thoughtContentEl as HTMLElement).innerText.trim();
+          if (thoughtText) {
+            btn.replaceWith(document.createTextNode(`\n<thought>\n${thoughtText}\n</thought>\n`));
+            thoughtContentEl.remove();
+          }
+        }
+      }
+    }
+  });
+
+  // 5. Handle Claude "Artifacts" (Previews)
+  clone.querySelectorAll('.artifact-block-cell').forEach(art => {
+    const title = art.querySelector('.line-clamp-1')?.innerHTML.trim() || 'Artifact';
+    const subtitle = (art.querySelector('.text-xs.line-clamp-1') as HTMLElement)?.innerText.trim() || '';
+    art.replaceWith(document.createTextNode(`\n\n> 📦 **Artifact: ${title}**\n> ${subtitle}\n\n`));
+  });
+
+  // 6. Clean up extra buttons/SVGs (like "Copy" buttons, "Retry", "Show more")
+  clone.querySelectorAll('button, svg, [aria-label*="Copy"], [aria-label*="Retry"], [data-testid*="action-bar"]').forEach(el => {
+    // Keep internal text if relevant, but usually these are just UI noise
+    el.remove();
+  });
+
 
   // 5. Final cleanup of resulting text
   return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
@@ -422,16 +524,18 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
     const line = lines[i];
     const trimmedLine = line.trim();
 
-    // 0. Collapsible "Thought process" blocks (four backticks with 'plaintext') - Highest precedence
-    // ONLY enabled if checked
-    if (enableThoughts && trimmedLine.startsWith('````plaintext')) {
+    // 0. Collapsible "Thought process" blocks (four backticks OR <thought> tags) - Highest precedence
+    if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thought>')) {
       let blockContent = '';
       let j = i + 1;
-      while (j < lines.length && !lines[j].trim().startsWith('````')) {
+      const isTag = trimmedLine.startsWith('<thought>');
+      const endMarker = isTag ? '</thought>' : '````';
+
+      while (j < lines.length && !lines[j].trim().startsWith(endMarker)) {
         blockContent += lines[j] + '\n';
         j++;
       }
-      if (j < lines.length) j++; // Move past the closing ````
+      if (j < lines.length) j++; // Move past the closing marker
 
       // Split content by double newlines for paragraphs within the block
       const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
@@ -467,9 +571,7 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
 
       const preHtml = `<pre class="p-2 bg-gray-900 rounded-md my-2 overflow-x-auto"><code class="${languageClass}">${codeBlockContent.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
 
-      // Feature: Add Copy Button ONLY for Basic Mode (i.e., when thoughts are disabled aka not AI Mode)
-      if (!enableThoughts) {
-        htmlOutput.push(`
+      htmlOutput.push(`
             <div class="relative group my-2">
                 <button 
                     onclick="copyToClipboard(this)" 
@@ -480,11 +582,7 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
                 </button>
                 ${preHtml}
             </div>
-          `);
-      } else {
-        htmlOutput.push(preHtml);
-      }
-
+      `);
       i = j;
       continue;
     }

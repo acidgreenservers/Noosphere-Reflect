@@ -6,6 +6,7 @@ export enum ChatMessageType {
 export interface ChatMessage {
   type: ChatMessageType;
   content: string;
+  isEdited?: boolean;
 }
 
 export interface ChatData {
@@ -36,6 +37,7 @@ export enum ParserMode {
   Basic = 'basic',
   AI = 'ai',
   LlamacoderHtml = 'llamacoder-html',
+  ClaudeHtml = 'claude-html',
 }
 
 export interface SavedChatSession {
@@ -48,4 +50,5 @@ export interface SavedChatSession {
   aiName: string;
   selectedTheme: ChatTheme;
   parserMode: ParserMode;
+  chatData?: ChatData;
 }

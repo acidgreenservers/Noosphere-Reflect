@@ -6,6 +6,8 @@ import {
     SavedChatSession,
     ParserMode,
     ThemeClasses,
+    ChatData,
+    ChatMessageType,
 } from '../types';
 
 // Theme definitions (reused to ensure consistency within component state usage)
@@ -75,6 +77,9 @@ const BasicConverter: React.FC = () => {
     const [showSavedSessions, setShowSavedSessions] = useState<boolean>(false);
     const [isConversing, setIsConverting] = useState<boolean>(false);
     const [parserMode, setParserMode] = useState<ParserMode>(ParserMode.Basic);
+    const [chatData, setChatData] = useState<ChatData | null>(null);
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState<string>('');
 
     // Load sessions from localStorage
     useEffect(() => {
@@ -116,9 +121,10 @@ const BasicConverter: React.FC = () => {
         await new Promise(r => setTimeout(r, 300));
 
         try {
-            const chatData = await parseChat(inputContent, fileType, parserMode);
+            const data = await parseChat(inputContent, fileType, parserMode);
+            setChatData(data);
             const html = generateHtml(
-                chatData,
+                data,
                 chatTitle,
                 selectedTheme,
                 userName,
@@ -145,7 +151,8 @@ const BasicConverter: React.FC = () => {
             userName,
             aiName,
             selectedTheme,
-            parserMode
+            parserMode,
+            chatData: chatData || undefined
         };
 
         const updatedSessions = [newSession, ...savedSessions];
@@ -166,7 +173,23 @@ const BasicConverter: React.FC = () => {
         setAiName(session.aiName);
         setSelectedTheme(session.selectedTheme);
         setParserMode(session.parserMode || ParserMode.Basic);
-        setGeneratedHtml(null);
+
+        if (session.chatData) {
+            setChatData(session.chatData);
+            const html = generateHtml(
+                session.chatData,
+                session.chatTitle,
+                session.selectedTheme,
+                session.userName,
+                session.aiName,
+                session.parserMode || ParserMode.Basic
+            );
+            setGeneratedHtml(html);
+        } else {
+            setGeneratedHtml(null);
+            setChatData(null);
+        }
+
         setShowSavedSessions(false);
     }, []);
 
@@ -178,7 +201,45 @@ const BasicConverter: React.FC = () => {
         setParserMode(ParserMode.Basic);
         setGeneratedHtml(null);
         setError(null);
+        setChatData(null);
+        setEditingIndex(null);
     }, []);
+
+    const handleEditMessage = (index: number) => {
+        if (!chatData) return;
+        setEditingIndex(index);
+        setEditContent(chatData.messages[index].content);
+    };
+
+    const handleSaveEdit = () => {
+        if (!chatData || editingIndex === null) return;
+
+        const newMessages = [...chatData.messages];
+        newMessages[editingIndex] = {
+            ...newMessages[editingIndex],
+            content: editContent,
+            isEdited: true
+        };
+
+        const newData = { ...chatData, messages: newMessages };
+        setChatData(newData);
+        setEditingIndex(null);
+
+        // Re-generate HTML
+        const html = generateHtml(
+            newData,
+            chatTitle,
+            selectedTheme,
+            userName,
+            aiName,
+            parserMode
+        );
+        setGeneratedHtml(html);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingIndex(null);
+    };
 
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30">
@@ -219,7 +280,7 @@ const BasicConverter: React.FC = () => {
                                         <div className="flex justify-between items-start mb-2">
                                             <p className="font-medium text-sm text-gray-200 truncate pr-2">{session.name}</p>
                                             <span className="text-[10px] uppercase tracking-wider text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20">
-                                                {session.parserMode === ParserMode.LlamacoderHtml ? 'Llamacoder' : 'Basic'}
+                                                {session.parserMode === ParserMode.LlamacoderHtml ? 'Llamacoder' : session.parserMode === ParserMode.ClaudeHtml ? 'Claude' : 'Basic'}
                                             </span>
                                         </div>
                                         <p className="text-xs text-gray-500 mb-3">{new Date(session.date).toLocaleDateString()}</p>
@@ -301,10 +362,93 @@ const BasicConverter: React.FC = () => {
                                                 />
                                                 <span className={`text-sm ${parserMode === ParserMode.LlamacoderHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Llamacoder HTML</span>
                                             </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="parserMode"
+                                                    value={ParserMode.ClaudeHtml}
+                                                    checked={parserMode === ParserMode.ClaudeHtml}
+                                                    onChange={() => setParserMode(ParserMode.ClaudeHtml)}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
+                                                />
+                                                <span className={`text-sm ${parserMode === ParserMode.ClaudeHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Claude HTML</span>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Messages Editing Section */}
+                            {chatData && (
+                                <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg">
+                                    <h2 className="text-xl font-bold mb-4 text-blue-300 flex items-center justify-between">
+                                        2. Edit Messages
+                                        <span className="text-xs font-normal text-gray-500 bg-gray-900/50 px-2 py-1 rounded border border-gray-700">
+                                            {chatData.messages.length} turns parsed
+                                        </span>
+                                    </h2>
+                                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-3 custom-scrollbar">
+                                        {chatData.messages.map((msg, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`p-4 rounded-xl border transition-all ${editingIndex === idx
+                                                    ? 'bg-blue-600/10 border-blue-500/50 ring-1 ring-blue-500/20'
+                                                    : msg.type === ChatMessageType.Prompt
+                                                        ? 'bg-gray-900/40 border-gray-700 hover:border-blue-500/30'
+                                                        : 'bg-gray-800/40 border-gray-700 hover:border-cyan-500/30'
+                                                    }`}
+                                            >
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`w-2 h-2 rounded-full ${msg.type === ChatMessageType.Prompt ? 'bg-blue-400' : 'bg-cyan-400'}`}></span>
+                                                        <span className={`text-[10px] uppercase tracking-wider font-bold ${msg.type === ChatMessageType.Prompt ? 'text-blue-400' : 'text-cyan-400'}`}>
+                                                            {msg.type === ChatMessageType.Prompt ? userName : aiName}
+                                                            {msg.isEdited && <span className="ml-2 text-yellow-500/80 normal-case font-normal">(Edited)</span>}
+                                                        </span>
+                                                    </div>
+
+                                                    {editingIndex !== idx ? (
+                                                        <button
+                                                            onClick={() => handleEditMessage(idx)}
+                                                            className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-blue-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    ) : (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={handleSaveEdit}
+                                                                className="text-[10px] uppercase tracking-wider font-bold text-green-400 hover:text-green-300 transition-colors bg-green-400/10 px-2 py-1 rounded border border-green-400/20"
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button
+                                                                onClick={handleCancelEdit}
+                                                                className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-gray-300 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {editingIndex === idx ? (
+                                                    <textarea
+                                                        className="w-full bg-gray-900/80 text-gray-200 p-3 rounded-lg border border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-sm font-mono min-h-[120px] resize-y"
+                                                        value={editContent}
+                                                        onChange={(e) => setEditContent(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                ) : (
+                                                    <div className="text-gray-300 text-sm line-clamp-4 overflow-hidden whitespace-pre-wrap leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        {msg.content}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl">
                                 <div className="flex items-start gap-3">
@@ -339,7 +483,9 @@ const BasicConverter: React.FC = () => {
                                     onChange={(e) => setInputContent(e.target.value)}
                                     placeholder={parserMode === ParserMode.LlamacoderHtml
                                         ? "Paste raw HTML source from Llamacoder here..."
-                                        : "Paste your chat here (Markdown or JSON)..."}
+                                        : parserMode === ParserMode.ClaudeHtml
+                                            ? "Paste full HTML source from Claude chat here..."
+                                            : "Paste your chat here (Markdown or JSON)..."}
                                     className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
                                 />
                                 <button
