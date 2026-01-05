@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #fff5eb;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #fed7aa;
+    --text-primary: #1a0a00;
+    --text-secondary: #7c2d12;
+    --accent: #ea580c;
+    --accent-hover: #c2410c;
+    --border: #fdba74;
+    --code-bg: #ffedd5;
+    --success: #16a34a;
+    --warning: #eab308;
+  }
+
+  .dark {
+    --bg-primary: #1a0a00;
+    --bg-secondary: #2d1500;
+    --bg-tertiary: #451a03;
+    --text-primary: #fff5eb;
+    --text-secondary: #fed7aa;
+    --accent: #f97316;
+    --accent-hover: #fb923c;
+    --border: #7c2d12;
+    --code-bg: #451a03;
+    --success: #22c55e;
+    --warning: #facc15;
+  }
+
+  body {
+    @apply bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300;
+  }
+}

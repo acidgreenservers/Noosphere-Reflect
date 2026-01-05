@@ -1,0 +1,638 @@
+import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses } from '../types';
+
+/**
+ * Checks if a string is valid JSON.
+ * @param text The string to check.
+ * @returns True if the string is valid JSON, false otherwise.
+ */
+export const isJson = (text: string): boolean => {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+/**
+ * Parses raw input (Markdown or JSON) into structured ChatData.
+ * It detects messages starting with "## Prompt:" or "## Response:".
+ * @param input The raw chat content string.
+ * @param fileType The explicit type of the input ('markdown' or 'json'), or 'auto' to detect.
+ * @returns A ChatData object.
+ * @throws Error if parsing fails or input format is invalid.
+ */
+export const parseChat = (input: string, fileType: 'markdown' | 'json' | 'auto'): ChatData => {
+  let detectedType: 'markdown' | 'json';
+
+  if (fileType === 'auto') {
+    detectedType = isJson(input) ? 'json' : 'markdown';
+  } else {
+    detectedType = fileType;
+  }
+
+  if (detectedType === 'json') {
+    try {
+      const parsed = JSON.parse(input);
+      if (!Array.isArray(parsed) && !parsed.messages) {
+        throw new Error('Invalid JSON structure. Expected an array or an object with a "messages" array.');
+      }
+      const messagesArray = Array.isArray(parsed) ? parsed : parsed.messages;
+
+      const chatMessages: ChatMessage[] = messagesArray.map((msg: any) => {
+        if (!msg.type || !msg.content) {
+          throw new Error('Each message in JSON must have "type" and "content" properties.');
+        }
+        const type = msg.type.toLowerCase();
+        if (type !== ChatMessageType.Prompt && type !== ChatMessageType.Response) {
+          throw new Error(`Invalid message type: ${msg.type}. Must be 'prompt' or 'response'.`);
+        }
+        // Fix: Use template literal for string conversion to avoid potential
+        // 'Type 'String' has no call signatures' error if `String` constructor is
+        // misidentified as a non-callable type in certain TypeScript configurations.
+        return {
+          type: type as ChatMessageType,
+          content: `${msg.content}`,
+        };
+      });
+      return { messages: chatMessages };
+    } catch (e: any) {
+      throw new Error(`Failed to parse JSON chat: ${e.message}`);
+    }
+  } else { // Markdown parsing
+    const lines = input.split('\n');
+    const messages: ChatMessage[] = [];
+    let currentMessage: ChatMessage | null = null;
+
+    for (const line of lines) {
+      const trimmedLine = line.trim(); // Trim for robust detection
+
+      if (trimmedLine.startsWith('## Prompt:')) {
+        if (currentMessage) {
+          messages.push(currentMessage);
+        }
+        currentMessage = {
+          type: ChatMessageType.Prompt,
+          content: trimmedLine.substring('## Prompt:'.length).trim(),
+        };
+      } else if (trimmedLine.startsWith('## Response:')) {
+        if (currentMessage) {
+          messages.push(currentMessage);
+        }
+        currentMessage = {
+          type: ChatMessageType.Response,
+          content: trimmedLine.substring('## Response:'.length).trim(),
+        };
+      } else {
+        if (currentMessage) {
+          // Append line to current message, ensuring proper newline handling
+          // Only add newline if content isn't empty and current line isn't empty
+          currentMessage.content += `\n${line}`;
+        } else {
+          // If no message has started yet, ignore leading lines or append to a default "prompt" if desired.
+          // For now, we'll ignore.
+          if (line.trim().length > 0) {
+            console.warn('Ignoring leading line before first recognized chat turn:', line);
+          }
+        }
+      }
+    }
+    if (currentMessage) {
+      messages.push(currentMessage);
+    }
+
+    if (messages.length === 0) {
+      throw new Error('No chat messages found. Ensure messages start with "## Prompt:" or "## Response:".');
+    }
+
+    return { messages };
+  }
+};
+
+
+/**
+ * Helper to apply inline markdown conversion to a given text.
+ * @param text The text to apply inline formatting to.
+ * @returns The HTML string with inline formatting.
+ */
+const applyInlineFormatting = (text: string): string => {
+  // Convert inline code (single backticks) - MUST BE FIRST to avoid parsing bold/italic inside code
+  text = text.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+  // Convert bold (**text** or __text__)
+  text = text.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
+  // Convert italic (*text* or _text_)
+  text = text.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
+  // Convert images ( ![alt text](url) ) - MUST BE BEFORE links
+  text = text.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="responsive-image inline-block my-1" />');
+  // Convert links ([text](url))
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>');
+  return text;
+};
+
+// Helper for parsing a list block (supports basic nesting)
+interface ListParseResult {
+    html: string;
+    newIndex: number;
+}
+const parseListBlock = (lines: string[], startIndex: number): ListParseResult => {
+    const listHtml: string[] = [];
+    const listStack: Array<{ type: 'ul' | 'ol'; indent: number }> = [];
+    let i = startIndex;
+
+    while (i < lines.length) {
+        const line = lines[i];
+        const listItemMatch = line.match(/^(\s*)([*-+]|\d+\.)\s+(.*)/);
+        // This regex ensures we only consider a line a list item if it starts with *, -, +, or 1. etc.
+        // It also captures the leading whitespace for indent calculation.
+        
+        if (listItemMatch) {
+            const indent = listItemMatch[1].length;
+            const marker = listItemMatch[2];
+            const content = listItemMatch[3];
+            const type: 'ul' | 'ol' = marker.match(/^\d+\./) ? 'ol' : 'ul';
+
+            // Check if we need to close existing lists due to decreasing indent or change of list type
+            while (listStack.length > 0 &&
+                   (indent <= listStack[listStack.length - 1].indent || type !== listStack[listStack.length - 1].type) ) {
+                listHtml.push(`</li></${listStack.pop()!.type}>`);
+            }
+
+            // Open new list if it's the first item or indent increased
+            if (listStack.length === 0 || indent > listStack[listStack.length - 1].indent) {
+                listHtml.push(`<${type}>`);
+                listStack.push({ type, indent });
+            } else { // Same list type, same indent - just close previous <li> and open new one
+                listHtml.push(`</li>`);
+            }
+
+            // Add the list item
+            listHtml.push(`<li>${applyInlineFormatting(content)}`);
+            i++;
+        } else if (listStack.length > 0 && line.trim() === '') {
+            // Empty line within a list item context, treat as a break if no subsequent list item
+            // For now, just absorb, a more advanced parser would handle continued text
+            listHtml.push('<br/>'); // Add a line break for empty lines within a list
+            i++;
+        }
+        else {
+            // Not a list item or empty line within a list, so end of the list block
+            break;
+        }
+    }
+
+    // Close any remaining open lists and list items
+    while (listStack.length > 0) {
+        listHtml.push(`</li></${listStack.pop()!.type}>`);
+    }
+
+    return { html: listHtml.join('\n'), newIndex: i };
+};
+
+// Helper for parsing a table block
+interface TableParseResult {
+    html: string;
+    newIndex: number;
+}
+const parseTableBlock = (lines: string[], startIndex: number): TableParseResult => {
+    const tableLines: string[] = [];
+    let i = startIndex;
+
+    // Collect all table-like lines (starting with '|')
+    while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+    }
+
+    if (tableLines.length < 2) { // Need at least header and separator
+        return { html: '', newIndex: startIndex };
+    }
+
+    const headerLine = tableLines[0];
+    const separatorLine = tableLines[1];
+
+    const headerCells = headerLine.split('|').slice(1, -1).map(s => s.trim());
+    const alignments = separatorLine.split('|').slice(1, -1).map(s => {
+        const trimmed = s.trim();
+        if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center';
+        if (trimmed.endsWith(':')) return 'right';
+        return 'left'; // Default
+    });
+
+    let tableHtml = '<table class="min-w-full divide-y divide-gray-700 my-4 table-auto">';
+    tableHtml += '<thead class="bg-gray-700"><tr>';
+    headerCells.forEach((cell, idx) => {
+        const alignStyle = alignments[idx] !== 'left' ? `text-align: ${alignments[idx]};` : '';
+        tableHtml += `<th class="px-3 py-2 text-${alignments[idx]} text-xs font-medium text-gray-200 uppercase tracking-wider" style="${alignStyle}">${applyInlineFormatting(cell)}</th>`;
+    });
+    tableHtml += '</tr></thead>';
+    tableHtml += '<tbody class="bg-gray-800 divide-y divide-gray-700">';
+
+    for (let rowIdx = 2; rowIdx < tableLines.length; rowIdx++) {
+        const rowCells = tableLines[rowIdx].split('|').slice(1, -1).map(s => s.trim());
+        tableHtml += '<tr>';
+        rowCells.forEach((cell, idx) => {
+            const alignStyle = alignments[idx] !== 'left' ? `text-align: ${alignments[idx]};` : '';
+            tableHtml += `<td class="px-3 py-2 whitespace-normal text-sm text-gray-100" style="${alignStyle}">${applyInlineFormatting(cell)}</td>`;
+        });
+        tableHtml += '</tr>';
+    }
+
+    tableHtml += '</tbody></table>';
+
+    return { html: tableHtml, newIndex: i };
+};
+
+
+/**
+ * Converts a markdown string to basic HTML.
+ * Supports bold, italic, links, blockquotes, inline code, code blocks, lists (unordered/ordered, basic nesting), and tables.
+ * @param markdown The markdown string to convert.
+ * @returns The HTML string.
+ */
+const convertMarkdownToHtml = (markdown: string): string => {
+  const lines = markdown.split('\n');
+  const htmlOutput: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+
+    // 0. Collapsible "Thought process" blocks (four backticks with 'plaintext') - Highest precedence
+    if (trimmedLine.startsWith('````plaintext')) {
+        let blockContent = '';
+        let j = i + 1;
+        while (j < lines.length && !lines[j].trim().startsWith('````')) {
+            blockContent += lines[j] + '\n';
+            j++;
+        }
+        if (j < lines.length) j++; // Move past the closing ````
+
+        // Split content by double newlines for paragraphs within the block
+        const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
+            return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
+        }).join('');
+
+        htmlOutput.push(`
+            <details class="markdown-thought-block my-4">
+              <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
+                Thought process: <span class="text-xs ml-2 opacity-70">(Click to expand/collapse)</span>
+              </summary>
+              <div class="markdown-thought-content p-3 border rounded-b-md">
+                ${thoughtParagraphs}
+              </div>
+            </details>
+        `);
+        i = j;
+        continue;
+    }
+
+    // 1. Code Blocks (three backticks)
+    if (trimmedLine.startsWith('```')) {
+      const startTag = trimmedLine;
+      const lang = startTag.length > 3 ? startTag.substring(3) : '';
+      const languageClass = lang ? `language-${lang}` : 'language-plaintext';
+      let codeBlockContent = '';
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim().startsWith('```')) {
+        codeBlockContent += lines[j] + '\n';
+        j++;
+      }
+      if (j < lines.length) j++; // Move past the closing ```
+      htmlOutput.push(`<pre class="p-2 bg-gray-900 rounded-md my-2 overflow-x-auto"><code class="${languageClass}">${codeBlockContent.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`);
+      i = j;
+      continue;
+    }
+
+    // 2. Tables
+    // Check if the current line starts a table (must contain '|' and not be a list item/blockquote, etc.)
+    // And has a separator line below it.
+    if (trimmedLine.startsWith('|') && i + 1 < lines.length && lines[i+1].trim().match(/^\|?:?-+:?\|/)) {
+        const tableResult = parseTableBlock(lines, i);
+        if (tableResult.html) {
+            htmlOutput.push(tableResult.html);
+            i = tableResult.newIndex;
+            continue;
+        }
+    }
+
+    // 3. Horizontal Rules
+    const hrMatch = trimmedLine.match(/^\s*((\*{3,})|(-){3,}|(_){3,})\s*$/);
+    if (hrMatch) {
+        htmlOutput.push('<hr class="my-6 border-gray-600" />');
+        i++;
+        continue;
+    }
+
+    // 4. Headings
+    const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+        const level = headingMatch[1].length;
+        const headingContent = applyInlineFormatting(headingMatch[2].trim());
+        htmlOutput.push(`<h${level}>${headingContent}</h${level}>`);
+        i++;
+        continue;
+    }
+
+    // 5. Lists (Unordered and Ordered)
+    const listItemMatch = trimmedLine.match(/^(\s*)([*-+]|\d+\.)\s+(.*)/);
+    if (listItemMatch) {
+      const listResult = parseListBlock(lines, i);
+      htmlOutput.push(listResult.html);
+      i = listResult.newIndex;
+      continue;
+    }
+
+    // 6. Blockquotes
+    if (trimmedLine.startsWith('>')) {
+        let blockquoteContent = '';
+        let j = i;
+        while (j < lines.length && lines[j].trim().startsWith('>')) {
+            // Remove the '>' and any leading/trailing space immediately after
+            const contentLine = lines[j].trim().substring(1).trim();
+            blockquoteContent += contentLine + '\n';
+            j++;
+        }
+        // Apply inline formatting and handle potential paragraph breaks within a blockquote
+        // Split by empty lines to create paragraphs within the blockquote
+        const blockquoteParagraphs = blockquoteContent.trim().split(/\n\s*\n/).map(p => {
+            // Replace remaining single newlines with <br/> within each paragraph
+            return `<p>${applyInlineFormatting(p.replace(/\n/g, '<br/>'))}</p>`;
+        }).join('');
+        htmlOutput.push(`<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">${blockquoteParagraphs}</blockquote>`);
+        i = j;
+        continue;
+    }
+
+    // 7. Paragraphs (or other non-block content)
+    if (trimmedLine.length > 0) {
+      // Collect consecutive non-empty lines into a single paragraph
+      let paragraphContent = line;
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim().length > 0
+             // Ensure we don't accidentally consume lines belonging to other block types
+             && !lines[j].trim().startsWith('## ') // Not a new chat turn
+             && !lines[j].trim().startsWith('```') // Not a code block
+             && !lines[j].trim().startsWith('````') // Not a thought block
+             && !lines[j].trim().startsWith('|')   // Not a table
+             && !lines[j].trim().match(/^(\s*)([*-+]|\d+\.)\s+(.*)/) // Not a list item
+             && !lines[j].trim().startsWith('>') // Not a blockquote
+             && !lines[j].trim().match(/^(#{1,6})\s+(.*)$/) // Not a heading
+             && !lines[j].trim().match(/^\s*((\*{3,})|(-){3,}|(_){3,})\s*$/) // Not a horizontal rule
+            ) {
+          paragraphContent += '\n' + lines[j];
+          j++;
+      }
+      htmlOutput.push(`<p>${applyInlineFormatting(paragraphContent.replace(/\n/g, '<br/>'))}</p>`);
+      i = j;
+      continue;
+    } else {
+      // Skip empty lines to allow block element margins to handle spacing
+    }
+    i++;
+  }
+
+  return htmlOutput.join('\n');
+};
+
+// Define theme classes
+const themeMap: Record<ChatTheme, ThemeClasses> = {
+  [ChatTheme.DarkDefault]: {
+    htmlClass: 'dark',
+    bodyBg: 'bg-gray-900',
+    bodyText: 'text-gray-100',
+    containerBg: 'bg-gray-800',
+    titleText: 'text-blue-400',
+    promptBg: 'bg-blue-700',
+    responseBg: 'bg-gray-700',
+    blockquoteBorder: 'border-gray-500',
+    codeBg: 'bg-gray-800',
+    codeText: 'text-yellow-300',
+  },
+  [ChatTheme.LightDefault]: {
+    htmlClass: '',
+    bodyBg: 'bg-gray-50',
+    bodyText: 'text-gray-900',
+    containerBg: 'bg-white',
+    titleText: 'text-blue-600',
+    promptBg: 'bg-blue-200',
+    responseBg: 'bg-gray-200',
+    blockquoteBorder: 'border-gray-400',
+    codeBg: 'bg-gray-100',
+    codeText: 'text-purple-700',
+  },
+  [ChatTheme.DarkGreen]: {
+    htmlClass: 'dark',
+    bodyBg: 'bg-gray-900',
+    bodyText: 'text-gray-100',
+    containerBg: 'bg-gray-800',
+    titleText: 'text-green-400',
+    promptBg: 'bg-green-700',
+    responseBg: 'bg-gray-700',
+    blockquoteBorder: 'border-gray-500',
+    codeBg: 'bg-gray-800',
+    codeText: 'text-yellow-300',
+  },
+  [ChatTheme.DarkPurple]: {
+    htmlClass: 'dark',
+    bodyBg: 'bg-gray-900',
+    bodyText: 'text-gray-100',
+    containerBg: 'bg-gray-800',
+    titleText: 'text-purple-400',
+    promptBg: 'bg-purple-700',
+    responseBg: 'bg-gray-700',
+    blockquoteBorder: 'border-gray-500',
+    codeBg: 'bg-gray-800',
+    codeText: 'text-yellow-300',
+  },
+};
+
+/**
+ * Generates a standalone HTML file content from ChatData.
+ * @param chatData The structured chat data.
+ * @param title The title for the generated HTML file.
+ * @param theme The chosen theme for the HTML output.
+ * @param userName Custom name for the user in the output.
+ * @param aiName Custom name for the AI in the output.
+ * @returns A string containing the full HTML content.
+ */
+export const generateHtml = (
+  chatData: ChatData,
+  title: string = 'AI Chat Export',
+  theme: ChatTheme = ChatTheme.DarkDefault,
+  userName: string = 'User', // Default user name
+  aiName: string = 'AI',     // Default AI name
+): string => {
+  const selectedThemeClasses = themeMap[theme];
+  const {
+    htmlClass,
+    bodyBg,
+    bodyText,
+    containerBg,
+    titleText,
+    promptBg,
+    responseBg,
+    blockquoteBorder,
+    codeBg,
+    codeText,
+  } = selectedThemeClasses;
+
+  const chatMessagesHtml = chatData.messages
+    .map((message) => {
+      const isPrompt = message.type === ChatMessageType.Prompt;
+      const bgColor = isPrompt ? promptBg : responseBg;
+      const justify = isPrompt ? 'justify-end' : 'justify-start';
+      const speakerName = isPrompt ? userName : aiName; // Use custom names
+
+      // Apply theme-specific classes to code blocks and blockquotes generated by convertMarkdownToHtml
+      const contentHtml = convertMarkdownToHtml(message.content)
+        .replace(/<pre class="p-2 bg-gray-900 rounded-md my-2 overflow-x-auto">/g, `<pre class="p-2 ${codeBg} rounded-md my-2 overflow-x-auto">`)
+        .replace(/<code class="language-/g, `<code class="${codeText} language-`) // For fenced code blocks
+        .replace(/<code class="inline-code">/g, `<code class="${codeBg} ${codeText} px-1 py-0.5 rounded text-sm">`) // For inline code
+        .replace(/<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">/g, `<blockquote class="border-l-4 ${blockquoteBorder} pl-4 italic text-gray-300 my-2">`)
+        // Apply theme-specific classes to the collapsible thought block
+        .replace(/<details class="markdown-thought-block my-4">/g, `<details class="markdown-thought-block my-4">`) // Base details tag
+        .replace(/<summary class="markdown-thought-summary/g, `<summary class="markdown-thought-summary bg-gray-600 text-gray-200 hover:bg-gray-500 active:bg-gray-700`) // Summary
+        .replace(/<div class="markdown-thought-content/g, `<div class="markdown-thought-content bg-gray-700 text-gray-100 border-gray-600`); // Content div
+
+
+      return `
+        <div class="flex ${justify} mb-4">
+          <div class="max-w-xl md:max-w-2xl lg:max-w-3xl rounded-xl p-4 shadow-lg ${bgColor} text-white break-words">
+            <p class="font-semibold text-sm opacity-80 mb-1">${speakerName}</p>
+            <div class="markdown-content">${contentHtml}</div>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+    const scrollbarTrack = htmlClass === 'dark' ? '#1a202c' : '#e2e8f0'; // Darker track for dark, lighter for light
+    const scrollbarThumb = htmlClass === 'dark' ? '#4a5568' : '#cbd5e0'; // Gray thumb for dark, lighter gray for light
+    const scrollbarThumbHover = htmlClass === 'dark' ? '#6b7280' : '#a0aec0'; // Lighter gray on hover
+
+  return `<!DOCTYPE html>
+<html lang="en" class="${htmlClass}">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title}</title>
+    <!-- Tailwind CSS CDN for offline viewing -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+      @layer base {
+        body {
+          @apply ${bodyBg} ${bodyText} font-sans leading-relaxed;
+        }
+        strong {
+            @apply font-bold;
+        }
+        em {
+            @apply italic;
+        }
+        a {
+            @apply text-blue-400 hover:underline;
+        }
+        code { /* Default for pre > code */
+            @apply ${codeBg} ${codeText} px-1 py-0.5 rounded text-sm;
+        }
+        code.inline-code { /* Specific for inline code */
+            @apply ${codeBg} ${codeText} px-1 py-0.5 rounded text-sm;
+        }
+        pre > code { /* For code blocks */
+            @apply block p-2 ${codeBg} rounded-md overflow-x-auto ${codeText};
+        }
+        blockquote {
+            @apply border-l-4 ${blockquoteBorder} pl-4 italic text-gray-300 my-2;
+        }
+        .markdown-content ul, .markdown-content ol {
+            @apply list-inside ml-4 my-2;
+        }
+        .markdown-content ul {
+            @apply list-disc;
+        }
+        .markdown-content ol {
+            @apply list-decimal;
+        }
+        .markdown-content li {
+            @apply mb-1;
+        }
+        .markdown-content table {
+            @apply min-w-full divide-y divide-gray-700 my-4 table-auto border-collapse;
+        }
+        .markdown-content thead {
+            @apply bg-gray-700;
+        }
+        .markdown-content th, .markdown-content td {
+            @apply px-3 py-2 text-sm text-gray-100 border border-gray-600;
+        }
+        .markdown-content th {
+            @apply text-xs font-medium text-gray-200 uppercase tracking-wider text-left;
+        }
+        .markdown-content tbody tr:nth-child(odd) {
+            @apply bg-gray-800;
+        }
+        .markdown-content tbody tr:nth-child(even) {
+            @apply bg-gray-700;
+        }
+        .markdown-content .markdown-thought-summary {
+            @apply bg-gray-600 text-gray-200 hover:bg-gray-500 active:bg-gray-700 transition-colors;
+        }
+        .markdown-content .markdown-thought-content {
+            @apply bg-gray-700 text-gray-100 border-gray-600;
+        }
+        .markdown-thought-block summary::marker {
+            content: '► '; /* Custom marker for collapsed state */
+            @apply text-gray-400;
+        }
+        .markdown-thought-block[open] summary::marker {
+            content: '▼ '; /* Custom marker for expanded state */
+        }
+        
+        /* New Markdown Element Styles */
+        .markdown-content h1 { @apply text-3xl font-extrabold mt-6 mb-4 text-blue-300; }
+        .markdown-content h2 { @apply text-2xl font-bold mt-5 mb-3 text-blue-200; }
+        .markdown-content h3 { @apply text-xl font-semibold mt-4 mb-2 text-blue-100; }
+        .markdown-content h4 { @apply text-lg font-medium mt-3 mb-2; }
+        .markdown-content h5 { @apply text-base font-medium mt-2 mb-1; }
+        .markdown-content h6 { @apply text-sm font-medium mt-2 mb-1; }
+
+        .markdown-content hr {
+            @apply my-6 border-t-2 border-gray-600;
+        }
+
+        .markdown-content img.responsive-image {
+            @apply max-w-full h-auto rounded-md my-2;
+        }
+        .markdown-content p {
+            /* Default paragraph spacing, Tailwind's default applies some margin */
+            @apply my-2;
+        }
+      }
+      /* Custom scrollbar styles based on theme */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: ${scrollbarTrack};
+      }
+      ::-webkit-scrollbar-thumb {
+        background: ${scrollbarThumb};
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: ${scrollbarThumbHover};
+      }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-4xl mx-auto my-8 p-6 ${containerBg} rounded-lg shadow-xl">
+        <h1 class="text-4xl font-extrabold text-center ${titleText} mb-8">${title}</h1>
+        <div class="space-y-4">
+            ${chatMessagesHtml}
+        </div>
+    </div>
+</body>
+</html>`;
+};

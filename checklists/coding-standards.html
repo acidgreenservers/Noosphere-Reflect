@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coding Standards | React + Vite + Tailwind</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #fff5eb;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #fed7aa;
+            --text-primary: #1a0a00;
+            --text-secondary: #7c2d12;
+            --accent: #ea580c;
+            --accent-hover: #c2410c;
+            --border: #fdba74;
+            --code-bg: #ffedd5;
+            --success: #16a34a;
+            --warning: #eab308;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a0a00;
+            --bg-secondary: #2d1500;
+            --bg-tertiary: #451a03;
+            --text-primary: #fff5eb;
+            --text-secondary: #fed7aa;
+            --accent: #f97316;
+            --accent-hover: #fb923c;
+            --border: #7c2d12;
+            --code-bg: #451a03;
+            --success: #22c55e;
+            --warning: #facc15;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 2rem;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .theme-toggle button {
+            background: transparent;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .theme-toggle button.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+        }
+
+        nav h3 {
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        nav ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+        }
+
+        nav a {
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 0.5rem;
+            display: block;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        nav a:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        /* Sections */
+        section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        /* Collapsible Sections */
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .collapsible::before {
+            content: '▶';
+            transition: transform 0.3s;
+            font-size: 0.8em;
+        }
+
+        .collapsible.active::before {
+            transform: rotate(90deg);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .collapsible-content.active {
+            max-height: 5000px;
+            transition: max-height 0.5s ease-in;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .code-header {
+            background: var(--bg-tertiary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 0.3rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 0 0 0.5rem 0.5rem;
+            overflow-x: auto;
+            margin: 0;
+            border: 1px solid var(--border);
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        /* Inline code */
+        p code,
+        li code {
+            background: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.3rem;
+            font-size: 0.85em;
+        }
+
+        /* Lists */
+        ul,
+        ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .checklist li {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: background 0.2s;
+        }
+
+        .checklist li:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .checklist input[type="checkbox"] {
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+        }
+
+        .checklist label {
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge-good {
+            background: rgba(22, 163, 74, 0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .badge-avoid {
+            background: rgba(234, 179, 8, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        /* Interactive Examples */
+        .interactive-demo {
+            background: var(--bg-tertiary);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border: 2px dashed var(--border);
+        }
+
+        .demo-button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .demo-button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Grid Demo */
+        .grid-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .grid-item {
+            background: var(--accent);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .grid-item:hover {
+            transform: scale(1.05);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 1rem;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            transition: width 0.3s;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -100% 0;
+            }
+
+            100% {
+                background-position: 100% 0;
+            }
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab-button {
+            background: transparent;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab-button:hover {
+            color: var(--accent);
+        }
+
+        .tab-button.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            nav ul {
+                grid-template-columns: 1fr;
+            }
+
+            .theme-toggle {
+                top: auto;
+                bottom: 1rem;
+            }
+        }
+
+        /* Search */
+        .search-box {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .highlight {
+            background: yellow;
+            color: black;
+            padding: 0.1rem 0.2rem;
+            border-radius: 0.2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Theme Toggle -->
+    <div class="theme-toggle">
+        <button id="lightBtn" class="active">☀️ Light</button>
+        <button id="darkBtn">🌙 Dark</button>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🚀 Coding Standards</h1>
+            <p>Personal Development Reference | React + Vite + Tailwind</p>
+        </header>
+
+        <!-- Search -->
+        <section>
+            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search standards...">
+        </section>
+
+        <!-- Navigation -->
+        <nav>
+            <h3>📑 Quick Navigation</h3>
+            <ul>
+                <li><a href="#philosophy">Philosophy</a></li>
+                <li><a href="#structure">Project Structure</a></li>
+                <li><a href="#react">React Components</a></li>
+                <li><a href="#styling">Styling</a></li>
+                <li><a href="#javascript">JavaScript</a></li>
+                <li><a href="#routing">Routing</a></li>
+                <li><a href="#data">Data Management</a></li>
+                <li><a href="#performance">Performance</a></li>
+                <li><a href="#git">Git Workflow</a></li>
+                <li><a href="#deployment">Deployment</a></li>
+                <li><a href="#checklist">Code Review</a></li>
+                <li><a href="#reference">Quick Reference</a></li>
+            </ul>
+        </nav>
+
+        <!-- Philosophy -->
+        <section id="philosophy">
+            <h2>💡 Philosophy</h2>
+            <p>These standards reflect a <strong>surgical, minimal-change approach</strong> to development. Prefer
+                incremental refinement over wholesale rewrites. Code should be clear, maintainable, and reflect the
+                natural flow of thought.</p>
+            <blockquote
+                style="border-left: 4px solid var(--accent); padding-left: 1rem; margin: 1rem 0; font-style: italic;">
+                "Make it work, make it right, make it better."
+            </blockquote>
+        </section>
+
+        <!-- Project Structure -->
+        <section id="structure">
+            <h2>📁 Project Structure</h2>
+            <h3 class="collapsible">Standard React/Vite Layout</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>File Structure</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>project-root/
+├── public/                    # Static assets
+│   ├── index.html            # HTML entry point
+│   └── favicon.svg           # Site icon
+├── src/
+│   ├── main.jsx              # React entry point
+│   ├── App.jsx               # Root component with routing
+│   ├── index.css             # Global styles + Tailwind directives
+│   ├── components/           # Reusable UI components
+│   │   ├── Navbar.jsx
+│   │   └── Starfield.jsx
+│   ├── pages/                # Route-based page components
+│   │   ├── Home.jsx
+│   │   └── docs/
+│   │       └── SomeDocs.jsx
+│   └── data/                 # Static data & configuration
+│       └── frameworks.js
+├── .gitignore
+├── package.json
+├── vite.config.js            # Vite configuration
+├── tailwind.config.js        # Tailwind configuration
+├── postcss.config.js         # PostCSS configuration
+└── README.md</code></pre>
+                </div>
+
+                <h4>File Organization Principles</h4>
+                <ul>
+                    <li><strong>Components:</strong> One component per file, named after the component</li>
+                    <li><strong>Pages:</strong> Organized by route structure, clear hierarchy</li>
+                    <li><strong>Data:</strong> Centralized in <code>/src/data/</code> when shared across components</li>
+                    <li><strong>Utilities:</strong> Create <code>/src/utils/</code> when needed for helper functions
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- React Components -->
+        <section id="react">
+            <h2>⚛️ React Component Standards</h2>
+
+            <h3 class="collapsible">Component Structure</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Standard Component Template</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+
+export default function ComponentName({ theme, data }) {
+    // 1. State declarations
+    const [isOpen, setIsOpen] = useState(false);
+    
+    // 2. Refs
+    const dropdownRef = useRef(null);
+    
+    // 3. Effects
+    useEffect(() => {
+        // Effect logic
+        return () => {
+            // Cleanup
+        };
+    }, [dependencies]);
+    
+    // 4. Event handlers
+    const handleClick = () => {
+        setIsOpen(!isOpen);
+    };
+    
+    // 5. Render
+    return (
+        &lt;div className="..."&gt;
+            {/* JSX */}
+        &lt;/div&gt;
+    );
+}</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Naming Conventions</h3>
+            <div class="collapsible-content">
+                <div class="tabs">
+                    <button class="tab-button active" onclick="switchTab(event, 'components')">Components</button>
+                    <button class="tab-button" onclick="switchTab(event, 'variables')">Variables</button>
+                    <button class="tab-button" onclick="switchTab(event, 'constants')">Constants</button>
+                </div>
+
+                <div id="components" class="tab-content active">
+                    <p><span class="badge badge-good">Good</span> <strong>PascalCase</strong></p>
+                    <div class="code-block">
+                        <pre><code>ComponentName.jsx
+export default function ComponentName() { ... }</code></pre>
+                    </div>
+                </div>
+
+                <div id="variables" class="tab-content">
+                    <p><span class="badge badge-good">Good</span> <strong>camelCase</strong></p>
+                    <div class="code-block">
+                        <pre><code>const userName = "Lucas";
+const handleSubmit = () => { ... };</code></pre>
+                    </div>
+                </div>
+
+                <div id="constants" class="tab-content">
+                    <p><span class="badge badge-good">Good</span> <strong>SCREAMING_SNAKE_CASE</strong> (when truly
+                        constant)</p>
+                    <div class="code-block">
+                        <pre><code>const MAX_RETRIES = 3;
+const API_BASE_URL = "https://api.example.com";</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Props Patterns</h3>
+            <div class="collapsible-content">
+                <p><span class="badge badge-good">Good</span> Destructure props in function signature:</p>
+                <div class="code-block">
+                    <pre><code>export default function Card({ title, description, theme }) {
+    return &lt;div&gt;...&lt;/div&gt;;
+}</code></pre>
+                </div>
+
+                <p><span class="badge badge-avoid">Avoid</span> Using props object:</p>
+                <div class="code-block">
+                    <pre><code>export default function Card(props) {
+    return &lt;div&gt;{props.title}&lt;/div&gt;;
+}</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Styling -->
+        <section id="styling">
+            <h2>🎨 Styling with Tailwind</h2>
+
+            <h3 class="collapsible">Class Organization</h3>
+            <div class="collapsible-content">
+                <p><strong>Order classes logically:</strong> Layout → Spacing → Typography → Colors → Effects</p>
+
+                <p><span class="badge badge-good">Good</span></p>
+                <div class="code-block">
+                    <pre><code>&lt;div className="flex items-center gap-4 p-6 rounded-xl bg-orange-900/10 border border-orange-500/30 hover:bg-orange-800/20 transition-all"&gt;</code></pre>
+                </div>
+
+                <p><span class="badge badge-avoid">Avoid</span> Random order:</p>
+                <div class="code-block">
+                    <pre><code>&lt;div className="transition-all hover:bg-orange-800/20 flex rounded-xl border-orange-500/30 gap-4 p-6 bg-orange-900/10 border items-center"&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Interactive Demo: Tailwind Classes</h3>
+            <div class="collapsible-content">
+                <div class="interactive-demo">
+                    <h4>Live Tailwind Example</h4>
+                    <div class="grid-demo">
+                        <div class="grid-item">Flex</div>
+                        <div class="grid-item">Grid</div>
+                        <div class="grid-item">Responsive</div>
+                        <div class="grid-item">Hover Me!</div>
+                    </div>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">This grid uses:
+                        <code>grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))</code></p>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Theme Handling Pattern</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Dynamic Theme Classes</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>// Component receives theme prop
+export default function Component({ theme }) {
+    return (
+        &lt;div className={`${theme === 'dark' ? 'text-orange-50' : 'text-orange-950'}`}&gt;
+            {/* Content */}
+        &lt;/div&gt;
+    );
+}</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- JavaScript -->
+        <section id="javascript">
+            <h2>📜 JavaScript/JSX Best Practices</h2>
+
+            <h3 class="collapsible">Modern JavaScript</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>const/let, Arrow Functions, Destructuring</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>// Use const/let, never var
+const API_KEY = "...";
+let counter = 0;
+
+// Arrow functions for callbacks
+const handleClick = () => {
+    console.log("clicked");
+};
+
+// Destructuring
+const { name, age, city } = user;
+const [first, second] = items;
+
+// Template literals
+const greeting = `Hello, ${name}!`;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">JSX Guidelines</h3>
+            <div class="collapsible-content">
+                <p><span class="badge badge-good">Good</span> Always use keys in lists:</p>
+                <div class="code-block">
+                    <pre><code>{items.map(item => (
+    &lt;div key={item.id}&gt;{item.name}&lt;/div&gt;
+))}</code></pre>
+                </div>
+
+                <p><span class="badge badge-avoid">Avoid</span> Using index as key (unless order never changes):</p>
+                <div class="code-block">
+                    <pre><code>{items.map((item, index) => (
+    &lt;div key={index}&gt;{item.name}&lt;/div&gt;
+))}</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Routing -->
+        <section id="routing">
+            <h2>🛣️ Routing (React Router)</h2>
+
+            <h3 class="collapsible">Route Structure</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>App.jsx with Routes</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+export default function App() {
+    return (
+        &lt;Router basename={import.meta.env.BASE_URL}&gt;
+            &lt;Routes&gt;
+                &lt;Route path="/" element={&lt;Home /&gt;} /&gt;
+                &lt;Route path="/about" element={&lt;About /&gt;} /&gt;
+                &lt;Route path="/docs/:id" element={&lt;DocPage /&gt;} /&gt;
+            &lt;/Routes&gt;
+        &lt;/Router&gt;
+    );
+}</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Navigation</h3>
+            <div class="collapsible-content">
+                <p><strong>Internal navigation:</strong> Use <code>Link</code></p>
+                <div class="code-block">
+                    <pre><code>import { Link } from "react-router-dom";
+
+&lt;Link to="/about"&gt;About&lt;/Link&gt;
+&lt;Link to={`/docs/${docId}`}&gt;View Doc&lt;/Link&gt;</code></pre>
+                </div>
+
+                <p><strong>External links:</strong> Use <code>&lt;a&gt;</code></p>
+                <div class="code-block">
+                    <pre><code>&lt;a 
+    href="https://github.com/username/repo" 
+    target="_blank" 
+    rel="noopener noreferrer"
+&gt;
+    GitHub
+&lt;/a&gt;</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Management -->
+        <section id="data">
+            <h2>💾 Data Management</h2>
+
+            <h3 class="collapsible">Static Data Files</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>data/frameworks.js</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>export const frameworks = [
+    {
+        id: "manifold",
+        name: "Noosphere Manifold",
+        description: "...",
+        icon: "🧠"
+    },
+    // ...
+];
+
+export const features = [
+    { icon: "📚", text: "..." },
+    // ...
+];</code></pre>
+                </div>
+
+                <p><strong>Import where needed:</strong></p>
+                <div class="code-block">
+                    <pre><code>import { frameworks, features } from "../data/frameworks";</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Performance -->
+        <section id="performance">
+            <h2>⚡ Performance Patterns</h2>
+
+            <h3 class="collapsible">Avoid Unnecessary Re-renders</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>useMemo & useCallback</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>import { useMemo, useCallback } from "react";
+
+// Memoize expensive computations
+const sortedItems = useMemo(() => {
+    return items.sort((a, b) => a.name.localeCompare(b.name));
+}, [items]);
+
+// Memoize callbacks passed to children
+const handleClick = useCallback(() => {
+    doSomething(value);
+}, [value]);</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Code Splitting</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Lazy Load Routes</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>import { lazy, Suspense } from "react";
+
+const Home = lazy(() => import("./pages/Home"));
+const About = lazy(() => import("./pages/About"));
+
+&lt;Suspense fallback={&lt;Loading /&gt;}&gt;
+    &lt;Routes&gt;
+        &lt;Route path="/" element={&lt;Home /&gt;} /&gt;
+        &lt;Route path="/about" element={&lt;About /&gt;} /&gt;
+    &lt;/Routes&gt;
+&lt;/Suspense&gt;</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Git Workflow -->
+        <section id="git">
+            <h2>🌿 Git Workflow</h2>
+
+            <h3 class="collapsible">Commit Messages</h3>
+            <div class="collapsible-content">
+                <p><strong>Format:</strong> <code>type: description</code></p>
+
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>feat:</strong> New feature
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>fix:</strong> Bug fix
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>docs:</strong> Documentation
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>style:</strong> Formatting
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>refactor:</strong> Restructuring
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>perf:</strong> Performance
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>test:</strong> Adding tests
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                        <strong>chore:</strong> Build/deps
+                    </div>
+                </div>
+
+                <p><strong>Examples:</strong></p>
+                <div class="code-block">
+                    <pre><code>feat: add dark mode toggle to navbar
+fix: resolve context overflow in mobile view
+docs: update README with deployment instructions
+refactor: extract theme logic to custom hook</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Branch Strategy</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <pre><code>main                    # Production-ready code
+├── feature/navbar      # Feature branches
+├── fix/mobile-layout   # Bug fix branches
+└── docs/setup-guide    # Documentation branches</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Deployment -->
+        <section id="deployment">
+            <h2>🚀 Build & Deployment</h2>
+
+            <h3 class="collapsible">Vite Configuration</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>vite.config.js</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  base: '/repo-name/'  // Match your GitHub repo
+})</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Build Commands</h3>
+            <div class="collapsible-content">
+                <div class="interactive-demo">
+                    <button class="demo-button" onclick="simulateBuild()">▶️ Simulate Build</button>
+                    <div id="buildProgress" style="display: none; margin-top: 1rem;">
+                        <p>Building project...</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+                        </div>
+                        <p id="buildStatus" style="margin-top: 0.5rem; font-size: 0.9rem;"></p>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <pre><code># Development
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">GitHub Pages Deployment</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>package.json scripts</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && cp dist/index.html dist/404.html",
+    "preview": "vite preview"
+  }
+}</code></pre>
+                </div>
+                <p style="margin-top: 1rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem;">
+                    💡 <strong>Note:</strong> The <code>404.html</code> copy enables SPA routing on GitHub Pages
+                </p>
+            </div>
+        </section>
+
+        <!-- Code Review Checklist -->
+        <section id="checklist">
+            <h2>✅ Code Review Checklist</h2>
+            <p>Before committing, verify:</p>
+
+            <ul class="checklist">
+                <li>
+                    <input type="checkbox" id="check1" checked>
+                    <label for="check1">No console.logs left in production code</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check2" checked>
+                    <label for="check2">All imports are used</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check3" checked>
+                    <label for="check3">Keys on list items</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check4" checked>
+                    <label for="check4">Responsive design tested</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check5" checked>
+                    <label for="check5">Dark/light theme both work</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check6" checked>
+                    <label for="check6">No hardcoded values that should be constants</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check7" checked>
+                    <label for="check7">Meaningful variable names</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check8" checked>
+                    <label for="check8">Comments on complex logic only</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check9" checked>
+                    <label for="check9">Build completes without errors</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="check10" checked>
+                    <label for="check10">Routes work in production build</label>
+                </li>
+            </ul>
+
+            <button class="demo-button" style="margin-top: 1rem;" onclick="resetChecklist()">🔄 Reset Checklist</button>
+            <button class="demo-button" style="margin-top: 1rem;" onclick="checkAllItems()">✓ Check All</button>
+        </section>
+
+        <!-- Quick Reference -->
+        <section id="reference">
+            <h2>📚 Quick Reference</h2>
+
+            <h3 class="collapsible">Common Tailwind Patterns</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Frequently Used Patterns</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>// Flex Container
+&lt;div className="flex items-center justify-between gap-4"&gt;
+
+// Grid Layout
+&lt;div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"&gt;
+
+// Glassmorphism Card
+&lt;div className="backdrop-blur-md bg-white/50 border border-gray-200 rounded-xl p-6"&gt;
+
+// Hover States
+&lt;button className="bg-blue-500 hover:bg-blue-600 transition-colors duration-200"&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="collapsible">Common React Patterns</h3>
+            <div class="collapsible-content">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Click Outside Detection</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>useEffect(() => {
+    function handleClickOutside(event) {
+        if (ref.current && !ref.current.contains(event.target)) {
+            setIsOpen(false);
+        }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Local Storage Persistence</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>const [value, setValue] = useState(() => {
+    const stored = localStorage.getItem('key');
+    return stored ? JSON.parse(stored) : defaultValue;
+});
+
+useEffect(() => {
+    localStorage.setItem('key', JSON.stringify(value));
+}, [value]);</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p><strong>Remember:</strong> Code is read more often than written. Optimize for clarity and maintainability
+                over cleverness.</p>
+            <p style="margin-top: 1rem; font-size: 0.9rem;">Created with ❤️ for continuous learning</p>
+        </footer>
+    </div>
+
+    <script>
+        // Theme Toggle
+        const lightBtn = document.getElementById('lightBtn');
+        const darkBtn = document.getElementById('darkBtn');
+        const html = document.documentElement;
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        if (savedTheme === 'dark') {
+            lightBtn.classList.remove('active');
+            darkBtn.classList.add('active');
+        }
+
+        lightBtn.addEventListener('click', () => {
+            html.setAttribute('data-theme', 'light');
+            lightBtn.classList.add('active');
+            darkBtn.classList.remove('active');
+            localStorage.setItem('theme', 'light');
+        });
+
+        darkBtn.addEventListener('click', () => {
+            html.setAttribute('data-theme', 'dark');
+            darkBtn.classList.add('active');
+            lightBtn.classList.remove('active');
+            localStorage.setItem('theme', 'dark');
+        });
+
+        // Collapsible Sections
+        document.querySelectorAll('.collapsible').forEach(header => {
+            header.addEventListener('click', function () {
+                this.classList.toggle('active');
+                const content = this.nextElementSibling;
+                content.classList.toggle('active');
+            });
+        });
+
+        // Copy Code
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-block').querySelector('code');
+            const text = codeBlock.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied!';
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Tab Switching
+        function switchTab(evt, tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        // Simulate Build
+        function simulateBuild() {
+            const progressContainer = document.getElementById('buildProgress');
+            const progressBar = document.getElementById('progressBar');
+            const status = document.getElementById('buildStatus');
+
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            const stages = [
+                { progress: 20, text: '📦 Installing dependencies...' },
+                { progress: 40, text: '⚛️ Compiling React components...' },
+                { progress: 60, text: '🎨 Processing Tailwind CSS...' },
+                { progress: 80, text: '📦 Building production bundle...' },
+                { progress: 100, text: '✅ Build complete!' }
+            ];
+
+            let currentStage = 0;
+            const interval = setInterval(() => {
+                if (currentStage < stages.length) {
+                    progressBar.style.width = stages[currentStage].progress + '%';
+                    status.textContent = stages[currentStage].text;
+                    currentStage++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                    }, 2000);
+                }
+            }, 800);
+        }
+
+        // Checklist Functions
+        function resetChecklist() {
+            document.querySelectorAll('.checklist input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        }
+
+        function checkAllItems() {
+            document.querySelectorAll('.checklist input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        }
+
+        // Search Functionality
+        const searchBox = document.getElementById('searchBox');
+        let searchTimeout;
+
+        searchBox.addEventListener('input', function (e) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchTerm = e.target.value.toLowerCase();
+
+                // Remove previous highlights
+                document.querySelectorAll('.highlight').forEach(el => {
+                    const text = el.textContent;
+                    el.replaceWith(document.createTextNode(text));
+                });
+
+                if (searchTerm.length < 3) return;
+
+                // Search through sections
+                document.querySelectorAll('section').forEach(section => {
+                    const text = section.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        section.style.display = 'block';
+
+                        // Highlight matches in text nodes
+                        highlightText(section, searchTerm);
+                    }
+                });
+            }, 300);
+        });
+
+        function highlightText(element, searchTerm) {
+            const walker = document.createTreeWalker(
+                element,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+
+            const textNodes = [];
+            while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+            textNodes.forEach(node => {
+                const text = node.textContent;
+                const lowerText = text.toLowerCase();
+                const index = lowerText.indexOf(searchTerm);
+
+                if (index !== -1 && node.parentElement.tagName !== 'SCRIPT') {
+                    const before = text.substring(0, index);
+                    const match = text.substring(index, index + searchTerm.length);
+                    const after = text.substring(index + searchTerm.length);
+
+                    const span = document.createElement('span');
+                    span.className = 'highlight';
+                    span.textContent = match;
+
+                    const fragment = document.createDocumentFragment();
+                    fragment.appendChild(document.createTextNode(before));
+                    fragment.appendChild(span);
+                    fragment.appendChild(document.createTextNode(after));
+
+                    node.parentNode.replaceChild(fragment, node);
+                }
+            });
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Save checklist state to localStorage
+        document.querySelectorAll('.checklist input[type="checkbox"]').forEach(checkbox => {
+            // Load saved state
+            const saved = localStorage.getItem(checkbox.id);
+            if (saved === 'true') checkbox.checked = true;
+
+            // Save on change
+            checkbox.addEventListener('change', function () {
+                localStorage.setItem(this.id, this.checked);
+            });
+        });
+    </script>
+</body>
+
+</html>
