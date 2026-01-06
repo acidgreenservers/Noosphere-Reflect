@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { parseChat, generateHtml } from '../services/converterService';
 import MetadataEditor from '../components/MetadataEditor';
+import ExportDropdown from '../components/ExportDropdown';
 import {
     ChatTheme,
     SavedChatSession,
@@ -130,6 +131,8 @@ const BasicConverter: React.FC = () => {
     const [editContent, setEditContent] = useState<string>('');
 
     // Load sessions from storage
+    const [searchParams] = useSearchParams();
+
     useEffect(() => {
         const init = async () => {
             await storageService.migrateLegacyData();
@@ -137,8 +140,7 @@ const BasicConverter: React.FC = () => {
             setSavedSessions(sessions);
 
             // Check if we requested a specific session to load via URL
-            const params = new URLSearchParams(window.location.search);
-            const loadId = params.get('load');
+            const loadId = searchParams.get('load');
             if (loadId) {
                 const sessionToLoad = await storageService.getSessionById(loadId);
                 if (sessionToLoad) {
@@ -147,7 +149,7 @@ const BasicConverter: React.FC = () => {
             }
         };
         init();
-    }, [loadSession]);
+    }, [searchParams, loadSession]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -194,7 +196,8 @@ const BasicConverter: React.FC = () => {
                 selectedTheme,
                 userName,
                 aiName,
-                parserMode
+                parserMode,
+                metadata
             );
             setGeneratedHtml(html);
         } catch (err: any) {
@@ -296,7 +299,7 @@ const BasicConverter: React.FC = () => {
             <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link to="/" className="text-gray-400 hover:text-white transition-colors">
+                        <Link to="/hub" className="text-gray-400 hover:text-white transition-colors">
                             ← Back
                         </Link>
                         <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">
@@ -619,13 +622,19 @@ const BasicConverter: React.FC = () => {
                                 <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
                                     <div className="bg-gray-900/50 p-4 border-b border-gray-700 flex justify-between items-center">
                                         <span className="text-sm text-gray-400">Preview (Sandbox)</span>
-                                        <a
-                                            href={URL.createObjectURL(new Blob([generatedHtml], { type: 'text/html' }))}
-                                            download={`${chatTitle.replace(/\s+/g, '_')}.html`}
-                                            className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2"
-                                        >
-                                            <span>⬇️</span> Download HTML
-                                        </a>
+                                        {chatData && (
+                                            <ExportDropdown
+                                                chatData={chatData}
+                                                chatTitle={chatTitle}
+                                                userName={userName}
+                                                aiName={aiName}
+                                                selectedTheme={selectedTheme}
+                                                parserMode={parserMode}
+                                                metadata={metadata}
+                                                buttonText="Download"
+                                                buttonClassName="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2"
+                                            />
+                                        )}
                                     </div>
                                     <iframe
                                         title="Preview"

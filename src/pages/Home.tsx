@@ -1,7 +1,15 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Home: React.FC = () => {
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const navigate = useNavigate();
+
+    const handleNavigation = (path: string) => {
+        navigate(path);
+        setDropdownOpen(false);
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30 flex flex-col items-center justify-center p-8 relative overflow-hidden">
 
@@ -13,51 +21,63 @@ const Home: React.FC = () => {
 
                 {/* Header */}
                 <div className="text-center mb-16 animate-fade-in-down">
-                    <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 drop-shadow-sm">
-                        AI Chat Converter
-                    </h1>
+                    <div className="mb-8">
+                        <h1 className="text-5xl md:text-7xl font-extrabold mb-3 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 drop-shadow-sm">
+                            Noosphere Reflect
+                        </h1>
+                        <p className="text-2xl md:text-3xl font-bold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">
+                            Preserving Meaning Through Memory
+                        </p>
+                    </div>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                        Transform your AI conversations into beautiful, shareable, offline-ready HTML files.
-                        Choose your preferred workflow below.
+                        Transform your AI conversations into beautiful, shareable, offline-ready HTML, Markdown Or JSON Files.
                     </p>
                 </div>
 
                 {/* Cards Container */}
-                <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl mb-16">
+                <div className="flex w-full max-w-2xl mb-16 justify-center">
 
-                    {/* Basic Mode Card */}
-                    <Link to="/basic" className="group relative">
+                    {/* Archives Card with Dropdown */}
+                    <div className="group relative w-full">
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
                         <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-2xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-blue-500/50 transition-all duration-300">
                             <div className="w-16 h-16 bg-blue-900/50 rounded-2xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
-                                ⚡
+                                📦
                             </div>
-                            <h2 className="text-3xl font-bold text-white mb-3">Basic Converter</h2>
+                            <h2 className="text-3xl font-bold text-white mb-3">Archives</h2>
                             <p className="text-gray-400 mb-6 flex-grow">
-                                Fast, offline-ready parsing using standard markers. Perfect for quick exports and maximum privacy.
+                                Transform your AI conversations into beautiful, shareable HTML files. Archive, export, and preserve your chats.
                             </p>
-                            <div className="px-6 py-2 bg-gray-700/50 rounded-full text-blue-300 text-sm font-medium border border-gray-600 group-hover:bg-blue-600/20 group-hover:text-blue-200 group-hover:border-blue-500/50 transition-colors">
-                                Launch Basic Mode
-                            </div>
-                        </div>
-                    </Link>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                                    className="px-6 py-2 bg-gray-700/50 rounded-full text-blue-300 text-sm font-medium border border-gray-600 group-hover:bg-blue-600/20 group-hover:text-blue-200 group-hover:border-blue-500/50 transition-colors flex items-center gap-2 hover:bg-blue-600/30"
+                                >
+                                    Open Archives
+                                    <span className={`text-xs transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>▼</span>
+                                </button>
 
-                    {/* AI Mode Card */}
-                    <Link to="/ai" className="group relative">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
-                        <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-2xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-purple-500/50 transition-all duration-300">
-                            <div className="w-16 h-16 bg-purple-900/50 rounded-2xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
-                                🤖
-                            </div>
-                            <h2 className="text-3xl font-bold text-white mb-3">AI Studio</h2>
-                            <p className="text-gray-400 mb-6 flex-grow">
-                                Powered by Gemini. Intelligently parses complex logs, structuring thoughts and code blocks automatically.
-                            </p>
-                            <div className="px-6 py-2 bg-gray-700/50 rounded-full text-purple-300 text-sm font-medium border border-gray-600 group-hover:bg-purple-600/20 group-hover:text-purple-200 group-hover:border-purple-500/50 transition-colors">
-                                Enter AI Studio
+                                {dropdownOpen && (
+                                    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50">
+                                        <button
+                                            onClick={() => handleNavigation('/basic')}
+                                            className="w-full px-4 py-3 text-left text-gray-100 hover:bg-blue-600/20 transition-colors border-b border-gray-700 text-sm font-medium flex items-center gap-2"
+                                        >
+                                            <span>⚡</span>
+                                            Converter
+                                        </button>
+                                        <button
+                                            onClick={() => handleNavigation('/hub')}
+                                            className="w-full px-4 py-3 text-left text-gray-100 hover:bg-blue-600/20 transition-colors text-sm font-medium flex items-center gap-2"
+                                        >
+                                            <span>📚</span>
+                                            Archive Hub
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    </Link>
+                    </div>
 
                 </div>
 

@@ -4,8 +4,34 @@ import { Link } from 'react-router-dom';
 const Changelog: React.FC = () => {
     const changes = [
         {
+            version: 'v0.0.8',
+            date: 'Jan 5, 2026',
+            title: 'Landing Page & UX Polish',
+            items: [
+                'Updated hero text to "Noosphere Reflect" with "Preserving Meaning Through Memory" tagline.',
+                'Integrated tagline into main hero styling with matching gradient effect.',
+                'Added Archives card dropdown menu (Converter or Archive Hub selection).',
+                'Updated hero description to highlight HTML, Markdown, and JSON export formats.',
+                'Fixed BasicConverter back button to navigate to Archive Hub (/hub) instead of home.',
+            ],
+        },
+        {
+            version: 'v0.0.7',
+            date: 'Jan 5, 2026',
+            title: 'Export Formats & Navigation Overhaul',
+            items: [
+                'Added Markdown (.md) and JSON export formats alongside HTML.',
+                'Implemented Noosphere Reflect branding across all export formats.',
+                'Fixed session auto-load from ArchiveHub with parser mode preservation.',
+                'Simplified ArchiveHub metadata display (capitalized model names only).',
+                'Removed unused AI Converter page (consolidated to BasicConverter).',
+                'Restructured routing: Home as landing page, ArchiveHub at /hub.',
+                'Added back-to-home navigation from ArchiveHub icon.',
+            ],
+        },
+        {
             version: 'v0.0.6',
-            date: 'Current Release',
+            date: 'Jan 4, 2026',
             title: 'Architecture Split & AI Foundation',
             items: [
                 'Refactored application into a multi-page architecture.',

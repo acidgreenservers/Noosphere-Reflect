@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { SavedChatSession, ChatTheme } from '../types';
-import { generateHtml } from '../services/converterService';
+import { generateHtml, generateMarkdown, generateJson } from '../services/converterService';
 import { storageService } from '../services/storageService';
 
 const ArchiveHub: React.FC = () => {
@@ -9,6 +9,8 @@ const ArchiveHub: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
+    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
+    const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
     useEffect(() => {
         const init = async () => {
@@ -75,33 +77,61 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleBatchExport = () => {
+    const handleBatchExport = (format: 'html' | 'markdown' | 'json') => {
         const selectedSessions = sessions.filter(s => selectedIds.has(s.id));
         selectedSessions.forEach(session => {
-            // Re-generate HTML for the session.
-            // Default values if missing
+            // Get default values if missing
             const theme = session.selectedTheme || ChatTheme.DarkDefault;
             const userName = session.userName || 'User';
             const aiName = session.aiName || 'AI';
             // We use the parser mode saved in session
 
             if (session.chatData) {
-                const htmlContent = generateHtml(
-                    session.chatData, // chatData
-                    session.metadata?.title || session.chatTitle || 'AI Chat Export', // title
-                    theme, // theme
-                    userName, // userName
-                    aiName, // aiName
-                    session.parserMode // parserMode
-                );
+                let content: string;
+                let mimeType: string;
+                let extension: string;
 
-                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+
+                switch (format) {
+                    case 'html':
+                        content = generateHtml(
+                            session.chatData,
+                            title,
+                            theme,
+                            userName,
+                            aiName,
+                            session.parserMode,
+                            session.metadata
+                        );
+                        mimeType = 'text/html';
+                        extension = 'html';
+                        break;
+                    case 'markdown':
+                        content = generateMarkdown(
+                            session.chatData,
+                            title,
+                            userName,
+                            aiName,
+                            session.metadata
+                        );
+                        mimeType = 'text/markdown';
+                        extension = 'md';
+                        break;
+                    case 'json':
+                        content = generateJson(session.chatData, session.metadata);
+                        mimeType = 'application/json';
+                        extension = 'json';
+                        break;
+                }
+
+                const blob = new Blob([content], { type: mimeType });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 // Sanitize filename
-                const filename = (session.metadata?.title || session.chatTitle || 'exported_chat').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                a.download = `${filename}.html`;
+                const filename = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                a.download = `${filename}.${extension}`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -109,6 +139,7 @@ const ArchiveHub: React.FC = () => {
             }
         });
         // Deselect after export? optional. Let's keep selection for now in case user wants to do something else.
+        setExportDropdownOpen(false);
     };
 
     return (
@@ -116,7 +147,7 @@ const ArchiveHub: React.FC = () => {
             {/* Header */}
             <header className="sticky top-0 z-50 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -125,7 +156,7 @@ const ArchiveHub: React.FC = () => {
                         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                             Archival Hub
                         </h1>
-                    </div>
+                    </Link>
 
                     <div className="flex items-center gap-4">
                         <Link
@@ -140,6 +171,18 @@ const ArchiveHub: React.FC = () => {
                     </div>
                 </div>
             </header>
+
+            {/* Noosphere Reflect Header */}
+            <div className="bg-gradient-to-r from-blue-900/20 via-purple-900/20 to-blue-900/20 border-b border-blue-500/20 py-6">
+                <div className="max-w-7xl mx-auto px-4">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent text-center mb-2">
+                        Noosphere Reflect
+                    </h2>
+                    <p className="text-center text-gray-400 text-sm">
+                        Preserving Meaning Through Memory
+                    </p>
+                </div>
+            </div>
 
             <main className="max-w-7xl mx-auto px-4 py-8">
                 {/* Search & Filters */}
@@ -193,12 +236,16 @@ const ArchiveHub: React.FC = () => {
                                 </div>
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex gap-2">
-                                        <span className="px-2 py-1 rounded-md bg-white/5 text-xs font-medium text-gray-400 border border-white/5">
-                                            {session.parserMode}
-                                        </span>
                                         {session.metadata?.model && (
                                             <span className="px-2 py-1 rounded-md bg-blue-500/10 text-xs font-medium text-blue-400 border border-blue-500/20">
-                                                {session.metadata.model}
+                                                {(() => {
+                                                    // Capitalize model name properly (e.g., "gpt-4" → "GPT-4", "claude" → "Claude")
+                                                    const model = session.metadata.model;
+                                                    return model
+                                                        .split('-')
+                                                        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                                                        .join('-');
+                                                })()}
                                             </span>
                                         )}
                                     </div>
@@ -264,16 +311,42 @@ const ArchiveHub: React.FC = () => {
                         {selectedIds.size} selected
                     </span>
 
-                    <button
-                        onClick={handleBatchExport}
-                        className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
-                        title="Export each selected chat as a separate HTML file"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Export Selected
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
+                            className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                            title="Export each selected chat in your chosen format"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Export Selected
+                            <span className="text-xs">▼</span>
+                        </button>
+
+                        {exportDropdownOpen && (
+                            <div className="absolute left-0 mt-2 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+                                <button
+                                    onClick={() => handleBatchExport('html')}
+                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 text-sm"
+                                >
+                                    HTML (Standalone)
+                                </button>
+                                <button
+                                    onClick={() => handleBatchExport('markdown')}
+                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 text-sm"
+                                >
+                                    Markdown (.md)
+                                </button>
+                                <button
+                                    onClick={() => handleBatchExport('json')}
+                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors text-sm"
+                                >
+                                    JSON (Data Only)
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
                     <button
                         className="flex items-center gap-2 text-sm font-medium text-purple-400/50 cursor-not-allowed"

@@ -1084,7 +1084,8 @@ export const generateHtml = (
   theme: ChatTheme = ChatTheme.DarkDefault,
   userName: string = 'User',
   aiName: string = 'AI',
-  parserMode: ParserMode = ParserMode.Basic
+  parserMode: ParserMode = ParserMode.Basic,
+  metadata?: ChatMetadata
 ): string => {
   const selectedThemeClasses = themeMap[theme];
   const {
@@ -1278,11 +1279,106 @@ export const generateHtml = (
 </head>
 <body class="p-8">
     <div class="max-w-4xl mx-auto my-8 p-6 ${containerBg} rounded-lg shadow-xl">
-        <h1 class="text-4xl font-extrabold text-center ${titleText} mb-8">${title}</h1>
+        <h1 class="text-4xl font-extrabold text-center ${titleText} mb-4">${title}</h1>
+
+        <!-- Metadata Section -->
+        <div class="text-center text-sm ${bodyText} opacity-70 mb-8 space-y-1">
+            ${metadata?.model ? `<div><strong>Model:</strong> ${metadata.model}</div>` : ''}
+            ${metadata?.date ? `<div><strong>Date:</strong> ${new Date(metadata.date).toLocaleString()}</div>` : ''}
+            ${metadata?.sourceUrl ? `<div><strong>Source:</strong> <a href="${metadata.sourceUrl}" class="underline hover:opacity-80" target="_blank">${metadata.sourceUrl}</a></div>` : ''}
+            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>Tags:</strong> ${metadata.tags.join(', ')}</div>` : ''}
+        </div>
+
         <div class="space-y-4 flex flex-col w-full">
             ${chatMessagesHtml}
+        </div>
+
+        <!-- Noosphere Footer -->
+        <div class="text-center text-xs ${bodyText} opacity-50 mt-12 pt-6 border-t border-gray-700">
+            Exported by <strong>Noosphere</strong> - Reflect Meaning Through Memory
         </div>
     </div>
 </body>
 </html>`;
+};
+
+/**
+ * Generates a Markdown representation of a chat session.
+ * @param chatData The parsed chat data with messages and metadata
+ * @param title The title of the chat
+ * @param userName Custom name for user messages
+ * @param aiName Custom name for AI messages
+ * @param metadata Optional metadata to include in the output
+ * @returns A string containing the markdown content
+ */
+export const generateMarkdown = (
+  chatData: ChatData,
+  title: string = 'AI Chat Export',
+  userName: string = 'User',
+  aiName: string = 'AI',
+  metadata?: ChatMetadata
+): string => {
+  const lines: string[] = [];
+
+  // Header section
+  lines.push(`# ${title}\n`);
+
+  if (metadata) {
+    if (metadata.model) lines.push(`**Model:** ${metadata.model}`);
+    if (metadata.date) lines.push(`**Date:** ${new Date(metadata.date).toLocaleString()}`);
+    if (metadata.sourceUrl) lines.push(`**Source:** [${metadata.sourceUrl}](${metadata.sourceUrl})`);
+    if (metadata.tags && metadata.tags.length > 0) lines.push(`**Tags:** ${metadata.tags.join(', ')}`);
+    if (lines.length > 1) lines.push('');
+    lines.push('---\n');
+  }
+
+  // Messages
+  chatData.messages.forEach((message) => {
+    const speakerName = message.type === ChatMessageType.Prompt ? userName : aiName;
+    lines.push(`## ${speakerName}:\n`);
+
+    // Convert thought blocks to collapsible details
+    let content = message.content;
+    content = content.replace(
+      /<thought>([\s\S]*?)<\/thought>/g,
+      '<details>\n<summary>Thought process (click to expand)</summary>\n\n$1\n\n</details>'
+    );
+
+    lines.push(content);
+    lines.push('');
+  });
+
+  // Footer
+  lines.push('---\n');
+  lines.push('# Noosphere Reflect');
+  lines.push('*Meaning Through Memory*');
+
+  return lines.join('\n');
+};
+
+/**
+ * Generates a JSON representation of a chat session.
+ * @param chatData The parsed chat data with messages and metadata
+ * @param metadata Optional metadata to include in the output
+ * @returns A JSON string containing the exported data
+ */
+export const generateJson = (
+  chatData: ChatData,
+  metadata?: ChatMetadata
+): string => {
+  const exportData = {
+    exportedBy: {
+      tool: 'Noosphere Reflect',
+      tagline: 'Meaning Through Memory'
+    },
+    metadata: metadata || chatData.metadata || {
+      title: 'Untitled Chat',
+      model: '',
+      date: new Date().toISOString(),
+      tags: []
+    },
+    messages: chatData.messages
+  };
+
+  return JSON.stringify(exportData, null, 2);
 };
