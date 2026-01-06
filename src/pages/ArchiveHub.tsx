@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { SavedChatSession, ChatTheme } from '../types';
+import { SavedChatSession, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
 import { generateHtml, generateMarkdown, generateJson } from '../services/converterService';
 import { storageService } from '../services/storageService';
+import SettingsModal from '../components/SettingsModal';
 
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSession[]>([]);
@@ -11,12 +12,20 @@ const ArchiveHub: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
     const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+    const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+    const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
     useEffect(() => {
         const init = async () => {
             setIsLoading(true);
             await storageService.migrateLegacyData();
+
+            // Load settings
+            const settings = await storageService.getSettings();
+            setAppSettings(settings);
+
             await loadSessions();
+            await checkExtensionBridge();
             setIsLoading(false);
         };
         init();
@@ -32,6 +41,59 @@ const ArchiveHub: React.FC = () => {
         } catch (e) {
             console.error('Failed to load sessions', e);
         }
+    };
+
+    const checkExtensionBridge = async () => {
+        // Use window messaging to communicate with localhost-bridge content script
+        return new Promise<void>((resolve) => {
+            try {
+                // Send message to content script
+                window.postMessage({ type: 'NOOSPHERE_CHECK_BRIDGE' }, '*');
+
+                // Listen for response
+                const handler = async (event: MessageEvent) => {
+                    if (event.source !== window) return;
+
+                    if (event.data.type === 'NOOSPHERE_BRIDGE_RESPONSE') {
+                        window.removeEventListener('message', handler);
+
+                        const { noosphere_bridge_data, noosphere_bridge_flag } = event.data.data;
+
+                        if (noosphere_bridge_flag?.pending && noosphere_bridge_data) {
+                            const session = noosphere_bridge_data;
+
+                            // Save to web app's IndexedDB
+                            await storageService.saveSession(session);
+
+                            // Tell content script to clear bridge
+                            window.postMessage({ type: 'NOOSPHERE_CLEAR_BRIDGE' }, '*');
+
+                            // Reload sessions list
+                            await loadSessions();
+
+                            // Show success message
+                            console.log(`✅ Imported from extension: ${session.metadata?.title || session.chatTitle}`);
+                        }
+
+                        resolve();
+                    } else if (event.data.type === 'NOOSPHERE_BRIDGE_ERROR' || event.data.type === 'NOOSPHERE_BRIDGE_CLEARED') {
+                        window.removeEventListener('message', handler);
+                        resolve();
+                    }
+                };
+
+                window.addEventListener('message', handler);
+
+                // Timeout after 2 seconds (content script might not be available)
+                setTimeout(() => {
+                    window.removeEventListener('message', handler);
+                    resolve();
+                }, 2000);
+            } catch (error) {
+                console.warn('Extension bridge check failed:', error);
+                resolve();
+            }
+        });
     };
 
     const filteredSessions = sessions.filter(session => {
@@ -142,6 +204,11 @@ const ArchiveHub: React.FC = () => {
         setExportDropdownOpen(false);
     };
 
+    const handleSaveSettings = async (newSettings: AppSettings) => {
+        await storageService.saveSettings(newSettings);
+        setAppSettings(newSettings);
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30 pb-24">
             {/* Header */}
@@ -159,6 +226,16 @@ const ArchiveHub: React.FC = () => {
                     </Link>
 
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setSettingsModalOpen(true)}
+                            className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            title="Settings"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
                         <Link
                             to="/converter"
                             className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-2"
@@ -321,11 +398,11 @@ const ArchiveHub: React.FC = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                             Export Selected
-                            <span className="text-xs">▼</span>
+                            <span className="text-xs">▲</span>
                         </button>
 
                         {exportDropdownOpen && (
-                            <div className="absolute left-0 mt-2 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+                            <div className="absolute left-0 bottom-full mb-2 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
                                 <button
                                     onClick={() => handleBatchExport('html')}
                                     className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 text-sm"
@@ -381,6 +458,14 @@ const ArchiveHub: React.FC = () => {
                     </button>
                 </div>
             )}
+
+            {/* Settings Modal */}
+            <SettingsModal
+                isOpen={settingsModalOpen}
+                onClose={() => setSettingsModalOpen(false)}
+                settings={appSettings}
+                onSave={handleSaveSettings}
+            />
         </div>
     );
 };

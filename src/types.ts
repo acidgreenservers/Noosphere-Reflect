@@ -49,6 +49,7 @@ export enum ParserMode {
   LlamacoderHtml = 'llamacoder-html',
   ClaudeHtml = 'claude-html',
   LeChatHtml = 'lechat-html',
+  ChatGptHtml = 'chatgpt-html',
 }
 
 export interface SavedChatSession {
@@ -64,3 +65,11 @@ export interface SavedChatSession {
   chatData?: ChatData;
   metadata?: ChatMetadata; // Explicit metadata for easier hub access
 }
+
+export interface AppSettings {
+  defaultUserName: string;
+}
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  defaultUserName: 'User'
+};

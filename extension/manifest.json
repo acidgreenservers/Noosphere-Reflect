@@ -1,0 +1,90 @@
+{
+  "manifest_version": 3,
+  "name": "Noosphere Reflect Bridge",
+  "version": "0.1.0",
+  "description": "Capture AI conversations from Claude, LeChat, and Llamacoder directly to Noosphere Reflect archive",
+
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "https://claude.ai/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://chat.mistral.ai/*",
+    "https://llamacoder.together.ai/*"
+  ],
+
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/claude-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/claude-capture.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/gpt-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/chatgpt-capture.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://chat.mistral.ai/*"],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/lechat-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/lechat-capture.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://llamacoder.together.ai/*"],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/llamacoder-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/llamacoder-capture.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["http://localhost:3000/*"],
+      "js": ["content-scripts/localhost-bridge.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+
+  "action": {
+    "default_title": "Noosphere Reflect Bridge"
+  }
+}

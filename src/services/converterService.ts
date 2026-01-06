@@ -95,6 +95,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseLeChatHtml(input);
   }
 
+  if (mode === ParserMode.ChatGptHtml) {
+    return parseChatGptHtml(input);
+  }
+
   // Basic Mode (Regex / JSON Detection)
   let detectedType: 'markdown' | 'json';
 
@@ -1085,7 +1089,8 @@ export const generateHtml = (
   userName: string = 'User',
   aiName: string = 'AI',
   parserMode: ParserMode = ParserMode.Basic,
-  metadata?: ChatMetadata
+  metadata?: ChatMetadata,
+  includeFooter: boolean = true
 ): string => {
   const selectedThemeClasses = themeMap[theme];
   const {
@@ -1293,10 +1298,13 @@ export const generateHtml = (
             ${chatMessagesHtml}
         </div>
 
+        ${includeFooter ? `
         <!-- Noosphere Footer -->
-        <div class="text-center text-xs ${bodyText} opacity-50 mt-12 pt-6 border-t border-gray-700">
-            Exported by <strong>Noosphere</strong> - Reflect Meaning Through Memory
+        <div class="text-center text-xs ${bodyText} opacity-50 mt-16 pt-8 border-t border-gray-700">
+            <p class="mt-8"><strong>Noosphere Reflect</strong></p>
+            <p class="text-xs italic">${'Preserving Meaning Through Memory'}</p>
         </div>
+        ` : ''}
     </div>
 </body>
 </html>`;
@@ -1354,6 +1362,51 @@ export const generateMarkdown = (
   lines.push('*Meaning Through Memory*');
 
   return lines.join('\n');
+};
+
+/**
+ * Specialized parser for ChatGPT HTML exports.
+ * Extracts messages from the specific DOM structure used by ChatGPT.
+ */
+const parseChatGptHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Find all conversation turns (each turn is an article with data-turn-id)
+  const turns = doc.querySelectorAll('article[data-turn-id]');
+
+  turns.forEach((turn) => {
+    const role = (turn as HTMLElement).getAttribute('data-turn');
+
+    if (role === 'user') {
+      // Extract user message from bubble
+      const messageBubble = turn.querySelector('.user-message-bubble-color') as HTMLElement;
+      if (messageBubble) {
+        const content = extractMarkdownFromHtml(messageBubble.innerHTML);
+        if (content) {
+          messages.push({
+            type: ChatMessageType.Prompt,
+            content: content.trim()
+          });
+        }
+      }
+    } else if (role === 'assistant') {
+      // Extract assistant message
+      const messageDiv = turn.querySelector('[data-message-author-role="assistant"]') as HTMLElement;
+      if (messageDiv) {
+        const content = extractMarkdownFromHtml(messageDiv.innerHTML);
+        if (content) {
+          messages.push({
+            type: ChatMessageType.Response,
+            content: content.trim()
+          });
+        }
+      }
+    }
+  });
+
+  return { messages };
 };
 
 /**

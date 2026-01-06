@@ -1,5 +1,20 @@
 ## Title
-<div class="min-w-0 flex-1"><div class="truncate font-base-bold">Greeting Claude</div></div>
+<button class="inline-flex
+  items-center
+  justify-center
+  relative
+  shrink-0
+  can-focus
+  select-none
+  disabled:pointer-events-none
+  disabled:opacity-50
+  disabled:shadow-none
+  disabled:drop-shadow-none border-transparent
+          transition
+          font-base
+          duration-300
+          ease-[cubic-bezier(0.165,0.85,0.45,1)] h-9 px-4 py-2 rounded-lg min-w-[5rem] active:scale-[0.985] whitespace-nowrap !text-text-300 hover:!text-text-100 !shrink !min-w-0 !px-2 !py-0 !scale-100 !h-7 !rounded-r-none active:!bg-bg-500 Button_ghost__BUAoh" type="button" data-testid="chat-title-button"><div class="min-w-0 flex-1"><div class="truncate font-base-bold">Greeting Claude</div></div></button>
+
 
 ### Human Prompt
 <div data-test-render-count="2"><div class="mb-1 mt-6 group"><div class="flex flex-col items-end gap-1"><div class="group relative inline-flex gap-2 bg-bg-300 rounded-xl pl-2.5 py-2.5 break-words text-text-100 transition-all max-w-[75ch] flex-col !px-4 max-w-[85%]" style="opacity: 1; transform: none;"><div class="flex flex-row gap-2 relative"><div class="flex-1"><div data-testid="user-message" class="font-large !font-user-message grid grid-cols-1 gap-2 py-0.5 relative" style="max-height: none; overflow: hidden; position: relative;"><p class="whitespace-pre-wrap break-words">hello claude!</p></div></div></div></div><div class="flex justify-start opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition" role="group" aria-label="Message actions"><div class="text-text-300"><div class="text-text-300 flex items-stretch justify-between"><span class="text-text-500 text-xs flex items-center mr-2" data-state="closed">7:17 PM</span><div class="flex items-center"><div class="w-fit" data-state="closed"><button class="inline-flex

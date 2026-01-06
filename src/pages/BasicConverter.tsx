@@ -70,7 +70,7 @@ const themeMap: Record<ChatTheme, ThemeClasses> = {
 const BasicConverter: React.FC = () => {
     const [inputContent, setInputContent] = useState<string>('');
     const [chatTitle, setChatTitle] = useState<string>('AI Chat Export');
-    const [userName, setUserName] = useState<string>('User');
+    const [userName, setUserName] = useState<string>('');
     const [aiName, setAiName] = useState<string>('AI');
     const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -116,7 +116,9 @@ const BasicConverter: React.FC = () => {
                 session.selectedTheme,
                 session.userName,
                 session.aiName,
-                session.parserMode || ParserMode.Basic
+                session.parserMode || ParserMode.Basic,
+                undefined,
+                false
             );
             setGeneratedHtml(html);
         } else {
@@ -136,6 +138,11 @@ const BasicConverter: React.FC = () => {
     useEffect(() => {
         const init = async () => {
             await storageService.migrateLegacyData();
+
+            // Load settings to get default username
+            const settings = await storageService.getSettings();
+            setUserName(settings.defaultUserName);
+
             const sessions = await storageService.getAllSessions();
             setSavedSessions(sessions);
 
@@ -197,7 +204,8 @@ const BasicConverter: React.FC = () => {
                 userName,
                 aiName,
                 parserMode,
-                metadata
+                metadata,
+                false
             );
             setGeneratedHtml(html);
         } catch (err: any) {
@@ -283,7 +291,9 @@ const BasicConverter: React.FC = () => {
             selectedTheme,
             userName,
             aiName,
-            parserMode
+            parserMode,
+            undefined,
+            false
         );
         setGeneratedHtml(html);
     };

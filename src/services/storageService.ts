@@ -1,8 +1,9 @@
-import { SavedChatSession } from '../types';
+import { SavedChatSession, AppSettings, DEFAULT_SETTINGS } from '../types';
 
 const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'sessions';
+const SETTINGS_STORE_NAME = 'settings';
 
 class StorageService {
     private db: IDBDatabase | null = null;
@@ -15,8 +16,16 @@ class StorageService {
 
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const oldVersion = event.oldVersion;
+
+                // Create sessions store if upgrading from v0
+                if (oldVersion < 1 && !db.objectStoreNames.contains(STORE_NAME)) {
                     db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+
+                // Create settings store if upgrading from v1
+                if (oldVersion < 2 && !db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
+                    db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'key' });
                 }
             };
 
@@ -73,6 +82,46 @@ class StorageService {
             const transaction = db.transaction(STORE_NAME, 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.delete(id);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get application settings from IndexedDB.
+     * Returns default settings if none exist.
+     */
+    async getSettings(): Promise<AppSettings> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(SETTINGS_STORE_NAME, 'readonly');
+            const store = transaction.objectStore(SETTINGS_STORE_NAME);
+            const request = store.get('appSettings');
+
+            request.onsuccess = () => {
+                if (request.result) {
+                    resolve(request.result.value);
+                } else {
+                    resolve({ ...DEFAULT_SETTINGS });
+                }
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Save application settings to IndexedDB.
+     */
+    async saveSettings(settings: AppSettings): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(SETTINGS_STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(SETTINGS_STORE_NAME);
+            const request = store.put({
+                key: 'appSettings',
+                value: settings
+            });
 
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
