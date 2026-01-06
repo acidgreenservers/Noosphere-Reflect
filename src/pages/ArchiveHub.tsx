@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { SavedChatSession, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
 import { generateHtml, generateMarkdown, generateJson } from '../services/converterService';
 import { storageService } from '../services/storageService';
@@ -14,6 +14,7 @@ const ArchiveHub: React.FC = () => {
     const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
     const [settingsModalOpen, setSettingsModalOpen] = useState(false);
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+    const location = useLocation();
 
     useEffect(() => {
         const init = async () => {
@@ -29,7 +30,7 @@ const ArchiveHub: React.FC = () => {
             setIsLoading(false);
         };
         init();
-    }, []);
+    }, [location]);
 
     // Reload sessions when page comes into focus, becomes visible, or session is imported
     useEffect(() => {
