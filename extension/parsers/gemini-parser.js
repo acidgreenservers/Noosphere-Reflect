@@ -3,21 +3,11 @@
  * Extracts conversation data from Google Gemini HTML exports
  */
 
-// Constructor functions to mimic TypeScript types in vanilla JS
-function ChatMessage(type, content) {
-  this.type = type;
-  this.content = content;
-}
-
-function ChatData(messages) {
-  this.messages = messages;
-}
-
-// Type constants
-const ChatMessageType = {
-  Prompt: 'prompt',
-  Response: 'response'
-};
+/**
+ * Gemini HTML Parser for Extension
+ * Extracts conversation data from Google Gemini HTML exports
+ * Dependencies: types.js (loaded before this script)
+ */
 
 /**
  * Extracts title from Gemini page

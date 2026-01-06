@@ -14,7 +14,9 @@ chrome.runtime.onInstalled.addListener(() => {
       'https://chatgpt.com/*',
       'https://chat.openai.com/*',
       'https://chat.mistral.ai/*',
-      'https://llamacoder.together.ai/*'
+      'https://llamacoder.together.ai/*',
+      'https://gemini.google.com/*',
+      'https://aistudio.google.com/*'
     ]
   });
 });
