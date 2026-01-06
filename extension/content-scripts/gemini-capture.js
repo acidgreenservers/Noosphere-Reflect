@@ -10,24 +10,49 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     captureGeminiChat()
       .then(result => {
         sendResponse({ success: true, title: result.title });
-        chrome.runtime.sendMessage({
-          action: 'CAPTURE_SUCCESS',
-          title: result.title
-        });
+        chrome.runtime.sendMessage({ action: 'CAPTURE_SUCCESS', title: result.title });
       })
-      .catch(error => {
-        sendResponse({ success: false, error: error.message });
-        chrome.runtime.sendMessage({
-          action: 'CAPTURE_ERROR',
-          error: error.message
-        });
-        showNotification(`Error: ${error.message}`, 'error');
-      });
-    return true; // Keep channel open for async
+      .catch(error => handleError(error, sendResponse));
+    return true;
+  }
+
+  if (request.action === 'COPY_MARKDOWN') {
+    handleCopyAction('markdown', sendResponse);
+    return true;
+  }
+
+  if (request.action === 'COPY_JSON') {
+    handleCopyAction('json', sendResponse);
+    return true;
   }
 });
 
-async function captureGeminiChat() {
+function handleError(error, sendResponse) {
+  sendResponse({ success: false, error: error.message });
+  chrome.runtime.sendMessage({ action: 'CAPTURE_ERROR', error: error.message });
+  showNotification(`Error: ${error.message}`, 'error');
+}
+
+async function handleCopyAction(format, sendResponse) {
+  try {
+    const session = await extractSessionData();
+    let content = '';
+
+    if (format === 'markdown') {
+      content = serializeAsMarkdown(session.chatData, session.metadata);
+    } else {
+      content = serializeAsJson(session.chatData);
+    }
+
+    await navigator.clipboard.writeText(content);
+    showNotification(`✅ Copied as ${format.toUpperCase()}!`);
+    sendResponse({ success: true });
+  } catch (error) {
+    handleError(error, sendResponse);
+  }
+}
+
+async function extractSessionData() {
   // 1. Extract full HTML
   const htmlContent = document.documentElement.outerHTML;
 
@@ -42,7 +67,7 @@ async function captureGeminiChat() {
   const userName = await getUsernameFromWebApp();
 
   // 5. Create session object
-  const session = new SavedChatSession({
+  return new SavedChatSession({
     id: generateSessionId(),
     name: title,
     date: timestamp,
@@ -62,6 +87,11 @@ async function captureGeminiChat() {
       window.location.href
     )
   });
+}
+
+async function captureGeminiChat() {
+  const session = await extractSessionData();
+  const title = session.name;
 
   // 6. Check storage quota
   if (await isStorageQuotaWarning()) {

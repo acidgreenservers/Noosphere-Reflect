@@ -10,39 +10,56 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     captureChatGptChat()
       .then(result => {
         sendResponse({ success: true, title: result.title });
-        chrome.runtime.sendMessage({
-          action: 'CAPTURE_SUCCESS',
-          title: result.title
-        });
+        chrome.runtime.sendMessage({ action: 'CAPTURE_SUCCESS', title: result.title });
       })
-      .catch(error => {
-        sendResponse({ success: false, error: error.message });
-        chrome.runtime.sendMessage({
-          action: 'CAPTURE_ERROR',
-          error: error.message
-        });
-        showNotification(`Error: ${error.message}`, 'error');
-      });
-    return true; // Keep channel open for async
+      .catch(error => handleError(error, sendResponse));
+    return true;
+  }
+
+  if (request.action === 'COPY_MARKDOWN') {
+    handleCopyAction('markdown', sendResponse);
+    return true;
+  }
+
+  if (request.action === 'COPY_JSON') {
+    handleCopyAction('json', sendResponse);
+    return true;
   }
 });
 
-async function captureChatGptChat() {
-  // 1. Extract full HTML
+function handleError(error, sendResponse) {
+  sendResponse({ success: false, error: error.message });
+  chrome.runtime.sendMessage({ action: 'CAPTURE_ERROR', error: error.message });
+  showNotification(`Error: ${error.message}`, 'error');
+}
+
+async function handleCopyAction(format, sendResponse) {
+  try {
+    const session = await extractSessionData();
+    let content = '';
+
+    if (format === 'markdown') {
+      content = serializeAsMarkdown(session.chatData, session.metadata);
+    } else {
+      content = serializeAsJson(session.chatData);
+    }
+
+    await navigator.clipboard.writeText(content);
+    showNotification(`✅ Copied as ${format.toUpperCase()}!`);
+    sendResponse({ success: true });
+  } catch (error) {
+    handleError(error, sendResponse);
+  }
+}
+
+async function extractSessionData() {
   const htmlContent = document.documentElement.outerHTML;
-
-  // 2. Parse using GPT parser
   const chatData = parseChatGptHtml(htmlContent);
-
-  // 3. Extract metadata from page
   const title = extractPageTitle() || 'ChatGPT Conversation';
   const timestamp = new Date().toISOString();
-
-  // 4. Get username from settings (extension storage)
   const userName = await getUsernameFromWebApp();
 
-  // 5. Create session object
-  const session = new SavedChatSession({
+  return new SavedChatSession({
     id: generateSessionId(),
     name: title,
     date: timestamp,
@@ -53,22 +70,18 @@ async function captureChatGptChat() {
     selectedTheme: ChatTheme.DarkDefault,
     parserMode: ParserMode.ChatGptHtml,
     chatData: chatData,
-    metadata: new ChatMetadata(
-      title,
-      'ChatGPT',
-      timestamp,
-      [],
-      '',
-      window.location.href
-    )
+    metadata: new ChatMetadata(title, 'ChatGPT', timestamp, [], '', window.location.href)
   });
+}
 
-  // 6. Check storage quota
+async function captureChatGptChat() {
+  const session = await extractSessionData();
+  const title = session.name;
+
   if (await isStorageQuotaWarning()) {
     showNotification('⚠️ Storage nearly full! Consider exporting as JSON.', 'warning');
   }
 
-  // 7. Save to chrome.storage.local bridge
   try {
     const result = await saveToBridge(session);
     showNotification(`✅ Chat archived! (${formatBytes(result.size)})`);
@@ -76,7 +89,6 @@ async function captureChatGptChat() {
   } catch (error) {
     if (error.message.includes('too large')) {
       showNotification('Chat too large. Exporting as JSON...', 'info');
-      // TODO: Trigger JSON download instead
       throw error;
     }
     throw error;

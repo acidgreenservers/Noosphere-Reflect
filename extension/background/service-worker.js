@@ -5,9 +5,58 @@
 
 // Create context menu on install
 chrome.runtime.onInstalled.addListener(() => {
+  // Main Archive Action
   chrome.contextMenus.create({
     id: 'noosphere-archive-chat',
     title: 'Archive Chat to Noosphere Reflect',
+    contexts: ['page'],
+    documentUrlPatterns: [
+      'https://claude.ai/*',
+      'https://chatgpt.com/*',
+      'https://chat.openai.com/*',
+      'https://chat.mistral.ai/*',
+      'https://llamacoder.together.ai/*',
+      'https://gemini.google.com/*',
+      'https://aistudio.google.com/*'
+    ]
+  });
+
+  // Separator
+  chrome.contextMenus.create({
+    id: 'separator-1',
+    type: 'separator',
+    contexts: ['page'],
+    documentUrlPatterns: [
+      'https://claude.ai/*',
+      'https://chatgpt.com/*',
+      'https://chat.openai.com/*',
+      'https://chat.mistral.ai/*',
+      'https://llamacoder.together.ai/*',
+      'https://gemini.google.com/*',
+      'https://aistudio.google.com/*'
+    ]
+  });
+
+  // Copy as Markdown
+  chrome.contextMenus.create({
+    id: 'noosphere-copy-markdown',
+    title: 'Copy Chat as Markdown',
+    contexts: ['page'],
+    documentUrlPatterns: [
+      'https://claude.ai/*',
+      'https://chatgpt.com/*',
+      'https://chat.openai.com/*',
+      'https://chat.mistral.ai/*',
+      'https://llamacoder.together.ai/*',
+      'https://gemini.google.com/*',
+      'https://aistudio.google.com/*'
+    ]
+  });
+
+  // Copy as JSON
+  chrome.contextMenus.create({
+    id: 'noosphere-copy-json',
+    title: 'Copy Chat as JSON',
     contexts: ['page'],
     documentUrlPatterns: [
       'https://claude.ai/*',
@@ -23,10 +72,24 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'noosphere-archive-chat') {
+  let action = '';
+
+  switch (info.menuItemId) {
+    case 'noosphere-archive-chat':
+      action = 'CAPTURE_CHAT';
+      break;
+    case 'noosphere-copy-markdown':
+      action = 'COPY_MARKDOWN';
+      break;
+    case 'noosphere-copy-json':
+      action = 'COPY_JSON';
+      break;
+  }
+
+  if (action) {
     // Send message to content script to capture the chat
     chrome.tabs.sendMessage(tab.id, {
-      action: 'CAPTURE_CHAT'
+      action: action
     }).catch(error => {
       console.error('Failed to send message to content script:', error);
     });
