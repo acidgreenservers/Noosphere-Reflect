@@ -906,6 +906,37 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
     if (trimmedLine.startsWith('```')) {
       const startTag = trimmedLine;
       const lang = startTag.length > 3 ? startTag.substring(3) : '';
+
+      // Special handling for ```thought blocks to render them uniquely
+      if (lang === 'thought') {
+        let blockContent = '';
+        let j = i + 1;
+        while (j < lines.length && !lines[j].trim().startsWith('```')) {
+          blockContent += lines[j] + '\n';
+          j++;
+        }
+        if (j < lines.length) j++; // Move past the closing ```
+
+        // Split content by double newlines for paragraphs within the block
+        const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
+          return `<p>${applyInlineFormatting(p).replace(/\n/g, '<br/>')}</p>`;
+        }).join('');
+
+        htmlOutput.push(`
+            <details class="markdown-thought-block my-4">
+              <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
+                Thought process: <span class="text-xs ml-2 opacity-70">(Click to expand/collapse)</span>
+              </summary>
+              <div class="markdown-thought-content p-3 border rounded-b-md">
+                ${thoughtParagraphs}
+              </div>
+            </details>
+        `);
+        i = j;
+        continue;
+      }
+
+      // Standard Code Blocks
       const languageClass = lang ? `language-${lang}` : 'language-plaintext';
       let codeBlockContent = '';
       let j = i + 1;
@@ -1353,7 +1384,7 @@ export const generateMarkdown = (
     let content = message.content;
     content = content.replace(
       /<thought>([\s\S]*?)<\/thought>/g,
-      '<details>\n<summary>Thought process (click to expand)</summary>\n\n$1\n\n</details>'
+      '\n```thought\n$1\n```\n'
     );
 
     lines.push(content);

@@ -82,6 +82,14 @@ function extractMarkdownFromHtml(element) {
     }
   });
 
+  // Handle thought blocks (Gemini specific)
+  clone.querySelectorAll('.model-thoughts, .thoughts-container').forEach(el => {
+    const thoughtText = el.innerText.trim();
+    if (thoughtText) {
+      el.replaceWith(document.createTextNode(`\n<thought>\n${thoughtText}\n</thought>\n`));
+    }
+  });
+
   // Get final text and clean extra newlines
   return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
 }
