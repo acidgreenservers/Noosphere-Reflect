@@ -4,6 +4,24 @@ import { Link } from 'react-router-dom';
 const Changelog: React.FC = () => {
     const changes = [
         {
+            version: 'v0.1.0',
+            date: 'Jan 6, 2026',
+            title: 'Chrome Extension & ChatGPT Support',
+            items: [
+                'Released Noosphere Reflect Bridge - Chrome Extension for capturing conversations directly from Claude, ChatGPT, LeChat, Llamacoder.',
+                'Implemented full Extension architecture: Service worker, content scripts, platform-specific parsers, bridge storage.',
+                'Added ChatGPT HTML export support in converter (both web app and extension).',
+                'Global username settings with IndexedDB persistence (v1 → v2 schema migration).',
+                'SettingsModal component for configuring default username across all imports.',
+                'Platform-specific DOM selectors for reliable title extraction.',
+                'Attribution footer refinement: hidden in preview, shown in exports only.',
+                'Floating action bar dropdown opens upward with correct arrow direction.',
+                'Extension bridge storage via IndexedDB for persistent session management.',
+                'Settings synchronization between web app and extension via chrome.storage.sync.',
+                'Complete documentation: Extension README, Release Notes, Architecture Guide.',
+            ],
+        },
+        {
             version: 'v0.0.8',
             date: 'Jan 5, 2026',
             title: 'Landing Page & UX Polish',
