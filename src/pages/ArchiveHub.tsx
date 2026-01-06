@@ -238,6 +238,46 @@ const ArchiveHub: React.FC = () => {
         setExportDropdownOpen(false);
     };
 
+    const handleClipboardExport = async (format: 'markdown' | 'json') => {
+        if (selectedIds.size !== 1) {
+            alert('Please select exactly one chat to copy to clipboard.');
+            return;
+        }
+
+        const sessionId = Array.from(selectedIds)[0];
+        const session = sessions.find(s => s.id === sessionId);
+
+        if (!session || !session.chatData) return;
+
+        const theme = session.selectedTheme || ChatTheme.DarkDefault;
+        const userName = session.userName || 'User';
+        const aiName = session.aiName || 'AI';
+        const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+
+        let content = '';
+
+        if (format === 'markdown') {
+            content = generateMarkdown(
+                session.chatData,
+                title,
+                userName,
+                aiName,
+                session.metadata
+            );
+        } else if (format === 'json') {
+            content = generateJson(session.chatData, session.metadata);
+        }
+
+        try {
+            await navigator.clipboard.writeText(content);
+            alert('Copied to clipboard!');
+            setExportDropdownOpen(false);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+            alert('Failed to copy to clipboard.');
+        }
+    };
+
     const handleSaveSettings = async (newSettings: AppSettings) => {
         await storageService.saveSettings(newSettings);
         setAppSettings(newSettings);
@@ -436,7 +476,7 @@ const ArchiveHub: React.FC = () => {
                         </button>
 
                         {exportDropdownOpen && (
-                            <div className="absolute left-0 bottom-full mb-2 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+                            <div className="absolute left-0 bottom-full mb-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
                                 <button
                                     onClick={() => handleBatchExport('html')}
                                     className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 text-sm"
@@ -451,9 +491,32 @@ const ArchiveHub: React.FC = () => {
                                 </button>
                                 <button
                                     onClick={() => handleBatchExport('json')}
-                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors text-sm"
+                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-white/10 text-sm"
                                 >
                                     JSON (Data Only)
+                                </button>
+
+                                <button
+                                    onClick={() => handleClipboardExport('markdown')}
+                                    disabled={selectedIds.size !== 1}
+                                    className={`w-full px-4 py-2 text-left transition-colors border-b border-gray-700 text-sm flex items-center gap-2
+                                        ${selectedIds.size !== 1 ? 'text-gray-500 cursor-not-allowed bg-gray-900/50' : 'text-gray-100 hover:bg-gray-700'}`}
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                    </svg>
+                                    Copy MD
+                                </button>
+                                <button
+                                    onClick={() => handleClipboardExport('json')}
+                                    disabled={selectedIds.size !== 1}
+                                    className={`w-full px-4 py-2 text-left transition-colors text-sm flex items-center gap-2
+                                        ${selectedIds.size !== 1 ? 'text-gray-500 cursor-not-allowed bg-gray-900/50' : 'text-gray-100 hover:bg-gray-700'}`}
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                    </svg>
+                                    Copy JSON
                                 </button>
                             </div>
                         )}

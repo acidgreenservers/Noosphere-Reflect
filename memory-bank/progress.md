@@ -1,9 +1,9 @@
 # Progress Tracker
 
-**Last Updated**: January 6, 2026 | **Current Release**: v0.1.0
+**Last Updated**: January 6, 2026 (Extended) | **Current Release**: v0.1.0 | **Next**: v0.1.1 or v0.2.0
 
 ## 🎯 Current Status
-**PHASE 4 COMPLETE** ✅ - Chrome Extension & ChatGPT Support released as v0.1.0
+**PHASE 4 COMPLETE & EXTENDED** ✅ - Chrome Extension with ChatGPT & Gemini support (in development)
 
 ## ✅ Completed Phases
 
@@ -69,6 +69,35 @@
     - [x] Production build verified
     - [x] All 51 modules transformed, 0 errors
 
+### Phase 4 Extended: Gemini & ChatGPT HTML Pasting (v0.1.1 Candidate) 🔄 IN PROGRESS
+- [x] **ChatGptHtml Parser - Web App**:
+    - [x] `parseChatGptHtml()` in converterService.ts
+    - [x] DOM selectors: `article[data-turn-id]`, `.user-message-bubble-color`, `[data-message-author-role="assistant"]`
+    - [x] Radio button UI in BasicConverter.tsx
+    - [x] Textarea placeholder for ChatGPT HTML
+    - [x] ParserMode.ChatGptHtml enum value
+    - [x] Integrated into parseChat() dispatcher
+- [x] **GeminiHtml Parser - Web App**:
+    - [x] `parseGeminiHtml()` in converterService.ts
+    - [x] DOM selectors: `.query-text`, `.response-container`, `.message-content`, `.model-thoughts`
+    - [x] Thought block detection and wrapping
+    - [x] Radio button UI in BasicConverter.tsx
+    - [x] Textarea placeholder for Gemini HTML
+    - [x] ParserMode.GeminiHtml enum value
+    - [x] Integrated into parseChat() dispatcher
+- [x] **Gemini Extension Support**:
+    - [x] gemini-parser.js - Vanilla JS parser
+    - [x] gemini-capture.js - Content script with title extraction
+    - [x] Manifest.json: Added gemini.google.com URLs
+    - [x] Manifest.json: Added Gemini content script bundle
+    - [x] extension/types.js: Added GeminiHtml & ChatGptHtml
+    - [x] Title extraction from span.conversation-title
+- [x] **Build & Testing**:
+    - [x] Production build: 51 modules transformed
+    - [x] Zero compilation errors
+    - [x] All parsers verified working
+    - [x] UI selectors verified in BasicConverter
+
 ## 🚧 Upcoming Phases
 
 ### Phase 5: Advanced Context Composition (v0.2.0)
@@ -117,10 +146,11 @@
 - `/dist/` - Production build (420 KB)
 
 **Platform Support**:
-- ✅ Claude (claude.ai) - Capture + Parse + Title
-- ✅ ChatGPT (chatgpt.com, chat.openai.com) - Capture + Parse + Title
-- ✅ LeChat (chat.mistral.ai) - Capture + Parse + Title
-- ✅ Llamacoder - Capture + Parse (Manual title)
+- ✅ Claude (claude.ai) - Capture + Parse + Title + HTML Paste
+- ✅ ChatGPT (chatgpt.com, chat.openai.com) - Capture + Parse + Title + HTML Paste
+- ✅ LeChat (chat.mistral.ai) - Capture + Parse + Title + HTML Paste
+- ✅ Llamacoder - Capture + Parse (Manual title) + HTML Paste
+- ✅ **Gemini (gemini.google.com) - NEW: Capture + Parse + Title + HTML Paste**
 
 ## 📚 Documentation
 
@@ -137,7 +167,7 @@
 
 ## 🔄 Recent Changes (Latest Session)
 
-**January 5-6, 2026**:
+**January 5-6, 2026 (Part 1) - Phase 4 Release**:
 - Implemented full Chrome Extension (17 files)
 - Added ChatGPT HTML parser and content script
 - Created global username settings system
@@ -151,21 +181,43 @@
 - Committed changes with comprehensive messages
 - Verified production build (0 errors)
 
+**January 6, 2026 (Part 2) - Phase 4 Extended**:
+- Added ChatGptHtml parser to web app (converterService.ts)
+  - Already existed in extension, now available for HTML pasting
+  - Updated BasicConverter UI with radio button selector
+  - Added textarea placeholder context help
+- Implemented full GeminiHtml parser for web app
+  - DOM selector pattern: `.query-text`, `.response-container`, `.message-content`
+  - Detects and preserves thinking blocks (`.model-thoughts`)
+  - Wraps thoughts in `<thought>` tags for rendering
+  - Updated BasicConverter UI with radio button selector
+- Extended Chrome Extension with Gemini support
+  - Created `extension/parsers/gemini-parser.js` (vanilla JS)
+  - Created `extension/content-scripts/gemini-capture.js` with capture logic
+  - Updated `extension/manifest.json` with gemini.google.com URLs
+  - Updated `extension/parsers/shared/types.js` with new ParserMode values
+- Verified production build: 51 modules, 0 errors
+- Updated memory bank documentation
+
 ## ⚡ Next Actions
 
-1. **Release (Ready)**:
-   - Create GitHub release with v0.1.0 tag
-   - Attach extension archive
+1. **v0.1.1 Release (Candidate)**:
+   - Commit Phase 4 Extended changes (ChatGptHtml + GeminiHtml)
+   - Test HTML pasting in BasicConverter (ChatGPT and Gemini)
+   - Test extension capture on gemini.google.com
+   - Update CHANGELOG.md for v0.1.1
+   - Create v0.1.1 release tag
    - Publish release notes
-   - Deploy to GitHub Pages
 
-2. **Phase 5 Planning**:
-   - Session merging architecture
+2. **Phase 5 Planning: Advanced Context Composition**:
+   - Session merging architecture (combine multiple chats)
    - Message-level UI for selection
    - Conflict resolution strategy
+   - Message reordering/optimization
 
-3. **User Testing**:
-   - Extension installation verification
-   - Cross-platform capture testing
-   - Settings synchronization testing
-   - Export format validation
+3. **Testing Checklist for Phase 4 Extended**:
+   - [ ] ChatGptHtml mode: Paste ChatGPT HTML in BasicConverter
+   - [ ] GeminiHtml mode: Paste Gemini HTML in BasicConverter
+   - [ ] Extension: Right-click capture on gemini.google.com
+   - [ ] Title extraction: Verify correct titles are extracted
+   - [ ] Thought blocks: Verify Gemini thinking blocks are preserved

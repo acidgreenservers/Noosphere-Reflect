@@ -1,9 +1,10 @@
-## Current Status (v0.1.0 Released)
+## Current Status (v0.1.0+ In Development)
 **PHASE 4 COMPLETE** - Chrome Extension & ChatGPT Support successfully implemented and released.
+**PHASE 4 EXTENDED** - ChatGptHtml & GeminiHtml parsers added for expanded platform support.
 
 Project has transitioned from a simple "HTML Converter" utility to a comprehensive **AI Chat Archival System** with browser extension integration. Users can now scrape, edit, enrich with metadata, and export chats for centralized organization—all with one-click capture from major AI platforms.
 
-## Latest Completion (January 6, 2026)
+## Latest Completion (January 6, 2026 - Extended)
 
 ### ✅ Chrome Extension - Fully Implemented
 - **Noosphere Reflect Bridge Extension** with support for:
@@ -11,6 +12,7 @@ Project has transitioned from a simple "HTML Converter" utility to a comprehensi
   - ChatGPT (chatgpt.com, chat.openai.com)
   - LeChat (chat.mistral.ai)
   - Llamacoder (llamacoder.together.ai)
+  - **NEW: Gemini (gemini.google.com)**
 - Service worker background script for event handling
 - Platform-specific content scripts with DOM extraction
 - Modular HTML parsers (vanilla JavaScript)
@@ -19,13 +21,27 @@ Project has transitioned from a simple "HTML Converter" utility to a comprehensi
 - Automatic title extraction per platform
 - Toast notifications for user feedback
 
-### ✅ ChatGPT HTML Parser
-- Implemented `parseChatGptHtml()` for HTML export parsing
-- Detects user/assistant messages via data-turn attributes
-- Automatic title extraction from model switcher
-- Integrated into both web app and extension
-- Fixed element cloning error in markdown extraction
-- Added ParserMode.ChatGptHtml to type system
+### ✅ ChatGPT & Gemini HTML Parsers (Phase 4 Extended)
+- **ChatGptHtml**: `parseChatGptHtml()` for ChatGPT HTML exports
+  - Detects user/assistant messages via `data-turn` attributes
+  - Uses `.user-message-bubble-color` for user content
+  - Uses `[data-message-author-role="assistant"]` for assistant content
+  - Automatic title extraction from model switcher button
+  - Integrated into web app and extension
+
+- **GeminiHtml**: `parseGeminiHtml()` for Gemini HTML exports
+  - Detects user prompts via `.query-text` class
+  - Detects assistant responses via `.response-container`, `.message-content`, `.structured-content-container`
+  - Extracts thinking blocks from `.model-thoughts` and wraps in `<thought>` tags
+  - Title extraction from `span.conversation-title`
+  - Full extension support with capture script and manifest configuration
+
+- Both modes added to:
+  - ParserMode enum in types.ts and extension types.js
+  - BasicConverter.tsx UI (radio button selectors)
+  - converterService.ts dispatcher and enableThoughts logic
+  - Extension manifest.json with proper URL matching
+  - Extension type definitions for parity
 
 ### ✅ Global Username Settings
 - IndexedDB schema upgrade (v1 → v2) with backward compatibility
@@ -69,21 +85,23 @@ services/
 ### Chrome Extension (/extension)
 ```
 extension/
-  ├── manifest.json        - Manifest V3 configuration
+  ├── manifest.json        - Manifest V3 configuration (updated with Gemini)
   ├── background/
   │   └── service-worker.js
   ├── content-scripts/
   │   ├── claude-capture.js
   │   ├── chatgpt-capture.js
   │   ├── lechat-capture.js
-  │   └── llamacoder-capture.js
+  │   ├── llamacoder-capture.js
+  │   └── gemini-capture.js (NEW)
   ├── parsers/
   │   ├── claude-parser.js
   │   ├── gpt-parser.js
   │   ├── lechat-parser.js
   │   ├── llamacoder-parser.js
+  │   ├── gemini-parser.js (NEW)
   │   └── shared/
-  │       ├── types.js
+  │       ├── types.js (updated with ChatGptHtml, GeminiHtml)
   │       └── markdown-extractor.js
   └── storage/
       ├── bridge-storage.js
@@ -142,3 +160,29 @@ extension/
 - **Extension Integration**: Separate storage contexts with future sync capability
 - **Version Strategy**: Semantic versioning (v0.1.0 = minor release with extension feature)
 - **Documentation**: Comprehensive multi-audience docs (users, developers, contributors)
+
+## Implementation Insights (Phase 4 Extended)
+
+### ChatGptHtml Parser Pattern
+- **Strength**: Robust article-based DOM structure with explicit data-turn attributes
+- **Reliability**: Using `[data-turn]` for role identification is highly stable
+- **Advantage**: Minimal false positives, clean message boundary detection
+- **Trade-off**: Less flexible than content-script-based parsing but more reliable
+
+### GeminiHtml Parser Pattern
+- **Complexity**: Gemini uses multiple class-based selectors without semantic role attributes
+- **Resilience**: Using visited set to prevent duplicate extraction across overlapping containers
+- **Thinking Blocks**: Automatic preservation of model-thoughts wrapped in `<thought>` tags
+- **Flexibility**: Fallback chain (.response-container → .message-content → .structured-content-container)
+
+### Dual-Format Support (HTML Paste vs Extension Capture)
+- **Convergence**: Both paths use same parser function in converterService
+- **Symmetry**: Extension converts HTML string → parseGeminiHtml() → web app accepts via bridge
+- **Flexibility**: Users can paste HTML or use extension—same result
+- **Maintainability**: Single parser source of truth for each platform
+
+### Thought Block Handling Strategy
+- **Detection**: Both Claude and Gemini preserve thinking/reasoning
+- **Wrapping**: Automatically wrapped in `<thought>` tags for HTML export
+- **Rendering**: Converted to `<details>` elements for collapsible display
+- **Preservation**: Never lost or summarized—kept in full for context

@@ -99,6 +99,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseChatGptHtml(input);
   }
 
+  if (mode === ParserMode.GeminiHtml) {
+    return parseGeminiHtml(input);
+  }
+
   // Basic Mode (Regex / JSON Detection)
   let detectedType: 'markdown' | 'json';
 
@@ -1106,7 +1110,7 @@ export const generateHtml = (
     codeText,
   } = selectedThemeClasses;
 
-  const enableThoughts = [ParserMode.AI, ParserMode.ClaudeHtml, ParserMode.LeChatHtml, ParserMode.LlamacoderHtml].includes(parserMode);
+  const enableThoughts = [ParserMode.AI, ParserMode.ClaudeHtml, ParserMode.LeChatHtml, ParserMode.LlamacoderHtml, ParserMode.ChatGptHtml, ParserMode.GeminiHtml].includes(parserMode);
 
   const chatMessagesHtml = chatData.messages
     .map((message) => {
@@ -1405,6 +1409,96 @@ const parseChatGptHtml = (input: string): ChatData => {
       }
     }
   });
+
+  return { messages };
+};
+
+/**
+ * Specialized parser for Google Gemini HTML exports.
+ * Extracts messages from the specific DOM structure used by Gemini.
+ */
+const parseGeminiHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Gemini structure: user and assistant messages are in separate containers
+  // User: div.query-text or similar user message containers
+  // Assistant: div with role="region" or message-content classes
+
+  // Strategy: Find all message-like elements in document order
+  // Identify role by class name patterns and position
+
+  const visited = new Set<Element>();
+
+  // Look for structured message containers
+  // Gemini uses: user prompt containers and response containers
+  const allElements = doc.querySelectorAll('*');
+  let isUserTurn = true; // Start with user (first message is usually from user)
+
+  allElements.forEach(el => {
+    if (visited.has(el)) return;
+    const htmlEl = el as HTMLElement;
+
+    // User message patterns (query text, user input)
+    const isUserQuery =
+      htmlEl.classList.contains('query-text') ||
+      (htmlEl.getAttribute('role') === 'heading' && htmlEl.getAttribute('aria-level') === '2');
+
+    // Assistant message patterns (response container, message content)
+    const isAssistantResponse =
+      htmlEl.classList.contains('response-container') ||
+      htmlEl.classList.contains('message-content') ||
+      htmlEl.classList.contains('structured-content-container');
+
+    // Extract user message
+    if (isUserQuery && !htmlEl.closest('.sidebar, nav, [role="navigation"]')) {
+      const content = extractMarkdownFromHtml(htmlEl);
+      if (content && content.trim().length > 0) {
+        messages.push({
+          type: ChatMessageType.Prompt,
+          content: content.trim()
+        });
+        // Mark as visited
+        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+        visited.add(htmlEl);
+        isUserTurn = false; // Next should be assistant
+      }
+    }
+
+    // Extract assistant message
+    if (isAssistantResponse && !htmlEl.closest('.sidebar, nav')) {
+      const content = extractMarkdownFromHtml(htmlEl);
+      if (content && content.trim().length > 0) {
+        messages.push({
+          type: ChatMessageType.Response,
+          content: content.trim()
+        });
+        // Mark as visited
+        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+        visited.add(htmlEl);
+        isUserTurn = true; // Next should be user (for follow-up)
+      }
+    }
+
+    // Fallback: look for thought/reasoning blocks in Gemini's format
+    if (htmlEl.classList.contains('model-thoughts') || htmlEl.classList.contains('thoughts-container')) {
+      const thoughtContent = extractMarkdownFromHtml(htmlEl);
+      if (thoughtContent && thoughtContent.trim().length > 0) {
+        // Wrap in thought tags for consistency
+        messages.push({
+          type: ChatMessageType.Response,
+          content: `\n<thought>\n${thoughtContent.trim()}\n</thought>\n`
+        });
+        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+        visited.add(htmlEl);
+      }
+    }
+  });
+
+  if (messages.length === 0) {
+    throw new Error('No Gemini-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
+  }
 
   return { messages };
 };

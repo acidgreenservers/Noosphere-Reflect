@@ -450,6 +450,28 @@ const BasicConverter: React.FC = () => {
                                                 />
                                                 <span className={`text-sm ${parserMode === ParserMode.LeChatHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>LeChat (Mistral)</span>
                                             </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="parserMode"
+                                                    value={ParserMode.ChatGptHtml}
+                                                    checked={parserMode === ParserMode.ChatGptHtml}
+                                                    onChange={() => setParserMode(ParserMode.ChatGptHtml)}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
+                                                />
+                                                <span className={`text-sm ${parserMode === ParserMode.ChatGptHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>ChatGPT HTML</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="parserMode"
+                                                    value={ParserMode.GeminiHtml}
+                                                    checked={parserMode === ParserMode.GeminiHtml}
+                                                    onChange={() => setParserMode(ParserMode.GeminiHtml)}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
+                                                />
+                                                <span className={`text-sm ${parserMode === ParserMode.GeminiHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Gemini HTML</span>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
@@ -579,7 +601,11 @@ const BasicConverter: React.FC = () => {
                                                 ? "Paste full HTML source from Claude chat here..."
                                                 : parserMode === ParserMode.LeChatHtml
                                                     ? "Paste full HTML source from LeChat (Mistral) here..."
-                                                    : "Paste your chat here (Markdown or JSON)..."}
+                                                    : parserMode === ParserMode.ChatGptHtml
+                                                        ? "Paste full HTML source from ChatGPT here..."
+                                                        : parserMode === ParserMode.GeminiHtml
+                                                            ? "Paste full HTML source from Google Gemini here..."
+                                                            : "Paste your chat here (Markdown or JSON)..."}
                                         className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
                                     />
                                     <button

@@ -15,7 +15,8 @@
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://chat.mistral.ai/*",
-    "https://llamacoder.together.ai/*"
+    "https://llamacoder.together.ai/*",
+    "https://gemini.google.com/*"
   ],
 
   "background": {
@@ -72,6 +73,19 @@
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
         "content-scripts/llamacoder-capture.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/gemini-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/gemini-capture.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

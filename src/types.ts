@@ -50,6 +50,7 @@ export enum ParserMode {
   ClaudeHtml = 'claude-html',
   LeChatHtml = 'lechat-html',
   ChatGptHtml = 'chatgpt-html',
+  GeminiHtml = 'gemini-html',
 }
 
 export interface SavedChatSession {
