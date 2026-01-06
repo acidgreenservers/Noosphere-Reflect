@@ -31,7 +31,7 @@ const ArchiveHub: React.FC = () => {
         init();
     }, []);
 
-    // Reload sessions when page comes into focus or becomes visible
+    // Reload sessions when page comes into focus, becomes visible, or session is imported
     useEffect(() => {
         const handleFocus = async () => {
             await loadSessions();
@@ -43,15 +43,25 @@ const ArchiveHub: React.FC = () => {
             }
         };
 
+        const handleSessionImported = async (event: Event) => {
+            const customEvent = event as CustomEvent;
+            console.log('✅ New session imported:', customEvent.detail?.sessionId);
+            await loadSessions();
+        };
+
         // Listen for window focus (tab becomes active)
         window.addEventListener('focus', handleFocus);
 
         // Listen for visibility change (tab becomes visible)
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
+        // Listen for custom sessionImported event from BasicConverter
+        window.addEventListener('sessionImported', handleSessionImported);
+
         return () => {
             window.removeEventListener('focus', handleFocus);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('sessionImported', handleSessionImported);
         };
     }, []);
 

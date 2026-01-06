@@ -238,6 +238,9 @@ const BasicConverter: React.FC = () => {
         await storageService.saveSession(newSession);
         const updatedSessions = await storageService.getAllSessions();
         setSavedSessions(updatedSessions);
+
+        // Notify ArchiveHub to reload sessions
+        window.dispatchEvent(new CustomEvent('sessionImported', { detail: { sessionId: newSession.id } }));
     }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, chatData]);
 
     const deleteSession = async (id: string) => {
