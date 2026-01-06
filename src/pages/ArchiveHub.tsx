@@ -31,6 +31,30 @@ const ArchiveHub: React.FC = () => {
         init();
     }, []);
 
+    // Reload sessions when page comes into focus or becomes visible
+    useEffect(() => {
+        const handleFocus = async () => {
+            await loadSessions();
+        };
+
+        const handleVisibilityChange = async () => {
+            if (!document.hidden) {
+                await loadSessions();
+            }
+        };
+
+        // Listen for window focus (tab becomes active)
+        window.addEventListener('focus', handleFocus);
+
+        // Listen for visibility change (tab becomes visible)
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
+
     const loadSessions = async () => {
         try {
             const allSessions = await storageService.getAllSessions();
