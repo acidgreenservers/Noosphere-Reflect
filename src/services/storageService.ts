@@ -1,7 +1,8 @@
 import { SavedChatSession, AppSettings, DEFAULT_SETTINGS } from '../types';
+import { normalizeTitle } from '../utils/textNormalization';
 
 const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'sessions';
 const SETTINGS_STORE_NAME = 'settings';
 
@@ -17,6 +18,7 @@ class StorageService {
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
                 const oldVersion = event.oldVersion;
+                const transaction = (event.target as IDBOpenDBRequest).transaction!;
 
                 // Create sessions store if upgrading from v0
                 if (oldVersion < 1 && !db.objectStoreNames.contains(STORE_NAME)) {
@@ -26,6 +28,38 @@ class StorageService {
                 // Create settings store if upgrading from v1
                 if (oldVersion < 2 && !db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
                     db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'key' });
+                }
+
+                // v2 → v3: Add normalizedTitle index with unique constraint
+                if (oldVersion < 3) {
+                    const store = transaction.objectStore(STORE_NAME);
+
+                    // Check if index already exists (defensive)
+                    if (!store.indexNames.contains('normalizedTitle')) {
+                        // Create unique index on normalizedTitle field
+                        store.createIndex('normalizedTitle', 'normalizedTitle', { unique: true });
+                        console.log('✅ Created unique index on normalizedTitle');
+                    }
+
+                    // Backfill normalizedTitle for existing records
+                    const getAllRequest = store.getAll();
+                    getAllRequest.onsuccess = () => {
+                        const sessions = getAllRequest.result;
+                        sessions.forEach((session: SavedChatSession) => {
+                            if (!session.normalizedTitle) {
+                                const title = session.metadata?.title || session.chatTitle || session.name || '';
+                                if (title) {
+                                    try {
+                                        session.normalizedTitle = normalizeTitle(title);
+                                        store.put(session); // Update with normalized title
+                                        console.log(`🔄 Backfilled normalizedTitle for: ${title}`);
+                                    } catch (e) {
+                                        console.error(`⚠️ Failed to normalize title for session ${session.id}:`, e);
+                                    }
+                                }
+                            }
+                        });
+                    };
                 }
             };
 
@@ -65,65 +99,86 @@ class StorageService {
     }
 
     async saveSession(session: SavedChatSession): Promise<void> {
-        // Extract title for duplicate detection
         const title = session.metadata?.title || session.chatTitle || session.name;
 
-        // Check for existing session with same title
-        if (title) {
-            const existingSession = await this.findSessionByTitle(title);
-
-            if (existingSession) {
-                // Duplicate found - reuse existing ID to overwrite
-                console.log(`🔄 Overwriting existing session: "${title}" (ID: ${existingSession.id})`);
-                session.id = existingSession.id;
-            } else {
-                // New session - keep generated ID or assign new one if missing
-                if (!session.id) {
-                    session.id = Date.now().toString();
-                }
-                console.log(`✨ Saving new session: "${title}" (ID: ${session.id})`);
+        // Validate title
+        if (!title) {
+            console.warn('⚠️ Session saved without title - cannot detect duplicates');
+            if (!session.id) {
+                session.id = crypto.randomUUID(); // Use secure UUID
             }
         } else {
-            // No title - fallback to unique ID (shouldn't happen, but handle gracefully)
-            if (!session.id) {
-                session.id = Date.now().toString();
+            // Normalize title for indexing
+            try {
+                session.normalizedTitle = normalizeTitle(title);
+            } catch (e: any) {
+                throw new Error(`Invalid title: ${e.message}`);
             }
-            console.warn('⚠️ Session saved without title - cannot detect duplicates');
+        }
+
+        // Generate secure ID if missing
+        if (!session.id) {
+            session.id = crypto.randomUUID();
         }
 
         const db = await this.getDB();
+
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(STORE_NAME, 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
-            store.put(session);
 
-            transaction.oncomplete = () => resolve();
+            // Attempt to insert/update
+            const request = store.put(session);
+
+            request.onsuccess = () => {
+                console.log(`✅ Saved session: "${title}" (ID: ${session.id})`);
+                resolve();
+            };
+
+            request.onerror = (event) => {
+                const error = (event.target as IDBRequest).error;
+
+                // Check if error is due to unique constraint violation
+                if (error?.name === 'ConstraintError') {
+                    // Duplicate normalizedTitle detected
+                    console.log(`🔄 Duplicate detected: "${title}" - attempting overwrite`);
+
+                    // Find existing session by normalizedTitle index
+                    const index = store.index('normalizedTitle');
+                    const getRequest = index.get(session.normalizedTitle!);
+
+                    getRequest.onsuccess = () => {
+                        const existingSession = getRequest.result;
+                        if (existingSession) {
+                            // Reuse existing ID and retry
+                            session.id = existingSession.id;
+                            const retryRequest = store.put(session);
+
+                            retryRequest.onsuccess = () => {
+                                console.log(`✅ Overwritten session: "${title}" (ID: ${session.id})`);
+                                resolve();
+                            };
+
+                            retryRequest.onerror = () => {
+                                reject(retryRequest.error);
+                            };
+                        } else {
+                            // Shouldn't happen, but handle gracefully
+                            reject(new Error('Constraint violation but no existing session found'));
+                        }
+                    };
+
+                    getRequest.onerror = () => {
+                        reject(getRequest.error);
+                    };
+                } else {
+                    // Other error
+                    reject(error);
+                }
+            };
+
             transaction.onerror = () => reject(transaction.error);
         });
-    }
-
-    /**
-     * Find an existing session by title (for duplicate detection)
-     * Returns the session if found, null otherwise
-     */
-    async findSessionByTitle(title: string): Promise<SavedChatSession | null> {
-        try {
-            const allSessions = await this.getAllSessions();
-
-            // Normalize title for comparison (case-insensitive, trimmed)
-            const normalizedTitle = title.trim().toLowerCase();
-
-            // Find session with matching title
-            const match = allSessions.find(session => {
-                const sessionTitle = (session.metadata?.title || session.chatTitle || session.name || '').trim().toLowerCase();
-                return sessionTitle === normalizedTitle;
-            });
-
-            return match || null;
-        } catch (error) {
-            console.error('Failed to find session by title:', error);
-            return null;
-        }
     }
 
     async deleteSession(id: string): Promise<void> {

@@ -66,6 +66,7 @@ export interface SavedChatSession {
   parserMode: ParserMode;
   chatData?: ChatData;
   metadata?: ChatMetadata; // Explicit metadata for easier hub access
+  normalizedTitle?: string; // Normalized title for duplicate detection indexing
 }
 
 export interface AppSettings {
