@@ -1,4 +1,5 @@
 import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMetadata } from '../types';
+import { escapeHtml, sanitizeUrl, validateLanguage } from '../utils/securityUtils';
 
 /**
  * Checks if a string is valid JSON.
@@ -766,9 +767,15 @@ const applyInlineFormatting = (text: string): string => {
   // Convert italic (*text* or _text_)
   escaped = escaped.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
   // Convert images ( ![alt text](url) ) - MUST BE BEFORE links
-  escaped = escaped.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="responsive-image inline-block my-1" />');
+  escaped = escaped.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, (match, alt, url) => {
+    const safeUrl = sanitizeUrl(url);
+    return safeUrl ? `<img src="${safeUrl}" alt="${alt}" class="responsive-image inline-block my-1" />` : '';
+  });
   // Convert links ([text](url))
-  escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>');
+  escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    const safeUrl = sanitizeUrl(url);
+    return safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${text}</a>` : text;
+  });
 
   return escaped;
 };
@@ -988,7 +995,7 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
       }
 
       // Standard Code Blocks
-      const languageClass = lang ? `language-${lang}` : 'language-plaintext';
+      const languageClass = lang ? `language-${validateLanguage(lang)}` : 'language-plaintext';
       let codeBlockContent = '';
       let j = i + 1;
       while (j < lines.length && !lines[j].trim().startsWith('```')) {
@@ -1216,7 +1223,7 @@ export const generateHtml = (
       return `
         <div class="flex ${justify} mb-4 w-full">
           <div class="max-w-xl md:max-w-2xl lg:max-w-3xl rounded-xl p-4 shadow-lg ${bgColor} text-white break-words w-auto">
-            <p class="font-semibold text-sm opacity-80 mb-1">${speakerName}</p>
+            <p class="font-semibold text-sm opacity-80 mb-1">${escapeHtml(speakerName)}</p>
             <div class="markdown-content">${contentHtml}</div>
           </div>
         </div>
@@ -1233,7 +1240,7 @@ export const generateHtml = (
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${title}</title>
+    <title>${escapeHtml(title)}</title>
     <!-- Tailwind CSS CDN for offline viewing -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style type="text/tailwindcss">
@@ -1370,14 +1377,17 @@ export const generateHtml = (
 </head>
 <body class="p-8">
     <div class="max-w-4xl mx-auto my-8 p-6 ${containerBg} rounded-lg shadow-xl">
-        <h1 class="text-4xl font-extrabold text-center ${titleText} mb-4">${title}</h1>
+        <h1 class="text-4xl font-extrabold text-center ${titleText} mb-4">${escapeHtml(title)}</h1>
 
         <!-- Metadata Section -->
         <div class="text-center text-sm ${bodyText} opacity-70 mb-8 space-y-1">
-            ${metadata?.model ? `<div><strong>Model:</strong> ${metadata.model}</div>` : ''}
-            ${metadata?.date ? `<div><strong>Date:</strong> ${new Date(metadata.date).toLocaleString()}</div>` : ''}
-            ${metadata?.sourceUrl ? `<div><strong>Source:</strong> <a href="${metadata.sourceUrl}" class="underline hover:opacity-80" target="_blank">${metadata.sourceUrl}</a></div>` : ''}
-            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>Tags:</strong> ${metadata.tags.join(', ')}</div>` : ''}
+            ${metadata?.model ? `<div><strong>Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
+            ${metadata?.date ? `<div><strong>Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
+            ${metadata?.sourceUrl ? (() => {
+              const safeUrl = sanitizeUrl(metadata.sourceUrl);
+              return safeUrl ? `<div><strong>Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
+            })() : ''}
+            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
         </div>
 
         <div class="space-y-4 flex flex-col w-full">

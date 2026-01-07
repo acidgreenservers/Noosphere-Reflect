@@ -14,6 +14,7 @@ import {
     ChatMetadata,
 } from '../types';
 import { storageService } from '../services/storageService';
+import { validateFileSize, validateBatchImport, INPUT_LIMITS } from '../utils/securityUtils';
 
 // Theme definitions (reused to ensure consistency within component state usage)
 const themeMap: Record<ChatTheme, ThemeClasses> = {
@@ -163,6 +164,13 @@ const BasicConverter: React.FC = () => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Validate file size
+        const validation = validateFileSize(file.size);
+        if (!validation.valid) {
+            setError(validation.error || 'File too large');
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             if (event.target?.result) {
@@ -220,6 +228,19 @@ const BasicConverter: React.FC = () => {
     const handleBatchImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
+
+        // Calculate total size
+        let totalSize = 0;
+        for (let i = 0; i < files.length; i++) {
+            totalSize += files[i].size;
+        }
+
+        // Validate batch
+        const validation = validateBatchImport(files.length, totalSize);
+        if (!validation.valid) {
+            setError(validation.error || 'Batch import validation failed');
+            return;
+        }
 
         setIsConverting(true);
         setError(null);
@@ -478,7 +499,7 @@ const BasicConverter: React.FC = () => {
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-400 mb-1">Page Title</label>
-                                        <input type="text" value={chatTitle} onChange={(e) => setChatTitle(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" />
+                                        <input type="text" value={chatTitle} onChange={(e) => setChatTitle(e.target.value)} maxLength={INPUT_LIMITS.TITLE_MAX_LENGTH} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>

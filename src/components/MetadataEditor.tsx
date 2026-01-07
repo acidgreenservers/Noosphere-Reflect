@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChatMetadata, ParserMode } from '../types';
+import { validateTag, INPUT_LIMITS } from '../utils/securityUtils';
 
 interface MetadataEditorProps {
     metadata: ChatMetadata;
@@ -12,6 +13,21 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
     const handleAddTag = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && tagInput.trim()) {
             e.preventDefault();
+
+            // Validate tag count
+            if (metadata.tags.length >= INPUT_LIMITS.TAG_MAX_COUNT) {
+                alert(`Cannot add more than ${INPUT_LIMITS.TAG_MAX_COUNT} tags`);
+                return;
+            }
+
+            // Validate tag
+            const tagValidation = validateTag(tagInput.trim());
+            if (!tagValidation.valid) {
+                alert(tagValidation.error);
+                return;
+            }
+
+            // Check for duplicates
             if (!metadata.tags.includes(tagInput.trim())) {
                 onChange({
                     ...metadata,
@@ -41,6 +57,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
                         type="text"
                         value={metadata.model}
                         onChange={(e) => onChange({ ...metadata, model: e.target.value })}
+                        maxLength={INPUT_LIMITS.MODEL_MAX_LENGTH}
                         className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-gray-200 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
                         placeholder="e.g. Claude 3.5 Sonnet"
                     />
@@ -73,6 +90,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={handleAddTag}
+                        maxLength={INPUT_LIMITS.TAG_MAX_LENGTH}
                         placeholder="Add tag..."
                         className="bg-transparent border-none outline-none text-sm text-gray-300 placeholder-gray-600 min-w-[80px]"
                     />

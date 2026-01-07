@@ -50,7 +50,7 @@ const GeneratedHtmlDisplay: React.FC<GeneratedHtmlDisplayProps> = ({ htmlContent
           srcDoc={htmlContent}
           title="Generated HTML Preview"
           className="w-full h-full border-none bg-white"
-          sandbox="allow-scripts allow-same-origin allow-popups"
+          sandbox="allow-scripts"
         ></iframe>
       </div>
     </div>
