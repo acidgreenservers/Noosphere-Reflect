@@ -1,8 +1,8 @@
-# Release Notes: v0.3.0 (Upcoming)
+# Release Notes: v0.3.0
 
-**Target Release Date**: January 7-8, 2026 (After Security Upgrade)
+**Release Date**: January 7, 2026
 
-## Major Features (In Development)
+## Major Features & Security Hardening
 
 ### 💾 JSON Import Failsafe (January 6, 2026 - Session 2)
 **Purpose**: Provide users with a safe export/re-import path before IndexedDB v3 security upgrade.
@@ -24,6 +24,29 @@
 **Files Modified**:
 - `src/services/converterService.ts`: Added `parseExportedJson()` function (lines 71-110)
 - `src/pages/BasicConverter.tsx`: Added `handleBatchImport()` (lines 175-224), auto-population logic (lines 243-259), batch UI (lines 653-663)
+
+### 🛡️ XSS Prevention & Input Validation (January 7, 2026)
+**Purpose**: Comprehensive security hardening against XSS attacks and resource exhaustion vulnerabilities.
+
+**Features Implemented**:
+- **HTML Entity Escaping**: All user inputs (titles, speaker names, metadata) properly escaped using centralized `escapeHtml()` utility
+- **URL Protocol Validation**: Blocks dangerous protocols (javascript:, data:, vbscript:, file:, about:) in markdown links and image sources via `sanitizeUrl()`
+- **Code Block Language Sanitization**: Language identifiers validated via `validateLanguage()` to prevent attribute injection
+- **File Size Validation**: Maximum 10MB per file, 100MB per batch to prevent memory exhaustion
+- **Metadata Input Limits**: Title (200 chars), tags (50 chars, max 20), model (100 chars) with validation alerts
+- **iframe Sandbox Hardening**: Removed `allow-same-origin` and `allow-popups` from iframe sandbox attribute, retaining only `allow-scripts`
+- **Batch Import Validation**: Maximum 50 files per batch with total size checking
+
+**Files Created**:
+- `src/utils/securityUtils.ts` (NEW - 206 lines): Centralized security utilities with escapeHtml(), sanitizeUrl(), validateLanguage(), validateFileSize(), validateBatchImport(), validateTag(), and INPUT_LIMITS constant
+
+**Files Modified**:
+- `src/services/converterService.ts`: Fixed 7 XSS vulnerabilities in markdown processing, speaker names, title rendering, and metadata display
+- `src/pages/BasicConverter.tsx`: Added file size and batch import validation with clear error messaging
+- `src/components/MetadataEditor.tsx`: Enhanced tag validation with count/length limits and user feedback
+- `src/components/GeneratedHtmlDisplay.tsx`: Hardened iframe sandbox attribute to improve security posture
+
+**Testing**: All TypeScript builds succeed with 0 errors; security payloads verified to be blocked or escaped correctly.
 
 ### 🔒 Security Roadmap: Database Migration v2 → v3
 **Status**: Detailed plan ready in `SECURITY-ROADMAP.md`

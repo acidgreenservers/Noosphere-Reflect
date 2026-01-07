@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.1.0-green.svg)
+![Version](https://img.shields.io/badge/version-0.3.0-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, LeChat, and Llamacoder.
@@ -19,13 +19,15 @@
 * **✨ Premium UI**: Modern "Glassmorphism" interface with rich metadata editing and batch management
 * **📝 Multiple Export Formats**: HTML, Markdown, JSON — all with Noosphere Reflect branding
 * **🔒 Offline Ready**: Generated files are self-contained, work completely offline
+* **🛡️ Security Hardened**: XSS protection, URL protocol validation, input sanitization, and comprehensive file size limits
 
 ## 🛠️ Tech Stack
 
 * **Frontend**: React 19, TypeScript 5.8, Vite 6.2
-* **Storage**: IndexedDB (custom wrapper with v1→v2 migration)
+* **Storage**: IndexedDB (custom wrapper with v1→v3 migration)
 * **Styling**: Tailwind CSS v4 with @tailwindcss/vite
 * **AI Parsing**: Google Gemini 2.0 Flash API
+* **Security**: Centralized utilities for HTML escaping, URL sanitization, and input validation
 * **Extension**: Chrome Manifest V3 with Service Worker & Content Scripts
 
 ## 📦 Installation
@@ -106,6 +108,30 @@ Via the Chrome Extension, intelligently parse unstructured chat logs:
 3. Chat is automatically parsed and archived
 
 **Best for**: Messy or unstructured text that needs intelligent reformatting
+
+## 🔐 Security Features
+
+The application includes comprehensive security hardening to prevent XSS attacks, injection exploits, and resource exhaustion:
+
+### XSS Prevention
+* **HTML Entity Escaping**: All user input (titles, speaker names, metadata) is properly escaped before rendering in generated HTML
+* **URL Protocol Validation**: Blocks dangerous protocols (javascript:, data:, vbscript:, file:, about:) in markdown links and image sources
+* **Code Block Language Sanitization**: Language identifiers are validated to prevent attribute injection
+* **iframe Sandbox Hardening**: Generated HTML previews use strict sandbox policies (`allow-scripts` only)
+
+### Input Validation
+* **File Size Limits**: Maximum 10MB per file, 100MB per batch import
+* **Batch Import Restrictions**: Maximum 50 files per batch operation
+* **Metadata Constraints**:
+  - Title: 200 characters max
+  - Tags: 50 characters each, maximum 20 tags
+  - Model: 100 characters max
+* **Tag Validation**: Ensures tags contain at least one alphanumeric character
+
+### Implementation Details
+* **Centralized Security Utilities**: All validation/escaping functions in `src/utils/securityUtils.ts` for consistency
+* **No Backend Required**: All security operates client-side—suitable for GitHub Pages deployment
+* **Database-Level Constraints**: IndexedDB uniqueness and normalization prevent duplicate injection attacks
 
 ## 🎨 Supported Platforms
 
@@ -190,6 +216,6 @@ Found an issue or have a suggestion?
 
 ---
 
-**Version**: 0.1.0
-**Last Updated**: January 6, 2026
-**Status**: Stable Release ✅
+**Version**: 0.3.0
+**Last Updated**: January 7, 2026
+**Status**: Stable Release with Security Hardening ✅

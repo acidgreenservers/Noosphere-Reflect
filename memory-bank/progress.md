@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last Updated**: January 6, 2026 (Extended Session 2) | **Current Release**: v0.2.0 | **Next**: v0.2.1 (Security) or v0.3.0
+**Last Updated**: January 7, 2026 (Session 3) | **Current Release**: v0.3.0 | **Next**: IndexedDB v3 Upgrade or Phase 5
 
 ## 🎯 Current Status
 **PHASE 4 EXTENDED + IMPORT FEATURE COMPLETE** ✅ - Ready for security upgrade (IndexedDB v3)
@@ -212,37 +212,67 @@
 - Verified production build: 51 modules, 0 errors
 - All changes backward compatible with existing data
 
+**January 7, 2026 (Session 3) - XSS Security Hardening & v0.3.0 Release**:
+- Implemented comprehensive XSS prevention & input validation
+  - Created `src/utils/securityUtils.ts` (206 lines)
+    - `escapeHtml()` - HTML entity escaping
+    - `sanitizeUrl()` - URL protocol validation
+    - `validateLanguage()` - Code block language validation
+    - `validateFileSize()` - File size limit enforcement (10MB per file, 100MB batch)
+    - `validateBatchImport()` - Batch operation validation
+    - `validateTag()` - Tag validation with alphanumeric requirements
+    - `INPUT_LIMITS` - Centralized input constraint constants
+  - Fixed 7 XSS vulnerabilities in converterService.ts
+    - Unescaped titles in HTML document structure
+    - Unescaped speaker/user names in chat messages
+    - Unescaped metadata fields (model, sourceUrl, tags)
+    - URL protocol injection in markdown links and images
+    - Language attribute injection in code block fences
+  - Enhanced input validation in BasicConverter.tsx
+    - File upload size validation with error messages
+    - Batch import count and total size validation
+  - Enhanced tag validation in MetadataEditor.tsx
+    - Tag count limits (max 20)
+    - Tag length limits (50 chars)
+    - User feedback alerts
+    - Duplicate prevention
+  - Hardened iframe sandbox in GeneratedHtmlDisplay.tsx
+    - Removed `allow-same-origin` (defeats sandbox)
+    - Removed `allow-popups` (unnecessary)
+    - Retained `allow-scripts` (needed for MathJax)
+- Updated documentation for v0.3.0 release
+  - Updated README.md with security features section
+  - Updated RELEASE_NOTES.md with complete v0.3.0 details
+  - Updated package.json version to 0.3.0
+  - Updated CHANGELOG.md with v0.3.0 release section
+  - Updated memory-bank/progress.md with current status
+- Verified production build: 52 modules, 0 errors
+- All security fixes backward compatible with existing data
+
 ## ⚡ Next Actions
 
-1. **PRIORITY: IndexedDB v3 Security Upgrade (v0.2.1 or v0.3.0)**:
+1. **PRIORITY: IndexedDB v3 Security Upgrade (v0.4.0)**:
    - [ ] Follow `SECURITY-ROADMAP.md` implementation plan
-   - [ ] Create `src/utils/textNormalization.ts` utility
+   - [ ] Create `src/utils/textNormalization.ts` utility (NFKC + zero-width removal)
    - [ ] Update `types.ts` with `normalizedTitle` field
    - [ ] Increment DB_VERSION to 3 in storageService.ts
    - [ ] Implement migration logic with unique index + backfill
    - [ ] Refactor `saveSession()` to use index-based duplicate detection
    - [ ] Remove obsolete `findSessionByTitle()` method
    - [ ] Test migration with existing v2 database
-   - [ ] Verify all security vulnerabilities (CVE-001 to CVE-003) resolved
+   - [ ] Verify CVE-001 (TOCTOU), CVE-002 (Unicode bypass), CVE-003 (O(n) perf) resolved
    - [ ] Build and verify 0 errors
 
-2. **Testing Checklist for Import Feature**:
-   - [ ] Single file import: Upload exported JSON, verify metadata auto-populated
-   - [ ] Batch import: Upload 5+ JSON files, verify all imported correctly
-   - [ ] Duplicate handling: Import same file twice, verify overwrite works
-   - [ ] Invalid JSON: Upload corrupted file, verify clear error message
-   - [ ] Edge case: Import JSON without metadata, verify backward compatibility
+2. **Testing Checklist for XSS Security Fixes**:
+   - [ ] Test payloads in title, speaker names, metadata fields
+   - [ ] Verify no JavaScript execution from any user input
+   - [ ] Test markdown links with javascript: protocol
+   - [ ] Test code blocks with malicious language identifiers
+   - [ ] Verify file upload validation prevents oversized files
+   - [ ] Test batch import validation limits
 
-3. **v0.3.0 Release (After Security Upgrade)**:
-   - [ ] Commit all changes (import feature + security upgrade)
-   - [ ] Update CHANGELOG.md with security fixes
-   - [ ] Update RELEASE_NOTES.md with breaking changes (if any)
-   - [ ] Test full workflow: export → upgrade → re-import
-   - [ ] Create v0.3.0 release tag
-   - [ ] Publish release notes
-
-4. **Phase 5 Planning: Advanced Context Composition** (Future):
-   - Session merging architecture (combine multiple chats)
-   - Message-level UI for selection
-   - Conflict resolution strategy
-   - Message reordering/optimization
+3. **Phase 5 Planning: Advanced Context Composition** (v0.5.0+):
+   - [ ] Session merging architecture (combine multiple chats)
+   - [ ] Message-level selection UI
+   - [ ] Conflict resolution strategy
+   - [ ] Message reordering/optimization

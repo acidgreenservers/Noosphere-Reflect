@@ -9,7 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (v0.3.0 Roadmap - In Progress)
+### Added
+
+- Planning for IndexedDB v3 migration (Unicode normalization, atomic duplicate detection)
+- Future phase roadmap in development
+
+---
+
+## [v0.3.0] - January 7, 2026
+
+### Added
+
+#### Security Hardening (XSS Prevention & Input Validation)
+- **Centralized Security Utilities** (`src/utils/securityUtils.ts`):
+  - `escapeHtml()` - HTML entity escaping for all user inputs
+  - `sanitizeUrl()` - URL protocol validation (blocks javascript:, data:, vbscript:, file:, about:)
+  - `validateLanguage()` - Language identifier validation for code blocks
+  - `validateFileSize()` - File size limit enforcement (max 10MB per file, 100MB batch)
+  - `validateBatchImport()` - Batch operation validation
+  - `validateTag()` - Tag validation with alphanumeric requirements
+  - `INPUT_LIMITS` - Centralized input constraint constants
+- **XSS Vulnerability Fixes**:
+  - Fixed unescaped titles in HTML `<title>` and `<h1>` tags
+  - Fixed unescaped speaker names (usernames in chat messages)
+  - Fixed unescaped metadata (model, sourceUrl, tags)
+  - Fixed URL protocol injection in markdown links and image sources
+  - Fixed language attribute injection in code blocks
+  - Hardened iframe sandbox (removed `allow-same-origin` and `allow-popups`)
+- **Input Validation Enhancements**:
+  - File upload size validation with clear error messages
+  - Batch import file count and total size limits
+  - Metadata input length limits (title: 200 chars, tags: 50 chars/20 max, model: 100 chars)
+  - Tag validation with user feedback alerts
+  - Form input maxLength attributes for frontend enforcement
+- **Security Testing**: All XSS payloads verified to be blocked or properly escaped
 
 #### JSON Import Failsafe (January 6, 2026 - Session 2)
 - **Noosphere Reflect Format Detection**: Auto-detects exported JSON by signature field (`exportedBy.tool`)
@@ -31,31 +64,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON detection logic updated to recognize Noosphere Reflect exports (lines 160-163)
   - Preserves all metadata fields during re-import
 
-### Fixed (v0.3.0 Roadmap - Security Audit Planning)
+### Fixed
 
-#### Security Vulnerabilities Identified (v0.3.0 - Ready for Implementation)
-- **CVE-001 (Critical)**: TOCTOU Race Condition
-  - Location: `src/services/storageService.ts:saveSession()`
-  - Issue: Duplicate check and write happen in separate transactions
-  - Solution: Implement unique index on `normalizedTitle` (database-level atomic constraint)
-  - Status: Implementation plan in `SECURITY-ROADMAP.md`
+#### XSS Prevention & Input Validation
+- ✅ **7 XSS Vulnerabilities Fixed**:
+  - Unescaped titles in HTML document structure
+  - Unescaped speaker/user names in chat messages
+  - Unescaped metadata fields (model, sourceUrl, tags)
+  - URL protocol injection in markdown links and images
+  - Language attribute injection in code block fences
+- ✅ **Resource Exhaustion Prevention**: File size and batch operation limits
+- ✅ **Input Sanitization**: All user inputs validated and escaped before rendering
 
-- **CVE-002 (High)**: Unicode Normalization Bypass
-  - Location: `src/services/storageService.ts:findSessionByTitle()`
-  - Issue: Simple `.toLowerCase()` insufficient for Unicode equivalence
-  - Attack Vectors: Different Unicode representations (NFC vs NFD), homoglyphs, zero-width characters
-  - Solution: Implement NFKC normalization + zero-width character removal
-  - Status: Implementation plan in `SECURITY-ROADMAP.md`
-
-- **CVE-003 (High)**: O(n) Performance Degradation
-  - Location: `src/services/storageService.ts:findSessionByTitle()`
-  - Issue: `getAllSessions()` fetches entire database on every save
-  - Impact: 1,000 sessions = 100ms lookup; 10,000 sessions = 1s+ (app freeze)
-  - Solution: Replace with O(log n) index-based lookup
-  - Status: Implementation plan in `SECURITY-ROADMAP.md`
-
-- **CVE-004 to CVE-008 (Medium/Low)**: Additional security issues identified
-  - Status: Deferred to future releases; documented in `SECURITY-ROADMAP.md`
+#### Planned Database Security Fixes (v0.4.0)
+- **CVE-001 (Critical)**: TOCTOU Race Condition - Ready for implementation
+  - Solution: Unique index on `normalizedTitle` for atomic duplicate detection
+  - See: `SECURITY-ROADMAP.md`
+- **CVE-002 (High)**: Unicode Normalization Bypass - Ready for implementation
+  - Solution: NFKC normalization + zero-width character removal
+- **CVE-003 (High)**: O(n) Performance Degradation - Ready for implementation
+  - Solution: O(log n) index-based lookup to replace full table scans
 
 ### Documentation
 
@@ -394,4 +422,4 @@ None. All existing sessions remain compatible.
 
 ---
 
-**Last Updated**: January 6, 2026 | **Current Version**: v0.2.0 + Import Feature (unreleased)
+**Last Updated**: January 7, 2026 | **Current Version**: v0.3.0

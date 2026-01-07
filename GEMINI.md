@@ -1,35 +1,128 @@
 # GEMINI.md
 
 ## Project Overview
-**AI Chat HTML Converter** is a React-based application designed to convert AI chat logs (Markdown/JSON) into standalone, offline-viewable HTML files. The project utilizes Vite for the build tooling and targets a static deployment model suitable for GitHub Pages.
+**AI Chat HTML Converter** (branded as **Noosphere Reflect**) is a comprehensive **AI Chat Archival System** designed to capture, organize, and preserve AI chat logs. It features a React-based web dashboard (`ArchiveHub`) and a companion Chrome Extension for one-click capturing from major AI platforms.
 
 ## Tech Stack
-- **Framework**: React 19
-- **Build Tool**: Vite 6.0+
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`)
+- **Framework**: React 19.2.3
+- **Build Tool**: Vite 6.2.0
+- **Language**: TypeScript 5.8.2
+- **Styling**: Tailwind CSS v4.1.18 (`@tailwindcss/vite`)
+- **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- The project is valid and functional (`npm run dev` works).
-- **Core Pivot**: Transitioned from a simple "Converter" to a full "Archival System" (`ArchiveHub`).
-- **Data Layer**: Robust `IndexedDB` implementation for large-scale storage.
-- **Goal**: Implement "Phase 2: Context Composition" (Merging) and prepare for Chrome Extension.
+- **Version**: Web App `v0.3.0` | Extension `v0.2.0`
+- **Core Functionality**:
+  - **ArchiveHub**: robust dashboard for browsing, filtering, and managing saved chats.
+  - **Import/Export**: Full JSON import/export with metadata preservation; Batch import support.
+  - **Security**: Comprehensive XSS hardening and input validation implemented (v0.3.0).
+- **Extension**: Fully functional Chrome Extension supporting:
+  - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder.
+  - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation (Claude/Gemini).
+- **Goal**: Implement "IndexedDB v3 Security Upgrade" (Atomic duplicate detection) and "Phase 5: Context Composition".
+
+## 🔒 Security & QA Workflow: Adversary Auditor (3-Eyes Verification)
+
+### Purpose
+After implementing any feature, immediately audit the code for security vulnerabilities, data leaks, and edge cases. The **Adversary Auditor** provides a "3-eyes" verification:
+- **Eye 1**: Developer (user writes requirements)
+- **Eye 2**: AI (implements code)
+- **Eye 3**: Adversary Agent (checks for vulnerabilities)
+
+### When to Run
+Run the adversary auditor **immediately after code implementation** for:
+- New features that handle user input
+- Modifications to `converterService.ts`, `storageService.ts`, or security utilities
+- Changes to API key handling or external service integration
+- Any work touching authentication, authorization, or sensitive data
+- Chrome Extension modifications
+
+### How to Use
+**Command**:
+```bash
+/security-adversary
+```
+
+**Or with specific context**:
+```
+Please run the security-adversary agent to check [files you modified] for vulnerabilities.
+Focus on: XSS, injection attacks, data leaks, credential exposure, OWASP top 10.
+```
+
+### Agent Capabilities
+The security-adversary agent checks for:
+- **XSS Vulnerabilities**: Unescaped user input, direct `.innerHTML` usage, missing sanitization
+- **Injection Attacks**: SQL injection patterns, command injection, attribute injection
+- **Data Leaks**: Exposed API keys, credentials in logs, sensitive data in exports
+- **Authentication Bypass**: Token validation issues, session handling flaws
+- **OWASP Top 10**: Common web vulnerabilities
+- **File Upload Risks**: Path traversal, MIME type bypass, resource exhaustion
+- **Cryptographic Issues**: Weak randomness, insecure key storage
+- **URL/Protocol Injection**: Dangerous protocols not blocked
+- **Logic Flaws**: Race conditions, TOCTOU vulnerabilities, edge cases
+
+### Recent Security Audits (v0.3.0)
+- ✅ XSS Prevention: 7 vulnerabilities fixed with `securityUtils.ts`
+- ✅ Input Validation: File size limits, batch restrictions, metadata constraints
+- ✅ URL Sanitization: Protocol validation in markdown links and images
+- ✅ iframe Sandbox: Hardened with minimal permissions
+- ⏳ Pending: IndexedDB v3 race condition fixes (v0.4.0)
+
+### Integration Pattern
+```typescript
+// AFTER you write code:
+// 1. Implement feature
+// 2. Build succeeds (npm run build)
+// 3. Run adversary agent immediately
+// 4. Fix any flagged issues
+// 5. Re-run adversary agent to verify
+// 6. Commit with security verification note
+```
+
+### Example Usage
+```
+User: "I've added a new file upload handler in BasicConverter.tsx"
+Claude: [implements code]
+Claude: "Now let me run the security-adversary agent to check for vulnerabilities"
+/security-adversary
+Adversary: "Checking converterService.ts, BasicConverter.tsx for upload-related attacks..."
+Adversary: [Reports: Missing maxSize validation, unescaped filename, etc.]
+Claude: [Fixes issues]
+Claude: /security-adversary  [Verifies fixes]
+```
+
+### Quick Reference: What Each File Should Protect
+- `converterService.ts` - Escape HTML output, validate language identifiers, sanitize URLs
+- `storageService.ts` - Validate titles, prevent duplicate injection, use secure IDs
+- `BasicConverter.tsx` - File size validation, batch limits, metadata length checks
+- `MetadataEditor.tsx` - Tag validation, alphanumeric enforcement
+- `securityUtils.ts` - All escaping/validation functions must work correctly
+- `extension/*` - No direct `innerHTML` with external data, origin validation
 
 ## Architecture
-- **Entry**: `index.html` -> `src/main.tsx` -> `App.tsx` (Router)
-- **Routes**:
-  - `/`: `ArchiveHub` (Main Dashboard)
-  - `/basic`: `BasicConverter` (Legacy Regex mode)
-  - `/ai`: `AIConverter` (Gemini Studio mode)
-- **Key Services**:
-  - `storageService.ts`: IndexedDB wrapper for all persistence.
-  - `converterService.ts`: Core HTML parsing logic.
+- **Web App (`/src`)**:
+  - **Entry**: `index.html` -> `src/main.tsx` -> `App.tsx` (Router)
+  - **Routes**:
+    - `/`: `ArchiveHub` (Main Dashboard)
+    - `/basic`: `BasicConverter` (Manual Import/Convert)
+    - `/ai`: `AIConverter` (Gemini Studio mode)
+  - **Key Services**:
+    - `storageService.ts`: IndexedDB wrapper for persistence (currently v2).
+    - `converterService.ts`: Unified HTML parsing logic for all platforms.
+    - `utils/securityUtils.ts`: XSS prevention and input validation.
+
+- **Chrome Extension (`/extension`)**:
+  - **Manifest**: V3 (`manifest.json`)
+  - **Background**: `service-worker.js` (Context menus, unified handling).
+  - **Content Scripts**: Platform-specific capture logic (`*-capture.js`).
+  - **Parsers**: Shared vanilla JS parsers (`*-parser.js`) aligned with web app logic.
+  - **Storage**: Independent IndexedDB bridge with potential for future sync.
 
 ## Communication Style
-- **Formatting**. Format your responses in github-style markdown to make your responses easier for the USER to parse. For example, use headers to organize your responses and bolded or italicized text to highlight important keywords. Use backticks to format file, directory, function, and class names. If providing a URL to the user, format this in markdown as well, for example `[label](example.com)`.
-- **Proactiveness**. As an agent, you are allowed to be proactive, but only in the course of completing the user's task. For example, if the user asks you to add a new component, you can edit the code, verify build and test statuses, and take any other obvious follow-up actions, such as performing additional research. However, avoid surprising the user. For example, if the user asks HOW to approach something, you should answer their question and instead of jumping into editing a file.
-- **Helpfulness**. Respond like a helpful software engineer who is explaining your work to a friendly collaborator on the project. Acknowledge mistakes or any backtracking you do as a result of new information.
-- **Ask for clarification**. If you are unsure about the USER's intent, always ask for clarification rather than making assumptions.
+- **Formatting**: Format your responses in GitHub-style markdown. Use headers, bold/italic text for keywords, and backticks for code elements. Format URLs as `[label](url)`.
+- **Proactiveness**: Be proactive in completing tasks (coding, verifying, researching) but avoid surprising the user. Explain "how" before doing if ambiguous.
+- **Helpfulness**: Act as a helpful software engineer collaborator. Acknowledge mistakes and new information.
+- **Clarification**: Always ask for clarification if the user's intent is unclear.
 
 ---
 MEMORY BANK SECTION
@@ -166,4 +259,3 @@ Note: When triggered by **update memory bank**, I MUST review every memory bank 
 REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.
 
 END MEMORY BANK SECTION
----
