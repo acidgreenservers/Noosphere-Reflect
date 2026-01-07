@@ -14,23 +14,31 @@ const ArchiveHub: React.FC = () => {
     const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
     const [settingsModalOpen, setSettingsModalOpen] = useState(false);
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
+        let cancelled = false;
         const init = async () => {
+            if (cancelled) return;
             setIsLoading(true);
             await storageService.migrateLegacyData();
+            if (cancelled) return;
 
             // Load settings
             const settings = await storageService.getSettings();
+            if (cancelled) return;
             setAppSettings(settings);
 
             await loadSessions();
+            if (cancelled) return;
             await checkExtensionBridge();
+            if (cancelled) return;
             setIsLoading(false);
         };
         init();
-    }, [location]);
+        return () => { cancelled = true; };
+    }, [location.pathname, location.key]);
 
     // Reload sessions when page comes into focus, becomes visible, or session is imported
     useEffect(() => {
@@ -95,19 +103,34 @@ const ArchiveHub: React.FC = () => {
                         const { noosphere_bridge_data, noosphere_bridge_flag } = event.data.data;
 
                         if (noosphere_bridge_flag?.pending && noosphere_bridge_data) {
-                            const session = noosphere_bridge_data;
+                            // Handle array of sessions (backward compatible with single session)
+                            const sessions = Array.isArray(noosphere_bridge_data)
+                                ? noosphere_bridge_data
+                                : [noosphere_bridge_data];
 
-                            // Save to web app's IndexedDB
-                            await storageService.saveSession(session);
+                            // Import all sessions from the queue
+                            let importedCount = 0;
+                            for (const session of sessions) {
+                                try {
+                                    await storageService.saveSession(session);
+                                    importedCount++;
+                                    console.log(`✅ Imported session ${importedCount}/${sessions.length}:`,
+                                        session.metadata?.title || session.chatTitle);
+                                } catch (error) {
+                                    console.error('Failed to import session:', error);
+                                }
+                            }
 
-                            // Tell content script to clear bridge
+                            // Tell content script to clear bridge after importing all sessions
                             window.postMessage({ type: 'NOOSPHERE_CLEAR_BRIDGE' }, '*');
 
-                            // Reload sessions list
+                            // Reload sessions list once after all imports
                             await loadSessions();
 
                             // Show success message
-                            console.log(`✅ Imported from extension: ${session.metadata?.title || session.chatTitle}`);
+                            if (importedCount > 0) {
+                                console.log(`✅ Imported ${importedCount} session(s) from extension`);
+                            }
                         }
 
                         resolve();
@@ -129,6 +152,11 @@ const ArchiveHub: React.FC = () => {
                 resolve();
             }
         });
+    };
+
+    const handleManualRefresh = () => {
+        // Hard refresh the page to ensure all imports are loaded
+        window.location.reload();
     };
 
     const filteredSessions = sessions.filter(session => {
@@ -284,6 +312,20 @@ const ArchiveHub: React.FC = () => {
         setAppSettings(newSettings);
     };
 
+    const areAllSelected = filteredSessions.length > 0 && filteredSessions.every(s => selectedIds.has(s.id));
+
+    const handleSelectAll = () => {
+        const newSelected = new Set(selectedIds);
+        if (areAllSelected) {
+            // Deselect visible sessions
+            filteredSessions.forEach(s => newSelected.delete(s.id));
+        } else {
+            // Select all visible sessions
+            filteredSessions.forEach(s => newSelected.add(s.id));
+        }
+        setSelectedIds(newSelected);
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30 pb-24">
             {/* Header */}
@@ -337,6 +379,16 @@ const ArchiveHub: React.FC = () => {
             </div>
 
             <main className="max-w-7xl mx-auto px-4 py-8">
+                {/* Disclaimer */}
+                <div className="mb-4 px-4 py-3 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3">
+                    <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-blue-200">
+                        <span className="font-semibold">Tip:</span> Click the Refresh button after importing chats via the extension for them to populate
+                    </p>
+                </div>
+
                 {/* Search & Filters */}
                 <div className="mb-8 flex flex-col sm:flex-row gap-4">
                     <div className="relative flex-1">
@@ -351,6 +403,44 @@ const ArchiveHub: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
+
+                    {/* Select All Button */}
+                    <button
+                        onClick={handleSelectAll}
+                        className={`px-4 py-3 backdrop-blur-sm rounded-xl border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium
+                            ${areAllSelected
+                                ? 'bg-blue-600 border-blue-500 text-white'
+                                : 'bg-gray-800/50 hover:bg-gray-700 border-white/10 text-gray-300'}`}
+                        title={areAllSelected ? "Deselect all filtered results" : "Select all filtered results"}
+                    >
+                        <svg className={`w-5 h-5 ${areAllSelected ? 'text-white' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={areAllSelected
+                                ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                : "M3.25 10.5c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"} />
+                        </svg>
+                        {areAllSelected ? 'Deselect All' : `Select All (${filteredSessions.length})`}
+                    </button>
+
+                    <button
+                        onClick={handleManualRefresh}
+                        className="px-4 py-3 bg-blue-600/90 hover:bg-blue-600 backdrop-blur-sm rounded-xl border border-blue-500/50 transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium"
+                        title="Refresh page to load imported chats"
+                    >
+                        <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                        </svg>
+                        Refresh
+                    </button>
                 </div>
 
                 {/* Grid */}

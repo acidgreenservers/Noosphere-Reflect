@@ -26,7 +26,8 @@ const ParserMode = {
   ClaudeHtml: 'claude-html',
   LeChatHtml: 'lechat-html',
   ChatGptHtml: 'chatgpt-html',
-  GeminiHtml: 'gemini-html'
+  GeminiHtml: 'gemini-html',
+  KimiHtml: 'kimi-html'
 };
 
 /**

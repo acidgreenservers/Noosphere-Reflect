@@ -1,4 +1,4 @@
-import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode } from '../types';
+import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMetadata } from '../types';
 
 /**
  * Checks if a string is valid JSON.
@@ -69,6 +69,47 @@ const parseChatWithAI = async (input: string, apiKey: string): Promise<ChatData>
 };
 
 /**
+ * Parse JSON that was exported from this app.
+ * Preserves all metadata: title, model, date, tags, author, sourceUrl.
+ * This enables users to re-import their exported chat archives with full fidelity.
+ */
+const parseExportedJson = (exportedData: any): ChatData => {
+  const messages: ChatMessage[] = exportedData.messages || [];
+  const metadata = exportedData.metadata || {};
+
+  // Validate messages array exists
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new Error('Exported JSON must contain a messages array');
+  }
+
+  // Validate each message has required fields
+  for (const msg of messages) {
+    if (!msg.type || !msg.content) {
+      throw new Error('Each message must have type and content');
+    }
+    if (!['prompt', 'response'].includes(msg.type.toLowerCase())) {
+      throw new Error(`Invalid message type: ${msg.type}. Must be 'prompt' or 'response'.`);
+    }
+  }
+
+  return {
+    messages: messages.map(msg => ({
+      type: msg.type.toLowerCase() as ChatMessageType,
+      content: msg.content,
+      isEdited: msg.isEdited || false
+    })),
+    metadata: {
+      title: metadata.title || 'Imported Chat',
+      model: metadata.model || 'Unknown Model',
+      date: metadata.date || new Date().toISOString(),
+      tags: Array.isArray(metadata.tags) ? metadata.tags : [],
+      author: metadata.author,
+      sourceUrl: metadata.sourceUrl
+    }
+  };
+};
+
+/**
  * Parses raw input (Markdown or JSON) into structured ChatData.
  * It detects messages starting with "## Prompt:", "## Response:", or "## User:".
  * @param input The raw chat content string.
@@ -103,6 +144,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseGeminiHtml(input);
   }
 
+  if (mode === ParserMode.KimiHtml) {
+    return parseKimiHtml(input);
+  }
+
   // Basic Mode (Regex / JSON Detection)
   let detectedType: 'markdown' | 'json';
 
@@ -115,6 +160,12 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
   if (detectedType === 'json') {
     try {
       const parsed = JSON.parse(input);
+
+      // Check if this is an exported JSON format from Noosphere Reflect
+      if (parsed.exportedBy && parsed.exportedBy.tool === 'Noosphere Reflect') {
+        return parseExportedJson(parsed);
+      }
+
       if (!Array.isArray(parsed) && !parsed.messages) {
         throw new Error('Invalid JSON structure. Expected an array or an object with a "messages" array.');
       }
@@ -1418,7 +1469,7 @@ const parseChatGptHtml = (input: string): ChatData => {
       // Extract user message from bubble
       const messageBubble = turn.querySelector('.user-message-bubble-color') as HTMLElement;
       if (messageBubble) {
-        const content = extractMarkdownFromHtml(messageBubble.innerHTML);
+        const content = extractMarkdownFromHtml(messageBubble);
         if (content) {
           messages.push({
             type: ChatMessageType.Prompt,
@@ -1430,7 +1481,7 @@ const parseChatGptHtml = (input: string): ChatData => {
       // Extract assistant message
       const messageDiv = turn.querySelector('[data-message-author-role="assistant"]') as HTMLElement;
       if (messageDiv) {
-        const content = extractMarkdownFromHtml(messageDiv.innerHTML);
+        const content = extractMarkdownFromHtml(messageDiv);
         if (content) {
           messages.push({
             type: ChatMessageType.Response,
@@ -1514,7 +1565,14 @@ const parseGeminiHtml = (input: string): ChatData => {
 
     // Fallback: look for thought/reasoning blocks in Gemini's format
     if (htmlEl.classList.contains('model-thoughts') || htmlEl.classList.contains('thoughts-container')) {
-      const thoughtContent = extractMarkdownFromHtml(htmlEl);
+      // CRITICAL: Gemini has TWO elements with class "thoughts-content":
+      // 1. Outer wrapper (includes "Show thinking" button)
+      // 2. Inner content div with data-test-id="thoughts-content" (actual content)
+      // We must target the inner one using the data-test-id attribute
+      const contentEl = htmlEl.querySelector('[data-test-id="thoughts-content"]') ||
+        htmlEl.querySelector('.thoughts-content[data-test-id]') ||
+        htmlEl;
+      const thoughtContent = extractMarkdownFromHtml(contentEl as HTMLElement);
       if (thoughtContent && thoughtContent.trim().length > 0) {
         // Wrap in thought tags for consistency
         messages.push({
@@ -1529,6 +1587,78 @@ const parseGeminiHtml = (input: string): ChatData => {
 
   if (messages.length === 0) {
     throw new Error('No Gemini-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
+  }
+
+  return { messages };
+};
+
+/**
+ * Specialized parser for Kimi AI HTML exports.
+ * Extracts messages from the specific DOM structure used by Kimi.
+ * Supports thought process extraction with <thought> tags.
+ */
+const parseKimiHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Kimi structure: chat-content-item containers with user/assistant classes
+  const segments = doc.querySelectorAll('.chat-content-item');
+
+  segments.forEach(segment => {
+    const isUser = segment.classList.contains('chat-content-item-user');
+    const isAssistant = segment.classList.contains('chat-content-item-assistant');
+
+    if (isUser) {
+      // Extract user message from .user-content
+      const contentEl = segment.querySelector('.user-content');
+      if (contentEl) {
+        const content = extractMarkdownFromHtml(contentEl as HTMLElement);
+        if (content && content.trim().length > 0) {
+          messages.push({
+            type: ChatMessageType.Prompt,
+            content: content.trim()
+          });
+        }
+      }
+    } else if (isAssistant) {
+      // Check for thought process container first
+      const thinkingContainer = segment.querySelector('.thinking-container .markdown');
+      let thoughtContent = '';
+
+      if (thinkingContainer) {
+        const thoughtText = extractMarkdownFromHtml(thinkingContainer as HTMLElement);
+        if (thoughtText && thoughtText.trim().length > 0) {
+          // Wrap in thought tags if not already present
+          thoughtContent = `<thought>\n${thoughtText.trim()}\n</thought>\n\n`;
+        }
+      }
+
+      // Get main response content from .markdown-container .markdown
+      const markdownEl = segment.querySelector('.markdown-container .markdown');
+      let mainContent = '';
+
+      if (markdownEl) {
+        const responseText = extractMarkdownFromHtml(markdownEl as HTMLElement);
+        if (responseText && responseText.trim().length > 0) {
+          mainContent = responseText.trim();
+        }
+      }
+
+      // Combine thought + main content
+      const fullContent = thoughtContent + mainContent;
+
+      if (fullContent.trim()) {
+        messages.push({
+          type: ChatMessageType.Response,
+          content: fullContent.trim()
+        });
+      }
+    }
+  });
+
+  if (messages.length === 0) {
+    throw new Error('No Kimi-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
   }
 
   return { messages };

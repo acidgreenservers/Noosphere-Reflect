@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { parseChat, generateHtml } from '../services/converterService';
 import MetadataEditor from '../components/MetadataEditor';
 import ExportDropdown from '../components/ExportDropdown';
+import { parseMhtml, isMhtml } from '../utils/mhtmlParser';
 import {
     ChatTheme,
     SavedChatSession,
@@ -139,10 +140,6 @@ const BasicConverter: React.FC = () => {
         const init = async () => {
             await storageService.migrateLegacyData();
 
-            // Load settings to get default username
-            const settings = await storageService.getSettings();
-            setUserName(settings.defaultUserName);
-
             const sessions = await storageService.getAllSessions();
             setSavedSessions(sessions);
 
@@ -153,6 +150,10 @@ const BasicConverter: React.FC = () => {
                 if (sessionToLoad) {
                     loadSession(sessionToLoad);
                 }
+            } else {
+                // Only load default username if NOT loading a session
+                const settings = await storageService.getSettings();
+                setUserName(settings.defaultUserName);
             }
         };
         init();
@@ -165,12 +166,107 @@ const BasicConverter: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (event) => {
             if (event.target?.result) {
-                setInputContent(event.target.result as string);
+                let content = event.target.result as string;
+                const fileName = file.name.toLowerCase();
+
+                // Check if it's an MHTML file
+                if (fileName.endsWith('.mhtml') || fileName.endsWith('.mht') || isMhtml(content)) {
+                    try {
+                        // Extract HTML from MHTML
+                        content = parseMhtml(content);
+                        console.log('✓ Extracted HTML from MHTML file');
+
+                        // MHTML files contain full HTML, so we should use an HTML parser mode
+                        // Try to detect which platform based on content
+                        if (content.includes('claude.ai') || content.includes('font-claude-response')) {
+                            setParserMode(ParserMode.ClaudeHtml);
+                        } else if (content.includes('chatgpt.com') || content.includes('chat.openai.com')) {
+                            setParserMode(ParserMode.ChatGptHtml);
+                        } else if (content.includes('gemini.google.com')) {
+                            setParserMode(ParserMode.GeminiHtml);
+                        } else if (content.includes('chat.mistral.ai')) {
+                            setParserMode(ParserMode.LeChatHtml);
+                        } else if (content.includes('llamacoder.together.ai')) {
+                            setParserMode(ParserMode.LlamacoderHtml);
+                        } else if (content.includes('kimi.moonshot.cn')) {
+                            setParserMode(ParserMode.KimiHtml);
+                        } else {
+                            // Default to auto-detect
+                            setFileType('auto');
+                        }
+                    } catch (error) {
+                        console.error('Failed to parse MHTML:', error);
+                        setError('Failed to parse MHTML file. The file may be corrupted.');
+                        return;
+                    }
+                } else {
+                    // Auto-detect file type based on extension for non-MHTML files
+                    if (fileName.endsWith('.json')) {
+                        setFileType('json');
+                    } else if (fileName.endsWith('.md') || fileName.endsWith('.txt')) {
+                        setFileType('markdown');
+                    } else {
+                        setFileType('auto');
+                    }
+                }
+
+                setInputContent(content);
                 setError(null);
             }
         };
         reader.readAsText(file);
     };
+
+    const handleBatchImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setIsConverting(true);
+        setError(null);
+
+        let successCount = 0;
+        const failedFiles: string[] = [];
+
+        for (let i = 0; i < files.length; i++) {
+            try {
+                const content = await files[i].text();
+                const data = await parseChat(content, 'json', ParserMode.Basic);
+
+                await storageService.saveSession({
+                    id: Date.now().toString() + i,
+                    name: data.metadata?.title || files[i].name,
+                    chatTitle: data.metadata?.title || files[i].name,
+                    date: data.metadata?.date || new Date().toISOString(),
+                    inputContent: content,
+                    userName: userName || 'User',
+                    aiName: aiName || 'AI',
+                    selectedTheme: ChatTheme.DarkDefault,
+                    parserMode: ParserMode.Basic,
+                    chatData: data,
+                    metadata: data.metadata
+                });
+                successCount++;
+            } catch (err: any) {
+                console.error(`Failed to import ${files[i].name}:`, err);
+                failedFiles.push(files[i].name);
+            }
+        }
+
+        setIsConverting(false);
+
+        if (failedFiles.length > 0) {
+            setError(`Imported ${successCount}/${files.length} sessions. Failed: ${failedFiles.join(', ')}`);
+        } else {
+            alert(`✅ Successfully imported ${successCount} session(s)!`);
+        }
+
+        // Reload sessions list
+        const updatedSessions = await storageService.getAllSessions();
+        setSavedSessions(updatedSessions);
+
+        // Reset file input
+        e.target.value = '';
+    }, [userName, aiName]);
 
     const handleConvert = useCallback(async () => {
         if (!inputContent.trim()) {
@@ -189,13 +285,23 @@ const BasicConverter: React.FC = () => {
             const data = await parseChat(inputContent, fileType, parserMode);
             setChatData(data);
 
-            // Auto-populate metadata if not already set (or if converting fresh)
-            setMetadata(prev => ({
-                ...prev,
-                title: chatTitle,
-                model: parserMode,
-                date: new Date().toISOString()
-            }));
+            // Auto-populate metadata from imported JSON if present
+            if (data.metadata) {
+                if (data.metadata.title) setChatTitle(data.metadata.title);
+                if (data.metadata.model) setMetadata(prev => ({ ...prev, model: data.metadata!.model }));
+                if (data.metadata.date) setMetadata(prev => ({ ...prev, date: data.metadata!.date }));
+                if (data.metadata.tags) setMetadata(prev => ({ ...prev, tags: data.metadata!.tags }));
+                if (data.metadata.author) setMetadata(prev => ({ ...prev, author: data.metadata!.author }));
+                if (data.metadata.sourceUrl) setMetadata(prev => ({ ...prev, sourceUrl: data.metadata!.sourceUrl }));
+            } else {
+                // Auto-populate metadata if not already set (or if converting fresh)
+                setMetadata(prev => ({
+                    ...prev,
+                    title: chatTitle,
+                    model: parserMode,
+                    date: new Date().toISOString()
+                }));
+            }
 
             const html = generateHtml(
                 data,
@@ -402,76 +508,97 @@ const BasicConverter: React.FC = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">Parser Mode</label>
-                                        <div className="flex flex-wrap gap-4">
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input
-                                                    type="radio"
-                                                    name="parserMode"
-                                                    value={ParserMode.Basic}
-                                                    checked={parserMode === ParserMode.Basic}
-                                                    onChange={() => setParserMode(ParserMode.Basic)}
-                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
-                                                />
-                                                <span className={`text-sm ${parserMode === ParserMode.Basic ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Basic/MD</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input
-                                                    type="radio"
-                                                    name="parserMode"
-                                                    value={ParserMode.LlamacoderHtml}
-                                                    checked={parserMode === ParserMode.LlamacoderHtml}
-                                                    onChange={() => setParserMode(ParserMode.LlamacoderHtml)}
-                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
-                                                />
-                                                <span className={`text-sm ${parserMode === ParserMode.LlamacoderHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Llamacoder HTML</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input
-                                                    type="radio"
-                                                    name="parserMode"
-                                                    value={ParserMode.ClaudeHtml}
-                                                    checked={parserMode === ParserMode.ClaudeHtml}
-                                                    onChange={() => setParserMode(ParserMode.ClaudeHtml)}
-                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
-                                                />
-                                                <span className={`text-sm ${parserMode === ParserMode.ClaudeHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Claude HTML</span>
-                                            </label>
+                                        <label className="block text-sm font-medium text-gray-400 mb-3">Parser Mode</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.Basic)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.Basic
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Basic/MD
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.LlamacoderHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.LlamacoderHtml
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Llamacoder
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.ClaudeHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.ClaudeHtml
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Claude
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.LeChatHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.LeChatHtml
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                LeChat
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.ChatGptHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.ChatGptHtml
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                ChatGPT
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.GeminiHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.GeminiHtml
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Gemini
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.KimiHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.KimiHtml
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Kimi
+                                            </button>
                                         </div>
-                                        <div className="flex flex-wrap gap-4 mt-2">
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input
-                                                    type="radio"
-                                                    name="parserMode"
-                                                    value={ParserMode.LeChatHtml}
-                                                    checked={parserMode === ParserMode.LeChatHtml}
-                                                    onChange={() => setParserMode(ParserMode.LeChatHtml)}
-                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
-                                                />
-                                                <span className={`text-sm ${parserMode === ParserMode.LeChatHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>LeChat (Mistral)</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input
-                                                    type="radio"
-                                                    name="parserMode"
-                                                    value={ParserMode.ChatGptHtml}
-                                                    checked={parserMode === ParserMode.ChatGptHtml}
-                                                    onChange={() => setParserMode(ParserMode.ChatGptHtml)}
-                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
-                                                />
-                                                <span className={`text-sm ${parserMode === ParserMode.ChatGptHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>ChatGPT HTML</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input
-                                                    type="radio"
-                                                    name="parserMode"
-                                                    value={ParserMode.GeminiHtml}
-                                                    checked={parserMode === ParserMode.GeminiHtml}
-                                                    onChange={() => setParserMode(ParserMode.GeminiHtml)}
-                                                    className="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 focus:ring-blue-500"
-                                                />
-                                                <span className={`text-sm ${parserMode === ParserMode.GeminiHtml ? 'text-blue-400 font-bold' : 'text-gray-400 group-hover:text-gray-200'}`}>Gemini HTML</span>
-                                            </label>
+                                    </div>
+
+                                    <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl mt-4">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-start gap-3">
+                                                <div className="text-blue-400 text-xl">💡</div>
+                                                <p className="text-sm text-blue-200/80 leading-relaxed">
+                                                    <strong>Basic Mode Rule:</strong> Ensure your chat log uses these clear markers for prompts and responses:
+                                                    <br />
+                                                    <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Prompt:</code> or <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## User:</code> and <br /> <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Response:</code>.
+                                                </p>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <div className="text-blue-400 text-xl">🧠</div>
+                                                <p className="text-sm text-blue-200/80 leading-relaxed">
+                                                    <strong>Thought Process:</strong> Wrap text in <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">&lt;thought&gt;...&lt;/thought&gt;</code> to create collapsible thought sections.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -556,24 +683,7 @@ const BasicConverter: React.FC = () => {
                                     </div>
                                 )}
 
-                                <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-start gap-3">
-                                            <div className="text-blue-400 text-xl">💡</div>
-                                            <p className="text-sm text-blue-200/80 leading-relaxed">
-                                                <strong>Basic Mode Rule:</strong> Ensure your chat log uses these clear markers for prompts and responses:
-                                                <br />
-                                                <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Prompt:</code> or <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## User:</code> and <br /> <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">## Response:</code>.
-                                            </p>
-                                        </div>
-                                        <div className="flex items-start gap-3">
-                                            <div className="text-blue-400 text-xl">🧠</div>
-                                            <p className="text-sm text-blue-200/80 leading-relaxed">
-                                                <strong>Thought Process:</strong> Wrap text in <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">&lt;thought&gt;...&lt;/thought&gt;</code> to create collapsible thought sections.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+
 
                             </div>
 
@@ -585,7 +695,18 @@ const BasicConverter: React.FC = () => {
                                         <div className="flex gap-2">
                                             <label className="cursor-pointer px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-xs font-medium text-gray-200 border border-gray-600 transition-colors">
                                                 Upload File
-                                                <input type="file" className="hidden" accept=".txt,.md,.json" onChange={handleFileUpload} />
+                                                <input type="file" className="hidden" accept=".txt,.md,.json,.mhtml,.mht,.html,.htm" onChange={handleFileUpload} />
+                                            </label>
+                                            <label className="cursor-pointer px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded-md text-xs font-medium text-white border border-blue-600 transition-colors">
+                                                📦 Batch Import
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept=".json"
+                                                    multiple
+                                                    onChange={handleBatchImport}
+                                                    id="batch-import-input"
+                                                />
                                             </label>
                                             <button onClick={clearForm} className="px-3 py-1.5 bg-gray-700 hover:bg-red-900/50 hover:text-red-200 hover:border-red-800 rounded-md text-xs font-medium text-gray-200 border border-gray-600 transition-all">
                                                 Clear
@@ -605,7 +726,9 @@ const BasicConverter: React.FC = () => {
                                                         ? "Paste full HTML source from ChatGPT here..."
                                                         : parserMode === ParserMode.GeminiHtml
                                                             ? "Paste full HTML source from Google Gemini here..."
-                                                            : "Paste your chat here (Markdown or JSON)..."}
+                                                            : parserMode === ParserMode.KimiHtml
+                                                                ? "Paste full HTML source from Kimi AI here..."
+                                                                : "Paste your chat here (Markdown or JSON)..."}
                                         className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
                                     />
                                     <button
@@ -635,6 +758,23 @@ const BasicConverter: React.FC = () => {
                             <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-xl animate-shake">
                                 <p className="flex items-center gap-2">
                                     <span className="text-xl">⚠️</span> {error}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Success Indicator for Imported JSON */}
+                        {chatData && chatData.metadata && chatData.metadata.title && (
+                            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 animate-fade-in-down">
+                                <p className="text-sm text-green-200 flex items-center gap-2">
+                                    <span className="text-xl">✅</span>
+                                    <span>
+                                        <strong>Imported with metadata:</strong> {chatData.metadata.title}
+                                        {chatData.metadata.tags && chatData.metadata.tags.length > 0 && (
+                                            <span className="ml-2 text-green-300/80">
+                                                (Tags: {chatData.metadata.tags.join(', ')})
+                                            </span>
+                                        )}
+                                    </span>
                                 </p>
                             </div>
                         )}
@@ -687,7 +827,7 @@ const BasicConverter: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

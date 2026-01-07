@@ -14,7 +14,11 @@
     "https://chat.openai.com/*",
     "https://chat.mistral.ai/*",
     "https://llamacoder.together.ai/*",
-    "https://gemini.google.com/*"
+    "https://gemini.google.com/*",
+    "https://aistudio.google.com/*",
+    "https://noosphere-reflect.pages.dev/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",

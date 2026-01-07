@@ -51,6 +51,7 @@ export enum ParserMode {
   LeChatHtml = 'lechat-html',
   ChatGptHtml = 'chatgpt-html',
   GeminiHtml = 'gemini-html',
+  KimiHtml = 'kimi-html',
 }
 
 export interface SavedChatSession {

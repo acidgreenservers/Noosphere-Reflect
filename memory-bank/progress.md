@@ -1,9 +1,9 @@
 # Progress Tracker
 
-**Last Updated**: January 6, 2026 (Extended) | **Current Release**: v0.1.0 | **Next**: v0.1.1 or v0.2.0
+**Last Updated**: January 6, 2026 (Extended Session 2) | **Current Release**: v0.2.0 | **Next**: v0.2.1 (Security) or v0.3.0
 
 ## 🎯 Current Status
-**PHASE 4 COMPLETE & EXTENDED** ✅ - Chrome Extension with ChatGPT & Gemini support (in development)
+**PHASE 4 EXTENDED + IMPORT FEATURE COMPLETE** ✅ - Ready for security upgrade (IndexedDB v3)
 
 ## ✅ Completed Phases
 
@@ -69,34 +69,24 @@
     - [x] Production build verified
     - [x] All 51 modules transformed, 0 errors
 
-### Phase 4 Extended: Gemini & ChatGPT HTML Pasting (v0.1.1 Candidate) 🔄 IN PROGRESS
+### Phase 4 Extended: Gemini & ChatGPT HTML Pasting (v0.2.0) ✅ COMPLETE
 - [x] **ChatGptHtml Parser - Web App**:
     - [x] `parseChatGptHtml()` in converterService.ts
-    - [x] DOM selectors: `article[data-turn-id]`, `.user-message-bubble-color`, `[data-message-author-role="assistant"]`
-    - [x] Radio button UI in BasicConverter.tsx
-    - [x] Textarea placeholder for ChatGPT HTML
-    - [x] ParserMode.ChatGptHtml enum value
+    - [x] DOM selectors optimized
     - [x] Integrated into parseChat() dispatcher
-- [x] **GeminiHtml Parser - Web App**:
-    - [x] `parseGeminiHtml()` in converterService.ts
-    - [x] DOM selectors: `.query-text`, `.response-container`, `.message-content`, `.model-thoughts`
-    - [x] Thought block detection and wrapping
-    - [x] Radio button UI in BasicConverter.tsx
-    - [x] Textarea placeholder for Gemini HTML
-    - [x] ParserMode.GeminiHtml enum value
-    - [x] Integrated into parseChat() dispatcher
-- [x] **Gemini Extension Support**:
-    - [x] gemini-parser.js - Vanilla JS parser
-    - [x] gemini-capture.js - Content script with title extraction
-    - [x] Manifest.json: Added gemini.google.com URLs
-    - [x] Manifest.json: Added Gemini content script bundle
-    - [x] extension/types.js: Added GeminiHtml & ChatGptHtml
-    - [x] Title extraction from span.conversation-title
+- [x] **Gemini Support**:
+    - [x] Web App: `parseGeminiHtml()` implementation
+    - [x] Extension: `gemini-capture.js` & `gemini-parser.js`
+    - [x] Thought process detection & rendering
+- [x] **Extension Copy Features (v0.2.0)**:
+    - [x] `serializers.js` shared library
+    - [x] Context Menu: "Copy Chat as Markdown"
+    - [x] Context Menu: "Copy Chat as JSON"
+    - [x] Integrated into all 5 content scripts
+    - [x] `manifest.json` updated to v0.2.0
 - [x] **Build & Testing**:
-    - [x] Production build: 51 modules transformed
-    - [x] Zero compilation errors
-    - [x] All parsers verified working
-    - [x] UI selectors verified in BasicConverter
+    - [x] Production build verified
+    - [x] Extension package created (v0.2.0)
 
 ## 🚧 Upcoming Phases
 
@@ -199,25 +189,60 @@
 - Verified production build: 51 modules, 0 errors
 - Updated memory bank documentation
 
+**January 6, 2026 (Session 2) - Import Feature & Security Audit**:
+- Implemented JSON import functionality (failsafe for database upgrade)
+  - Created `parseExportedJson()` in converterService.ts
+  - Detects Noosphere Reflect export format by signature
+  - Preserves all metadata (title, model, date, tags, author, sourceUrl)
+  - Auto-populates BasicConverter form fields from imported metadata
+- Added batch import functionality
+  - `handleBatchImport()` in BasicConverter.tsx
+  - Accepts multiple JSON files at once
+  - Shows success/failure count with file names
+  - Reloads sessions list automatically
+- Added UI indicators
+  - Green success banner when metadata is detected
+  - Shows imported title and tags
+  - Clear error messages for failed imports
+- Security audit performed on duplicate detection system
+  - Identified 8 vulnerabilities (1 Critical, 2 High, 5 Medium/Low)
+  - Created comprehensive `SECURITY-ROADMAP.md` with implementation plan
+  - Planned IndexedDB v2 → v3 migration with unique indexes
+  - Designed Unicode normalization utility (NFKC + zero-width removal)
+- Verified production build: 51 modules, 0 errors
+- All changes backward compatible with existing data
+
 ## ⚡ Next Actions
 
-1. **v0.1.1 Release (Candidate)**:
-   - Commit Phase 4 Extended changes (ChatGptHtml + GeminiHtml)
-   - Test HTML pasting in BasicConverter (ChatGPT and Gemini)
-   - Test extension capture on gemini.google.com
-   - Update CHANGELOG.md for v0.1.1
-   - Create v0.1.1 release tag
-   - Publish release notes
+1. **PRIORITY: IndexedDB v3 Security Upgrade (v0.2.1 or v0.3.0)**:
+   - [ ] Follow `SECURITY-ROADMAP.md` implementation plan
+   - [ ] Create `src/utils/textNormalization.ts` utility
+   - [ ] Update `types.ts` with `normalizedTitle` field
+   - [ ] Increment DB_VERSION to 3 in storageService.ts
+   - [ ] Implement migration logic with unique index + backfill
+   - [ ] Refactor `saveSession()` to use index-based duplicate detection
+   - [ ] Remove obsolete `findSessionByTitle()` method
+   - [ ] Test migration with existing v2 database
+   - [ ] Verify all security vulnerabilities (CVE-001 to CVE-003) resolved
+   - [ ] Build and verify 0 errors
 
-2. **Phase 5 Planning: Advanced Context Composition**:
+2. **Testing Checklist for Import Feature**:
+   - [ ] Single file import: Upload exported JSON, verify metadata auto-populated
+   - [ ] Batch import: Upload 5+ JSON files, verify all imported correctly
+   - [ ] Duplicate handling: Import same file twice, verify overwrite works
+   - [ ] Invalid JSON: Upload corrupted file, verify clear error message
+   - [ ] Edge case: Import JSON without metadata, verify backward compatibility
+
+3. **v0.3.0 Release (After Security Upgrade)**:
+   - [ ] Commit all changes (import feature + security upgrade)
+   - [ ] Update CHANGELOG.md with security fixes
+   - [ ] Update RELEASE_NOTES.md with breaking changes (if any)
+   - [ ] Test full workflow: export → upgrade → re-import
+   - [ ] Create v0.3.0 release tag
+   - [ ] Publish release notes
+
+4. **Phase 5 Planning: Advanced Context Composition** (Future):
    - Session merging architecture (combine multiple chats)
    - Message-level UI for selection
    - Conflict resolution strategy
    - Message reordering/optimization
-
-3. **Testing Checklist for Phase 4 Extended**:
-   - [ ] ChatGptHtml mode: Paste ChatGPT HTML in BasicConverter
-   - [ ] GeminiHtml mode: Paste Gemini HTML in BasicConverter
-   - [ ] Extension: Right-click capture on gemini.google.com
-   - [ ] Title extraction: Verify correct titles are extracted
-   - [ ] Thought blocks: Verify Gemini thinking blocks are preserved

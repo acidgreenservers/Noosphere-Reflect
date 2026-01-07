@@ -65,6 +65,32 @@ class StorageService {
     }
 
     async saveSession(session: SavedChatSession): Promise<void> {
+        // Extract title for duplicate detection
+        const title = session.metadata?.title || session.chatTitle || session.name;
+
+        // Check for existing session with same title
+        if (title) {
+            const existingSession = await this.findSessionByTitle(title);
+
+            if (existingSession) {
+                // Duplicate found - reuse existing ID to overwrite
+                console.log(`🔄 Overwriting existing session: "${title}" (ID: ${existingSession.id})`);
+                session.id = existingSession.id;
+            } else {
+                // New session - keep generated ID or assign new one if missing
+                if (!session.id) {
+                    session.id = Date.now().toString();
+                }
+                console.log(`✨ Saving new session: "${title}" (ID: ${session.id})`);
+            }
+        } else {
+            // No title - fallback to unique ID (shouldn't happen, but handle gracefully)
+            if (!session.id) {
+                session.id = Date.now().toString();
+            }
+            console.warn('⚠️ Session saved without title - cannot detect duplicates');
+        }
+
         const db = await this.getDB();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -74,6 +100,30 @@ class StorageService {
             transaction.oncomplete = () => resolve();
             transaction.onerror = () => reject(transaction.error);
         });
+    }
+
+    /**
+     * Find an existing session by title (for duplicate detection)
+     * Returns the session if found, null otherwise
+     */
+    async findSessionByTitle(title: string): Promise<SavedChatSession | null> {
+        try {
+            const allSessions = await this.getAllSessions();
+
+            // Normalize title for comparison (case-insensitive, trimmed)
+            const normalizedTitle = title.trim().toLowerCase();
+
+            // Find session with matching title
+            const match = allSessions.find(session => {
+                const sessionTitle = (session.metadata?.title || session.chatTitle || session.name || '').trim().toLowerCase();
+                return sessionTitle === normalizedTitle;
+            });
+
+            return match || null;
+        } catch (error) {
+            console.error('Failed to find session by title:', error);
+            return null;
+        }
     }
 
     async deleteSession(id: string): Promise<void> {

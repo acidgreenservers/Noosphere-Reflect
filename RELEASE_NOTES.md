@@ -1,3 +1,87 @@
+# Release Notes: v0.3.0 (Upcoming)
+
+**Target Release Date**: January 7-8, 2026 (After Security Upgrade)
+
+## Major Features (In Development)
+
+### 💾 JSON Import Failsafe (January 6, 2026 - Session 2)
+**Purpose**: Provide users with a safe export/re-import path before IndexedDB v3 security upgrade.
+
+**Features**:
+- **Noosphere Reflect Format Detection**: Automatically recognizes exported JSON by signature (`exportedBy.tool`)
+- **Full Metadata Preservation**:
+  - All fields imported: Title, Model, Date, Tags, Author, SourceUrl
+  - Form fields auto-populated from imported metadata
+  - No data loss during re-import
+- **Batch Import UI**:
+  - Upload multiple JSON files at once
+  - Success/failure count with file names
+  - Green success banner for visual feedback
+  - Clear error messages for troubleshooting
+- **Backward Compatible**: Still accepts legacy JSON formats (simple message arrays)
+- **Integration**: Works seamlessly with existing duplicate detection
+
+**Files Modified**:
+- `src/services/converterService.ts`: Added `parseExportedJson()` function (lines 71-110)
+- `src/pages/BasicConverter.tsx`: Added `handleBatchImport()` (lines 175-224), auto-population logic (lines 243-259), batch UI (lines 653-663)
+
+### 🔒 Security Roadmap: Database Migration v2 → v3
+**Status**: Detailed plan ready in `SECURITY-ROADMAP.md`
+
+**Planned Fixes**:
+1. **CVE-001 (Critical)**: TOCTOU Race Condition
+   - Fix: Implement unique index on `normalizedTitle`
+   - Performance: O(n) scan → O(log n) lookup
+   - Atomicity: Database-level constraint enforcement
+
+2. **CVE-002 (High)**: Unicode Normalization Bypass
+   - Fix: NFKC normalization + zero-width character removal
+   - Coverage: Handles NFC/NFD equivalence, homoglyphs, zero-width spaces
+
+3. **CVE-003 (High)**: O(n) Performance Degradation
+   - Fix: Replace `getAllSessions()` scan with index lookup
+   - Impact: 10,000 sessions go from 1s+ to <10ms
+
+**Implementation Ready**:
+- `src/utils/textNormalization.ts` (utility design complete)
+- Updated `storageService.ts` (migration logic designed)
+- Updated `types.ts` (schema changes planned)
+- Testing checklist with 20+ test cases included
+
+**Next Steps**:
+1. Create `textNormalization.ts` utility
+2. Increment `DB_VERSION` to 3
+3. Implement migration with automatic backfill
+4. Test with 1,000+ sessions
+5. Deploy with zero downtime
+
+---
+
+# Release Notes: v0.2.0
+
+**Release Date**: January 6, 2026
+
+## Major Updates
+
+### 🔌 Chrome Extension v0.2.0
+The Noosphere Reflect Bridge Extension has been significantly upgraded.
+
+**New Features**:
+- **Gemini Support**: Full capture support for `gemini.google.com`.
+- **Copy to Clipboard**: New context menu options to "Copy Chat as Markdown" and "Copy Chat as JSON" directly from the page, instantly.
+- **Universal Support**: All features now work across 5 platforms: Claude, ChatGPT, LeChat, Llamacoder, and Gemini.
+
+### 🧠 Enhanced Thought Process Handling
+- **Gemini Thoughts**: The parser now intelligently detects and preserves "Thought Process" blocks from Gemini models.
+- **Collapsible UI**: Thought blocks are rendered as collapsible `<details>` sections in the HTML export, keeping the UI clean while preserving context.
+- **Markdown Blocks**: Thoughts are exported as ` ```thought ` code blocks in Markdown, ensuring they are clearly annotated.
+
+### 🛠️ Technical Improvements
+- **Shared Serializers**: Implementation of a unified `serializers.js` library for consistent data export across the extension.
+- **Updated Manifest**: Extension updated to v0.2.0 with expanded permissions for Gemini.
+
+---
+
 # Release Notes: v0.1.0
 
 **Release Date**: January 5, 2026

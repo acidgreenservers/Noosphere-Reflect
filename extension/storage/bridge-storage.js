@@ -21,17 +21,28 @@ async function saveToBridge(session) {
       throw new Error(`Session too large (${(sizeInBytes / 1_000_000).toFixed(1)}MB). Please export as JSON instead.`);
     }
 
-    // Save the session data
+    // Get existing pending sessions (if any)
+    const result = await chrome.storage.local.get([BRIDGE_DATA_KEY, BRIDGE_FLAG_KEY]);
+    const existingData = result[BRIDGE_DATA_KEY] || [];
+
+    // Convert single session to array format (backward compatibility)
+    const sessionQueue = Array.isArray(existingData) ? existingData : (existingData ? [existingData] : []);
+
+    // Append new session to queue
+    sessionQueue.push(session);
+
+    // Save updated queue
     await chrome.storage.local.set({
-      [BRIDGE_DATA_KEY]: session,
+      [BRIDGE_DATA_KEY]: sessionQueue,  // Array of sessions
       [BRIDGE_FLAG_KEY]: {
-        sessionId: session.id,
+        count: sessionQueue.length,
+        lastSessionId: session.id,
         timestamp: Date.now(),
         pending: true
       }
     });
 
-    return { success: true, size: sizeInBytes };
+    return { success: true, size: sizeInBytes, queueLength: sessionQueue.length };
   } catch (error) {
     console.error('Failed to save to bridge:', error);
     throw error;
@@ -46,13 +57,15 @@ async function getPendingData() {
     const result = await chrome.storage.local.get([BRIDGE_DATA_KEY, BRIDGE_FLAG_KEY]);
 
     if (result[BRIDGE_FLAG_KEY]?.pending && result[BRIDGE_DATA_KEY]) {
-      return result[BRIDGE_DATA_KEY];
+      const data = result[BRIDGE_DATA_KEY];
+      // Return array (normalize legacy single-session format)
+      return Array.isArray(data) ? data : [data];
     }
 
-    return null;
+    return [];  // Return empty array instead of null
   } catch (error) {
     console.error('Failed to get bridge data:', error);
-    return null;
+    return [];
   }
 }
 
