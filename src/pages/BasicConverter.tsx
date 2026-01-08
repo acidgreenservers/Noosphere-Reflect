@@ -975,11 +975,11 @@ const BasicConverter: React.FC = () => {
                                                 aiName={aiName}
                                                 selectedTheme={selectedTheme}
                                                 parserMode={parserMode}
-                                                metadata={metadata}
+                                                metadata={{ ...metadata, artifacts }}
                                                 buttonText="Download"
                                                 buttonClassName="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2"
-                                                session={loadedSessionId ? {
-                                                    id: loadedSessionId,
+                                                session={{
+                                                    id: loadedSessionId || Date.now().toString(),
                                                     name: chatTitle,
                                                     chatTitle,
                                                     date: metadata.date,
@@ -989,8 +989,8 @@ const BasicConverter: React.FC = () => {
                                                     selectedTheme,
                                                     parserMode,
                                                     chatData,
-                                                    metadata
-                                                } : undefined}
+                                                    metadata: { ...metadata, artifacts }
+                                                }}
                                             />
                                         )}
                                     </div>

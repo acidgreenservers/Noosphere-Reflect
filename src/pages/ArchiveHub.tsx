@@ -321,7 +321,7 @@ const ArchiveHub: React.FC = () => {
                         }
 
                         // Ask user to select a directory
-                        const dirHandle = await (window as any).showDirectoryPicker({
+                        const rootDirHandle = await (window as any).showDirectoryPicker({
                             mode: 'readwrite',
                             startIn: 'downloads'
                         });
@@ -333,6 +333,9 @@ const ArchiveHub: React.FC = () => {
                         const baseFilename = (session.metadata?.title || session.chatTitle)
                             .replace(/[^a-z0-9]/gi, '_')
                             .toLowerCase();
+
+                        // Create a subdirectory for the chat export
+                        const chatDirHandle = await rootDirHandle.getDirectoryHandle(baseFilename, { create: true });
 
                         // Generate conversation content
                         let content: string;
@@ -364,14 +367,14 @@ const ArchiveHub: React.FC = () => {
                         }
 
                         // Write conversation file to selected directory
-                        const fileHandle = await dirHandle.getFileHandle(`${baseFilename}.${extension}`, { create: true });
+                        const fileHandle = await chatDirHandle.getFileHandle(`${baseFilename}.${extension}`, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(content);
                         await writable.close();
 
                         // Create artifacts subdirectory and write artifacts
                         if (session.metadata?.artifacts && session.metadata.artifacts.length > 0) {
-                            const artifactsDir = await dirHandle.getDirectoryHandle('artifacts', { create: true });
+                            const artifactsDir = await chatDirHandle.getDirectoryHandle('artifacts', { create: true });
 
                             for (const artifact of session.metadata.artifacts) {
                                 const artifactHandle = await artifactsDir.getFileHandle(artifact.fileName, { create: true });
@@ -384,7 +387,7 @@ const ArchiveHub: React.FC = () => {
                             }
                         }
 
-                        alert(`✅ Exported to directory:\n- ${baseFilename}.${extension}\n- artifacts/ (${session.metadata?.artifacts?.length || 0} files)`);
+                        alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${session.metadata?.artifacts?.length || 0} files)`);
                     } catch (error: any) {
                         if (error.name === 'AbortError') {
                             // User cancelled the directory picker
@@ -503,6 +506,13 @@ const ArchiveHub: React.FC = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                         </button>
+                        <Link
+                            to="/memory-archive"
+                            className="px-4 py-2 text-sm font-medium text-purple-300 hover:text-white transition-colors flex items-center gap-2"
+                        >
+                            <span className="text-lg">🧠</span>
+                            Memory Archive
+                        </Link>
                         <Link
                             to="/converter"
                             className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-2"

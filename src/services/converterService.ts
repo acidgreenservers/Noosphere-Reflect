@@ -1,4 +1,4 @@
-import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMetadata, SavedChatSession, ConversationManifest } from '../types';
+import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMetadata, SavedChatSession, ConversationManifest, Memory } from '../types';
 import { escapeHtml, sanitizeUrl, validateLanguage, sanitizeFilename, neutralizeDangerousExtension } from '../utils/securityUtils';
 import JSZip from 'jszip';
 
@@ -148,6 +148,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
 
   if (mode === ParserMode.KimiHtml) {
     return parseKimiHtml(input);
+  }
+
+  if (mode === ParserMode.GrokHtml) {
+    return parseGrokHtml(input);
   }
 
   // Basic Mode (Regex / JSON Detection)
@@ -1732,6 +1736,154 @@ const parseKimiHtml = (input: string): ChatData => {
 };
 
 /**
+ * Helper to decode HTML entities in a string.
+ * Used when content is extracted from innerHTML but needs to be stored as raw text.
+ */
+const decodeHtmlEntities = (text: string): string => {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  return doc.documentElement.textContent || text;
+};
+
+/**
+ * Specialized parser for Grok (xAI) HTML exports.
+ * Extracts messages from the specific DOM structure used by Grok.
+ * Handles thought blocks, code blocks, tables, images, canvas elements, and Knowledge Cluster Prompts.
+ */
+const parseGrokHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Grok uses div.response-content-markdown for both user and AI messages
+  const messageContainers = doc.querySelectorAll('div.response-content-markdown');
+
+  messageContainers.forEach((container, index) => {
+    const htmlContent = container.innerHTML;
+
+    // Check if this is a Grok response (contains thought blocks or is after user message)
+    const hasThought = htmlContent.includes('&lt;thought&gt;');
+    const isUser = index % 2 === 0 && !hasThought;
+
+    let content = '';
+
+    if (hasThought) {
+      // Extract and wrap thought process
+      const thoughtMatch = htmlContent.match(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/);
+      if (thoughtMatch) {
+        // Decode entities because innerHTML gives us &lt; for <
+        const encodedThought = thoughtMatch[1].trim();
+        const thoughtContent = decodeHtmlEntities(encodedThought);
+        // Do NOT escapeHtml here; generateHtml handles it
+        content += `<thought>\n${thoughtContent}\n</thought>\n\n`;
+      }
+    }
+
+    // Extract main content from <p> tags
+    const paragraphs = container.querySelectorAll('p.break-words');
+    paragraphs.forEach(p => {
+      const text = p.textContent?.trim() || '';
+      if (text) {
+        content += text + '\n\n';
+      }
+    });
+
+    // Extract code blocks
+    const codeBlocks = container.querySelectorAll('div.not-prose pre code');
+    codeBlocks.forEach(code => {
+      const languageSpan = code.closest('div.not-prose')?.querySelector('span.font-mono');
+      const language = languageSpan?.textContent?.trim() || 'plaintext';
+      const codeContent = code.textContent || '';
+      content += `\`\`\`${validateLanguage(language)}\n${codeContent}\n\`\`\`\n\n`;
+    });
+
+    // Extract tables
+    const tables = container.querySelectorAll('table');
+    tables.forEach(table => {
+      content += extractTableMarkdown(table) + '\n\n';
+    });
+
+    // Extract images
+    const images = container.querySelectorAll('img');
+    images.forEach(img => {
+      const src = img.getAttribute('src') || '';
+      const alt = img.getAttribute('alt') || 'Image';
+      if (src) {
+        // No escapeHtml needed for alt if renderer handles it, but sanitizeUrl IS needed
+        content += `![${alt}](${sanitizeUrl(src)})\n\n`;
+      }
+    });
+
+    // Extract canvas elements (charts)
+    const canvases = container.querySelectorAll('canvas');
+    canvases.forEach(canvas => {
+      const id = canvas.getAttribute('id') || 'chart';
+      content += `[Chart: ${id}]\n\n`;
+    });
+
+    // Extract Knowledge Cluster Prompts (suggested follow-up questions)
+    // These appear as buttons, typically at the end of AI responses
+    const clusterPrompts = container.querySelectorAll('button');
+    const prompts: string[] = [];
+    clusterPrompts.forEach(button => {
+      const text = button.textContent?.trim() || '';
+      // Filter out UI buttons (Copy, Run, etc.) - cluster prompts are longer
+      if (text.length > 20 && !text.includes('Copy') && !text.includes('Run')) {
+        prompts.push(text);
+      }
+    });
+    if (prompts.length > 0) {
+      content += '\n**Suggested follow-up questions:**\n';
+      prompts.forEach(prompt => {
+        // Do NOT escapeHtml here; generateHtml handles it
+        content += `- ${prompt}\n`;
+      });
+      content += '\n';
+    }
+
+    if (content.trim()) {
+      messages.push({
+        type: isUser ? ChatMessageType.Prompt : ChatMessageType.Response,
+        content: content.trim()
+      });
+    }
+  });
+
+  if (messages.length === 0) {
+    throw new Error('No Grok-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
+  }
+
+  return { messages };
+};
+
+/**
+ * Helper to extract markdown table from HTML table element.
+ */
+const extractTableMarkdown = (table: Element): string => {
+  const rows: string[] = [];
+
+  // Extract headers
+  const headers = Array.from(table.querySelectorAll('thead th'))
+    .map(th => th.textContent?.trim() || '');
+
+  if (headers.length > 0) {
+    rows.push('| ' + headers.join(' | ') + ' |');
+    rows.push('| ' + headers.map(() => '---').join(' | ') + ' |');
+  }
+
+  // Extract body rows
+  const bodyRows = table.querySelectorAll('tbody tr');
+  bodyRows.forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll('td'))
+      .map(td => td.textContent?.trim() || '');
+    if (cells.length > 0) {
+      rows.push('| ' + cells.join(' | ') + ' |');
+    }
+  });
+
+  return rows.join('\n');
+};
+
+/**
  * Generates a JSON representation of a chat session.
  * @param chatData The parsed chat data with messages and metadata
  * @param metadata Optional metadata to include in the output
@@ -1850,6 +2002,8 @@ export const generateDirectoryExport = (
   return files;
 };
 
+
+
 /**
  * Create ZIP archive from directory export
  * @param session - The saved chat session
@@ -1915,4 +2069,166 @@ export const generateBatchZipExport = async (
   }
 
   return await zip.generateAsync({ type: 'blob' });
+};
+
+/**
+ * Triggers a directory export using the File System Access API.
+ * Creates a conversation file and an `artifacts` subfolder if needed.
+ * @param session - The session to export.
+ * @param format - The export format for the main conversation file.
+ */
+export const generateDirectoryExportWithPicker = async (
+  session: SavedChatSession,
+  format: 'html' | 'markdown' | 'json'
+) => {
+  try {
+    // Check if File System Access API is supported
+    if (!('showDirectoryPicker' in window)) {
+      alert('⚠️ Directory export is not supported in this browser. Please use Chrome, Edge, or Opera.');
+      return;
+    }
+
+    // Ask user to select a directory
+    const dirHandle = await (window as any).showDirectoryPicker({
+      mode: 'readwrite',
+      startIn: 'downloads'
+    });
+
+    const theme = session.selectedTheme || ChatTheme.DarkDefault;
+    const userName = session.userName || 'User';
+    const aiName = session.aiName || 'AI';
+    const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+    const baseFilename = (session.metadata?.title || session.chatTitle)
+      .replace(/[^a-z0-9]/gi, '_')
+      .toLowerCase();
+
+    // Create a subdirectory for the chat export
+    const chatDirHandle = await dirHandle.getDirectoryHandle(baseFilename, { create: true });
+
+    // Generate conversation content
+    let content: string;
+    let extension: string;
+
+    if (format === 'html') {
+      content = generateHtml(
+        session.chatData!,
+        title,
+        theme,
+        userName,
+        aiName,
+        session.parserMode,
+        session.metadata
+      );
+      extension = 'html';
+    } else if (format === 'markdown') {
+      content = generateMarkdown(
+        session.chatData!,
+        title,
+        userName,
+        aiName,
+        session.metadata
+      );
+      extension = 'md';
+    } else {
+      content = generateJson(session.chatData!, session.metadata);
+      extension = 'json';
+    }
+
+    // Write conversation file to selected directory
+    const fileHandle = await chatDirHandle.getFileHandle(`${baseFilename}.${extension}`, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(content);
+    await writable.close();
+
+    // Create artifacts subdirectory and write artifacts
+    if (session.metadata?.artifacts && session.metadata.artifacts.length > 0) {
+      const artifactsDir = await chatDirHandle.getDirectoryHandle('artifacts', { create: true });
+
+      for (const artifact of session.metadata.artifacts) {
+        const artifactHandle = await artifactsDir.getFileHandle(artifact.fileName, { create: true });
+        const artifactWritable = await artifactHandle.createWritable();
+
+        const binaryData = Uint8Array.from(atob(artifact.fileData), c => c.charCodeAt(0));
+        await artifactWritable.write(binaryData);
+        await artifactWritable.close();
+      }
+    }
+
+    alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${session.metadata?.artifacts?.length || 0} files)`);
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      // User cancelled the directory picker, do nothing.
+      return;
+    }
+    console.error('Directory export failed:', error);
+    alert('❌ Directory export failed. Check console for details.');
+  }
+};
+
+/**
+ * Generates HTML export for a memory
+ */
+export const generateMemoryHtml = (
+  memory: Memory,
+  theme: ChatTheme = ChatTheme.DarkDefault
+): string => {
+  // Use themeMap from this file scope (lines 535-649)
+  // Since it's not exported, we need to ensure we can access it or duplicate necessary parts.
+  // Actually, themeMap IS defined in this file (line 535).
+  const themeClasses = themeMap[theme] || themeMap[ChatTheme.DarkDefault];
+  const formattedDate = new Date(memory.createdAt).toLocaleString();
+
+  return `<!DOCTYPE html>
+<html lang="en" class="${themeClasses.htmlClass}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(memory.metadata.title)}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="${themeClasses.bodyBg} ${themeClasses.bodyText} p-8">
+  <div class="max-w-4xl mx-auto ${themeClasses.containerBg} rounded-xl p-8 shadow-2xl">
+    <h1 class="${themeClasses.titleText} text-3xl font-bold mb-4">
+      ${escapeHtml(memory.metadata.title)}
+    </h1>
+    <div class="text-sm text-gray-400 mb-6">
+      <p><strong>AI Model:</strong> ${escapeHtml(memory.aiModel)}</p>
+      <p><strong>Created:</strong> ${formattedDate}</p>
+      <p><strong>Tags:</strong> ${memory.tags.map(t => escapeHtml(t)).join(', ')}</p>
+    </div>
+    <div class="prose prose-invert max-w-none">
+      ${convertMarkdownToHtml(memory.content, false)}
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+/**
+ * Generates Markdown export for a memory
+ */
+export const generateMemoryMarkdown = (memory: Memory): string => {
+  const formattedDate = new Date(memory.createdAt).toLocaleString();
+
+  return `# ${memory.metadata.title}
+
+**AI Model:** ${memory.aiModel}  
+**Created:** ${formattedDate}  
+**Tags:** ${memory.tags.join(', ')}
+
+---
+
+${memory.content}
+
+---
+
+*Exported from Noosphere Reflect Memory Archive*
+`;
+};
+
+/**
+ * Generates JSON export for a memory
+ */
+export const generateMemoryJson = (memory: Memory): string => {
+  return JSON.stringify(memory, null, 2);
 };

@@ -27,7 +27,8 @@ const ParserMode = {
   LeChatHtml: 'lechat-html',
   ChatGptHtml: 'chatgpt-html',
   GeminiHtml: 'gemini-html',
-  KimiHtml: 'kimi-html'
+  KimiHtml: 'kimi-html',
+  GrokHtml: 'grok-html'
 };
 
 /**
@@ -89,7 +90,7 @@ class SavedChatSession {
  * Helper to generate a UUID v4
  */
 function generateSessionId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);

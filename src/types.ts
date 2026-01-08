@@ -83,6 +83,7 @@ export enum ParserMode {
   ChatGptHtml = 'chatgpt-html',
   GeminiHtml = 'gemini-html',
   KimiHtml = 'kimi-html',
+  GrokHtml = 'grok-html',
 }
 
 export interface SavedChatSession {
@@ -107,3 +108,22 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   defaultUserName: 'User'
 };
+
+// Memory Archive Types
+export interface MemoryMetadata {
+  title: string;                 // Auto-generated or user-defined
+  wordCount: number;             // Calculated from content
+  characterCount: number;
+  sourceUrl?: string;            // Optional: where memory came from
+  notes?: string;                // User notes about the memory
+}
+
+export interface Memory {
+  id: string;                    // UUID
+  content: string;               // Raw memory text
+  aiModel: string;               // e.g., "Claude", "Gemini", "ChatGPT"
+  tags: string[];                // User-defined tags
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp (for edits)
+  metadata: MemoryMetadata;
+}

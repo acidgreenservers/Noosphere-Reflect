@@ -5,6 +5,7 @@ import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import ArchiveHub from './pages/ArchiveHub';
 import BasicConverter from './pages/BasicConverter';
+import MemoryArchive from './pages/MemoryArchive';
 import Changelog from './pages/Changelog';
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/hub" element={<ArchiveHub />} />
+        <Route path="/memory-archive" element={<MemoryArchive />} />
         <Route path="/converter" element={<BasicConverter />} />
         <Route path="/basic" element={<BasicConverter />} />
         <Route path="/changelog" element={<Changelog />} />

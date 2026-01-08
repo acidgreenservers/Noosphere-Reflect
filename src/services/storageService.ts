@@ -1,10 +1,11 @@
-import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata } from '../types';
+import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 
 const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_NAME = 'sessions';
 const SETTINGS_STORE_NAME = 'settings';
+const MEMORY_STORE_NAME = 'memories';
 
 class StorageService {
     private db: IDBDatabase | null = null;
@@ -85,6 +86,15 @@ class StorageService {
                             cursor.continue();
                         }
                     };
+                }
+
+                // v4 → v5: Add memories object store
+                if (oldVersion < 5 && !db.objectStoreNames.contains('memories')) {
+                    const memoryStore = db.createObjectStore('memories', { keyPath: 'id' });
+                    memoryStore.createIndex('aiModel', 'aiModel', { unique: false });
+                    memoryStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    memoryStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+                    console.log('✅ Created memories object store with indexes');
                 }
             };
 
@@ -424,6 +434,101 @@ class StorageService {
                 }
             };
             getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+    // ==================== Memory Archive CRUD Operations ====================
+
+    /**
+     * Save a memory to IndexedDB
+     */
+    async saveMemory(memory: Memory): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([MEMORY_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(MEMORY_STORE_NAME);
+            const request = store.put(memory);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get all memories from IndexedDB, sorted by creation date (newest first)
+     */
+    async getAllMemories(): Promise<Memory[]> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([MEMORY_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(MEMORY_STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const memories = request.result as Memory[];
+                // Sort by createdAt descending (newest first)
+                memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                resolve(memories);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get a single memory by ID
+     */
+    async getMemoryById(id: string): Promise<Memory | undefined> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([MEMORY_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(MEMORY_STORE_NAME);
+            const request = store.get(id);
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Update an existing memory (sets updatedAt timestamp)
+     */
+    async updateMemory(memory: Memory): Promise<void> {
+        memory.updatedAt = new Date().toISOString();
+        return this.saveMemory(memory);
+    }
+
+    /**
+     * Delete a memory by ID
+     */
+    async deleteMemory(id: string): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([MEMORY_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(MEMORY_STORE_NAME);
+            const request = store.delete(id);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get memories filtered by AI model
+     */
+    async getMemoriesByModel(aiModel: string): Promise<Memory[]> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([MEMORY_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(MEMORY_STORE_NAME);
+            const index = store.index('aiModel');
+            const request = index.getAll(aiModel);
+
+            request.onsuccess = () => {
+                const memories = request.result as Memory[];
+                memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                resolve(memories);
+            };
+            request.onerror = () => reject(request.error);
         });
     }
 }

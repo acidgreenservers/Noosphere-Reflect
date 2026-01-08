@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Noosphere Reflect Bridge",
   "version": "0.3.0",
-  "description": "Capture AI conversations from Claude, ChatGPT, LeChat, Llamacoder, and Gemini directly to Noosphere Reflect archive",
+  "description": "Capture AI conversations from Claude, ChatGPT, LeChat, Llamacoder, Gemini, and Grok directly to Noosphere Reflect archive",
   "permissions": [
     "storage",
     "contextMenus",
@@ -16,6 +16,7 @@
     "https://llamacoder.together.ai/*",
     "https://gemini.google.com/*",
     "https://aistudio.google.com/*",
+    "https://grok.com/*",
     "https://noosphere-reflect.pages.dev/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
@@ -102,6 +103,22 @@
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
         "content-scripts/gemini-capture.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://grok.com/*"
+      ],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/shared/serializers.js",
+        "parsers/grok-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/grok-capture.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

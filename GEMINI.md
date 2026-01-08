@@ -134,6 +134,54 @@ Brief overview of the security posture of the implemented feature.
   - **Parsers**: Shared vanilla JS parsers (`*-parser.js`) aligned with web app logic.
   - **Storage**: Independent IndexedDB bridge with potential for future sync.
 
+## 🛡️ Attack Surface & Security Layer Analysis
+
+### Threat Model
+The application operates in a Local-First environment but handles untrusted input (chat logs from external sources).
+**Primary Threats**:
+- **Stored XSS**: Malicious code embedded in chat logs (e.g., `<script>` tags disguised as code blocks) executing via the preview iframe.
+- **Data Exfiltration**: Malicious extension scripts attempting to hijack the bridge message passing.
+- **Resource Exhaustion**: Massive file imports (Zip bombs) or clipboard dumps crashing the browser main thread.
+- **Zip Slip / Path Traversal**: Malicious filenames in artifact downloads attempting to write outside the download directory.
+
+### Codebase-Specific Defense Layers
+
+#### 1. Input Layer (Validation & Limits)
+*File*: `src/utils/securityUtils.ts`, `src/pages/BasicConverter.tsx`
+- **Hard Limits**: `INPUT_LIMITS` constant enforces boundaries (e.g., `FILE_MAX_SIZE_MB = 10`, `TAG_MAX_LENGTH = 50`).
+- **Batch Protection**: `validateBatchImport` ensures total import size < 100MB to protect IndexedDB quotas.
+- **MIME/Extension Checks**: `neutralizeDangerousExtension` forces `.txt` on risky types (`.html`, `.exe`, `.svg`) preventing browser execution upon download.
+
+#### 2. Processing Layer (The "Markdown Firewall")
+*File*: `src/services/converterService.ts`
+- **Sanitize by Conversion**: The app **never** stores raw HTML from imports. All logic (e.g., `parseClaudeHtml`, `parseGrokHtml`) extracts text/DOM and immediately converts it to **Markdown** via `extractMarkdownFromHtml`. This strips executable scripts, event handlers, and dangerous attributes by definition.
+- **The "Escape First" Pattern**: In `applyInlineFormatting` (line ~750), `escapeHtml(text)` is called **before** any markdown regex replacements. This is the critical "choke point" for XSS prevention.
+    - *Implementation Detail*: `&` is replaced first to prevent double-encoding issues.
+- **URL Hygiene**: `sanitizeUrl` (in `securityUtils.ts`) is applied to all `![]()` images and `[]()` links, blocking `javascript:`, `vbscript:`, and `data:` schemes.
+
+#### 3. Storage Layer (Atomic Integrity)
+*File*: `src/services/storageService.ts`
+- **Duplicate Prevention**: Uses a dedicated `normalizedTitle` index with a `unique` constraint in IndexedDB (v3 schema).
+- **Race Condition Handling**: Catches `ConstraintError` during `saveSession`. If a collision occurs (e.g., two tabs saving simultaneously), it automatically renames the *older* session to "Title (Copy timestamp)" to preserve data integrity without crashing.
+
+#### 4. Extension Layer (Scoped Bridge)
+*File*: `extension/manifest.json`, `extension/content-scripts/*.js`
+- **Least Privilege**: `manifest.json` restricts `host_permissions` strictly to the 7 supported AI domains. No `<all_urls>` permission.
+- **Sanitization at Source**: Content scripts capture `document.documentElement.outerHTML`, but the parsing logic (shared with web app) strips scripts *before* the data is sent to the `background` worker or storage.
+- **Platform Detector**: `platform-detector.js` ensures only specific logic runs on specific domains.
+
+#### 5. Output Layer (Sandboxing)
+*File*: `src/pages/BasicConverter.tsx`, `index.html`
+- **Iframe Isolation**: The preview renders inside an `<iframe sandbox="allow-scripts">`. This restricts the content from accessing the parent window's DOM or cookies.
+    - *Note*: `allow-scripts` is enabled for MathJax/Copy buttons, but the content source is trusted (sanitized internal state).
+- **CSP**: `index.html` defines a Content Security Policy. *Warning*: Currently allows `unsafe-inline` for styles/scripts (React/MathJax requirement).
+
+### 🚨 Critical Watchlist for Developers (Do Not Break)
+1.  **The "Double-Escape" Trap**: When extracting content via `innerHTML` (e.g., in `parseGrokHtml`), the browser returns HTML entities (`&lt;`). Do **NOT** call `escapeHtml` on this immediately, or you will render `&amp;lt;`. Use `decodeHtmlEntities` first, *then* let the standard pipeline handle escaping.
+2.  **Regex DOS**: `converterService.ts` relies on complex regex for Markdown parsing. Avoid adding NFA-explosive patterns (nested quantifiers like `(a+)+`).
+3.  **Bypassing `applyInlineFormatting`**: Never manually construct HTML strings in `converterService` without passing user content through `escapeHtml` or `applyInlineFormatting`.
+4.  **Extension Parity**: If you update parsing logic in `src/services/converterService.ts`, you **MUST** update the matching logic in `extension/parsers/`.
+
 ## Communication Style
 - **Formatting**: Format your responses in GitHub-style markdown. Use headers, bold/italic text for keywords, and backticks for code elements. Format URLs as `[label](url)`.
 - **Proactiveness**: Be proactive in completing tasks (coding, verifying, researching) but avoid surprising the user. Explain "how" before doing if ambiguous.

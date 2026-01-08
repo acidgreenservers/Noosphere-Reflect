@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatData, ChatTheme, ParserMode, ChatMetadata, SavedChatSession } from '../types';
-import { generateHtml, generateMarkdown, generateJson, generateZipExport } from '../services/converterService';
+import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateDirectoryExportWithPicker } from '../services/converterService';
 
 interface ExportDropdownProps {
   chatData: ChatData;
@@ -59,73 +59,13 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
   }, [isOpen]);
 
   const handleExport = async (format: 'html' | 'markdown' | 'json') => {
-    const hasArtifacts = (metadata?.artifacts?.length || 0) > 0;
-
-    // If has artifacts and session is provided, use ZIP export
-    if (hasArtifacts && session) {
-      try {
-        const zipBlob = await generateZipExport(session, format);
-        const url = URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        const sanitizedTitle = chatTitle
-          .replace(/[^a-z0-9]/gi, '_')
-          .toLowerCase()
-          .substring(0, 100);
-        a.download = `${sanitizedTitle}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setIsOpen(false);
-        return;
-      } catch (error) {
-        console.error('ZIP export failed:', error);
-        alert('Export failed. Check console for details.');
-        return;
-      }
+    if (!session) {
+      alert('Session data is not available for export. Please save the session first.');
+      setIsOpen(false);
+      return;
     }
-
-    // Otherwise, use single-file export
-    let content: string;
-    let mimeType: string;
-    let extension: string;
-
-    switch (format) {
-      case 'html':
-        content = generateHtml(chatData, chatTitle, selectedTheme, userName, aiName, parserMode, metadata);
-        mimeType = 'text/html';
-        extension = 'html';
-        break;
-      case 'markdown':
-        content = generateMarkdown(chatData, chatTitle, userName, aiName, metadata);
-        mimeType = 'text/markdown';
-        extension = 'md';
-        break;
-      case 'json':
-        content = generateJson(chatData, metadata);
-        mimeType = 'application/json';
-        extension = 'json';
-        break;
-    }
-
-    // Sanitize filename
-    const sanitizedTitle = chatTitle
-      .replace(/[^a-z0-9]/gi, '_')
-      .toLowerCase()
-      .substring(0, 100);
-
-    // Download file
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${sanitizedTitle}.${extension}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
+    // Always use the directory picker export for consistency
+    await generateDirectoryExportWithPicker(session, format);
     setIsOpen(false);
   };
 
