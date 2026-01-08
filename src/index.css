@@ -32,4 +32,28 @@
   body {
     @apply bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300;
   }
+
+  /* Green theme scrollbar */
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #10b981, #059669);
+    border-radius: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #059669, #047857);
+  }
+
+  /* Green selection color */
+  ::selection {
+    background-color: rgba(16, 185, 129, 0.3);
+    color: white;
+  }
 }

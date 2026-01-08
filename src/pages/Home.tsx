@@ -1,31 +1,24 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const navigate = useNavigate();
-
-    const handleNavigation = (path: string) => {
-        navigate(path);
-        setDropdownOpen(false);
-    };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30 flex flex-col items-center justify-center p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 flex flex-col items-center justify-center p-8 relative overflow-hidden">
 
             {/* Background Decor */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-green-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600/20 rounded-full blur-[120px] pointer-events-none"></div>
 
             <div className="max-w-5xl w-full z-10 flex flex-col items-center">
 
                 {/* Header */}
                 <div className="text-center mb-16 animate-fade-in-down">
                     <div className="mb-8">
-                        <h1 className="text-5xl md:text-7xl font-extrabold mb-3 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 drop-shadow-sm">
+                        <h1 className="text-5xl md:text-7xl font-extrabold mb-3 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-emerald-500 to-green-600 drop-shadow-sm">
                             Noosphere Reflect
                         </h1>
-                        <p className="text-2xl md:text-3xl font-bold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">
+                        <p className="text-2xl md:text-3xl font-bold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-emerald-500 to-green-600">
                             Preserving Meaning Through Memory
                         </p>
                     </div>
@@ -39,43 +32,24 @@ const Home: React.FC = () => {
 
                     {/* Archives Card with Dropdown */}
                     <div className="group relative w-full">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
-                        <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-2xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-blue-500/50 transition-all duration-300">
-                            <div className="w-16 h-16 bg-blue-900/50 rounded-2xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
+                        <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-3xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-green-500/50 hover:shadow-xl hover:shadow-green-500/20 transition-all duration-300 hover:scale-105">
+                            <div className="w-16 h-16 bg-green-900/50 rounded-3xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
                                 📦
                             </div>
                             <h2 className="text-3xl font-bold text-white mb-3">Archives</h2>
                             <p className="text-gray-400 mb-6 flex-grow">
                                 Transform your AI conversations into beautiful, shareable HTML files. Archive, export, and preserve your chats.
                             </p>
-                            <div className="relative">
-                                <button
-                                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                                    className="px-6 py-2 bg-gray-700/50 rounded-full text-blue-300 text-sm font-medium border border-gray-600 group-hover:bg-blue-600/20 group-hover:text-blue-200 group-hover:border-blue-500/50 transition-colors flex items-center gap-2 hover:bg-blue-600/30"
-                                >
-                                    Open Archives
-                                    <span className={`text-xs transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>▼</span>
-                                </button>
-
-                                {dropdownOpen && (
-                                    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50">
-                                        <button
-                                            onClick={() => handleNavigation('/basic')}
-                                            className="w-full px-4 py-3 text-left text-gray-100 hover:bg-blue-600/20 transition-colors border-b border-gray-700 text-sm font-medium flex items-center gap-2"
-                                        >
-                                            <span>⚡</span>
-                                            Converter
-                                        </button>
-                                        <button
-                                            onClick={() => handleNavigation('/hub')}
-                                            className="w-full px-4 py-3 text-left text-gray-100 hover:bg-blue-600/20 transition-colors text-sm font-medium flex items-center gap-2"
-                                        >
-                                            <span>📚</span>
-                                            Archive Hub
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                            <Link
+                                to="/hub"
+                                className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-full font-bold transition-all shadow-lg shadow-green-500/50 hover:shadow-green-500/70 flex items-center gap-2 group/btn hover:scale-105"
+                            >
+                                Enter Archive Hub
+                                <svg className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </Link>
                         </div>
                     </div>
 

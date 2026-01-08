@@ -125,6 +125,91 @@
 
 ---
 
+## 🔗 Future Implementation Upon User/Project Readiness: Extension Auto-Capture for Artifacts
+
+**Status:** Foundation Complete in v0.3.2 - Next Phase: Extension Integration (Not a numbered phase - flexible timing)
+
+**Phase 1 (COMPLETE - v0.3.2)**: Core Artifact Management System
+- ✅ Web app artifact upload/download/management
+- ✅ Type-safe artifact storage (ConversationArtifact, ConversationManifest)
+- ✅ IndexedDB v4 migration with artifact support
+- ✅ ZIP export with artifact bundling
+- ✅ Message numbering for artifact reference
+- ✅ Filename sanitization and security hardening
+
+**Phase 2 (PLANNED)**: Extension Auto-Capture Integration
+
+**Scope:** Eliminate manual artifact upload by automatically detecting and capturing artifacts (images, code files, documents) during conversation capture via the Chrome Extension.
+
+**Vision:**
+Enable one-click archival of complete conversations **with all generated artifacts included**, removing the need for manual file download + re-upload workflow. Transforms Noosphere Reflect from a chat-only archiver to a **complete knowledge preservation system**.
+
+**Technical Approach:**
+
+1. **Platform-Specific Artifact Detection:**
+   - **Claude**: Extract images from `.artifact-image` DOM elements
+   - **Gemini**: Detect files in `.file-attachment` containers and thinking blocks
+   - **ChatGPT**: Find downloadable code blocks and attachments
+   - **LeChat & Llamacoder**: Platform-specific attachment extraction
+
+2. **Artifact Download Module** (`extension/utils/artifact-downloader.js`):
+   ```javascript
+   async function downloadArtifact(url, filename) {
+     const response = await fetch(url);
+     const blob = await response.blob();
+     return new Promise((resolve, reject) => {
+       const reader = new FileReader();
+       reader.onload = () => {
+         const base64 = reader.result.split(',')[1];
+         resolve({
+           fileName: filename,
+           fileSize: blob.size,
+           mimeType: blob.type,
+           fileData: base64
+         });
+       };
+       reader.onerror = reject;
+       reader.readAsDataURL(blob);
+     });
+   }
+   ```
+
+3. **Integration into Parsers:**
+   - Modify `parsers/claude-parser.js` → detect and include artifacts
+   - Modify `parsers/shared/types.js` → add `artifacts` field to session type
+   - Modify `storage/bridge-storage.js` → store artifacts alongside conversation
+
+4. **Extension Capture Flow:**
+   ```
+   1. User right-clicks "Capture to Noosphere Reflect"
+   2. Extension extracts conversation content
+   3. Extension detects embedded artifacts automatically
+   4. Extension downloads artifacts as base64
+   5. Conversation + artifacts sent together to web app
+   6. Web app stores complete package with manifest
+   7. User exports with everything included (zero manual steps)
+   ```
+
+**Implementation Conditions** (When User & Project Are Ready):
+- ✅ Core artifact storage and manifest system is stable & tested (v0.3.2: COMPLETE)
+- ✅ IndexedDB artifact storage patterns validated in production usage (v0.3.2: COMPLETE)
+- ✅ Artifact upload/download workflows tested (v0.3.2: COMPLETE)
+- ⏳ Extension permissions for artifact download acceptance
+- ⏳ User confirms need/timing for extension enhancement
+
+**Benefits:**
+- Zero-click artifact archival (currently requires manual upload in v0.3.2)
+- Complete conversation preservation (images, code, documents)
+- Automatic manifest generation (ready in v0.3.2)
+- Seamless user experience
+
+**Decision Timeline:**
+- Both user and AI can propose implementation readiness
+- Mutual agreement required before work begins
+- No forced timeline - flexible based on project needs & priorities
+
+---
+
 ## 📊 Development Timeline
 
 | Phase | Version | Status | Start | Completion |
@@ -132,10 +217,11 @@
 | Phase 1 | v0.0.1-0.0.3 | ✅ Complete | Dec 2025 | Jan 2, 2026 |
 | Phase 2 | v0.0.4-0.0.6 | ✅ Complete | Jan 2 | Jan 4, 2026 |
 | Phase 3 | v0.0.7-0.0.8 | ✅ Complete | Jan 4 | Jan 5, 2026 |
-| Phase 4 | v0.1.0 | ✅ Complete | Jan 5 | Jan 6, 2026 |
-| Phase 5 | v0.2.0 | 🚧 Planned | TBD | TBD |
-| Phase 6 | v0.3.0+ | 🔮 Future | TBD | TBD |
-| Phase 7 | v0.4.0+ | 🔮 Future | TBD | TBD |
+| Phase 4 | v0.1.0-0.2.0 | ✅ Complete | Jan 5 | Jan 6, 2026 |
+| Phase 4 Extended | v0.3.0-0.3.2 | ✅ Complete | Jan 6 | Jan 7, 2026 |
+| Phase 5 | v0.4.0+ | 🚧 Planned | TBD | TBD |
+| Phase 6 | v0.5.0+ | 🔮 Future | TBD | TBD |
+| Phase 7 | v0.6.0+ | 🔮 Future | TBD | TBD |
 
 ---
 

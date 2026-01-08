@@ -1,8 +1,8 @@
-import { SavedChatSession, AppSettings, DEFAULT_SETTINGS } from '../types';
+import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 
 const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = 'sessions';
 const SETTINGS_STORE_NAME = 'settings';
 
@@ -59,6 +59,29 @@ class StorageService {
                                     }
                                 }
                             }
+                            cursor.continue();
+                        }
+                    };
+                }
+
+                // v3 → v4: Add artifacts support
+                if (oldVersion < 4) {
+                    const store = transaction.objectStore(STORE_NAME);
+                    console.log('🔄 Migrating IndexedDB to v4: Adding artifacts field');
+
+                    // Backfill artifacts array for existing records
+                    const cursorRequest = store.openCursor();
+                    cursorRequest.onsuccess = (e) => {
+                        const cursor = (e.target as IDBRequest).result;
+                        if (cursor) {
+                            const session = cursor.value;
+                            if (!session.metadata) {
+                                session.metadata = {};
+                            }
+                            if (!session.metadata.artifacts) {
+                                session.metadata.artifacts = [];
+                            }
+                            cursor.update(session);
                             cursor.continue();
                         }
                     };
@@ -284,6 +307,124 @@ class StorageService {
                 console.error(`Failed to migrate legacy data from ${key}`, e);
             }
         }
+    }
+
+    /**
+     * Attach an artifact to a session
+     */
+    async attachArtifact(sessionId: string, artifact: ConversationArtifact): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const getRequest = store.get(sessionId);
+
+            getRequest.onsuccess = () => {
+                const session = getRequest.result as SavedChatSession;
+                if (!session) {
+                    reject(new Error(`Session ${sessionId} not found`));
+                    return;
+                }
+
+                if (!session.metadata) {
+                    session.metadata = {} as ChatMetadata;
+                }
+                if (!session.metadata.artifacts) {
+                    session.metadata.artifacts = [];
+                }
+
+                session.metadata.artifacts.push(artifact);
+
+                const putRequest = store.put(session);
+                putRequest.onsuccess = () => resolve();
+                putRequest.onerror = () => reject(putRequest.error);
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+    /**
+     * Remove an artifact from a session
+     */
+    async removeArtifact(sessionId: string, artifactId: string): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const getRequest = store.get(sessionId);
+
+            getRequest.onsuccess = () => {
+                const session = getRequest.result as SavedChatSession;
+                if (!session) {
+                    reject(new Error(`Session ${sessionId} not found`));
+                    return;
+                }
+
+                if (session.metadata?.artifacts) {
+                    session.metadata.artifacts = session.metadata.artifacts.filter(
+                        artifact => artifact.id !== artifactId
+                    );
+
+                    const putRequest = store.put(session);
+                    putRequest.onsuccess = () => resolve();
+                    putRequest.onerror = () => reject(putRequest.error);
+                } else {
+                    resolve();
+                }
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+    /**
+     * Get all artifacts for a session
+     */
+    async getArtifacts(sessionId: string): Promise<ConversationArtifact[]> {
+        const session = await this.getSessionById(sessionId);
+        return session?.metadata?.artifacts || [];
+    }
+
+    /**
+     * Update artifact metadata
+     */
+    async updateArtifact(
+        sessionId: string,
+        artifactId: string,
+        updates: Partial<ConversationArtifact>
+    ): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const getRequest = store.get(sessionId);
+
+            getRequest.onsuccess = () => {
+                const session = getRequest.result as SavedChatSession;
+                if (!session) {
+                    reject(new Error(`Session ${sessionId} not found`));
+                    return;
+                }
+
+                if (session.metadata?.artifacts) {
+                    const artifactIndex = session.metadata.artifacts.findIndex(a => a.id === artifactId);
+                    if (artifactIndex !== -1) {
+                        session.metadata.artifacts[artifactIndex] = {
+                            ...session.metadata.artifacts[artifactIndex],
+                            ...updates
+                        };
+
+                        const putRequest = store.put(session);
+                        putRequest.onsuccess = () => resolve();
+                        putRequest.onerror = () => reject(putRequest.error);
+                    } else {
+                        reject(new Error(`Artifact ${artifactId} not found`));
+                    }
+                } else {
+                    reject(new Error('No artifacts found for session'));
+                }
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
     }
 }
 

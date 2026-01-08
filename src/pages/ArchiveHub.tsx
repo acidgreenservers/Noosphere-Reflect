@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { SavedChatSession, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
-import { generateHtml, generateMarkdown, generateJson } from '../services/converterService';
+import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateBatchZipExport } from '../services/converterService';
 import { storageService } from '../services/storageService';
 import SettingsModal from '../components/SettingsModal';
+import { ArtifactManager } from '../components/ArtifactManager';
 
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSession[]>([]);
@@ -12,9 +13,13 @@ const ArchiveHub: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
     const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [exportPackage, setExportPackage] = useState<'directory' | 'zip'>('directory');
     const [settingsModalOpen, setSettingsModalOpen] = useState(false);
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [selectedSessionForArtifacts, setSelectedSessionForArtifacts] = useState<SavedChatSession | null>(null);
+    const [showArtifactManager, setShowArtifactManager] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
@@ -202,69 +207,201 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleBatchExport = (format: 'html' | 'markdown' | 'json') => {
+    const handleExportStart = () => {
+        if (selectedIds.size === 0) {
+            alert('Please select at least one chat to export.');
+            return;
+        }
+        setExportModalOpen(true);
+    };
+
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json') => {
         const selectedSessions = sessions.filter(s => selectedIds.has(s.id));
-        selectedSessions.forEach(session => {
-            // Get default values if missing
-            const theme = session.selectedTheme || ChatTheme.DarkDefault;
-            const userName = session.userName || 'User';
-            const aiName = session.aiName || 'AI';
-            // We use the parser mode saved in session
+        if (selectedSessions.length === 0) return;
 
-            if (session.chatData) {
+        try {
+            // Batch export always uses ZIP
+            const zipBlob = await generateBatchZipExport(selectedSessions, format);
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `noosphere-reflect-batch-${format}-${Date.now()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert(`✅ Exported ${selectedSessions.length} conversation(s) as ZIP archive`);
+            setExportModalOpen(false);
+            setExportDropdownOpen(false);
+        } catch (error) {
+            console.error('Batch export failed:', error);
+            alert('Export failed. Check console for details.');
+        }
+    };
+
+    const handleSingleExport = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
+        try {
+            const hasArtifacts = (session.metadata?.artifacts?.length || 0) > 0;
+
+            if (!hasArtifacts) {
+                // No artifacts - simple single-file export (existing behavior)
                 let content: string;
-                let mimeType: string;
                 let extension: string;
+                let mimeType: string;
 
+                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const userName = session.userName || 'User';
+                const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
 
-                switch (format) {
-                    case 'html':
-                        content = generateHtml(
-                            session.chatData,
-                            title,
-                            theme,
-                            userName,
-                            aiName,
-                            session.parserMode,
-                            session.metadata
-                        );
-                        mimeType = 'text/html';
-                        extension = 'html';
-                        break;
-                    case 'markdown':
-                        content = generateMarkdown(
-                            session.chatData,
-                            title,
-                            userName,
-                            aiName,
-                            session.metadata
-                        );
-                        mimeType = 'text/markdown';
-                        extension = 'md';
-                        break;
-                    case 'json':
-                        content = generateJson(session.chatData, session.metadata);
-                        mimeType = 'application/json';
-                        extension = 'json';
-                        break;
+                if (format === 'html') {
+                    content = generateHtml(
+                        session.chatData!,
+                        title,
+                        theme,
+                        userName,
+                        aiName,
+                        session.parserMode,
+                        session.metadata
+                    );
+                    extension = 'html';
+                    mimeType = 'text/html';
+                } else if (format === 'markdown') {
+                    content = generateMarkdown(
+                        session.chatData!,
+                        title,
+                        userName,
+                        aiName,
+                        session.metadata
+                    );
+                    extension = 'md';
+                    mimeType = 'text/markdown';
+                } else {
+                    content = generateJson(session.chatData!, session.metadata);
+                    extension = 'json';
+                    mimeType = 'application/json';
                 }
 
                 const blob = new Blob([content], { type: mimeType });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                // Sanitize filename
-                const filename = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const filename = (session.metadata?.title || session.chatTitle)
+                    .replace(/[^a-z0-9]/gi, '_')
+                    .toLowerCase();
                 a.download = `${filename}.${extension}`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+            } else {
+                // Has artifacts - check package type
+                if (packageType === 'zip') {
+                    // ZIP export
+                    const zipBlob = await generateZipExport(session, format);
+                    const url = URL.createObjectURL(zipBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const filename = (session.metadata?.title || session.chatTitle)
+                        .replace(/[^a-z0-9]/gi, '_')
+                        .toLowerCase();
+                    a.download = `${filename}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } else {
+                    // Directory export - use File System Access API
+                    try {
+                        // Check if File System Access API is supported
+                        if (!('showDirectoryPicker' in window)) {
+                            alert('⚠️ Directory export is not supported in this browser. Please use Chrome, Edge, or Opera, or select ZIP export instead.');
+                            return;
+                        }
+
+                        // Ask user to select a directory
+                        const dirHandle = await (window as any).showDirectoryPicker({
+                            mode: 'readwrite',
+                            startIn: 'downloads'
+                        });
+
+                        const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                        const userName = session.userName || 'User';
+                        const aiName = session.aiName || 'AI';
+                        const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+                        const baseFilename = (session.metadata?.title || session.chatTitle)
+                            .replace(/[^a-z0-9]/gi, '_')
+                            .toLowerCase();
+
+                        // Generate conversation content
+                        let content: string;
+                        let extension: string;
+
+                        if (format === 'html') {
+                            content = generateHtml(
+                                session.chatData!,
+                                title,
+                                theme,
+                                userName,
+                                aiName,
+                                session.parserMode,
+                                session.metadata
+                            );
+                            extension = 'html';
+                        } else if (format === 'markdown') {
+                            content = generateMarkdown(
+                                session.chatData!,
+                                title,
+                                userName,
+                                aiName,
+                                session.metadata
+                            );
+                            extension = 'md';
+                        } else {
+                            content = generateJson(session.chatData!, session.metadata);
+                            extension = 'json';
+                        }
+
+                        // Write conversation file to selected directory
+                        const fileHandle = await dirHandle.getFileHandle(`${baseFilename}.${extension}`, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(content);
+                        await writable.close();
+
+                        // Create artifacts subdirectory and write artifacts
+                        if (session.metadata?.artifacts && session.metadata.artifacts.length > 0) {
+                            const artifactsDir = await dirHandle.getDirectoryHandle('artifacts', { create: true });
+
+                            for (const artifact of session.metadata.artifacts) {
+                                const artifactHandle = await artifactsDir.getFileHandle(artifact.fileName, { create: true });
+                                const artifactWritable = await artifactHandle.createWritable();
+
+                                // Convert base64 to binary
+                                const binaryData = Uint8Array.from(atob(artifact.fileData), c => c.charCodeAt(0));
+                                await artifactWritable.write(binaryData);
+                                await artifactWritable.close();
+                            }
+                        }
+
+                        alert(`✅ Exported to directory:\n- ${baseFilename}.${extension}\n- artifacts/ (${session.metadata?.artifacts?.length || 0} files)`);
+                    } catch (error: any) {
+                        if (error.name === 'AbortError') {
+                            // User cancelled the directory picker
+                            return;
+                        }
+                        console.error('Directory export failed:', error);
+                        alert('❌ Directory export failed. Please try ZIP export instead.');
+                    }
+                }
             }
-        });
-        // Deselect after export? optional. Let's keep selection for now in case user wants to do something else.
-        setExportDropdownOpen(false);
+
+            setExportModalOpen(false);
+            setExportDropdownOpen(false);
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert('Export failed. Check console for details.');
+        }
     };
 
     const handleClipboardExport = async (format: 'markdown' | 'json') => {
@@ -327,20 +464,20 @@ const ArchiveHub: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30 pb-24">
+        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 pb-24">
             {/* Header */}
             <header className="sticky top-0 z-50 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <svg className="w-8 h-8 drop-shadow-lg shadow-purple-500/20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-8 h-8 drop-shadow-lg shadow-green-500/20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                             <defs>
-                                <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style={{ stopColor: '#d8b4fe', stopOpacity: 1 }} />
-                                    <stop offset="50%" style={{ stopColor: '#a855f7', stopOpacity: 1 }} />
-                                    <stop offset="100%" style={{ stopColor: '#581c87', stopOpacity: 1 }} />
+                                <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style={{ stopColor: '#86efac', stopOpacity: 1 }} />
+                                    <stop offset="50%" style={{ stopColor: '#22c55e', stopOpacity: 1 }} />
+                                    <stop offset="100%" style={{ stopColor: '#14532d', stopOpacity: 1 }} />
                                 </linearGradient>
                             </defs>
-                            <circle cx="50" cy="50" r="45" fill="url(#purpleGrad)" />
+                            <circle cx="50" cy="50" r="45" fill="url(#greenGrad)" />
                             <ellipse cx="35" cy="25" rx="15" ry="10" fill="white" opacity="0.2" transform="rotate(-45 35 25)" />
                             <g stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.9">
                                 <circle cx="50" cy="50" r="4" fill="white" stroke="none" />
@@ -350,7 +487,7 @@ const ArchiveHub: React.FC = () => {
                                 <circle cx="25" cy="50" r="3" fill="white" stroke="none" />
                             </g>
                         </svg>
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 via-purple-400 to-emerald-500 bg-clip-text text-transparent">
                             Archival Hub
                         </h1>
                     </Link>
@@ -380,9 +517,9 @@ const ArchiveHub: React.FC = () => {
             </header>
 
             {/* Noosphere Reflect Header */}
-            <div className="bg-gradient-to-r from-blue-900/20 via-purple-900/20 to-blue-900/20 border-b border-blue-500/20 py-6">
+            <div className="bg-gradient-to-r from-green-900/20 via-emerald-900/20 to-green-900/20 border-b border-green-500/20 py-6">
                 <div className="max-w-7xl mx-auto px-4">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent text-center mb-2">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-emerald-500 to-green-600 bg-clip-text text-transparent text-center mb-2">
                         Noosphere Reflect
                     </h2>
                     <p className="text-center text-gray-400 text-sm">
@@ -393,11 +530,11 @@ const ArchiveHub: React.FC = () => {
 
             <main className="max-w-7xl mx-auto px-4 py-8">
                 {/* Disclaimer */}
-                <div className="mb-4 px-4 py-3 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3">
-                    <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="mb-4 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-full flex items-start gap-3">
+                    <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-sm text-blue-200">
+                    <p className="text-sm text-green-200">
                         <span className="font-semibold">Tip:</span> Click the Refresh button after importing chats via the extension for them to populate
                     </p>
                 </div>
@@ -410,7 +547,7 @@ const ArchiveHub: React.FC = () => {
                             placeholder="Search archives by title or tag..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-gray-800/50 border border-white/10 rounded-xl px-4 py-3 pl-11 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                            className="w-full bg-gray-800/50 border border-white/10 rounded-full px-4 py-3 pl-11 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all"
                         />
                         <svg className="w-5 h-5 text-gray-500 absolute left-3.5 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -420,9 +557,9 @@ const ArchiveHub: React.FC = () => {
                     {/* Select All Button */}
                     <button
                         onClick={handleSelectAll}
-                        className={`px-4 py-3 backdrop-blur-sm rounded-xl border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium
+                        className={`px-4 py-3 backdrop-blur-sm rounded-full border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105
                             ${areAllSelected
-                                ? 'bg-blue-600 border-blue-500 text-white'
+                                ? 'bg-green-600 border-green-500 text-white'
                                 : 'bg-gray-800/50 hover:bg-gray-700 border-white/10 text-gray-300'}`}
                         title={areAllSelected ? "Deselect all filtered results" : "Select all filtered results"}
                     >
@@ -436,7 +573,7 @@ const ArchiveHub: React.FC = () => {
 
                     <button
                         onClick={handleManualRefresh}
-                        className="px-4 py-3 bg-blue-600/90 hover:bg-blue-600 backdrop-blur-sm rounded-xl border border-blue-500/50 transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium"
+                        className="px-4 py-3 bg-green-600/90 hover:bg-green-600 backdrop-blur-sm rounded-full border border-green-500/50 shadow-lg shadow-green-500/50 transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105"
                         title="Refresh page to load imported chats"
                     >
                         <svg
@@ -460,7 +597,7 @@ const ArchiveHub: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {isLoading ? (
                         <div className="col-span-full py-20 text-center">
-                            <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                            <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
                             <p className="text-gray-400">Archiving system initialization...</p>
                         </div>
                     ) : filteredSessions.length > 0 ? (
@@ -468,10 +605,10 @@ const ArchiveHub: React.FC = () => {
                             <Link
                                 key={session.id}
                                 to={`/converter?load=${session.id}`}
-                                className={`group relative border rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block
+                                className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 block
                                     ${selectedIds.has(session.id)
-                                        ? 'bg-blue-900/20 border-blue-500/50 shadow-blue-900/10'
-                                        : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-blue-500/30 hover:shadow-blue-900/10'
+                                        ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20'
+                                        : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-green-500/30 hover:shadow-green-900/10 hover:shadow-lg hover:shadow-green-500/20'
                                     }`}
                             >
                                 {/* Selection Checkbox */}
@@ -480,8 +617,8 @@ const ArchiveHub: React.FC = () => {
                                         onClick={(e) => toggleSelection(session.id, e)}
                                         className={`w-6 h-6 rounded border flex items-center justify-center transition-all
                                             ${selectedIds.has(session.id)
-                                                ? 'bg-blue-500 border-blue-500 text-white'
-                                                : 'bg-gray-900/50 border-gray-600 hover:border-blue-400 text-transparent'
+                                                ? 'bg-green-500 border-green-500 text-white'
+                                                : 'bg-gray-900/50 border-gray-600 hover:border-green-400 text-transparent'
                                             }`}
                                     >
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -492,7 +629,7 @@ const ArchiveHub: React.FC = () => {
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex gap-2">
                                         {session.metadata?.model && (
-                                            <span className="px-2 py-1 rounded-md bg-blue-500/10 text-xs font-medium text-blue-400 border border-blue-500/20">
+                                            <span className="px-2 py-1 rounded-md bg-green-500/10 text-xs font-medium text-green-400 border border-green-500/20">
                                                 {(() => {
                                                     // Capitalize model name properly (e.g., "gpt-4" → "GPT-4", "claude" → "Claude")
                                                     const model = session.metadata.model;
@@ -504,17 +641,46 @@ const ArchiveHub: React.FC = () => {
                                             </span>
                                         )}
                                     </div>
-                                    <button
-                                        onClick={(e) => handleDelete(session.id, e)}
-                                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        {session.metadata?.artifacts && session.metadata.artifacts.length > 0 && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setSelectedSessionForArtifacts(session);
+                                                    setShowArtifactManager(true);
+                                                }}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-colors hover:scale-105 shadow-lg shadow-emerald-500/50"
+                                                title="Manage artifacts for this chat"
+                                            >
+                                                <span>📎</span>
+                                                <span>{session.metadata.artifacts.length}</span>
+                                            </button>
+                                        )}
+                                        {(!session.metadata?.artifacts || session.metadata.artifacts.length === 0) && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setSelectedSessionForArtifacts(session);
+                                                    setShowArtifactManager(true);
+                                                }}
+                                                className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-colors font-medium hover:scale-105"
+                                                title="Add artifacts to this chat"
+                                            >
+                                                + Add Artifacts
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={(e) => handleDelete(session.id, e)}
+                                            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <h3 className="text-lg font-semibold text-gray-100 mb-2 line-clamp-2 group-hover:text-blue-300 transition-colors">
+                                <h3 className="text-lg font-semibold text-gray-100 mb-2 line-clamp-2 group-hover:text-green-300 transition-colors">
                                     {session.metadata?.title || session.chatTitle || session.name || 'Untitled Chat'}
                                 </h3>
 
@@ -536,7 +702,7 @@ const ArchiveHub: React.FC = () => {
                                         </svg>
                                         {new Date(session.metadata?.date || session.date).toLocaleDateString()}
                                     </div>
-                                    <span className="text-xs text-blue-400 font-medium group-hover:translate-x-1 transition-transform">
+                                    <span className="text-xs text-green-400 font-medium group-hover:translate-x-1 transition-transform">
                                         Open Studio &rarr;
                                     </span>
                                 </div>
@@ -544,14 +710,14 @@ const ArchiveHub: React.FC = () => {
                         ))
                     ) : (
                         <div className="col-span-full py-20 text-center text-gray-500">
-                            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-800/50 border border-white/5 flex items-center justify-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-gray-800/50 border border-white/5 flex items-center justify-center">
                                 <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                 </svg>
                             </div>
                             <p className="text-lg font-medium mb-1">No archives found</p>
                             <p className="text-sm opacity-60">Import a new chat or search for something else.</p>
-                            <Link to="/converter" className="inline-block mt-4 text-blue-400 hover:text-blue-300">
+                            <Link to="/converter" className="inline-block mt-4 text-green-400 hover:text-green-300">
                                 Go to Converter
                             </Link>
                         </div>
@@ -568,66 +734,21 @@ const ArchiveHub: React.FC = () => {
 
                     <div className="relative">
                         <button
-                            onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
-                            className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
-                            title="Export each selected chat in your chosen format"
+                            onClick={handleExportStart}
+                            className="flex items-center gap-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors"
+                            title="Export selected chats with format and packaging options"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                             Export Selected
-                            <span className="text-xs">▲</span>
+                            <span className="text-xs">▼</span>
                         </button>
 
-                        {exportDropdownOpen && (
-                            <div className="absolute left-0 bottom-full mb-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
-                                <button
-                                    onClick={() => handleBatchExport('html')}
-                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 text-sm"
-                                >
-                                    HTML (Standalone)
-                                </button>
-                                <button
-                                    onClick={() => handleBatchExport('markdown')}
-                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 text-sm"
-                                >
-                                    Markdown (.md)
-                                </button>
-                                <button
-                                    onClick={() => handleBatchExport('json')}
-                                    className="w-full px-4 py-2 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-white/10 text-sm"
-                                >
-                                    JSON (Data Only)
-                                </button>
-
-                                <button
-                                    onClick={() => handleClipboardExport('markdown')}
-                                    disabled={selectedIds.size !== 1}
-                                    className={`w-full px-4 py-2 text-left transition-colors border-b border-gray-700 text-sm flex items-center gap-2
-                                        ${selectedIds.size !== 1 ? 'text-gray-500 cursor-not-allowed bg-gray-900/50' : 'text-gray-100 hover:bg-gray-700'}`}
-                                >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                    </svg>
-                                    Copy MD
-                                </button>
-                                <button
-                                    onClick={() => handleClipboardExport('json')}
-                                    disabled={selectedIds.size !== 1}
-                                    className={`w-full px-4 py-2 text-left transition-colors text-sm flex items-center gap-2
-                                        ${selectedIds.size !== 1 ? 'text-gray-500 cursor-not-allowed bg-gray-900/50' : 'text-gray-100 hover:bg-gray-700'}`}
-                                >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                    </svg>
-                                    Copy JSON
-                                </button>
-                            </div>
-                        )}
                     </div>
 
                     <button
-                        className="flex items-center gap-2 text-sm font-medium text-purple-400/50 cursor-not-allowed"
+                        className="flex items-center gap-2 text-sm font-medium text-emerald-400/50 cursor-not-allowed"
                         title="Merge feature coming soon"
                         disabled
                     >
@@ -657,6 +778,145 @@ const ArchiveHub: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
+                </div>
+            )}
+
+            {/* Export Modal */}
+            {exportModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+                    <div className="bg-gray-800 rounded-3xl shadow-2xl p-8 max-w-md w-full border border-gray-700">
+                        <h2 className="text-2xl font-bold mb-6 text-green-300">Export Options</h2>
+
+                        <div className="space-y-6">
+                            {/* Format Selection */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-300 mb-3">Format:</label>
+                                <div className="flex gap-3">
+                                    {(['html', 'markdown', 'json'] as const).map(fmt => (
+                                        <label key={fmt} className="flex items-center gap-2 flex-1 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="format"
+                                                value={fmt}
+                                                checked={exportFormat === fmt}
+                                                onChange={(e) => setExportFormat(e.target.value as any)}
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm text-gray-200 capitalize">{fmt === 'markdown' ? 'Markdown' : fmt.toUpperCase()}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Package Selection (only for single export) */}
+                            {selectedIds.size === 1 && (
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-300 mb-3">Package:</label>
+                                    <div className="flex gap-3">
+                                        <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="package"
+                                                value="directory"
+                                                checked={exportPackage === 'directory'}
+                                                onChange={(e) => setExportPackage(e.target.value as any)}
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm text-gray-200">Directory</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="package"
+                                                value="zip"
+                                                checked={exportPackage === 'zip'}
+                                                onChange={(e) => setExportPackage(e.target.value as any)}
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm text-gray-200">ZIP</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Batch Export Warning */}
+                            {selectedIds.size > 1 && (
+                                <div className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-3">
+                                    <p className="text-sm text-yellow-200">
+                                        ⚠️ Batch exports are packaged as ZIP archives
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3 mt-8">
+                            <button
+                                onClick={() => {
+                                    if (selectedIds.size === 1) {
+                                        const sessionId = Array.from(selectedIds)[0];
+                                        const session = sessions.find(s => s.id === sessionId);
+                                        if (session) {
+                                            handleSingleExport(session, exportFormat, exportPackage);
+                                        }
+                                    } else {
+                                        handleBatchExport(exportFormat);
+                                    }
+                                }}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                Export
+                            </button>
+                            <button
+                                onClick={() => setExportModalOpen(false)}
+                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Artifact Manager Modal */}
+            {showArtifactManager && selectedSessionForArtifacts && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border border-gray-700 my-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-purple-300">Manage Artifacts</h2>
+                            <button
+                                onClick={() => setShowArtifactManager(false)}
+                                className="text-gray-400 hover:text-gray-200 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                            <p className="text-sm text-gray-300">
+                                <strong>Chat:</strong> {selectedSessionForArtifacts.metadata?.title || selectedSessionForArtifacts.chatTitle}
+                            </p>
+                        </div>
+
+                        <ArtifactManager
+                            session={selectedSessionForArtifacts}
+                            messages={selectedSessionForArtifacts.chatData?.messages || []}
+                            onArtifactsChange={(_newArtifacts) => {
+                                loadSessions();
+                            }}
+                        />
+
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={() => setShowArtifactManager(false)}
+                                className="bg-gray-700 hover:bg-gray-600 text-gray-200 px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

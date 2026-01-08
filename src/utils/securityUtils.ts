@@ -190,6 +190,72 @@ export function validateTag(tag: string, maxLength: number = 50): { valid: boole
 }
 
 /**
+ * Sanitizes a filename to prevent path traversal (Zip Slip) and control character injection.
+ * Replaces dangerous characters with underscores.
+ *
+ * @param filename - The original filename
+ * @returns The sanitized filename
+ */
+export function sanitizeFilename(filename: string): string {
+  if (!filename) return 'unnamed_file';
+  
+  // 1. Remove path information (everything before the last slash/backslash)
+  let name = filename.replace(/^.*[\\\/]/, '');
+  
+  // 2. Replace control characters and other dangerous filesystem characters with underscore
+  // Allowed: alphanumeric, dot, underscore, dash, space, parenthesis
+  name = name.replace(/[^a-zA-Z0-9._\- ()]/g, '_');
+  
+  // 3. Prevent ".." traversal
+  while (name.includes('..')) {
+    name = name.replace('..', '__');
+  }
+  
+  // 4. Ensure it's not empty or just dot/space
+  if (!name.trim() || name.trim() === '.') {
+    return 'unnamed_file';
+  }
+  
+  // 5. Limit length
+  if (name.length > 200) {
+    const ext = name.split('.').pop();
+    const base = name.substring(0, 200 - (ext ? ext.length + 1 : 0));
+    name = ext ? `${base}.${ext}` : name.substring(0, 200);
+  }
+  
+  return name;
+}
+
+/**
+ * Neutralizes dangerous file extensions that could execute in a browser.
+ * Appends .txt to dangerous types (.html, .svg) to ensure they are treated as plain text.
+ * Preserves code extensions (.js, .jsx, .ts) as they are typically safe for archival.
+ *
+ * @param filename - The sanitized filename
+ * @returns The filename, possibly with .txt appended
+ */
+export function neutralizeDangerousExtension(filename: string): string {
+  const dangerousExtensions = [
+    '.html', '.htm', '.xhtml', // HTML pages (XSS vector)
+    '.svg',                    // SVG (can contain JS)
+    '.xml',                    // XML (can render via XSLT)
+    '.php', '.php5',           // Server-side scripts (if served)
+    '.exe', '.bat', '.sh',     // Executables (download risk)
+    '.jar', '.msi', '.app'
+  ];
+  
+  const lowerName = filename.toLowerCase();
+  
+  for (const ext of dangerousExtensions) {
+    if (lowerName.endsWith(ext)) {
+      return `${filename}.txt`;
+    }
+  }
+  
+  return filename;
+}
+
+/**
  * Constants for input validation limits
  */
 export const INPUT_LIMITS = {

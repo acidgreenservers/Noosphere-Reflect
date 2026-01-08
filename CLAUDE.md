@@ -200,6 +200,29 @@ The `generateHtml()` function creates self-contained HTML files with:
 - Metadata rendered as header (title, model, date, tags)
 - Collapsible thought sections
 
+### Design System & Theming (Noosphere Nexus Green v0.3.2)
+
+**Color Palette**:
+- **Primary Green**: `#10b981` (emerald-500), `#059669` (emerald-600)
+- **Accent Green**: `#16a34a` (green-600), `#22c55e` (green-500)
+- **Backgrounds**: `#111827` (gray-900), `#1f2937` (gray-800)
+- **Text**: `#f3f4f6` (gray-100), `#d1d5db` (gray-300)
+
+**Component Design**:
+- **Buttons**: Pill-shaped (`rounded-full`) with green gradients and shadow glows (`shadow-green-500/50`)
+- **Cards**: Rounded corners (`rounded-3xl`) with subtle backdrop blur and green hover borders
+- **Hover Effects**: `hover:scale-105` with smooth transitions for interactive elements
+- **Focus States**: Green focus rings (`focus:ring-green-500`) for accessibility
+- **Custom Scrollbar**: Green gradient for consistency (`#10b981` to `#059669`)
+- **Selection**: Green-tinted text selection (`rgba(16, 185, 129, 0.3)`)
+
+**Theme Philosophy**:
+- **Dark-Only**: Single dark theme matching Noosphere Nexus aesthetic (no light/toggle)
+- **Glassmorphism**: `backdrop-blur-md` for premium feel with semi-transparent overlays
+- **Accessibility**: Proper contrast ratios, focus rings, and semantic HTML
+- **Consistency**: Unified green theme across all UI elements for brand coherence
+- **Easter Egg**: "Archival Hub" title features `green → purple → emerald` shimmer gradient (Noosphere Research Hub reference)
+
 ## Important Notes for Contributors
 
 ### Data & Storage

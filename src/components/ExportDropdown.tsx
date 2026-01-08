@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatData, ChatTheme, ParserMode, ChatMetadata } from '../types';
-import { generateHtml, generateMarkdown, generateJson } from '../services/converterService';
+import { ChatData, ChatTheme, ParserMode, ChatMetadata, SavedChatSession } from '../types';
+import { generateHtml, generateMarkdown, generateJson, generateZipExport } from '../services/converterService';
 
 interface ExportDropdownProps {
   chatData: ChatData;
@@ -12,6 +12,7 @@ interface ExportDropdownProps {
   metadata?: ChatMetadata;
   buttonText?: string;
   buttonClassName?: string;
+  session?: SavedChatSession; // Optional: for ZIP export with artifacts
 }
 
 const ExportDropdown: React.FC<ExportDropdownProps> = ({
@@ -23,7 +24,8 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
   parserMode,
   metadata,
   buttonText = 'Export',
-  buttonClassName = 'px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2'
+  buttonClassName = 'px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2',
+  session
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,7 +58,35 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
     }
   }, [isOpen]);
 
-  const handleExport = (format: 'html' | 'markdown' | 'json') => {
+  const handleExport = async (format: 'html' | 'markdown' | 'json') => {
+    const hasArtifacts = (metadata?.artifacts?.length || 0) > 0;
+
+    // If has artifacts and session is provided, use ZIP export
+    if (hasArtifacts && session) {
+      try {
+        const zipBlob = await generateZipExport(session, format);
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        const sanitizedTitle = chatTitle
+          .replace(/[^a-z0-9]/gi, '_')
+          .toLowerCase()
+          .substring(0, 100);
+        a.download = `${sanitizedTitle}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setIsOpen(false);
+        return;
+      } catch (error) {
+        console.error('ZIP export failed:', error);
+        alert('Export failed. Check console for details.');
+        return;
+      }
+    }
+
+    // Otherwise, use single-file export
     let content: string;
     let mimeType: string;
     let extension: string;
@@ -138,7 +168,7 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
             onClick={() => handleExport('json')}
             className="w-full px-4 py-3 text-left text-gray-100 hover:bg-gray-700 transition-colors flex items-center gap-3"
           >
-            <span className="text-lg">{ /* JSON braces */ }{'{ }'}</span>
+            <span className="text-lg">{ /* JSON braces */}{'{ }'}</span>
             <div>
               <div className="font-semibold text-sm">JSON (Data Only)</div>
               <div className="text-xs text-gray-400">Machine-readable format</div>

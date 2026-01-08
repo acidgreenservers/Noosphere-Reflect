@@ -3,6 +3,36 @@ export enum ChatMessageType {
   Response = 'response',
 }
 
+export interface ConversationArtifact {
+  id: string; // UUID for artifact
+  fileName: string; // Original filename (e.g., "screenshot.png")
+  fileSize: number; // Bytes
+  mimeType: string; // e.g., "image/png", "application/json"
+  fileData: string; // Base64-encoded file content
+  description?: string; // User-provided context
+  uploadedAt: string; // ISO timestamp
+  insertedAfterMessageIndex?: number; // Which message index to insert link after
+  hash?: string; // SHA-256 for integrity (optional v2 feature)
+}
+
+export interface ConversationManifest {
+  version: string; // "1.0"
+  conversationId: string;
+  title: string;
+  exportedAt: string; // ISO timestamp
+  artifacts: {
+    fileName: string;
+    filePath: string; // Relative path (e.g., "artifacts/screenshot.png")
+    fileSize: number;
+    mimeType: string;
+    description?: string;
+  }[];
+  exportedBy: {
+    tool: string; // "Noosphere Reflect"
+    version: string; // From package.json
+  };
+}
+
 export interface ChatMetadata {
   title: string;
   model: string;
@@ -10,6 +40,7 @@ export interface ChatMetadata {
   tags: string[];
   author?: string;
   sourceUrl?: string;
+  artifacts?: ConversationArtifact[]; // NEW - Array of uploaded artifacts
 }
 
 export interface ChatMessage {

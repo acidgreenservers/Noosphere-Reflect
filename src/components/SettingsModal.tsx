@@ -73,7 +73,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
             {/* Modal */}
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
                 <div
-                    className="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl max-w-md w-full animate-fade-in-up"
+                    className="bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl max-w-md w-full animate-fade-in-up"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}

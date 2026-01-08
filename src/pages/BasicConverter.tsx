@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { parseChat, generateHtml } from '../services/converterService';
 import MetadataEditor from '../components/MetadataEditor';
+import { ArtifactManager } from '../components/ArtifactManager';
 import ExportDropdown from '../components/ExportDropdown';
 import { parseMhtml, isMhtml } from '../utils/mhtmlParser';
 import {
@@ -12,6 +13,7 @@ import {
     ChatData,
     ChatMessageType,
     ChatMetadata,
+    ConversationArtifact,
 } from '../types';
 import { storageService } from '../services/storageService';
 import { validateFileSize, validateBatchImport, INPUT_LIMITS } from '../utils/securityUtils';
@@ -23,7 +25,7 @@ const themeMap: Record<ChatTheme, ThemeClasses> = {
         bodyBg: 'bg-gray-900',
         bodyText: 'text-gray-100',
         containerBg: 'bg-gray-800',
-        titleText: 'text-blue-400',
+        titleText: 'text-green-400',
         promptBg: 'bg-blue-700',
         responseBg: 'bg-gray-700',
         blockquoteBorder: 'border-gray-500',
@@ -87,10 +89,15 @@ const BasicConverter: React.FC = () => {
         title: '',
         model: '',
         date: new Date().toISOString(),
-        tags: []
+        tags: [],
+        artifacts: []
     });
+    const [artifacts, setArtifacts] = useState<ConversationArtifact[]>([]);
+    const [loadedSessionId, setLoadedSessionId] = useState<string | null>(null);
+    const artifactFileInputRef = useRef<HTMLInputElement>(null);
     // Move loadSession before useEffect to avoid TDZ
     const loadSession = useCallback((session: SavedChatSession) => {
+        setLoadedSessionId(session.id); // Track loaded session for database mode
         setInputContent(session.inputContent);
         setChatTitle(session.chatTitle);
         setUserName(session.userName);
@@ -100,6 +107,12 @@ const BasicConverter: React.FC = () => {
 
         if (session.metadata) {
             setMetadata(session.metadata);
+            // Load artifacts if present
+            if (session.metadata.artifacts) {
+                setArtifacts(session.metadata.artifacts);
+            } else {
+                setArtifacts([]);
+            }
         } else {
             // Backfill for legacy
             setMetadata({
@@ -108,6 +121,7 @@ const BasicConverter: React.FC = () => {
                 date: session.date,
                 tags: []
             });
+            setArtifacts([]);
         }
 
         if (session.chatData) {
@@ -133,6 +147,7 @@ const BasicConverter: React.FC = () => {
 
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editContent, setEditContent] = useState<string>('');
+    const [showArtifactManager, setShowArtifactManager] = useState<boolean>(false);
 
     // Load sessions from storage
     const [searchParams] = useSearchParams();
@@ -358,7 +373,8 @@ const BasicConverter: React.FC = () => {
             chatData: chatData || undefined,
             metadata: {
                 ...metadata,
-                title: chatTitle // Ensure title stays synced
+                title: chatTitle, // Ensure title stays synced
+                artifacts: artifacts // Include uploaded artifacts
             }
         };
 
@@ -368,7 +384,7 @@ const BasicConverter: React.FC = () => {
 
         // Notify ArchiveHub to reload sessions
         window.dispatchEvent(new CustomEvent('sessionImported', { detail: { sessionId: newSession.id } }));
-    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, chatData]);
+    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, chatData, artifacts]);
 
     const deleteSession = async (id: string) => {
         await storageService.deleteSession(id);
@@ -377,6 +393,7 @@ const BasicConverter: React.FC = () => {
     };
 
     const clearForm = useCallback(() => {
+        setLoadedSessionId(null); // Reset loaded session tracking
         setInputContent('');
         setChatTitle('AI Chat Export');
         setUserName('User');
@@ -386,11 +403,13 @@ const BasicConverter: React.FC = () => {
         setError(null);
         setChatData(null);
         setEditingIndex(null);
+        setArtifacts([]); // Clear uploaded artifacts
         setMetadata({
             title: '',
             model: '',
             date: new Date().toISOString(),
-            tags: []
+            tags: [],
+            artifacts: []
         });
     }, []);
 
@@ -432,8 +451,60 @@ const BasicConverter: React.FC = () => {
         setEditingIndex(null);
     };
 
+    const handleArtifactUpload = async (files: FileList | null) => {
+        if (!files) return;
+
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+
+                // Validate file size
+                const validation = validateFileSize(file.size, INPUT_LIMITS.FILE_MAX_SIZE_MB);
+                if (!validation.valid) {
+                    alert(validation.error || 'File too large');
+                    continue;
+                }
+
+                // Read file as base64
+                const reader = new FileReader();
+                const fileData = await new Promise<string>((resolve, reject) => {
+                    reader.onload = () => {
+                        const result = reader.result as string;
+                        const base64 = result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                // Create artifact
+                const artifact: ConversationArtifact = {
+                    id: crypto.randomUUID(),
+                    fileName: file.name,
+                    fileSize: file.size,
+                    mimeType: file.type || 'application/octet-stream',
+                    fileData: fileData,
+                    uploadedAt: new Date().toISOString()
+                };
+
+                setArtifacts(prev => [...prev, artifact]);
+            }
+
+            // Clear file input
+            if (artifactFileInputRef.current) {
+                artifactFileInputRef.current.value = '';
+            }
+        } catch (error) {
+            alert('Failed to upload files: ' + (error as Error).message);
+        }
+    };
+
+    const handleRemoveArtifact = (artifactId: string) => {
+        setArtifacts(prev => prev.filter(a => a.id !== artifactId));
+    };
+
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30">
 
             {/* Navigation Header */}
             <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50">
@@ -442,7 +513,7 @@ const BasicConverter: React.FC = () => {
                         <Link to="/hub" className="text-gray-400 hover:text-white transition-colors">
                             ← Back
                         </Link>
-                        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">
+                        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-emerald-600">
                             Basic Converter
                         </h1>
                     </div>
@@ -467,16 +538,16 @@ const BasicConverter: React.FC = () => {
                                 <p className="text-gray-500 text-sm">No saved sessions yet.</p>
                             ) : (
                                 savedSessions.map(session => (
-                                    <div key={session.id} className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-blue-500/50 transition-colors group">
+                                    <div key={session.id} className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-green-500/50 transition-colors group">
                                         <div className="flex justify-between items-start mb-2">
                                             <p className="font-medium text-sm text-gray-200 truncate pr-2">{session.name}</p>
-                                            <span className="text-[10px] uppercase tracking-wider text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20">
+                                            <span className="text-[10px] uppercase tracking-wider text-green-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20">
                                                 {session.parserMode === ParserMode.LlamacoderHtml ? 'Llamacoder' : session.parserMode === ParserMode.ClaudeHtml ? 'Claude' : session.parserMode === ParserMode.LeChatHtml ? 'LeChat' : 'Basic'}
                                             </span>
                                         </div>
                                         <p className="text-xs text-gray-500 mb-3">{new Date(session.date).toLocaleDateString()}</p>
                                         <div className="flex gap-2">
-                                            <button onClick={() => loadSession(session)} className="flex-1 text-xs py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">Load</button>
+                                            <button onClick={() => loadSession(session)} className="flex-1 text-xs py-1.5 bg-green-600 hover:bg-green-500 text-white rounded transition-colors">Load</button>
                                             <button onClick={() => deleteSession(session.id)} className="px-2 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 rounded transition-colors text-xs">Del</button>
                                         </div>
                                     </div>
@@ -495,20 +566,20 @@ const BasicConverter: React.FC = () => {
                         <div className="space-y-6">
 
                             <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg">
-                                <h2 className="text-xl font-bold mb-4 text-blue-300">1. Configuration</h2>
+                                <h2 className="text-xl font-bold mb-4 text-green-300">1. Configuration</h2>
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-400 mb-1">Page Title</label>
-                                        <input type="text" value={chatTitle} onChange={(e) => setChatTitle(e.target.value)} maxLength={INPUT_LIMITS.TITLE_MAX_LENGTH} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" />
+                                        <input type="text" value={chatTitle} onChange={(e) => setChatTitle(e.target.value)} maxLength={INPUT_LIMITS.TITLE_MAX_LENGTH} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-400 mb-1">User Name</label>
-                                            <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" />
+                                            <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-400 mb-1">AI Name</label>
-                                            <input type="text" value={aiName} onChange={(e) => setAiName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" />
+                                            <input type="text" value={aiName} onChange={(e) => setAiName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" />
                                         </div>
                                     </div>
                                     <div>
@@ -519,7 +590,7 @@ const BasicConverter: React.FC = () => {
                                                     key={theme}
                                                     onClick={() => setSelectedTheme(theme)}
                                                     className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${selectedTheme === theme
-                                                        ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20'
+                                                        ? 'bg-green-600 border-blue-400 text-white shadow-lg shadow-green-500/20'
                                                         : 'bg-gray-800 border-gray-600 text-gray-400 hover:bg-gray-700'
                                                         }`}
                                                 >
@@ -535,7 +606,7 @@ const BasicConverter: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setParserMode(ParserMode.Basic)}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.Basic
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
@@ -545,7 +616,7 @@ const BasicConverter: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setParserMode(ParserMode.LlamacoderHtml)}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.LlamacoderHtml
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
@@ -555,7 +626,7 @@ const BasicConverter: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setParserMode(ParserMode.ClaudeHtml)}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.ClaudeHtml
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
@@ -565,7 +636,7 @@ const BasicConverter: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setParserMode(ParserMode.LeChatHtml)}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.LeChatHtml
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
@@ -575,7 +646,7 @@ const BasicConverter: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setParserMode(ParserMode.ChatGptHtml)}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.ChatGptHtml
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
@@ -585,7 +656,7 @@ const BasicConverter: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setParserMode(ParserMode.GeminiHtml)}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.GeminiHtml
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
@@ -595,7 +666,7 @@ const BasicConverter: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setParserMode(ParserMode.KimiHtml)}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.KimiHtml
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
@@ -604,10 +675,10 @@ const BasicConverter: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl mt-4">
+                                    <div className="bg-blue-900/10 border border-green-500/20 p-4 rounded-xl mt-4">
                                         <div className="flex flex-col gap-2">
                                             <div className="flex items-start gap-3">
-                                                <div className="text-blue-400 text-xl">💡</div>
+                                                <div className="text-green-400 text-xl">💡</div>
                                                 <p className="text-sm text-blue-200/80 leading-relaxed">
                                                     <strong>Basic Mode Rule:</strong> Ensure your chat log uses these clear markers for prompts and responses:
                                                     <br />
@@ -615,7 +686,7 @@ const BasicConverter: React.FC = () => {
                                                 </p>
                                             </div>
                                             <div className="flex items-start gap-3">
-                                                <div className="text-blue-400 text-xl">🧠</div>
+                                                <div className="text-green-400 text-xl">🧠</div>
                                                 <p className="text-sm text-blue-200/80 leading-relaxed">
                                                     <strong>Thought Process:</strong> Wrap text in <code className="bg-blue-900/30 px-1 py-0.5 rounded text-xs mx-1">&lt;thought&gt;...&lt;/thought&gt;</code> to create collapsible thought sections.
                                                 </p>
@@ -630,13 +701,87 @@ const BasicConverter: React.FC = () => {
                                     onChange={setMetadata}
                                 />
 
+                                {/* 3.5. Manage Artifacts Button */}
+                                <div className="mt-6">
+                                    <button
+                                        onClick={() => setShowArtifactManager(true)}
+                                        className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/20"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                        </svg>
+                                        📎 Manage Artifacts
+                                    </button>
+                                </div>
 
+                                {/* 4. Artifacts Upload */}
+                                <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg space-y-4">
+                                    <h2 className="text-xl font-bold text-purple-300 mb-4">📎 Attach Files (Optional)</h2>
+
+                                    {/* Upload Area */}
+                                    <div
+                                        className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-500/5 transition-all"
+                                        onClick={() => artifactFileInputRef.current?.click()}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.currentTarget.classList.add('border-purple-500');
+                                        }}
+                                        onDragLeave={(e) => {
+                                            e.currentTarget.classList.remove('border-purple-500');
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            e.currentTarget.classList.remove('border-purple-500');
+                                            handleArtifactUpload(e.dataTransfer.files);
+                                        }}
+                                    >
+                                        <input
+                                            ref={artifactFileInputRef}
+                                            type="file"
+                                            multiple
+                                            className="hidden"
+                                            onChange={(e) => handleArtifactUpload(e.target.files)}
+                                        />
+                                        <p className="text-gray-400">Drag files here or click to upload</p>
+                                        <p className="text-xs text-gray-500 mt-1">Max {INPUT_LIMITS.FILE_MAX_SIZE_MB}MB per file (images, documents, code, etc.)</p>
+                                    </div>
+
+                                    {/* Artifacts List */}
+                                    {artifacts.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-medium text-gray-300">Attached Files:</p>
+                                            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                                                {artifacts.map(artifact => (
+                                                    <div key={artifact.id} className="flex items-center justify-between bg-gray-700/30 p-3 rounded border border-gray-600">
+                                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                            <span className="text-lg">
+                                                                {artifact.mimeType.startsWith('image/') ? '🖼️' :
+                                                                    artifact.mimeType.includes('pdf') ? '📕' :
+                                                                        artifact.mimeType.includes('text') ? '📄' :
+                                                                            '📎'}
+                                                            </span>
+                                                            <span className="text-sm text-gray-300 truncate">{artifact.fileName}</span>
+                                                            <span className="text-xs text-gray-500">({(artifact.fileSize / 1024).toFixed(1)} KB)</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRemoveArtifact(artifact.id)}
+                                                            className="text-red-400 hover:text-red-300 text-sm ml-2 flex-shrink-0"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-gray-500">Total: {artifacts.length} file(s) • {(artifacts.reduce((sum, a) => sum + a.fileSize, 0) / 1024 / 1024).toFixed(2)} MB</p>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {/* Messages Editing Section */}
                                 {chatData && (
                                     <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg">
-                                        <h2 className="text-xl font-bold mb-4 text-blue-300 flex items-center justify-between">
-                                            4. Edit Messages
+                                        <h2 className="text-xl font-bold mb-4 text-green-300 flex items-center justify-between">
+                                            5. Edit Messages
                                             <span className="text-xs font-normal text-gray-500 bg-gray-900/50 px-2 py-1 rounded border border-gray-700">
                                                 {chatData.messages.length} turns parsed
                                             </span>
@@ -646,17 +791,17 @@ const BasicConverter: React.FC = () => {
                                                 <div
                                                     key={idx}
                                                     className={`p-4 rounded-xl border transition-all ${editingIndex === idx
-                                                        ? 'bg-blue-600/10 border-blue-500/50 ring-1 ring-blue-500/20'
+                                                        ? 'bg-green-600/10 border-green-500/50 ring-1 ring-blue-500/20'
                                                         : msg.type === ChatMessageType.Prompt
-                                                            ? 'bg-gray-900/40 border-gray-700 hover:border-blue-500/30'
+                                                            ? 'bg-gray-900/40 border-gray-700 hover:border-green-500/30'
                                                             : 'bg-gray-800/40 border-gray-700 hover:border-cyan-500/30'
                                                         }`}
                                                 >
                                                     <div className="flex justify-between items-center mb-3">
                                                         <div className="flex items-center gap-2">
                                                             <span className={`w-2 h-2 rounded-full ${msg.type === ChatMessageType.Prompt ? 'bg-blue-400' : 'bg-cyan-400'}`}></span>
-                                                            <span className={`text-[10px] uppercase tracking-wider font-bold ${msg.type === ChatMessageType.Prompt ? 'text-blue-400' : 'text-cyan-400'}`}>
-                                                                {msg.type === ChatMessageType.Prompt ? userName : aiName}
+                                                            <span className={`text-[10px] uppercase tracking-wider font-bold ${msg.type === ChatMessageType.Prompt ? 'text-green-400' : 'text-cyan-400'}`}>
+                                                                #{idx + 1} {msg.type === ChatMessageType.Prompt ? userName : aiName}
                                                                 {msg.isEdited && <span className="ml-2 text-yellow-500/80 normal-case font-normal">(Edited)</span>}
                                                             </span>
                                                         </div>
@@ -664,7 +809,7 @@ const BasicConverter: React.FC = () => {
                                                         {editingIndex !== idx ? (
                                                             <button
                                                                 onClick={() => handleEditMessage(idx)}
-                                                                className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-blue-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                                className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-green-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
                                                             >
                                                                 Edit
                                                             </button>
@@ -688,7 +833,7 @@ const BasicConverter: React.FC = () => {
 
                                                     {editingIndex === idx ? (
                                                         <textarea
-                                                            className="w-full bg-gray-900/80 text-gray-200 p-3 rounded-lg border border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-sm font-mono min-h-[120px] resize-y"
+                                                            className="w-full bg-gray-900/80 text-gray-200 p-3 rounded-lg border border-green-500/50 focus:ring-2 focus:ring-green-500/20 outline-none transition-all text-sm font-mono min-h-[120px] resize-y"
                                                             value={editContent}
                                                             onChange={(e) => setEditContent(e.target.value)}
                                                             autoFocus
@@ -712,13 +857,13 @@ const BasicConverter: React.FC = () => {
                             <div className="space-y-6">
                                 <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg h-full flex flex-col">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h2 className="text-xl font-bold text-blue-300">2. Chat Content</h2>
+                                        <h2 className="text-xl font-bold text-green-300">2. Chat Content</h2>
                                         <div className="flex gap-2">
                                             <label className="cursor-pointer px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-xs font-medium text-gray-200 border border-gray-600 transition-colors">
                                                 Upload File
                                                 <input type="file" className="hidden" accept=".txt,.md,.json,.mhtml,.mht,.html,.htm" onChange={handleFileUpload} />
                                             </label>
-                                            <label className="cursor-pointer px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded-md text-xs font-medium text-white border border-blue-600 transition-colors">
+                                            <label className="cursor-pointer px-3 py-1.5 bg-blue-700 hover:bg-green-600 rounded-md text-xs font-medium text-white border border-blue-600 transition-colors">
                                                 📦 Batch Import
                                                 <input
                                                     type="file"
@@ -750,7 +895,7 @@ const BasicConverter: React.FC = () => {
                                                             : parserMode === ParserMode.KimiHtml
                                                                 ? "Paste full HTML source from Kimi AI here..."
                                                                 : "Paste your chat here (Markdown or JSON)..."}
-                                        className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
+                                        className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
                                     />
                                     <button
                                         onClick={handleConvert}
@@ -833,6 +978,19 @@ const BasicConverter: React.FC = () => {
                                                 metadata={metadata}
                                                 buttonText="Download"
                                                 buttonClassName="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2"
+                                                session={loadedSessionId ? {
+                                                    id: loadedSessionId,
+                                                    name: chatTitle,
+                                                    chatTitle,
+                                                    date: metadata.date,
+                                                    inputContent,
+                                                    userName,
+                                                    aiName,
+                                                    selectedTheme,
+                                                    parserMode,
+                                                    chatData,
+                                                    metadata
+                                                } : undefined}
                                             />
                                         )}
                                     </div>
@@ -848,6 +1006,65 @@ const BasicConverter: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Artifact Manager Modal */}
+            {showArtifactManager && chatData && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border border-gray-700 my-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-purple-300">📎 Manage Artifacts</h2>
+                            <button
+                                onClick={() => setShowArtifactManager(false)}
+                                className="text-gray-400 hover:text-gray-200 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                            <p className="text-sm text-gray-300">
+                                <strong>Chat:</strong> {chatTitle}
+                            </p>
+                        </div>
+
+                        <ArtifactManager
+                            session={{
+                                id: loadedSessionId || Date.now().toString(),
+                                name: chatTitle,
+                                chatTitle,
+                                date: metadata.date,
+                                inputContent,
+                                userName,
+                                aiName,
+                                selectedTheme,
+                                parserMode,
+                                chatData,
+                                metadata: { ...metadata, artifacts }
+                            }}
+                            messages={chatData?.messages || []}
+                            manualMode={!loadedSessionId}
+                            onArtifactsChange={(newArtifacts) => {
+                                setArtifacts(newArtifacts);
+                                // If in database mode, also update metadata to stay in sync
+                                if (loadedSessionId) {
+                                    setMetadata(prev => ({ ...prev, artifacts: newArtifacts }));
+                                }
+                            }}
+                        />
+
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={() => setShowArtifactManager(false)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

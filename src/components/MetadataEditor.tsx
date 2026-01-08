@@ -47,7 +47,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
 
     return (
         <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg space-y-4">
-            <h2 className="text-xl font-bold text-blue-300 mb-2">3. Archival Metadata</h2>
+            <h2 className="text-xl font-bold text-green-300 mb-2">3. Archival Metadata</h2>
 
             {/* Model & Date Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -58,7 +58,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
                         value={metadata.model}
                         onChange={(e) => onChange({ ...metadata, model: e.target.value })}
                         maxLength={INPUT_LIMITS.MODEL_MAX_LENGTH}
-                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-gray-200 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-gray-200 text-sm focus:ring-2 focus:ring-green-500/50 outline-none transition-all"
                         placeholder="e.g. Claude 3.5 Sonnet"
                     />
                 </div>
@@ -68,7 +68,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
                         type="datetime-local"
                         value={metadata.date.slice(0, 16)}
                         onChange={(e) => onChange({ ...metadata, date: new Date(e.target.value).toISOString() })}
-                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-gray-200 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-gray-200 text-sm focus:ring-2 focus:ring-green-500/50 outline-none transition-all"
                     />
                 </div>
             </div>
@@ -78,7 +78,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
                 <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wide">Tags (Press Enter)</label>
                 <div className="flex flex-wrap gap-2 mb-2">
                     {metadata.tags.map(tag => (
-                        <span key={tag} className="bg-blue-600/20 text-blue-300 px-2 py-1 rounded text-xs flex items-center gap-1 border border-blue-500/30">
+                        <span key={tag} className="bg-green-600/20 text-green-300 px-2 py-1 rounded text-xs flex items-center gap-1 border border-green-500/30">
                             #{tag}
                             <button onClick={() => removeTag(tag)} className="hover:text-white transition-colors">
                                 ×
@@ -105,7 +105,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ metadata, onChange }) =
                     type="url"
                     value={metadata.sourceUrl || ''}
                     onChange={(e) => onChange({ ...metadata, sourceUrl: e.target.value })}
-                    className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-gray-200 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                    className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-gray-200 text-sm focus:ring-2 focus:ring-green-500/50 outline-none transition-all"
                     placeholder="https://claude.ai/chat/..."
                 />
             </div>

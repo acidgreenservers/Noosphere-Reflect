@@ -15,6 +15,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.2] - January 7, 2026
+
+### Added
+
+#### Artifact Management System
+- **Artifact Upload/Download**: Full upload, download, and removal capabilities for chat session attachments
+- **ConversationArtifact Interface**: Type-safe artifact storage with metadata (fileName, mimeType, fileSize, description, uploadedAt, hash, messageIndex)
+- **ConversationManifest Interface**: Manifest generation for artifact tracking during export with version info and tool signature
+- **ArtifactManager Component**: Dedicated React component for artifact UI (upload, link, remove operations)
+- **IndexedDB v4 Migration**: Automatic database upgrade to support `artifacts` array in `ChatMetadata`
+- **Web App Integration**:
+  - ArtifactManager integrated into BasicConverter for inline artifact management
+  - ArtifactManager integrated into ArchiveHub for chat session artifact management
+  - Backward compatible with existing sessions (artifacts array initialized automatically)
+
+#### Message Numbering
+- **HTML Export Numbering**: Added message sequence numbers (#1, #2, #3) to all HTML exports for easy reference
+- **Markdown Export Numbering**: Added message numbering format `[#1]` in Markdown exports
+- **BasicConverter Preview**: Message numbering displayed in real-time preview for consistency
+- **Consistent Numbering**: All export formats maintain identical message indexing
+
+#### Export Enhancements
+- **ZIP Export Support**: Bundle chat sessions with artifacts into self-contained ZIP files with directory structure
+- **Batch ZIP Exports**: Multiple chats exported as ZIP archive with per-session subdirectories
+- **Directory Exports**: Single chat exports as directory with main chat + artifacts folder
+- **Manifest Generation**: Automatic `manifest.json` creation in exports for artifact tracking
+- **Export Structure**:
+  ```
+  chat-export.zip
+  ├── manifest.json (artifact metadata and versioning)
+  ├── conversation.html (numbered messages, styled)
+  ├── conversation.md (numbered messages)
+  ├── artifacts/
+  │   ├── screenshot.png
+  │   ├── code.js
+  │   └── document.pdf
+  ```
+
+#### UI/UX Improvements
+- **Artifact Badges**: Made artifact badges clickable in ArchiveHub (previously hidden on hover)
+- **Add Artifacts Button**: New "+ Add Artifacts" button for chats without artifacts in ArchiveHub
+- **Manage Artifacts Button**: "📎 Manage Artifacts" button in BasicConverter page for easy access
+- **Metadata Editor Modal**: Moved metadata editor to modal dialog in generator page
+- **Inline Metadata Editing**: Added inline metadata editor for quick edits without opening full modal
+
+### Fixed
+
+#### Security Hardening
+- **Filename Sanitization**: Implemented `sanitizeFilename()` to prevent path traversal attacks (removes `../`, `..\`, and invalid filesystem characters)
+- **Dangerous Extension Neutralization**: Implemented `neutralizeDangerousExtension()` to mitigate XSS risks
+  - Dangerous extensions converted to `.txt`: `.html`, `.svg`, `.exe`, `.bat`, `.cmd`, `.sh`, `.app`, `.deb`
+  - Code extensions preserved for syntax highlighting: `.js`, `.py`, `.ts`, `.jsx`, `.tsx`, `.java`, `.cpp`, `.go`, `.rs`
+- **Defense-in-Depth**: Security applied at both upload and export layers
+- **Malicious Filename Blocks**: Prevents extraction attacks and script injection via filename vectors
+- **Memory Bank Security Protocol**:
+  - **Adversary Auditor Workflow**: Established "3-Eyes Verification" (Developer, AI, Adversary)
+  - **Security Registry**: Added `memory-bank/security-audits.md` for persistent vulnerability tracking
+  - **Output Standardization**: Adversary audits now follow standardized implementation walkthrough format
+  - **Unified Registry**: Consolidated security audits and remediation logs in a dedicated memory bank file
+  - **Registry Pruning**: Policy established for 500-line audit history retention
+
+### Technical Details
+
+#### New Dependencies
+- **jszip ^3.10.1**: Added for ZIP file creation and export functionality
+
+#### Type System Extensions
+- `ConversationArtifact` interface for type-safe artifact handling
+- `ConversationManifest` interface for export manifest structure
+- Extended `ChatMetadata` with `artifacts?: ConversationArtifact[]` field
+
+#### Database Migration
+- **DB_VERSION**: Incremented to 4 (IndexedDB v3 → v4)
+- **Backward Compatibility**: Automatic backfill of `artifacts` array for existing sessions via migration cursor
+- **Migration Performance**: Uses `openCursor()` for memory-efficient processing of large datasets
+
+#### Files Modified
+- `src/types.ts` - Added ConversationArtifact, ConversationManifest interfaces
+- `src/services/storageService.ts` - Added v4 migration with artifact initialization
+- `src/services/converterService.ts` - Added message numbering in HTML/Markdown exports, manifest generation
+- `src/components/ArtifactManager.tsx` - New component for artifact UI
+- `src/pages/BasicConverter.tsx` - Integrated ArtifactManager, added numbering to preview
+- `src/pages/ArchiveHub.tsx` - Artifact badge improvements, "+ Add Artifacts" button
+- `src/utils/securityUtils.ts` - Added `sanitizeFilename()`, `neutralizeDangerousExtension()`
+- `package.json` - Added jszip dependency, version bump to 0.3.2
+
+### Security Considerations
+
+- **Path Traversal Prevention**: All filenames sanitized before ZIP creation
+- **XSS Prevention**: Extension neutralization prevents `.html`, `.svg` files from executing in browser
+- **Filename Validation**: Only alphanumeric, `-`, `_`, and `.` allowed in export filenames
+- **Archive Integrity**: Manifest.json ensures artifact integrity tracking for future verification
+
+### Migration Guide
+
+**v0.3.1 → v0.3.2**:
+1. Automatic IndexedDB upgrade (v3 → v4) with zero data loss
+2. Existing sessions automatically populated with empty `artifacts` array
+3. Install jszip dependency (`npm install jszip@^3.10.1`)
+4. New artifact management features available immediately
+5. Export formats gain message numbering automatically
+
+---
+
 ## [v0.3.1] - January 7, 2026
 
 ### Added
@@ -444,4 +548,4 @@ None. All existing sessions remain compatible.
 
 ---
 
-**Last Updated**: January 7, 2026 | **Current Version**: v0.3.0
+**Last Updated**: January 7, 2026 | **Current Version**: v0.3.2

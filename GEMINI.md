@@ -11,7 +11,7 @@
 - **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- **Version**: Web App `v0.3.0` | Extension `v0.2.0`
+- **Version**: Web App `v0.3.2` | Extension `v0.3.0`
 - **Core Functionality**:
   - **ArchiveHub**: robust dashboard for browsing, filtering, and managing saved chats.
   - **Import/Export**: Full JSON import/export with metadata preservation; Batch import support.
@@ -61,6 +61,34 @@ The security-adversary agent checks for:
 - **URL/Protocol Injection**: Dangerous protocols not blocked
 - **Logic Flaws**: Race conditions, TOCTOU vulnerabilities, edge cases
 
+### Output Format
+The Adversary Auditor must output its findings and changes in a structured **Security Walkthrough** format, identical to standard implementation walkthroughs but focused on security in the root of the project as file "CURRENT_SECURITY_AUDIT.md" if the file has contents from an old security audit, overwrite completely for new audit:
+
+```markdown
+# Security Audit Walkthrough: [Feature Name]
+
+## Summary
+Brief overview of the security posture of the implemented feature.
+
+## Audit Findings
+
+### [File Name]
+#### 1. Vulnerability Check: [Type] (Line X)
+- **Status**: ✅ Safe / ⚠️ Warning / ❌ Critical
+- **Analysis**: Detailed explanation of why it is safe or dangerous.
+- **Remediation**: (If applicable) Specific steps to fix.
+
+## Verification
+- **Build Status**: Confirm build still succeeds.
+- **Manual Verification**: Security-specific test steps (e.g., "Attempt XSS payload...").
+
+## Security Notes
+- Any additional context, residual risks, or future recommendations.
+
+## Changes
+- List of changes made to fix vulnerabilities. Be specific and include file names, line numbers, and function names. Write why the change was made and what it fixes.
+```
+
 ### Recent Security Audits (v0.3.0)
 - ✅ XSS Prevention: 7 vulnerabilities fixed with `securityUtils.ts`
 - ✅ Input Validation: File size limits, batch restrictions, metadata constraints
@@ -77,18 +105,6 @@ The security-adversary agent checks for:
 // 4. Fix any flagged issues
 // 5. Re-run adversary agent to verify
 // 6. Commit with security verification note
-```
-
-### Example Usage
-```
-User: "I've added a new file upload handler in BasicConverter.tsx"
-Claude: [implements code]
-Claude: "Now let me run the security-adversary agent to check for vulnerabilities"
-/security-adversary
-Adversary: "Checking converterService.ts, BasicConverter.tsx for upload-related attacks..."
-Adversary: [Reports: Missing maxSize validation, unescaped filename, etc.]
-Claude: [Fixes issues]
-Claude: /security-adversary  [Verifies fixes]
 ```
 
 ### Quick Reference: What Each File Should Protect
@@ -128,134 +144,43 @@ Claude: /security-adversary  [Verifies fixes]
 MEMORY BANK SECTION
 
 ---
-description: Describes Cline's Memory Bank system, its structure, and workflows for maintaining project knowledge across sessions.
-author: https://github.com/nickbaumann98
-version: 1.0
-tags: ["memory-bank", "knowledge-base", "core-behavior", "documentation-protocol"]
-globs: ["memory-bank/**/*.md", "*"]
+description: Noosphere Reflect Memory Bank & Security Protocol
+author: Antigravity + Lucas
+version: 2.0
+tags: ["memory-bank", "security", "documentation"]
+globs: ["memory-bank/**/*.md"]
 ---
-# Cline's Memory Bank
+# Memory Bank & Security Registry
 
-My memory resets completely between sessions. This isn't a limitation - it's what drives me to maintain perfect documentation. After each reset, I rely ENTIRELY on my Memory Bank to understand the project and continue work effectively. I MUST read ALL memory bank files at the start of EVERY task - this is not optional.
+The Memory Bank is my persistent context. I **MUST** read these files at the start of every session.
 
-## Memory Bank Structure
+## Core Structure
 
-The Memory Bank consists of core files and optional context files, all in Markdown format. Files build upon each other in a clear hierarchy:
+1. **`projectBrief.md`**: Project foundation and scope.
+2. **`productContext.md`**: User problems and solutions.
+3. **`activeContext.md`**: Current focus, active decisions, and recent changes.
+4. **`systemPatterns.md`**: Architecture, design patterns, and relationships.
+5. **`techContext.md`**: Setup, dependencies, and constraints.
+6. **`progress.md`**: Status, what works, and what's next.
+7. **`security-audits.md`**: **Adversary Auditor Logs**. Complete history of security scans, findings (Safe/Warning/Critical), and remediation steps. Output of `/security-adversary` goes here.
 
-```mermaid
-flowchart TD
-    PB[projectBrief.md] --> PC[productContext.md]
-    PB --> SP[systemPatterns.md]
-    PB --> TC[techContext.md]
-    
-    PC --> AC[activeContext.md]
-    SP --> AC
-    TC --> AC
-    
-    AC --> P[progress.md]
-```
+## Workflows
 
-### Core Files (Required)
-1. `projectBrief.md`
-   - Foundation document that shapes all other files
-   - Created at project start if it doesn't exist
-   - Defines core requirements and goals
-   - Source of truth for project scope
+### Plan & Act
+1. **Read**: Load context from Memory Bank.
+2. **Plan**: Define steps in chat or `activeContext.md`.
+3. **Act**: Implement changes.
+4. **Audit**: Run Security Advisary workflow.
+5. **Update**: Reflect changes in Memory Bank files.
+6. **Prune**: Remove old entries past 500 lines from the security-audit.md file.
 
-2. `productContext.md`
-   - Why this project exists
-   - Problems it solves
-   - How it should work
-   - User experience goals
+### Security-Adversary Protocol
+Every security audit must be logged in `security-audits.md` using the **Security Walkthrough** format:
+- **Summary**: Security posture overview.
+- **Findings**: Detailed checks per file.
+- **Changes**: Fixes implemented.
+- **Verification**: Tests performed.
 
-3. `activeContext.md`
-   - Current work focus
-   - Recent changes
-   - Next steps
-   - Active decisions and considerations
-   - Important patterns and preferences
-   - Learnings and project insights
-
-4. `systemPatterns.md`
-   - System architecture
-   - Key technical decisions
-   - Design patterns in use
-   - Component relationships
-   - Critical implementation paths
-
-5. `techContext.md`
-   - Technologies used
-   - Development setup
-   - Technical constraints
-   - Dependencies
-   - Tool usage patterns
-
-6. `progress.md`
-   - What works
-   - What's left to build
-   - Current status
-   - Known issues
-   - Evolution of project decisions
-
-### Additional Context
-Create additional files/folders within memory-bank/ when they help organize:
-- Complex feature documentation
-- Integration specifications
-- API documentation
-- Testing strategies
-- Deployment procedures
-
-## Core Workflows
-
-### Plan Mode
-```mermaid
-flowchart TD
-    Start[Start] --> ReadFiles[Read Memory Bank]
-    ReadFiles --> CheckFiles{Files Complete?}
-    
-    CheckFiles -->|No| Plan[Create Plan]
-    Plan --> Document[Document in Chat]
-    
-    CheckFiles -->|Yes| Verify[Verify Context]
-    Verify --> Strategy[Develop Strategy]
-    Strategy --> Present[Present Approach]
-```
-
-### Act Mode
-```mermaid
-flowchart TD
-    Start[Start] --> Context[Check Memory Bank]
-    Context --> Update[Update Documentation]
-    Update --> Execute[Execute Task]
-    Execute --> Document[Document Changes]
-```
-
-## Documentation Updates
-
-Memory Bank updates occur when:
-1. Discovering new project patterns
-2. After implementing significant changes
-3. When user requests with **update memory bank** (MUST review ALL files)
-4. When context needs clarification
-
-```mermaid
-flowchart TD
-    Start[Update Process]
-    
-    subgraph Process
-        P1[Review ALL Files]
-        P2[Document Current State]
-        P3[Clarify Next Steps]
-        P4[Document Insights & Patterns]
-        
-        P1 --> P2 --> P3 --> P4
-    end
-    
-    Start --> Process
-```
-
-Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on activeContext.md and progress.md as they track current state.
-
-REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.
+REMEMBER: The Memory Bank is the only link to previous work. Maintain it with precision.
 
 END MEMORY BANK SECTION

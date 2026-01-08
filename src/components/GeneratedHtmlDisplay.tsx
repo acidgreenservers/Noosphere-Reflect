@@ -27,25 +27,25 @@ const GeneratedHtmlDisplay: React.FC<GeneratedHtmlDisplayProps> = ({ htmlContent
   };
 
   return (
-    <div className="p-6 mt-8 transition-colors border shadow-inner bg-[var(--bg-tertiary)] rounded-xl border-[var(--border)]">
+    <div className="p-6 mt-8 transition-colors border shadow-inner bg-[var(--bg-tertiary)] rounded-full border-[var(--border)]">
       <h3 className="mb-6 text-2xl font-bold text-[var(--text-primary)]">Generated HTML Preview</h3>
       <div className="flex flex-col justify-end gap-3 mb-6 sm:flex-row">
         <button
           onClick={handleSave}
-          className="px-6 py-2.5 font-medium transition-colors border rounded-xl bg-[var(--bg-primary)] text-[var(--accent)] border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className="px-6 py-2.5 font-medium transition-colors border rounded-full bg-[var(--bg-primary)] text-[var(--accent)] border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           aria-label="Save current chat session"
         >
           Save Chat
         </button>
         <button
           onClick={handleDownload}
-          className="px-6 py-2.5 font-bold text-white transition-all transform rounded-xl bg-[var(--success)] hover:bg-green-600 hover:-translate-y-0.5 shadow-lg shadow-[var(--success)]/20 focus:outline-none focus:ring-2 focus:ring-[var(--success)] focus:ring-offset-2 focus:ring-offset-[var(--bg-secondary)]"
+          className="px-6 py-2.5 font-bold text-white transition-all transform rounded-full bg-[var(--success)] hover:bg-green-600 hover:-translate-y-0.5 shadow-lg shadow-[var(--success)]/20 focus:outline-none focus:ring-2 focus:ring-[var(--success)] focus:ring-offset-2 focus:ring-offset-[var(--bg-secondary)]"
           aria-label="Download generated HTML file"
         >
           Download HTML
         </button>
       </div>
-      <div className="border border-[var(--border)] rounded-xl overflow-hidden min-h-[400px] h-[calc(100vh-400px)] shadow-lg">
+      <div className="border border-[var(--border)] rounded-full overflow-hidden min-h-[400px] h-[calc(100vh-400px)] shadow-lg">
         <iframe
           srcDoc={htmlContent}
           title="Generated HTML Preview"

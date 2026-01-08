@@ -4,6 +4,21 @@ import { Link } from 'react-router-dom';
 const Changelog: React.FC = () => {
     const changes = [
         {
+            version: 'v0.3.2',
+            date: 'Jan 7, 2026',
+            title: 'Artifact Manager & Zip Export',
+            items: [
+                'Artifact Management System: Full upload, link, and remove capabilities for chat session attachments.',
+                'Manage Artifacts Modal: Integrated full ArtifactManager component into generator page modal.',
+                'Zip Export Support: Bundle chat sessions with artifacts into self-contained ZIP files using jszip.',
+                'Message Numbering: Added sequential message numbering (#1, #2, #3) to all HTML/Markdown exports.',
+                'Metadata Editor Modal: Moved metadata editor to modal dialog in generator page with inline toggle.',
+                'Security Hardening: Sanitized filenames and neutralized dangerous extensions (.html, .svg) during export.',
+                'Memory Bank Security Protocol: Established Adversary Auditor workflow with "3-Eyes Verification" and dedicated security-audits.md registry.',
+                'Database Migration: Upgraded to IndexedDB v4 with automatic artifacts array initialization.',
+            ],
+        },
+        {
             version: 'v0.3.1',
             date: 'Jan 7, 2026',
             title: 'Database Security & Branding',
@@ -140,7 +155,7 @@ const Changelog: React.FC = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 p-8 font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen bg-gray-900 text-gray-100 p-8 font-sans selection:bg-green-500/30">
             <div className="max-w-3xl mx-auto">
                 <div className="mb-8 flex items-center justify-between">
                     <Link
@@ -149,14 +164,14 @@ const Changelog: React.FC = () => {
                     >
                         ← Back to Home
                     </Link>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-emerald-500">
                         Changelog
                     </h1>
                 </div>
 
                 <div className="space-y-8">
                     {changes.map((release) => (
-                        <div key={release.version} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 shadow-xl backdrop-blur-sm relative overflow-hidden group hover:border-blue-500/30 transition-all duration-300">
+                        <div key={release.version} className="bg-gray-800/50 border border-gray-700/50 rounded-full p-6 shadow-xl backdrop-blur-sm relative overflow-hidden group hover:border-green-500/30 transition-all duration-300">
                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-purple-500 opacity-70 group-hover:opacity-100 transition-opacity"></div>
 
                             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
@@ -174,7 +189,7 @@ const Changelog: React.FC = () => {
                             <ul className="space-y-2">
                                 {release.items.map((item, idx) => (
                                     <li key={idx} className="flex items-start text-gray-300">
-                                        <span className="mr-3 text-blue-400 mt-1.5 text-xs">●</span>
+                                        <span className="mr-3 text-green-400 mt-1.5 text-xs">●</span>
                                         <span className="leading-relaxed">{item}</span>
                                     </li>
                                 ))}
