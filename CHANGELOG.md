@@ -11,8 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Planning for IndexedDB v3 migration (Unicode normalization, atomic duplicate detection)
-- Future phase roadmap in development
+- Planning for Phase 5: Context Composition (Merging)
+
+---
+
+## [v0.3.1] - January 7, 2026
+
+### Added
+
+#### UI/UX Enhancements
+- **New Favicon**: "Noosphere Reflect" purple gradient sphere with network node design
+  - Updated `public/favicon.svg`
+  - Updated `index.html` to reference new SVG
+- **Archive Hub Logo**: Replaced generic icon with inline SVG of the new logo
+  - Consistent branding across browser tab and application header
+
+### Fixed
+
+#### Database Security & Performance (IndexedDB v3)
+- **Critical Data Loss Prevention**: Refactored `saveSession` to handle duplicate titles securely
+  - Old behavior: Silent overwrite (Risk of data loss)
+  - New behavior: Atomic detection via `ConstraintError` -> Auto-rename with `(Copy YYYY-MM-DD...)` timestamp
+- **Migration Optimization**: Refactored `onupgradeneeded` backfill logic
+  - Replaced `store.getAll()` (memory spike risk) with `store.openCursor()`
+  - Ensures safe migration even with large datasets (50MB+ history)
 
 ---
 

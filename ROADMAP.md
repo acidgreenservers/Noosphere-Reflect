@@ -119,10 +119,7 @@
 **Goal:** Support additional AI platforms and chat services.
 
 **Candidate Platforms**:
-*   Google Gemini (gemini.google.com)
-*   Anthropic Console (web interface)
 *   Perplexity AI
-*   Mistral Chat
 *   HuggingChat
 *   Custom chat interfaces (via JSON import)
 

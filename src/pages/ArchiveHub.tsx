@@ -332,11 +332,24 @@ const ArchiveHub: React.FC = () => {
             <header className="sticky top-0 z-50 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                        </div>
+                        <svg className="w-8 h-8 drop-shadow-lg shadow-purple-500/20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style={{ stopColor: '#d8b4fe', stopOpacity: 1 }} />
+                                    <stop offset="50%" style={{ stopColor: '#a855f7', stopOpacity: 1 }} />
+                                    <stop offset="100%" style={{ stopColor: '#581c87', stopOpacity: 1 }} />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="50" cy="50" r="45" fill="url(#purpleGrad)" />
+                            <ellipse cx="35" cy="25" rx="15" ry="10" fill="white" opacity="0.2" transform="rotate(-45 35 25)" />
+                            <g stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.9">
+                                <circle cx="50" cy="50" r="4" fill="white" stroke="none" />
+                                <path d="M50 25 C 65 25, 75 35, 75 50" />
+                                <path d="M50 75 C 35 75, 25 65, 25 50" />
+                                <circle cx="75" cy="50" r="3" fill="white" stroke="none" />
+                                <circle cx="25" cy="50" r="3" fill="white" stroke="none" />
+                            </g>
+                        </svg>
                         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                             Archival Hub
                         </h1>

@@ -4,6 +4,52 @@ import { Link } from 'react-router-dom';
 const Changelog: React.FC = () => {
     const changes = [
         {
+            version: 'v0.3.1',
+            date: 'Jan 7, 2026',
+            title: 'Database Security & Branding',
+            items: [
+                'Critical Data Loss Prevention: Refactored saveSession to detect duplicate titles and auto-rename (Copy Timestamp) instead of overwriting.',
+                'Migration Optimization: Refactored database backfill logic to use openCursor() for constant memory footprint during upgrades.',
+                'New Branding: "Noosphere Reflect" purple network-node favicon for browser tabs.',
+                'UI Consistency: Updated Archive Hub header logo with matching inline SVG branding.',
+                'Fixed v3 schema migration potential memory spikes on large datasets.',
+            ],
+        },
+        {
+            version: 'v0.3.0',
+            date: 'Jan 7, 2026',
+            title: 'Security Hardening & XSS Prevention',
+            items: [
+                'Comprehensive XSS prevention with centralized securityUtils.ts module.',
+                'HTML entity escaping for all user inputs (titles, speaker names, metadata).',
+                'URL protocol validation blocking javascript:, data:, vbscript:, file:, about: schemes.',
+                'Code block language identifier validation to prevent attribute injection.',
+                'File size validation (10MB per file, 100MB per batch) to prevent resource exhaustion.',
+                'Input length limits: title (200 chars), tags (50 chars, max 20), model (100 chars).',
+                'Batch import validation with clear error messaging.',
+                'iframe sandbox hardening: removed allow-same-origin and allow-popups.',
+                'Security-first documentation in CLAUDE.md with contributor guidelines.',
+                '7 XSS vulnerabilities fixed across converterService, BasicConverter, MetadataEditor.',
+                'All changes backward compatible with existing sessions.',
+            ],
+        },
+        {
+            version: 'v0.2.0',
+            date: 'Jan 6, 2026',
+            title: 'Gemini Support & Chrome Extension v0.2.0',
+            items: [
+                'Full Google Gemini support in both web app and Chrome Extension.',
+                'Gemini thought process detection and preservation in expandable sections.',
+                'Extended Chrome Extension to 5 platforms: Claude, ChatGPT, LeChat, Llamacoder, Gemini.',
+                'Clipboard copy features: "Copy Chat as Markdown" and "Copy Chat as JSON" context menu options.',
+                'Unified serializers.js library for consistent data export across all platforms.',
+                'Enhanced thought block handling with collapsible <details> HTML sections.',
+                'Extension v0.2.0 with expanded manifest permissions for gemini.google.com.',
+                'Automatic title extraction for all 5 supported AI platforms.',
+                'Full metadata preservation during capture and re-import.',
+            ],
+        },
+        {
             version: 'v0.1.0',
             date: 'Jan 6, 2026',
             title: 'Chrome Extension & ChatGPT Support',
