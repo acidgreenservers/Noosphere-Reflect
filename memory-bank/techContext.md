@@ -14,5 +14,5 @@
 
 ## Constraints
 - **GitHub Pages**: The deployment target is static. No server-side processing is allowed (hence client-side Gemini calls).
-- **Local Persistence**: Data persistence relies on `IndexedDB` via a custom `StorageService`; `localStorage` was deprecated in favor of better capacity.
+- **Local Persistence**: Data persistence relies on `IndexedDB` (v5 schema) via a custom `StorageService`, utilizing separate object stores for `sessions` and `memories`.
 - **Context Window**: AI parsing limited to ~30k chars currently to respect API limits (though Gemini 2.0 Flash has a large window, we truncate for safety/speed).

@@ -11,15 +11,16 @@
 - **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- **Version**: Web App `v0.3.2` | Extension `v0.3.0`
+- **Version**: Web App `v0.4.0` | Extension `v0.4.0`
 - **Core Functionality**:
   - **ArchiveHub**: robust dashboard for browsing, filtering, and managing saved chats.
-  - **Import/Export**: Full JSON import/export with metadata preservation; Batch import support.
-  - **Security**: Comprehensive XSS hardening and input validation implemented (v0.3.0).
+  - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0).
+  - **Import/Export**: Full JSON import/export; Batch import; Memory exports (HTML/MD/JSON).
+  - **Security**: Comprehensive XSS hardening, Input validation, and Atomic duplicate detection (v0.3.0+).
 - **Extension**: Fully functional Chrome Extension supporting:
-  - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder.
-  - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation (Claude/Gemini).
-- **Goal**: Implement "IndexedDB v3 Security Upgrade" (Atomic duplicate detection) and "Phase 5: Context Composition".
+  - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok.
+  - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation.
+- **Goal**: Implement "Phase 5: Context Composition" and further enhance Memory Archive (Search/AI Tagging).
 
 ## 🔒 Security & QA Workflow: Adversary Auditor (3-Eyes Verification)
 
@@ -89,12 +90,13 @@ Brief overview of the security posture of the implemented feature.
 - List of changes made to fix vulnerabilities. Be specific and include file names, line numbers, and function names. Write why the change was made and what it fixes.
 ```
 
-### Recent Security Audits (v0.3.0)
+### Recent Security Audits (v0.4.0)
+- ✅ Memory Archive: Secure UI rendering, sanitized exports, and safe storage (v0.4.0)
+- ✅ Grok Integration: Secure parsing and double-escape fix (v0.3.2)
 - ✅ XSS Prevention: 7 vulnerabilities fixed with `securityUtils.ts`
 - ✅ Input Validation: File size limits, batch restrictions, metadata constraints
 - ✅ URL Sanitization: Protocol validation in markdown links and images
 - ✅ iframe Sandbox: Hardened with minimal permissions
-- ⏳ Pending: IndexedDB v3 race condition fixes (v0.4.0)
 
 ### Integration Pattern
 ```typescript

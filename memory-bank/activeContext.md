@@ -1,28 +1,27 @@
 # Active Context
 
 ## Current Focus
-- **Grok Integration**: Completed implementation of Grok parser, UI integration, and Chrome extension support.
-- **Security Audit**: Completed audit of Grok integration, fixing a double-escaping bug in `converterService.ts` and adding explicit sanitization to the extension parser.
-- **Export Enhancement**: 
-    - Added directory export support to the "Basic Converter" (single file) view using the File System Access API.
-    - **Refined ArchiveHub directory export** to create a named subdirectory for each exported chat (e.g., `ExportFolder/ChatTitle/`) instead of dumping files directly into the root.
+- **Memory Archive MVP**: Completed implementation of the Memory Archive feature (v0.4.0), including data model, UI grid/editor, and export functionality.
+- **Security Audit**: Verified proper XSS prevention in memory rendering and exports.
+- **Documentation**: Updated Memory Bank and walkthroughs.
 
 ## Recent Changes
-- **`src/services/converterService.ts`**:
-    - Implemented `parseGrokHtml` with `decodeHtmlEntities` helper.
-    - Added `extractTableMarkdown` helper.
-    - Added `generateDirectoryExportWithPicker` to enable directory exports from the basic converter.
-- **`src/components/ExportDropdown.tsx`**: Updated to use `generateDirectoryExportWithPicker` for all single-file exports.
-- **`src/pages/BasicConverter.tsx`**: Updated to pass full session data to `ExportDropdown`.
-- **`src/pages/ArchiveHub.tsx`**: Updated `handleSingleExport` to create a dedicated subdirectory for chat exports when using the directory picker.
-- **`extension/parsers/grok-parser.js`**: Hardened with `sanitizeUrl` and `decodeHtmlEntities`.
-- **`CURRENT_SECURITY_AUDIT.md`**: Documented findings and fixes for the Grok integration audit.
+- **`src/types.ts`**: Added `Memory` and `MemoryMetadata` interfaces.
+- **`src/services/storageService.ts`**:
+    - Updated IndexedDB to v5 schema with `memories` store.
+    - Implemented CRUD for memories.
+- **`src/services/converterService.ts`**: Added `generateMemoryHtml`, `generateMemoryMarkdown`, `generateMemoryJson`.
+- **UI Components**:
+    - `src/pages/MemoryArchive.tsx`: Main dashboard.
+    - `src/components/MemoryCard.tsx` & `MemoryList.tsx`: Visualization.
+    - `src/components/MemoryInput.tsx` & `MemoryEditor.tsx`: Input management.
+- **Integration**: Added route and navigation links in `App.tsx`, `ArchiveHub.tsx`, and `Home.tsx`.
 
 ## Active Decisions
-- **Directory Export**: We opted to use the File System Access API for single file exports in the Basic Converter to allow saving artifacts alongside the chat file in a clean directory structure.
-- **Export Organization**: Hub exports now enforce a clean folder structure (`Chat Name/`) to prevent cluttering user directories when exporting individual chats.
-- **Sanitization**: We chose to decode HTML entities when extracting from `innerHTML` and *not* escape them again before storage, relying on the renderer's `applyInlineFormatting` to handle escaping safely.
+- **Separation of Concerns**: Memories are stored in a distinct `memories` object store, separate from chat `sessions`, to allow for different metadata structures and querying patterns.
+- **Atomic Metadata**: Tags and AI models are stored as first-class citizens in the `Memory` object to allow for efficient multiEntry indexing in IndexedDB.
+- **Security**: Memories use the same "Escape First" HTML generation strategy as chats to prevent stored XSS.
 
 ## Next Steps
 - **Phase 5**: Context Composition (merging multiple chats).
-- **IndexedDB v3**: Atomic duplicate detection (refinement).
+- **Search Enhancements**: Semantic search for memories.

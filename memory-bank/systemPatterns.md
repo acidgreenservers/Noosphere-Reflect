@@ -15,6 +15,8 @@
 - **Theme-Aware Generation**: The HTML exporter applies a unified CSS theme to diverse inbound structures.
 - **Metadata Enrichment**: Enhancing raw logs with `title`, `model`, `date`, and `tags` via the `ChatData` and `SavedChatSession` types.
 - **Multi-Session Management**: Storing an array of `SavedChatSession` objects in local storage, indexed by a unique ID.
+- **Dual Storage Strategy**: Separating full chat logs (`sessions` store) from atomic thoughts (`memories` store) allows for optimized querying and distinct metadata structures.
+- **Atomic Metadata**: Storing tags and AI models as first-class citizens in `memories` for efficient multiEntry indexing.
 - **Granular Message Selection**: (Planned) Allowing users to toggle individual messages for inclusion in the final archive.
 - **Service Pattern**: Parsing logic is isolated in `services/converterService.ts`, keeping UI components clean.
 - **Scoped CSS**: The generated HTML includes its own `<style>` block (Tailwind CDN + Custom CSS) to ensure it looks identical offline.
