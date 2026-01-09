@@ -1,45 +1,62 @@
-# Security Audit Walkthrough: Memory Archive (v0.4.0)
-**Date**: January 7, 2026
+# Security Audit Walkthrough: Baseline Audit (v0.4.0)
+**Date**: January 8, 2026
 **Auditor**: Adversary Agent
+**Context**: Pre-Phase 5 (Context Composition) Deep Sweep
 
 ## Summary
-Audit of the new **Memory Archive** feature (v0.4.0), which introduces a dedicated storage and management system for AI chat snippets. Key focus was on persistent XSS vulnerabilities in the memory list/card view and export sanitization.
+This audit establishes a definitive security baseline for the v0.4.0 codebase (Memory Archive + Artifact Management) before the implementation of Session Merging (Phase 5). A "Deep Sweep" was performed on the `ArtifactManager` and core parsing logic to ensure no regressions were introduced during recent feature additions.
 
 **Verdict**: ✅ **SECURE**
-The implementation properly uses React's auto-escaping for UI rendering and leverages the existing robust `convertMarkdownToHtml` (with explicit `applyInlineFormatting`) for exports. Input sanitization is applied at multiple layers.
+The application maintains a robust security posture. The new Artifact Management system correctly implements file sanitization and validation. The "Escape First" strategy in the HTML converter remains intact and effective.
 
 ## Audit Findings
 
-### 1. `src/services/converterService.ts` (Export Logic)
-#### Vulnerability Check: Export Sanitization
+### 1. `src/components/ArtifactManager.tsx` (New Feature)
+#### Vulnerability Check: File Upload & Handling
 - **Status**: ✅ Safe
 - **Analysis**:
-  - `generateMemoryHtml` uses `convertMarkdownToHtml` for the body content.
-  - Verified logic: `convertMarkdownToHtml` -> `applyInlineFormatting` -> `escapeHtml` (lines 753-760).
-  - All special characters (`<`, `>`, `&`, `"`, `'`) are escaped before any markup is applied.
-  - Title, Model, and Tags are explicitly escaped using `escapeHtml` in the template string functions.
+  - **Filename Sanitization**: Uses `sanitizeFilename(file.name)` which strips path traversal characters (`/`, `\`, `..`) and control characters.
+  - **Extension Neutralization**: Uses `neutralizeDangerousExtension()` to force `.txt` on risky types (`.html`, `.svg`, `.exe`), preventing Stored XSS via uploaded files.
+  - **Size Validation**: Enforces `INPUT_LIMITS.FILE_MAX_SIZE_MB` (10MB) before reading file content, preventing memory exhaustion.
+  - **MIME Type**: Stores MIME type but relies on file content for rendering in exports, mitigating MIME-sniffing attacks.
+  - **Base64 Handling**: Strips Data URL prefix correctly to store pure base64.
 
-### 2. `src/pages/MemoryArchive.tsx` & Components (UI)
-#### Vulnerability Check: Persistent XSS
+### 2. `src/services/converterService.ts` (Core Logic)
+#### Vulnerability Check: Output Sanitization
 - **Status**: ✅ Safe
 - **Analysis**:
-  - `MemoryCard` renders content previews using `{previewContent}` inside a `div`. React escapes this by default.
-  - `MemoryList` renders the grid of cards. No `dangerouslySetInnerHTML` usage.
-  - `MemoryEditor` binds inputs to state. Safe.
-  - No execution vectors found in the UI.
+  - `applyInlineFormatting` (Line ~750) continues to be the "Firewall". It explicitly calls `escapeHtml(text)` *before* any regex processing.
+  - `generateHtml` correctly escapes metadata fields (Title, Model, Tags).
+  - Artifact linking in `generateHtml` uses `escapeHtml(artifact.fileName)` and constructs safe relative paths `artifacts/...`.
+  - **Observation**: `parseGrokHtml` and others use `decodeHtmlEntities` appropriately to handle raw innerHTML extraction without double-escaping issues.
 
-### 3. `src/services/storageService.ts` (Data Layer)
-#### Vulnerability Check: Injection & Quotas
+### 3. `src/utils/securityUtils.ts` (Defense Library)
+#### Vulnerability Check: Utility Integrity
 - **Status**: ✅ Safe
 - **Analysis**:
-  - Uses IndexedDB (client-side NoSQL). Not susceptible to traditional SQL injection.
-  - Data is effectively "text" until rendered, where it is treated as text or sanitized HTML.
+  - `sanitizeFilename`: Robust regex `/[^a-zA-Z0-9._\- ()]/g` acts as an allow-list, blocking all special chars.
+  - `escapeHtml`: Correctly handles `&`, `<`, `>`, "`, `'`.
+  - `sanitizeUrl`: Blocks `javascript:`, `data:`, `vbscript:`.
+
+### 4. `src/services/storageService.ts` (Data Layer)
+#### Vulnerability Check: v5 Schema Migration
+- **Status**: ✅ Safe
+- **Analysis**:
+  - The migration to add `memories` store handles indexes correctly (`aiModel`, `tags` multiEntry).
+  - Artifact storage uses the `metadata.artifacts` array within existing session objects, avoiding schema breaking changes.
+  - Duplicate prevention logic (renaming old sessions) preserves data integrity.
 
 ## Verification
-- **Build Status**: ✅ Success (Built in 4.13s)
-- **Manual Verification**:
-  - Confirmed `src/services/converterService.ts` has no missing escape calls.
-  - Confirmed `MemoryArchive` route is protected/accessible safely.
+- **Code Review**: Manually inspected `ArtifactManager.tsx` and `converterService.ts`.
+- **Logic Trace**:
+  - Upload `malicious<script>.svg` -> `sanitizeFilename` -> `malicious_script_.svg` -> `neutralizeDangerousExtension` -> `malicious_script_.svg.txt`. **Safe.**
+  - Upload `../../etc/passwd` -> `sanitizeFilename` -> `__etc_passwd`. **Safe.**
+
+## Security Notes (Pre-Phase 5)
+- **Warning for Merge Feature**: The upcoming "Session Merge" feature creates a risk of **Artifact Collision** (two chats having files with the same name).
+- **Recommendation**: As outlined in `PHASE_5_MERGE_STRATEGY_AUDIT.md`, the merge logic **MUST** implement conflict resolution (renaming or namespacing) for artifacts to prevent data overwrite or cross-talk.
+- **Provenance**: Merged sessions should clearly indicate their composite nature to preserve the "truth" of the archive.
 
 ## Changes
-- None required. Implementation followed security best practices from the start.
+- **Documentation**: Overwrote `CURRENT_SECURITY_AUDIT.md` to reflect this baseline check.
+- **Code**: No code changes required. The v0.4.0 implementation is secure.
