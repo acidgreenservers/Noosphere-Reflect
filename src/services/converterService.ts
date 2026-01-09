@@ -1803,7 +1803,12 @@ const parseGeminiHtml = (input: string): ChatData => {
         htmlEl.classList.contains('message-content') ||
         htmlEl.classList.contains('structured-content-container');
 
-      if (isAssistantResponse && !htmlEl.closest('.sidebar, nav, .thoughts-container')) {
+      // CRITICAL: Skip message-content that's inside thinking blocks
+      // Handle both class selectors (.thoughts-container, .model-thoughts) and tag names (model-thoughts)
+      const isInsideThinking = htmlEl.closest('.sidebar, nav, .thoughts-container, .model-thoughts') ||
+        htmlEl.closest('model-thoughts');
+
+      if (isAssistantResponse && !isInsideThinking) {
         const content = extractMarkdownFromHtml(htmlEl);
         if (content && content.trim().length > 0) {
           messages.push({
