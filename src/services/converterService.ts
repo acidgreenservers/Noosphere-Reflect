@@ -1745,9 +1745,14 @@ const parseGeminiHtml = (input: string): ChatData => {
     // extraction will never accidentally include thinking content
     turn.querySelectorAll('model-thoughts').forEach(el => el.remove()); // Cleanup redundant removes
 
-    const responseEl = turn.querySelector('model-response .message-content .markdown') ||
+    const responseEl = turn.querySelector('.model-response-text .markdown') ||
+      turn.querySelector('[class*="model-response"] .markdown') ||
+      turn.querySelector('structured-content-container .markdown:not([class*="thoughts"])') ||
+      // Gemini sometimes has message-content as a direct sibling after model-thoughts closes
+      turn.querySelector('message-content .markdown') ||
+      turn.querySelector('message-content') ||
+      turn.querySelector('model-response .message-content .markdown') ||
       turn.querySelector('model-response .message-content') ||
-      turn.querySelector('model-response structured-content-container .markdown') ||
       turn.querySelector('.response-content .markdown');
 
     if (responseEl) {
