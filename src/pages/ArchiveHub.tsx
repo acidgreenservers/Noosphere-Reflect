@@ -207,6 +207,25 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
+    const handleStatusToggle = async (session: SavedChatSession, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent card click
+
+        const current = session.reviewStatus || 'pending';
+        let next: 'approved' | 'rejected' | 'pending';
+
+        if (current === 'pending') next = 'approved';
+        else if (current === 'approved') next = 'rejected';
+        else next = 'pending';
+
+        await storageService.updateSessionStatus(session.id, next);
+        
+        // Optimistic update or reload
+        setSessions(prev => prev.map(s => 
+            s.id === session.id ? { ...s, reviewStatus: next, metadata: { ...s.metadata!, reviewStatus: next } } : s
+        ));
+    };
+
     const handleExportStart = () => {
         if (selectedIds.size === 0) {
             alert('Please select at least one chat to export.');
@@ -673,6 +692,19 @@ const ArchiveHub: React.FC = () => {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => handleStatusToggle(session, e)}
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${
+                                                session.reviewStatus === 'approved' 
+                                                    ? 'bg-green-500/20 border-green-500/50 text-green-400' 
+                                                    : session.reviewStatus === 'rejected'
+                                                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                                                        : 'bg-gray-700/30 border-gray-600 text-gray-500 hover:bg-gray-700 hover:text-gray-300'
+                                            }`}
+                                            title={`Status: ${session.reviewStatus || 'pending'} (Click to toggle)`}
+                                        >
+                                            {session.reviewStatus === 'approved' ? '✅' : session.reviewStatus === 'rejected' ? '❌' : '○'}
+                                        </button>
                                         {((session.metadata?.artifacts && session.metadata.artifacts.length > 0) ||
                                             (session.chatData?.messages.some(msg => msg.artifacts && msg.artifacts.length > 0))) && (
                                                 <button

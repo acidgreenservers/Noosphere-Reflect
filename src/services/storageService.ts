@@ -566,6 +566,37 @@ class StorageService {
             request.onerror = () => reject(request.error);
         });
     }
+
+    /**
+     * Update the review status of a session
+     */
+    async updateSessionStatus(id: string, status: 'approved' | 'rejected' | 'pending' | undefined): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const getRequest = store.get(id);
+
+            getRequest.onsuccess = () => {
+                const session = getRequest.result as SavedChatSession;
+                if (!session) {
+                    reject(new Error(`Session ${id} not found`));
+                    return;
+                }
+
+                // Update both top-level and metadata for consistency
+                session.reviewStatus = status;
+                if (session.metadata) {
+                    session.metadata.reviewStatus = status;
+                }
+
+                const putRequest = store.put(session);
+                putRequest.onsuccess = () => resolve();
+                putRequest.onerror = () => reject(putRequest.error);
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
 }
 
 export const storageService = new StorageService();
