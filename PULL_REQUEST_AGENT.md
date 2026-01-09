@@ -13,18 +13,18 @@ Run the following commands:
 2.  `git branch --show-current` (Identify current branch.)
 3.  `git log origin/main..HEAD --oneline` (See how many commits we are ahead of main.)
 
-### 2. Branching Strategy
-**Scenario A: User is on `main` (and shouldn't push directly)**
-1.  Ask the user for a brief name for the feature/fix (e.g., "Merging Logic").
-2.  Propose a branch name following convention: `type/short-description` (e.g., `feat/session-merging` or `fix/security-patch`).
-3.  Ask permission to create and switch: `git checkout -b <new_branch_name>`.
+### 2. Auto-Branching Strategy
+**Scenario A: User is on `main`**
+1.  **Analyze Context**: derive a branch name from the *last commit message* or *active task*.
+    *   Format: `type/short-kebab-description` (e.g., `feat/visual-overhaul`).
+2.  **Auto-Execute**: `git checkout -b <derived_branch_name>`.
 
 **Scenario B: User is already on a feature branch**
-1.  Confirm this is the branch they want to push.
+1.  Proceed with the current branch.
 
-### 3. Execution (Push)
-1.  Run `git push -u origin <branch_name>`.
-2.  Handle errors: If the push is rejected (non-fast-forward), **STOP**. Explain that a `git pull --rebase` might be needed and ask for guidance.
+### 3. Execution (Auto-Publish)
+1.  Run `git push -u origin <branch_name>` immediately.
+2.  Handle errors: If rejected (non-fast-forward), **STOP** and report to user.
 
 ### 4. PR Documentation Generation
 Once pushed, generate the text for the Pull Request based on the commits you just pushed.
