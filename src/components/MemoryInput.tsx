@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 
 interface Props {
-    onSave: (content: string, aiModel: string, tags: string[]) => Promise<void>;
+    onSave: (content: string, aiModel: string, tags: string[], title?: string) => Promise<void>;
     onExport?: (format: 'html' | 'markdown' | 'json') => void;
 }
 
 export default function MemoryInput({ onSave }: Props) {
     const [content, setContent] = useState('');
+    const [title, setTitle] = useState('');
     const [aiModel, setAiModel] = useState('Claude');
     const [tags, setTags] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -18,8 +19,9 @@ export default function MemoryInput({ onSave }: Props) {
         setIsSaving(true);
         try {
             const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
-            await onSave(content, aiModel, tagList);
+            await onSave(content, aiModel, tagList, title.trim());
             setContent('');
+            setTitle('');
             setTags('');
             // Keep AI model selection
         } catch (error) {
@@ -36,11 +38,22 @@ export default function MemoryInput({ onSave }: Props) {
                 <span>📥</span> New Memory
             </h2>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Memory Title (Optional)</label>
+                    <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Give this memory a name..."
+                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder-gray-600"
+                    />
+                </div>
+
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="Paste memory content here..."
-                    className="w-full h-48 bg-gray-900/50 border border-gray-600 rounded-lg p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-y"
+                    className="w-full h-32 bg-gray-900/50 border border-gray-600 rounded-lg p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-y"
                     required
                 />
 
@@ -78,8 +91,8 @@ export default function MemoryInput({ onSave }: Props) {
                             type="submit"
                             disabled={isSaving || !content.trim()}
                             className={`px-6 py-2 rounded-lg font-bold text-white shadow-lg transition-all flex items-center gap-2 ${isSaving || !content.trim()
-                                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 hover:shadow-purple-500/25 active:scale-95'
+                                ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 hover:shadow-purple-500/25 active:scale-95'
                                 }`}
                         >
                             {isSaving ? 'Saving...' : '💾 Save Memory'}

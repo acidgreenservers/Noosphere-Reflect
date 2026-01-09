@@ -361,7 +361,7 @@ const BasicConverter: React.FC = () => {
         if (!generatedHtml) return;
 
         const newSession: SavedChatSession = {
-            id: Date.now().toString(),
+            id: loadedSessionId || Date.now().toString(), // Preserve existing ID if editing
             name: sessionName,
             date: metadata.date,
             inputContent,
@@ -384,7 +384,7 @@ const BasicConverter: React.FC = () => {
 
         // Notify ArchiveHub to reload sessions
         window.dispatchEvent(new CustomEvent('sessionImported', { detail: { sessionId: newSession.id } }));
-    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, chatData, artifacts]);
+    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, chatData, artifacts, loadedSessionId]);
 
     const deleteSession = async (id: string) => {
         await storageService.deleteSession(id);
@@ -671,6 +671,16 @@ const BasicConverter: React.FC = () => {
                                                     }`}
                                             >
                                                 Kimi
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.GrokHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.GrokHtml
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Grok
                                             </button>
                                         </div>
                                     </div>

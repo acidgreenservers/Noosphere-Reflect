@@ -112,6 +112,116 @@ const parseExportedJson = (exportedData: any): ChatData => {
 };
 
 /**
+ * Grok HTML Parser
+ * Parses Grok chat HTML exports into structured ChatData.
+ */
+const parseGrokHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Grok uses div.response-content-markdown for both user and AI messages
+  const messageContainers = doc.querySelectorAll('div.response-content-markdown');
+
+  messageContainers.forEach((container, index) => {
+    const htmlContent = container.innerHTML;
+
+    // Check if this is a Grok response (contains thought blocks or is after user message)
+    const hasThought = htmlContent.includes('&lt;thought&gt;');
+    const isUser = index % 2 === 0 && !hasThought;
+
+    let content = '';
+
+    if (hasThought) {
+      // Extract and wrap thought process
+      const thoughtMatch = htmlContent.match(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/);
+      if (thoughtMatch) {
+        // Decode entities because innerHTML gives us &lt; for <
+        const encodedThought = thoughtMatch[1].trim();
+        const thoughtContent = decodeHtmlEntities(encodedThought);
+        // Do NOT escapeHtml here; generateHtml handles it
+        content += `<thought>\n${thoughtContent}\n</thought>\n\n`;
+      }
+    }
+
+    // Extract main content from <p> tags
+    const paragraphs = container.querySelectorAll('p.break-words');
+    paragraphs.forEach(p => {
+      const text = p.textContent?.trim() || '';
+      if (text) {
+        content += text + '\n\n';
+      }
+    });
+
+    // Extract code blocks
+    const codeBlocks = container.querySelectorAll('div.not-prose pre code');
+    codeBlocks.forEach(code => {
+      const languageSpan = code.closest('div.not-prose')?.querySelector('span.font-mono');
+      const language = languageSpan?.textContent?.trim() || 'plaintext';
+      const codeContent = code.textContent || '';
+      content += `\`\`\`${validateLanguage(language)}\n${codeContent}\n\`\`\`\n\n`;
+    });
+
+    // Extract tables
+    const tables = container.querySelectorAll('table');
+    tables.forEach(table => {
+      content += extractTableMarkdown(table) + '\n\n';
+    });
+
+    // Extract images
+    const images = container.querySelectorAll('img');
+    images.forEach(img => {
+      const src = img.getAttribute('src') || '';
+      const alt = img.getAttribute('alt') || 'Image';
+      if (src) {
+        // No escapeHtml needed for alt if renderer handles it, but sanitizeUrl IS needed
+        content += `![${alt}](${sanitizeUrl(src)})\n\n`;
+      }
+    });
+
+    // Extract canvas elements (charts)
+    const canvases = container.querySelectorAll('canvas');
+    canvases.forEach(canvas => {
+      const id = canvas.getAttribute('id') || 'chart';
+      content += `[Chart: ${id}]\n\n`;
+    });
+
+    // Extract Knowledge Cluster Prompts (suggested follow-up questions)
+    // These appear as buttons, typically at the end of AI responses
+    const clusterPrompts = container.querySelectorAll('button');
+    const prompts: string[] = [];
+    clusterPrompts.forEach(button => {
+      const text = button.textContent?.trim() || '';
+      // Filter out UI buttons (Copy, Run, etc.) - cluster prompts are longer
+      if (text.length > 20 && !text.includes('Copy') && !text.includes('Run')) {
+        prompts.push(text);
+      }
+    });
+    if (prompts.length > 0) {
+      content += '\n**Suggested follow-up questions:**\n';
+      prompts.forEach(prompt => {
+        // Do NOT escapeHtml here; generateHtml handles it
+        content += `- ${prompt}\n`;
+      });
+      content += '\n';
+    }
+
+    if (content.trim()) {
+      messages.push({
+        type: isUser ? ChatMessageType.Prompt : ChatMessageType.Response,
+        content: content.trim()
+      });
+    }
+  });
+
+  if (messages.length === 0) {
+    throw new Error('No Grok-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
+  }
+
+  return { messages };
+};
+
+/**
  * Parses raw input (Markdown or JSON) into structured ChatData.
  * It detects messages starting with "## Prompt:", "## Response:", or "## User:".
  * @param input The raw chat content string.
@@ -544,7 +654,13 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
     }
   });
 
-  // 4. Handle Claude "Thought Process" blocks
+  // 4. Handle Gemini "Thinking" blocks
+  // Remove these from the response since they're extracted separately
+  clone.querySelectorAll('.thoughts-container, model-thoughts').forEach(thinkingBlock => {
+    thinkingBlock.remove();
+  });
+
+  // 5. Handle Claude "Thought Process" blocks
   // These are often in a container with a button saying "Thought process"
   clone.querySelectorAll('button').forEach(btn => {
     const btnText = btn.innerText.toLowerCase();
@@ -1569,92 +1685,128 @@ const parseChatGptHtml = (input: string): ChatData => {
 /**
  * Specialized parser for Google Gemini HTML exports.
  * Extracts messages from the specific DOM structure used by Gemini.
+ * 
+ * DOM Structure (from gemini-console-scraper.md):
+ * - User Query: .conversation-container user-query .query-text
+ * - Thinking: .thoughts-container model-thoughts [data-test-id="thoughts-content"] .markdown
+ * - Response: model-response .message-content .markdown
  */
 const parseGeminiHtml = (input: string): ChatData => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(input, 'text/html');
   const messages: ChatMessage[] = [];
 
-  // Gemini structure: user and assistant messages are in separate containers
-  // User: div.query-text or similar user message containers
-  // Assistant: div with role="region" or message-content classes
+  // Strategy: Iterate over conversation turns (.conversation-container)
+  // For each turn, extract in order: user query, thinking (if any), then response.
+  // This ensures thinking blocks always appear BEFORE the response.
 
-  // Strategy: Find all message-like elements in document order
-  // Identify role by class name patterns and position
+  const conversationTurns = doc.querySelectorAll('div.conversation-container, .conversation-container');
 
-  const visited = new Set<Element>();
-
-  // Look for structured message containers
-  // Gemini uses: user prompt containers and response containers
-  const allElements = doc.querySelectorAll('*');
-  let isUserTurn = true; // Start with user (first message is usually from user)
-
-  allElements.forEach(el => {
-    if (visited.has(el)) return;
-    const htmlEl = el as HTMLElement;
-
-    // User message patterns (query text, user input)
-    const isUserQuery =
-      htmlEl.classList.contains('query-text') ||
-      (htmlEl.getAttribute('role') === 'heading' && htmlEl.getAttribute('aria-level') === '2');
-
-    // Assistant message patterns (response container, message content)
-    const isAssistantResponse =
-      htmlEl.classList.contains('response-container') ||
-      htmlEl.classList.contains('message-content') ||
-      htmlEl.classList.contains('structured-content-container');
-
-    // Extract user message
-    if (isUserQuery && !htmlEl.closest('.sidebar, nav, [role="navigation"]')) {
-      const content = extractMarkdownFromHtml(htmlEl);
+  conversationTurns.forEach(turn => {
+    // 1. Extract user query
+    const userQueryEl = turn.querySelector('user-query .query-text, user-query [role="heading"]');
+    if (userQueryEl) {
+      const content = extractMarkdownFromHtml(userQueryEl as HTMLElement);
       if (content && content.trim().length > 0) {
         messages.push({
           type: ChatMessageType.Prompt,
           content: content.trim()
         });
-        // Mark as visited
-        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-        visited.add(htmlEl);
-        isUserTurn = false; // Next should be assistant
       }
     }
 
-    // Extract assistant message
-    if (isAssistantResponse && !htmlEl.closest('.sidebar, nav')) {
-      const content = extractMarkdownFromHtml(htmlEl);
-      if (content && content.trim().length > 0) {
-        messages.push({
-          type: ChatMessageType.Response,
-          content: content.trim()
-        });
-        // Mark as visited
-        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-        visited.add(htmlEl);
-        isUserTurn = true; // Next should be user (for follow-up)
+    // 2. Extract thinking (BEFORE response for correct order)
+    // Gemini structure: .thoughts-container > model-thoughts > [data-test-id="thoughts-content"] > .markdown
+    const thoughtsContainer = turn.querySelector('.thoughts-container, model-thoughts');
+    if (thoughtsContainer) {
+      // Target the inner content div with data-test-id="thoughts-content"
+      const thoughtContentEl = thoughtsContainer.querySelector('[data-test-id="thoughts-content"] .markdown') ||
+        thoughtsContainer.querySelector('[data-test-id="thoughts-content"]') ||
+        thoughtsContainer.querySelector('.markdown');
+
+      if (thoughtContentEl) {
+        const thoughtContent = extractMarkdownFromHtml(thoughtContentEl as HTMLElement);
+        if (thoughtContent && thoughtContent.trim().length > 0) {
+          // Wrap in thought tags for consistency with Claude's format
+          messages.push({
+            type: ChatMessageType.Response,
+            content: `\n<thought>\n${thoughtContent.trim()}\n</thought>\n`
+          });
+        }
       }
     }
 
-    // Fallback: look for thought/reasoning blocks in Gemini's format
-    if (htmlEl.classList.contains('model-thoughts') || htmlEl.classList.contains('thoughts-container')) {
-      // CRITICAL: Gemini has TWO elements with class "thoughts-content":
-      // 1. Outer wrapper (includes "Show thinking" button)
-      // 2. Inner content div with data-test-id="thoughts-content" (actual content)
-      // We must target the inner one using the data-test-id attribute
-      const contentEl = htmlEl.querySelector('[data-test-id="thoughts-content"]') ||
-        htmlEl.querySelector('.thoughts-content[data-test-id]') ||
-        htmlEl;
-      const thoughtContent = extractMarkdownFromHtml(contentEl as HTMLElement);
-      if (thoughtContent && thoughtContent.trim().length > 0) {
-        // Wrap in thought tags for consistency
-        messages.push({
-          type: ChatMessageType.Response,
-          content: `\n<thought>\n${thoughtContent.trim()}\n</thought>\n`
-        });
-        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-        visited.add(htmlEl);
+    // 3. Extract model response
+    // IMPORTANT: Remove thinking blocks from the turn BEFORE extracting response
+    // to prevent thinking content from bleeding into the response text
+    turn.querySelectorAll('model-thoughts').forEach(el => el.remove());
+
+    const responseEl = turn.querySelector('model-response .message-content .markdown') ||
+      turn.querySelector('model-response .message-content') ||
+      turn.querySelector('model-response structured-content-container .markdown') ||
+      turn.querySelector('.response-content .markdown');
+
+    if (responseEl) {
+      // Avoid double-extracting thinking that's nested in response-content
+      const isInsideThoughts = responseEl.closest('.thoughts-container, model-thoughts');
+      if (!isInsideThoughts) {
+        const content = extractMarkdownFromHtml(responseEl as HTMLElement);
+        if (content && content.trim().length > 0) {
+          messages.push({
+            type: ChatMessageType.Response,
+            content: content.trim()
+          });
+        }
       }
     }
   });
+
+  // Fallback: If no conversation turns found, try legacy parsing
+  if (messages.length === 0) {
+    // Legacy approach for older Gemini HTML structure
+    const visited = new Set<Element>();
+    const allElements = doc.querySelectorAll('*');
+
+    allElements.forEach(el => {
+      if (visited.has(el)) return;
+      const htmlEl = el as HTMLElement;
+
+      // User message patterns
+      const isUserQuery =
+        htmlEl.classList.contains('query-text') ||
+        (htmlEl.getAttribute('role') === 'heading' && htmlEl.getAttribute('aria-level') === '2');
+
+      if (isUserQuery && !htmlEl.closest('.sidebar, nav, [role="navigation"]')) {
+        const content = extractMarkdownFromHtml(htmlEl);
+        if (content && content.trim().length > 0) {
+          messages.push({
+            type: ChatMessageType.Prompt,
+            content: content.trim()
+          });
+          htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+          visited.add(htmlEl);
+        }
+      }
+
+      // Assistant message patterns
+      const isAssistantResponse =
+        htmlEl.classList.contains('response-container') ||
+        htmlEl.classList.contains('message-content') ||
+        htmlEl.classList.contains('structured-content-container');
+
+      if (isAssistantResponse && !htmlEl.closest('.sidebar, nav, .thoughts-container')) {
+        const content = extractMarkdownFromHtml(htmlEl);
+        if (content && content.trim().length > 0) {
+          messages.push({
+            type: ChatMessageType.Response,
+            content: content.trim()
+          });
+          htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
+          visited.add(htmlEl);
+        }
+      }
+    });
+  }
 
   if (messages.length === 0) {
     throw new Error('No Gemini-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
@@ -1749,111 +1901,7 @@ const decodeHtmlEntities = (text: string): string => {
  * Extracts messages from the specific DOM structure used by Grok.
  * Handles thought blocks, code blocks, tables, images, canvas elements, and Knowledge Cluster Prompts.
  */
-const parseGrokHtml = (input: string): ChatData => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(input, 'text/html');
-  const messages: ChatMessage[] = [];
 
-  // Grok uses div.response-content-markdown for both user and AI messages
-  const messageContainers = doc.querySelectorAll('div.response-content-markdown');
-
-  messageContainers.forEach((container, index) => {
-    const htmlContent = container.innerHTML;
-
-    // Check if this is a Grok response (contains thought blocks or is after user message)
-    const hasThought = htmlContent.includes('&lt;thought&gt;');
-    const isUser = index % 2 === 0 && !hasThought;
-
-    let content = '';
-
-    if (hasThought) {
-      // Extract and wrap thought process
-      const thoughtMatch = htmlContent.match(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/);
-      if (thoughtMatch) {
-        // Decode entities because innerHTML gives us &lt; for <
-        const encodedThought = thoughtMatch[1].trim();
-        const thoughtContent = decodeHtmlEntities(encodedThought);
-        // Do NOT escapeHtml here; generateHtml handles it
-        content += `<thought>\n${thoughtContent}\n</thought>\n\n`;
-      }
-    }
-
-    // Extract main content from <p> tags
-    const paragraphs = container.querySelectorAll('p.break-words');
-    paragraphs.forEach(p => {
-      const text = p.textContent?.trim() || '';
-      if (text) {
-        content += text + '\n\n';
-      }
-    });
-
-    // Extract code blocks
-    const codeBlocks = container.querySelectorAll('div.not-prose pre code');
-    codeBlocks.forEach(code => {
-      const languageSpan = code.closest('div.not-prose')?.querySelector('span.font-mono');
-      const language = languageSpan?.textContent?.trim() || 'plaintext';
-      const codeContent = code.textContent || '';
-      content += `\`\`\`${validateLanguage(language)}\n${codeContent}\n\`\`\`\n\n`;
-    });
-
-    // Extract tables
-    const tables = container.querySelectorAll('table');
-    tables.forEach(table => {
-      content += extractTableMarkdown(table) + '\n\n';
-    });
-
-    // Extract images
-    const images = container.querySelectorAll('img');
-    images.forEach(img => {
-      const src = img.getAttribute('src') || '';
-      const alt = img.getAttribute('alt') || 'Image';
-      if (src) {
-        // No escapeHtml needed for alt if renderer handles it, but sanitizeUrl IS needed
-        content += `![${alt}](${sanitizeUrl(src)})\n\n`;
-      }
-    });
-
-    // Extract canvas elements (charts)
-    const canvases = container.querySelectorAll('canvas');
-    canvases.forEach(canvas => {
-      const id = canvas.getAttribute('id') || 'chart';
-      content += `[Chart: ${id}]\n\n`;
-    });
-
-    // Extract Knowledge Cluster Prompts (suggested follow-up questions)
-    // These appear as buttons, typically at the end of AI responses
-    const clusterPrompts = container.querySelectorAll('button');
-    const prompts: string[] = [];
-    clusterPrompts.forEach(button => {
-      const text = button.textContent?.trim() || '';
-      // Filter out UI buttons (Copy, Run, etc.) - cluster prompts are longer
-      if (text.length > 20 && !text.includes('Copy') && !text.includes('Run')) {
-        prompts.push(text);
-      }
-    });
-    if (prompts.length > 0) {
-      content += '\n**Suggested follow-up questions:**\n';
-      prompts.forEach(prompt => {
-        // Do NOT escapeHtml here; generateHtml handles it
-        content += `- ${prompt}\n`;
-      });
-      content += '\n';
-    }
-
-    if (content.trim()) {
-      messages.push({
-        type: isUser ? ChatMessageType.Prompt : ChatMessageType.Response,
-        content: content.trim()
-      });
-    }
-  });
-
-  if (messages.length === 0) {
-    throw new Error('No Grok-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
-  }
-
-  return { messages };
-};
 
 /**
  * Helper to extract markdown table from HTML table element.
@@ -2198,6 +2246,12 @@ export const generateMemoryHtml = (
     </div>
     <div class="prose prose-invert max-w-none">
       ${convertMarkdownToHtml(memory.content, false)}
+    </div>
+    
+    <!-- Noosphere Footer -->
+    <div class="text-center text-xs ${themeClasses.bodyText} opacity-50 mt-16 pt-8 border-t border-gray-700">
+      <p class="mt-8"><strong>Noosphere Reflect</strong></p>
+      <p class="text-xs italic">Preserving Meaning Through Memory</p>
     </div>
   </div>
 </body>

@@ -22,9 +22,10 @@ export default function MemoryArchive() {
         setMemories(allMemories);
     };
 
-    const handleSaveMemory = async (content: string, aiModel: string, tags: string[]) => {
+    const handleSaveMemory = async (content: string, aiModel: string, tags: string[], userTitle?: string) => {
         const firstLine = content.split('\n')[0].trim();
-        const title = firstLine.substring(0, 50) + (firstLine.length > 50 ? '...' : '');
+        const autoTitle = firstLine.substring(0, 50) + (firstLine.length > 50 ? '...' : '');
+        const finalTitle = userTitle || autoTitle || 'Untitled Memory';
 
         const memory: Memory = {
             id: crypto.randomUUID(),
@@ -34,7 +35,7 @@ export default function MemoryArchive() {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             metadata: {
-                title: title || 'Untitled Memory',
+                title: finalTitle,
                 wordCount: content.split(/\s+/).length,
                 characterCount: content.length,
             }

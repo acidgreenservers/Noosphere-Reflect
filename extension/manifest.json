@@ -37,7 +37,8 @@
         "parsers/claude-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
-        "content-scripts/claude-capture.js"
+        "content-scripts/claude-capture.js",
+        "content-scripts/ui-injector.js"
       ],
       "run_at": "document_idle",
       "all_frames": false
@@ -54,7 +55,8 @@
         "parsers/gpt-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
-        "content-scripts/chatgpt-capture.js"
+        "content-scripts/chatgpt-capture.js",
+        "content-scripts/ui-injector.js"
       ],
       "run_at": "document_idle",
       "all_frames": false
@@ -70,7 +72,8 @@
         "parsers/lechat-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
-        "content-scripts/lechat-capture.js"
+        "content-scripts/lechat-capture.js",
+        "content-scripts/ui-injector.js"
       ],
       "run_at": "document_idle",
       "all_frames": false
@@ -86,7 +89,8 @@
         "parsers/llamacoder-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
-        "content-scripts/llamacoder-capture.js"
+        "content-scripts/llamacoder-capture.js",
+        "content-scripts/ui-injector.js"
       ],
       "run_at": "document_idle",
       "all_frames": false
@@ -102,7 +106,8 @@
         "parsers/gemini-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
-        "content-scripts/gemini-capture.js"
+        "content-scripts/gemini-capture.js",
+        "content-scripts/ui-injector.js"
       ],
       "run_at": "document_idle",
       "all_frames": false
@@ -118,7 +123,8 @@
         "parsers/grok-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
-        "content-scripts/grok-capture.js"
+        "content-scripts/grok-capture.js",
+        "content-scripts/ui-injector.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

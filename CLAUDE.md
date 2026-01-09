@@ -249,3 +249,49 @@ The `generateHtml()` function creates self-contained HTML files with:
 ## Memory Bank Integration
 
 This project uses a Memory Bank system (in `memory-bank/` directory) to maintain project context across sessions. Key files include `projectBrief.md`, `activeContext.md`, and `progress.md`. When starting new work, review these files for current focus and architectural decisions.
+
+## Antigravity Collaboration System
+
+This project uses a **4-Mind Collaboration Workflow** with structured planning and documentation. All significant work follows the Antigravity methodology to ensure clarity, quality, and coordination across team members.
+
+### Team Roles
+- **Claude Code**: Implementation planning, coding, walkthroughs
+- **Antigravity**: Architecture design, complex coding, plan refinement
+- **Gemini**: Security audits, vulnerability assessment, adversary testing
+- **User**: Vision, direction, priority decisions, plan approval
+
+### Structured Planning Templates
+
+When planning or implementing features, refer to these templates in `.templates/`:
+
+1. **IMPLEMENTATION_PLAN_TEMPLATE.md** - Use BEFORE coding
+   - Problem statement with root cause
+   - Proposed solution and design decisions
+   - Detailed changes with code snippets
+   - Verification plan and edge cases
+
+2. **TASK_TEMPLATE.md** - Use DURING coding
+   - Objective and acceptance criteria
+   - Implementation checklist (granular steps)
+   - Progress log (updated as work progresses)
+   - Risk tracking and blockers
+
+3. **WALKTHROUGH_TEMPLATE.md** - Use AFTER coding
+   - Summary of what was accomplished
+   - Detailed changes with before/after code
+   - How it works + verification results
+   - Lessons learned and next steps
+
+4. **ANTIGRAVITY_PLANNING_GUIDE.md** - Complete methodology guide
+   - Detailed instructions for each artifact
+   - Best practices and quality checklist
+   - Workflow integration and examples
+
+### Workflow Summary
+
+```
+USER REQUEST → PLAN (Implementation Plan) → TASK (Track Progress) →
+CODE (Follow Plan) → VERIFY (Test) → WALKTHROUGH (Document) → DONE
+```
+
+All plan files are shared so all 4 minds can see progress, provide feedback, and iterate together.
