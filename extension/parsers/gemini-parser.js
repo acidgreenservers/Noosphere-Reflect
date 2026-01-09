@@ -69,14 +69,14 @@ function parseGeminiHtml(html) {
       isInsideThinking = true;
     }
 
-    // Fallback: Check if any ancestor has data-test-id="model-thoughts" or contains "Show thinking" text
+    // Fallback: Check if any ancestor has data-test-id="model-thoughts" attribute
+    // (more specific than checking text content which could match elsewhere)
     if (!isInsideThinking) {
       let parent = htmlEl.parentElement;
       while (parent && !isInsideThinking) {
         if (parent.getAttribute && (
           parent.getAttribute('data-test-id') === 'model-thoughts' ||
-          parent.classList.contains('thoughts-content') ||
-          parent.textContent?.includes('Show thinking')
+          parent.classList.contains('thoughts-content')
         )) {
           isInsideThinking = true;
         }
