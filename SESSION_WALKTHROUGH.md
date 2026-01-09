@@ -1,376 +1,277 @@
-# Session Walkthrough: UI Refinement & Artifact System Enhancement
+# Session Walkthrough: Documentation Update & Release Preparation (v0.5.1)
 
-**Date**: 2026-01-07  
-**Version**: v0.3.2 → v0.3.3 (pending)
+## Session Summary
+Comprehensive documentation update session covering Memory Bank synchronization, README modernization, ROADMAP updates, and complete v0.5.1 release documentation preparation. This session focused on bringing all project documentation current with the dual artifact system implementation and preparing for release.
 
----
+## Work Completed
 
-## Summary
+### 1. Memory Bank Full Update
 
-This session focused on refining the user interface aesthetics, fixing critical artifact management bugs, and implementing advanced export features including the File System Access API for directory exports and automatic artifact link insertion in exported files.
-
----
-
-## Changes Made
-
-### 1. UI Styling Refinement: Subtle Rounded Edges
-
-**Objective**: Replace harsh circular (`rounded-full`) and overly rounded (`rounded-3xl`) styles with modern, subtle rounded edges (`rounded-xl`, `rounded-2xl`).
-
-#### Files Modified:
-- `src/pages/BasicConverter.tsx`
-- `src/components/MetadataEditor.tsx`
-- `src/pages/ArchiveHub.tsx`
-
-#### Changes:
-- **Chat content containers**: `rounded-full` → `rounded-xl`
-- **Edit message blocks**: `rounded-full` → `rounded-xl`
-- **Legend/info boxes**: `rounded-full` → `rounded-xl`
-- **Metadata sections**: `rounded-3xl` → `rounded-2xl`
-- **Modal containers**: `rounded-3xl` → `rounded-2xl`
-- **Sidebar elements**: `rounded-full` → `rounded-xl`
-
-**Result**: Cleaner, more modern aesthetic with soft-edged boxes instead of harsh circular or pill-shaped elements.
-
----
-
-### 2. Artifact Database Synchronization Fix
-
-**Problem**: Artifacts uploaded/deleted in the generator page didn't persist to the database, causing them to reappear after closing/reopening the modal. Hub and generator showed different artifact states.
-
-**Root Cause**: Generator always used `manualMode={true}` for the ArtifactManager, preventing database writes even for loaded sessions.
-
-#### Solution: Conditional Manual Mode
-
-**Files Modified**:
-- `src/pages/BasicConverter.tsx`
-- `src/components/ArtifactManager.tsx`
-- `src/pages/ArchiveHub.tsx`
-
-#### Implementation:
-
-**1. Added Session Tracking (`BasicConverter.tsx`)**
-```tsx
-const [loadedSessionId, setLoadedSessionId] = useState<string | null>(null);
-```
-
-**2. Updated `loadSession` Function**
-```tsx
-const loadSession = useCallback((session: SavedChatSession) => {
-    setLoadedSessionId(session.id); // Track loaded session for database mode
-    // ... rest of loading logic
-    
-    // Load artifacts from metadata
-    if (session.metadata?.artifacts) {
-        setArtifacts(session.metadata.artifacts);
-    }
-}, []);
-```
-
-**3. Updated `clearForm` Function**
-```tsx
-const clearForm = useCallback(() => {
-    setLoadedSessionId(null); // Reset loaded session tracking
-    // ... rest of clear logic
-}, []);
-```
-
-**4. Conditional Manual Mode in ArtifactManager**
-```tsx
-<ArtifactManager
-    session={{
-        id: loadedSessionId || Date.now().toString(),
-        // ... session data
-    }}
-    manualMode={!loadedSessionId} // Database mode if loaded, manual if new
-    onArtifactsChange={(newArtifacts) => {
-        setArtifacts(newArtifacts);
-        if (loadedSessionId) {
-            setMetadata(prev => ({ ...prev, artifacts: newArtifacts }));
-        }
-    }}
-/>
-```
-
-**5. Updated ArtifactManager Component**
-- Added `manualMode?: boolean` prop
-- Conditionally skip `storageService` calls when `manualMode={true}`
-- Updated `onArtifactsChange` signature to pass artifacts array
-
-**Result**: 
-- ✅ New sessions: In-memory artifact management (manual mode)
-- ✅ Loaded sessions: Direct database persistence (database mode)
-- ✅ Bidirectional sync: Hub ↔ Generator show identical artifact states
-
----
-
-### 3. Generator Export Enhancement
-
-**Objective**: Enable ZIP export with artifacts from the generator page's download button.
-
-#### Files Modified:
-- `src/components/ExportDropdown.tsx`
-- `src/pages/BasicConverter.tsx`
-
-#### Changes:
-
-**ExportDropdown.tsx**:
-- Added `session?: SavedChatSession` prop
-- Imported `generateZipExport` function
-- Updated `handleExport` to check for artifacts and use ZIP export when present
-
-**BasicConverter.tsx**:
-- Pass session object to `ExportDropdown` when `loadedSessionId` exists
-- Session includes all necessary data for ZIP generation
-
-**Result**: Generator's "Download" button now creates ZIP files with artifacts folder when artifacts are present, matching hub behavior.
-
----
-
-### 4. File System Access API for Directory Export
-
-**Objective**: Replace individual file downloads with native folder picker for directory exports.
-
-#### Files Modified:
-- `src/pages/ArchiveHub.tsx`
-
-#### Implementation:
-
-```tsx
-// Directory export - use File System Access API
-const dirHandle = await (window as any).showDirectoryPicker({
-    mode: 'readwrite',
-    startIn: 'downloads'
-});
-
-// Write conversation file
-const fileHandle = await dirHandle.getFileHandle(`${baseFilename}.${extension}`, { create: true });
-const writable = await fileHandle.createWritable();
-await writable.write(content);
-await writable.close();
-
-// Create artifacts subdirectory
-const artifactsDir = await dirHandle.getDirectoryHandle('artifacts', { create: true });
-
-// Write each artifact
-for (const artifact of session.metadata.artifacts) {
-    const artifactHandle = await artifactsDir.getFileHandle(artifact.fileName, { create: true });
-    const artifactWritable = await artifactHandle.createWritable();
-    const binaryData = Uint8Array.from(atob(artifact.fileData), c => c.charCodeAt(0));
-    await artifactWritable.write(binaryData);
-    await artifactWritable.close();
-}
-```
-
-#### Features:
-- Native OS folder picker dialog
-- Creates proper directory structure:
-  ```
-  Selected Folder/
-  ├── conversation.html
-  └── artifacts/
-      ├── screenshot.png
-      └── document.pdf
-  ```
-- Browser compatibility check with helpful error messages
-- Graceful handling of user cancellation
-
-**Browser Support**:
-- ✅ Chrome 86+
-- ✅ Edge 86+
-- ✅ Opera 72+
-- ❌ Firefox (shows error message)
-- ❌ Safari (shows error message)
-
-**Result**: Users can select a folder and get a properly structured directory export instead of multiple individual downloads.
-
----
-
-### 5. Artifact Link Insertion in Exports
-
-**Problem**: Exported HTML/Markdown files didn't include links to artifacts that were linked to specific messages.
-
-**Objective**: Automatically insert artifact links/previews after messages in exported files.
-
-#### Files Modified:
-- `src/services/converterService.ts`
-
-#### HTML Export Implementation:
-
-```tsx
-// Check for artifacts linked to this message
-const linkedArtifacts = metadata?.artifacts?.filter(
-    artifact => artifact.insertedAfterMessageIndex === index
-) || [];
-
-// Generate artifact HTML if any are linked
-const artifactsHtml = linkedArtifacts.length > 0 ? `
-    <div class="mt-4 pt-3 border-t border-gray-600">
-        <p class="text-xs text-gray-400 mb-2">📎 Attached Files:</p>
-        ${linkedArtifacts.map(artifact => {
-            const isImage = artifact.mimeType.startsWith('image/');
-            const artifactPath = `artifacts/${escapeHtml(artifact.fileName)}`;
-            
-            if (isImage) {
-                return `
-                    <div class="mb-2">
-                        <a href="${artifactPath}" target="_blank">${escapeHtml(artifact.fileName)}</a>
-                        <img src="${artifactPath}" alt="${escapeHtml(artifact.fileName)}" 
-                             class="mt-2 max-w-full rounded border border-gray-600" 
-                             style="max-height: 300px;" />
-                    </div>
-                `;
-            } else {
-                return `
-                    <div class="mb-1">
-                        <a href="${artifactPath}" target="_blank">
-                            <span>📄</span>
-                            <span>${escapeHtml(artifact.fileName)}</span>
-                            <span class="text-xs text-gray-500">(${(artifact.fileSize / 1024).toFixed(1)} KB)</span>
-                        </a>
-                    </div>
-                `;
-            }
-        }).join('')}
-    </div>
-` : '';
-
-// Insert artifacts HTML into message
-return `
-    <div class="flex ${justify} mb-4 w-full" data-message-index="${index}">
-        <div class="...">
-            <div class="markdown-content">${contentHtml}</div>
-            ${artifactsHtml}
-        </div>
-    </div>
-`;
-```
-
-#### Markdown Export Implementation:
-
-```tsx
-// Check for artifacts linked to this message
-const linkedArtifacts = metadata?.artifacts?.filter(
-    artifact => artifact.insertedAfterMessageIndex === index
-) || [];
-
-if (linkedArtifacts.length > 0) {
-    lines.push('\n**📎 Attached Files:**\n');
-    linkedArtifacts.forEach(artifact => {
-        const artifactPath = `artifacts/${artifact.fileName}`;
-        const fileSize = (artifact.fileSize / 1024).toFixed(1);
-        lines.push(`- [${artifact.fileName}](${artifactPath}) (${fileSize} KB)`);
-    });
-}
-```
-
-#### Features:
-- **HTML Export**:
-  - Images: Inline preview with max 300px height
-  - Files: Clickable links with file size
-  - Proper styling with border separator
+#### Updated Files
+- **[activeContext.md](file:///home/dietpi/Documents/VSCodium/GitHub/AI-Chat-HTML-Converter/memory-bank/activeContext.md)**
+  - Current Focus: Dual Artifact System (v0.5.1) complete
+  - Recent Changes: Added dual artifact system details
+  - Active Decisions: Documented dual storage strategy and unified export approach
   
-- **Markdown Export**:
-  - Bullet list of artifact links
-  - File sizes in KB
-  - Proper markdown link syntax
-
-**Result**: Exported conversations now show exactly where each artifact belongs, with working links when exported as ZIP or Directory.
-
----
-
-## Verification Steps
-
-### Test Artifact Synchronization:
-1. Load session from hub with artifacts
-2. Open Artifact Manager in generator
-3. Delete an artifact
-4. Navigate to hub → deletion persists ✅
-5. Upload artifact in generator
-6. Navigate to hub → upload appears ✅
-
-### Test Directory Export:
-1. Select session with artifacts
-2. Choose "Directory" export
-3. Select folder in native picker
-4. Verify folder structure:
-   - `conversation.html` in root
-   - `artifacts/` subfolder with files ✅
-
-### Test Artifact Links:
-1. Link artifact to message #3
-2. Export as HTML
-3. Open HTML file
-4. Scroll to message #3
-5. Verify artifact link/preview appears ✅
+- **[progress.md](file:///home/dietpi/Documents/VSCodium/GitHub/AI-Chat-HTML-Converter/memory-bank/progress.md)**
+  - Version: Updated to v0.5.1 (Jan 9, 2026)
+  - Added Phase 6.1: Dual Artifact System to completed work
+  - Added Session 7 entry with comprehensive feature summary
+  
+- **[systemPatterns.md](file:///home/dietpi/Documents/VSCodium/GitHub/AI-Chat-HTML-Converter/memory-bank/systemPatterns.md)**
+  - Added dual artifact storage pattern documentation
+  - Documented flexibility for contextual vs. general attachments
 
 ---
 
-## Technical Notes
+### 2. README Modernization (v0.5.1)
 
-### Why Conditional Manual Mode?
+#### Major Updates ([README.md](file:///home/dietpi/Documents/VSCodium/GitHub/AI-Chat-HTML-Converter/README.md))
 
-**Problem**: Using `manualMode={true}` for all sessions prevented database writes for loaded sessions.
+**Version Badge**: Updated from v0.3.0 to v0.5.1
 
-**Solution**: Track whether session is loaded from database:
-- **New sessions**: `manualMode={true}` → changes in-memory only
-- **Loaded sessions**: `manualMode={false}` → changes persist to IndexedDB
+**New Features Section**:
+- Dual Artifact System (session + message-level)
+- Memory Archive with dedicated dashboard
+- Platform-specific theming (6 platforms)
+- Enhanced export with deduplication
 
-### File System Access API Limitations
+**Platform Support Table**:
+```markdown
+| Platform | Extension | HTML | Title | Theme |
+|----------|-----------|------|-------|-------|
+| Claude   | ✅        | ✅   | ✅    | 🟠    |
+| ChatGPT  | ✅        | ✅   | ✅    | 🟢    |
+| Gemini   | ✅        | ✅   | ✅    | 🔵    |
+| LeChat   | ✅        | ✅   | ✅    | 🟡    |
+| Grok     | ✅        | ✅   | ✅    | ⚫    |
+| Llamacoder| ✅       | ✅   | ✓     | ⚪    |
+```
 
-- Only works in Chromium-based browsers
-- Requires user permission (folder picker)
-- Cannot pre-select or auto-create folders
-- User can cancel at any time
+**"What's New in v0.5.1" Section**:
+- Dual Artifact System highlights
+- Recent updates (v0.4.0 - v0.5.0)
+- Collapsible older versions (v0.1.0 - v0.3.0)
 
-**Fallback**: ZIP export still available for all browsers.
-
-### Artifact Path Resolution
-
-All artifact links use relative paths: `artifacts/filename.ext`
-
-This works because:
-- **ZIP export**: Creates `artifacts/` folder in ZIP
-- **Directory export**: Creates `artifacts/` subfolder in selected directory
-- **Single file export**: Links present but won't work (no artifacts folder)
-
----
-
-## Files Modified Summary
-
-| File | Lines Changed | Purpose |
-|------|---------------|---------|
-| `src/pages/BasicConverter.tsx` | ~50 | Session tracking, conditional manual mode, artifact loading |
-| `src/components/ArtifactManager.tsx` | ~30 | Manual mode support, callback signature update |
-| `src/components/ExportDropdown.tsx` | ~25 | ZIP export support, session prop |
-| `src/components/MetadataEditor.tsx` | 1 | Rounded edge styling |
-| `src/pages/ArchiveHub.tsx` | ~100 | File System Access API, rounded edge styling |
-| `src/services/converterService.ts` | ~60 | Artifact link insertion (HTML + Markdown) |
-
-**Total**: ~266 lines modified across 6 files
+**Updated Quick Start**:
+- Added artifact attachment instructions
+- Updated extension capture workflow
 
 ---
 
-## Success Criteria
+### 3. ROADMAP Comprehensive Update (v2.1)
 
-- ✅ UI has subtle, modern rounded edges throughout
-- ✅ Artifacts sync bidirectionally between hub and generator
-- ✅ Generator export creates ZIP files with artifacts
-- ✅ Directory export uses native folder picker (Chromium browsers)
-- ✅ Exported files include artifact links after linked messages
-- ✅ No orphaned data in IndexedDB
-- ✅ Backward compatible with existing sessions
+#### Updates ([ROADMAP.md](file:///home/dietpi/Documents/VSCodium/GitHub/AI-Chat-HTML-Converter/ROADMAP.md))
+
+**Header**:
+- Version: v0.5.1
+- Status: Phase 6.1 Complete → Sprint 6.2 In Planning
+- Last Updated: January 9, 2026
+
+**Completed Phases Added**:
+
+**Phase 6: Visual & Brand Overhaul (v0.5.0)**:
+- Landing page redesign
+- Platform theming
+- Extension UI polish
+- Dev container
+
+**Phase 6.1: Dual Artifact System (v0.5.1)**:
+- Message-level attachments
+- Unified export logic
+- Archive Hub badge fix
+- Enhanced ArtifactManager modal
+- removeMessageArtifact() method
+
+**Planned Phases Updated**:
+- Replaced old Phase 5/6 with Sprint 6.2 (Hub Polish) and Sprint 5.1 (Extension Reliability)
+- Clear acceptance criteria for each sprint
+
+**Development Timeline**:
+```
+Phase 6   | v0.5.0 | ✅ Complete | Jan 8 | Jan 8, 2026
+Phase 6.1 | v0.5.1 | ✅ Complete | Jan 9 | Jan 9, 2026
+Sprint 6.2| v0.5.x | 🚧 Next Up  | TBD   | TBD
+Sprint 5.1| v0.5.x | 🚧 Planned  | TBD   | TBD
+```
+
+**Key Metrics (v0.5.1)**:
+- 64 modules, 0 errors
+- Build time: ~4s
+- 6 platforms with themed badges
+- Dual artifact system operational
+
+---
+
+### 4. Release Documentation (v0.5.1)
+
+#### Created ([RELEASE_DOCUMENTATION_COMPLETE.txt](file:///home/dietpi/Documents/VSCodium/GitHub/AI-Chat-HTML-Converter/RELEASE_DOCUMENTATION_COMPLETE.txt))
+
+**Comprehensive 400+ Line Release Doc**:
+
+**Summary of Work**:
+- 6 files updated
+- 1 new file created
+- 690+ lines of documentation
+
+**Features Documented**:
+1. Dual Artifact System (v0.5.1)
+2. Memory Archive MVP (v0.4.0)
+3. Visual & Brand Overhaul (v0.5.0)
+4. Platform Support (6 platforms)
+5. Database Migration (v4 → v5)
+
+**Quality Assurance**:
+- [✓] Documentation completeness
+- [✓] Format consistency
+- [✓] Accuracy verification
+- [✓] Backward compatibility (100%)
+- [✓] Zero breaking changes
+
+**Release Readiness**:
+- Documentation: ✓ COMPLETE
+- Quality: ✓ PRODUCTION READY
+- Build: ✓ VERIFIED (64 modules, 0 errors)
+- Memory Bank: ✓ FULLY UPDATED
+
+**Metrics Summary**:
+- Code: Enhanced ArtifactManager, new removeMessageArtifact()
+- Documentation: 690+ lines added
+- Build: 64 modules, ~4s, 0 errors
+
+---
+
+### 5. Version Consistency
+
+#### Updated ([package.json](file:///home/dietpi/Documents/VSCodium/GitHub/AI-Chat-HTML-Converter/package.json))
+```json
+{
+  "name": "ai-chat-html-converter",
+  "version": "0.5.1"
+}
+```
+
+**Version Consistency Across All Files**:
+- ✓ package.json: 0.5.1
+- ✓ README.md: 0.5.1
+- ✓ ROADMAP.md: 0.5.1
+- ✓ Memory Bank: 0.5.1
+- ✓ Release docs: 0.5.1
+
+---
+
+## Documentation Structure
+
+### Files Updated (6)
+1. `README.md` - Complete feature overview
+2. `ROADMAP.md` - Development timeline
+3. `memory-bank/activeContext.md` - Current focus
+4. `memory-bank/progress.md` - Session tracking
+5. `memory-bank/systemPatterns.md` - Architecture patterns
+6. `package.json` - Version number
+
+### Files Created (1)
+1. `RELEASE_DOCUMENTATION_COMPLETE.txt` - Comprehensive release doc
+
+---
+
+## Key Improvements
+
+### Documentation Quality
+- **Consistency**: All files reference v0.5.1
+- **Completeness**: Every feature documented
+- **Clarity**: Clear sections and structure
+- **Accessibility**: Collapsible older versions in README
+
+### User Experience
+- **Quick Reference**: "What's New" section in README
+- **Visual Clarity**: Platform table with emoji themes
+- **Easy Navigation**: Linked file references throughout
+
+### Developer Experience
+- **Memory Bank**: Complete project context
+- **ROADMAP**: Clear sprint priorities
+- **Release Docs**: Comprehensive checklist
+
+---
+
+## Verification
+
+### Build Status
+```bash
+✓ 64 modules transformed
+✓ built in ~4 seconds
+0 compilation errors
+```
+
+### Documentation Checklist
+- [x] Memory Bank fully updated
+- [x] README modernized to v0.5.1
+- [x] ROADMAP updated to v2.1
+- [x] Release documentation created
+- [x] package.json version updated
+- [x] All version numbers consistent
+- [x] Platform support documented
+- [x] Dual artifact system explained
+- [x] Sprint priorities clear
 
 ---
 
 ## Next Steps
 
-1. Update version to `v0.3.3`
-2. Update `CHANGELOG.md` with session changes
-3. Test in production environment
-4. Consider adding artifact link insertion to JSON export (future enhancement)
-5. Explore Firefox/Safari alternatives for directory export (future enhancement)
+### Immediate
+1. Review release documentation
+2. Execute commit for v0.5.1
+3. Tag release
+4. Create GitHub release notes
+
+### Sprint 6.2 (Next Up)
+- Redesign conversation cards
+- Enhanced filter UI
+- Batch action bar improvements
+
+### Sprint 5.1 (Planned)
+- Toast notification queue
+- Extension reliability improvements
 
 ---
 
-**Session Complete** ✅
+## Session Metrics
+
+**Time Investment**: ~2 hours
+**Files Modified**: 6
+**Files Created**: 1
+**Lines Added**: 690+
+**Documentation Quality**: Production Ready ✓
+
+**Outcome**: Complete v0.5.1 release documentation package ready for publication
+
+---
+
+## Design Decisions
+
+**Memory Bank Strategy**:
+- Maintain comprehensive project context
+- Update all files for each release
+- Document active decisions and patterns
+
+**README Approach**:
+- Collapsible older versions for cleaner look
+- Prominent "What's New" section
+- Visual platform table with themes
+
+**ROADMAP Structure**:
+- Clear phase completion tracking
+- Sprint-based planning for agility
+- Detailed acceptance criteria
+
+**Release Documentation**:
+- Follow established project format
+- Comprehensive quality checklists
+- Clear next steps and metrics
+
+---
+
+**Session Status**: COMPLETE ✓
+**Release Status**: READY FOR PUBLICATION ✓
+**Documentation Quality**: PRODUCTION READY ✓

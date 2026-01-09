@@ -387,6 +387,41 @@ class StorageService {
     }
 
     /**
+     * Remove an artifact from a specific message
+     */
+    async removeMessageArtifact(sessionId: string, messageIndex: number, artifactId: string): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const getRequest = store.get(sessionId);
+
+            getRequest.onsuccess = () => {
+                const session = getRequest.result as SavedChatSession;
+                if (!session) {
+                    reject(new Error(`Session ${sessionId} not found`));
+                    return;
+                }
+
+                if (session.chatData?.messages[messageIndex]?.artifacts) {
+                    session.chatData.messages[messageIndex].artifacts =
+                        session.chatData.messages[messageIndex].artifacts!.filter(
+                            artifact => artifact.id !== artifactId
+                        );
+
+                    const putRequest = store.put(session);
+                    putRequest.onsuccess = () => resolve();
+                    putRequest.onerror = () => reject(putRequest.error);
+                } else {
+                    resolve();
+                }
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+
+    /**
      * Get all artifacts for a session
      */
     async getArtifacts(sessionId: string): Promise<ConversationArtifact[]> {

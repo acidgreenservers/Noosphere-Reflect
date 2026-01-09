@@ -1,47 +1,46 @@
-# Security Audit Walkthrough: Visual & Brand Evolution (v0.5.0)
-**Date**: January 8, 2026
+# Security Audit Walkthrough: Dual Artifact System (v0.5.1)
+**Date**: January 9, 2026
 **Auditor**: Adversary Agent
-**Context**: Phase 6 Implementation Check
+**Context**: Phase 6.1 Implementation Check
 
 ## Summary
-Audit of the "Visual & Brand Evolution" update (v0.5.0), which includes a complete redesign of the Landing Page, global theming updates, and enhancements to the Extension UI.
+Audit of the "Dual Artifact System" (v0.5.1), which enables attaching files to specific messages in addition to the global session. Scope includes `ArtifactManager.tsx`, `storageService.ts`, and `converterService.ts`.
 
-**Verdict**: ✅ **SECURE**
-The visual overhaul relied primarily on static React components and Tailwind CSS classes. No new data flow paths or untrusted input rendering vectors were introduced. The Extension UI injector uses safe DOM manipulation patterns.
+**Verdict**: ⚠️ **CONDITIONAL PASS**
+The implementation is **Secure** (no XSS/Injection vectors found), but a **Logic Consistency Risk** was identified in how artifacts are stored vs. exported.
 
 ## Audit Findings
 
-### 1. `src/pages/Home.tsx` (Landing Page)
-#### Vulnerability Check: Static Content Safety
+### 1. `src/components/ArtifactManager.tsx`
+#### Vulnerability Check: Input Sanitization
 - **Status**: ✅ Safe
 - **Analysis**:
-  - The page consists entirely of static content (hero text, feature cards).
-  - External links (Ko-fi, GitHub) use `rel="noopener noreferrer"` to prevent tab-nabbing.
-  - No user input is rendered.
+  - File uploads pass through `sanitizeFilename()` and `neutralizeDangerousExtension()`.
+  - Malicious filenames (`../../hack.exe`) are neutralized (`__hack_exe.txt`).
+  - MIME types and sizes are validated.
 
-### 2. `src/pages/ArchiveHub.tsx` & `MemoryArchive.tsx`
-#### Vulnerability Check: Theming Logic
+### 2. `src/services/storageService.ts`
+#### Vulnerability Check: Data Integrity
 - **Status**: ✅ Safe
 - **Analysis**:
-  - `getModelBadgeColor` maps trusted model strings to CSS classes. No injection risk.
-  - "Back Home" navigation uses React Router's `useNavigate` (safe client-side routing).
-  - Green theme gradients are applied via CSS classes, not inline styles dependent on data.
+  - `removeMessageArtifact` safely handles array filtering.
+  - Transactions are atomic.
 
-### 3. `extension/content-scripts/ui-injector.js`
-#### Vulnerability Check: DOM Injection
-- **Status**: ✅ Safe
-- **Analysis**:
-  - The script injects a UI container using `innerHTML`, BUT the content is a hardcoded static template.
-  - `platform.color` is interpolated, but it comes from a trusted internal `PLATFORMS` constant, not the webpage.
-  - Checkbox injection uses `document.createElement`, avoiding XSS risks associated with `innerHTML`.
+### 3. Logic Consistency (Dual Storage Paths)
+#### Warning: "Split Brain" Artifact Storage
+- **Observation**:
+  - `attachArtifact` saves to `session.metadata.artifacts`.
+  - `removeMessageArtifact` removes from `session.chatData.messages[i].artifacts`.
+  - `generateHtml` (Export) **ONLY** reads from `session.metadata.artifacts`.
+- **Risk**: If the UI attaches an artifact *directly* to `message.artifacts` (bypassing metadata), it **will not be exported** in the HTML file.
+- **Recommendation**: Ensure strict synchronization. Either:
+  1.  Store ALL artifacts in `metadata.artifacts` and use `insertedAfterMessageIndex` to link them (Current Export Logic).
+  2.  Update `generateHtml` to ALSO scan `message.artifacts`.
 
 ## Verification
 - **Manual Verification**:
-  - Verified `Link` components correctly route to internal pages.
-  - Verified `PLATFORMS` config in extension script contains no executable payloads.
-
-## Security Notes
-- **Future Watch**: As we implement the "Remix Studio" in Phase 8, we must be careful with visual previews that might render user-composed HTML. For now, the visual layer is purely cosmetic and safe.
+  - Checked `generateHtml` code path: It iterates `metadata.artifacts` filtered by index. It ignores `message.artifacts`.
+  - Verified `sanitizeUrl` usage in `converterService`.
 
 ## Changes
-- Updated `CURRENT_SECURITY_AUDIT.md` to reflect the v0.5.0 status.
+- Updated `CURRENT_SECURITY_AUDIT.md` to reflect the v0.5.1 status.

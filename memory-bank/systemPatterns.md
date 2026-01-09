@@ -16,6 +16,7 @@
 - **Metadata Enrichment**: Enhancing raw logs with `title`, `model`, `date`, and `tags` via the `ChatData` and `SavedChatSession` types.
 - **Multi-Session Management**: Storing an array of `SavedChatSession` objects in local storage, indexed by a unique ID.
 - **Dual Storage Strategy**: Separating full chat logs (`sessions` store) from atomic thoughts (`memories` store) allows for optimized querying and distinct metadata structures.
+- **Dual Artifact Storage**: Supporting both session-level (`metadata.artifacts`) and message-level (`msg.artifacts`) attachments provides flexibility for users to attach files contextually or generally, with unified export handling.
 - **Atomic Metadata**: Storing tags and AI models as first-class citizens in `memories` for efficient multiEntry indexing.
 - **Granular Message Selection**: (Planned) Allowing users to toggle individual messages for inclusion in the final archive.
 - **Service Pattern**: Parsing logic is isolated in `services/converterService.ts`, keeping UI components clean.

@@ -4,6 +4,52 @@ import { Link } from 'react-router-dom';
 const Changelog: React.FC = () => {
     const changes = [
         {
+            version: 'v0.5.1',
+            date: 'Jan 9, 2026',
+            title: 'Dual Artifact System',
+            items: [
+                'Message-Level Artifacts: Attach files to individual messages via "📎 Attach" buttons with per-message upload and management.',
+                'Session-Level Artifacts: Existing system for general file attachments via "Manage Artifacts" modal.',
+                'Unified Export Logic: Collects artifacts from both metadata.artifacts AND msg.artifacts with automatic deduplication by ID.',
+                'Enhanced ArtifactManager Modal: Grouped display with "📎 Session Artifacts" and "💬 Message Artifacts" sections.',
+                'Message Context Labels: Shows which message each artifact is attached to for better organization.',
+                'Storage Service Enhancement: New removeMessageArtifact() method for granular deletion.',
+                'Archive Hub Badge Fix: Badge now appears for sessions with ANY artifacts (session OR message-level).',
+                'Accurate Counting: Badge displays total count from both artifact sources.',
+            ],
+        },
+        {
+            version: 'v0.5.0',
+            date: 'Jan 8, 2026',
+            title: 'Visual & Brand Overhaul',
+            items: [
+                'Landing Page Redesign: Full-screen hero section with "Noosphere Reflect" branding and dual CTA buttons.',
+                'Feature Showcase Grid: 4 cards with hover effects highlighting key features.',
+                'Philosophy Section: Explaining the "Noosphere" concept with support links.',
+                'Platform-Specific Theming: Official brand colors for all 6 platforms (Claude 🟠, ChatGPT 🟢, Gemini 🔵, LeChat 🟡, Grok ⚫, Llamacoder ⚪).',
+                'Archive Hub Badges: Color-coded platform badges for instant visual recognition.',
+                'Memory Card Styling: Consistent theming across Memory Archive.',
+                'Extension UI Polish: Updated Grok export button to White/Black for dark mode visibility.',
+                'Dev Container: Standardized development environment with VS Code integration.',
+            ],
+        },
+        {
+            version: 'v0.4.0',
+            date: 'Jan 7, 2026',
+            title: 'Memory Archive MVP',
+            items: [
+                'Dedicated Dashboard: Separate /memory-archive route for storing isolated AI thoughts and snippets.',
+                'Grid-Based Visualization: MemoryList component with rich metadata display.',
+                'Quick-Add Interface: MemoryInput component for rapid memory creation.',
+                'Modal Editor: MemoryEditor for detailed editing with full metadata support.',
+                'Export Capabilities: HTML, Markdown, and JSON export formats for memories.',
+                'Rich Metadata: AI Model tracking, tag system, word count statistics, creation timestamps.',
+                'Search & Filter: Find memories by AI model or tags.',
+                'IndexedDB v5: Added memories object store with efficient indexes.',
+                'Security: Applied XSS prevention and input validation to memory inputs.',
+            ],
+        },
+        {
             version: 'v0.3.2',
             date: 'Jan 7, 2026',
             title: 'Artifact Manager & Zip Export',
@@ -171,7 +217,7 @@ const Changelog: React.FC = () => {
 
                 <div className="space-y-8">
                     {changes.map((release) => (
-                        <div key={release.version} className="bg-gray-800/50 border border-gray-700/50 rounded-full p-6 shadow-xl backdrop-blur-sm relative overflow-hidden group hover:border-green-500/30 transition-all duration-300">
+                        <div key={release.version} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 shadow-xl backdrop-blur-sm relative overflow-hidden group hover:border-green-500/30 transition-all duration-300">
                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-purple-500 opacity-70 group-hover:opacity-100 transition-opacity"></div>
 
                             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">

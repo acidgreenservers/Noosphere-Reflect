@@ -1,4 +1,4 @@
-import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMetadata, SavedChatSession, ConversationManifest, Memory } from '../types';
+import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMetadata, SavedChatSession, ConversationManifest, ConversationArtifact, Memory } from '../types';
 import { escapeHtml, sanitizeUrl, validateLanguage, sanitizeFilename, neutralizeDangerousExtension } from '../utils/securityUtils';
 import JSZip from 'jszip';
 
@@ -1839,7 +1839,7 @@ const parseGeminiHtml = (input: string): ChatData => {
 
       // Direct ancestor check with all selector patterns
       if (htmlEl.closest('.sidebar, nav, .thoughts-container, .model-thoughts') ||
-          htmlEl.closest('model-thoughts')) {
+        htmlEl.closest('model-thoughts')) {
         isInsideThinking = true;
       }
 
@@ -2068,7 +2068,20 @@ export const generateDirectoryExport = (
   format: 'html' | 'markdown' | 'json'
 ): Record<string, string | Blob> => {
   const files: Record<string, string | Blob> = {};
-  const artifacts = session.metadata?.artifacts || [];
+
+  // Collect artifacts from BOTH sources
+  const allArtifacts: ConversationArtifact[] = [
+    // Session-level (unlinked)
+    ...(session.metadata?.artifacts || []),
+
+    // Message-level (linked)
+    ...(session.chatData?.messages.flatMap(msg => msg.artifacts || []) || [])
+  ];
+
+  // Remove duplicates by ID
+  const uniqueArtifacts = Array.from(
+    new Map(allArtifacts.map(a => [a.id, a])).values()
+  );
 
   // Generate conversation file
   if (format === 'html') {
@@ -2094,11 +2107,11 @@ export const generateDirectoryExport = (
   }
 
   // Generate manifest if artifacts exist
-  if (artifacts.length > 0) {
+  if (uniqueArtifacts.length > 0) {
     files['manifest.json'] = generateManifest(session);
 
     // Add artifact files (decode base64 → blob)
-    artifacts.forEach(artifact => {
+    uniqueArtifacts.forEach(artifact => {
       const safeName = neutralizeDangerousExtension(sanitizeFilename(artifact.fileName));
       const binaryString = atob(artifact.fileData);
       const bytes = new Uint8Array(binaryString.length);
@@ -2251,11 +2264,25 @@ export const generateDirectoryExportWithPicker = async (
     await writable.write(content);
     await writable.close();
 
+    // Collect artifacts from BOTH sources
+    const allArtifacts: ConversationArtifact[] = [
+      // Session-level (unlinked)
+      ...(session.metadata?.artifacts || []),
+
+      // Message-level (linked)
+      ...(session.chatData?.messages.flatMap(msg => msg.artifacts || []) || [])
+    ];
+
+    // Remove duplicates by ID
+    const uniqueArtifacts = Array.from(
+      new Map(allArtifacts.map(a => [a.id, a])).values()
+    );
+
     // Create artifacts subdirectory and write artifacts
-    if (session.metadata?.artifacts && session.metadata.artifacts.length > 0) {
+    if (uniqueArtifacts.length > 0) {
       const artifactsDir = await chatDirHandle.getDirectoryHandle('artifacts', { create: true });
 
-      for (const artifact of session.metadata.artifacts) {
+      for (const artifact of uniqueArtifacts) {
         const artifactHandle = await artifactsDir.getFileHandle(artifact.fileName, { create: true });
         const artifactWritable = await artifactHandle.createWritable();
 
@@ -2265,7 +2292,7 @@ export const generateDirectoryExportWithPicker = async (
       }
     }
 
-    alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${session.metadata?.artifacts?.length || 0} files)`);
+    alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${uniqueArtifacts.length} files)`);
   } catch (error: any) {
     if (error.name === 'AbortError') {
       // User cancelled the directory picker, do nothing.

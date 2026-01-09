@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last Updated**: January 7, 2026 (Session 5) | **Current Release**: v0.4.0 | **Current Theme**: Noosphere Nexus Green | **Next**: Phase 5 (Context Composition)
+**Last Updated**: January 9, 2026 (Session 7) | **Current Release**: v0.5.1 | **Current Theme**: Noosphere Nexus Green | **Next**: Sprint 6.2 (Hub Polish)
 
 ## 🎯 Current Status
 **PHASE 4 COMPLETE: MEMORY ARCHIVE MVP (v0.4.0)** ✅ - Ready for Phase 5 (Context Composition)
@@ -123,6 +123,28 @@
     - [x] Memory Archive "Hub" navigation
     - [x] Visual consistency fixes
 
+### Phase 6.1: Dual Artifact System (v0.5.1) ✅ COMPLETE
+- [x] **Message-Level Artifacts**:
+    - [x] Added `artifacts?: ConversationArtifact[]` to `ChatMessage` interface
+    - [x] Implemented "📎 Attach" buttons on message cards
+    - [x] Handler functions for attach/remove operations
+    - [x] Visual artifact cards below message content
+- [x] **Unified Export Logic**:
+    - [x] Updated `generateDirectoryExport` to collect from both sources
+    - [x] Updated `generateDirectoryExportWithPicker` for File System API
+    - [x] Artifact deduplication by ID
+- [x] **Archive Hub Badge Fix**:
+    - [x] Badge count includes both session and message artifacts
+    - [x] Badge visibility checks both sources
+- [x] **Enhanced ArtifactManager Modal**:
+    - [x] Grouped display (Session vs. Message artifacts)
+    - [x] Message context labels ("Attached to Message #X")
+    - [x] `removeMessageArtifact()` method in storageService
+    - [x] Unified deletion from single modal
+- [x] **Verification**:
+    - [x] Build passing (0 errors)
+    - [x] Export includes all artifacts
+
 ## 🚧 Upcoming Phases
 
 ### Sprint 6.2: Archive Hub Polish (v0.5.x)
@@ -172,6 +194,22 @@
 - [x] GEMINI.md - Project status (updated)
 
 ## 🔄 Recent Changes (Latest Session)
+
+**January 9, 2026 (Session 7) - Dual Artifact System (v0.5.1)**:
+- **Core Features**:
+  - Implemented dual artifact storage supporting both session-level and message-level attachments.
+  - Users can now attach files to individual messages via "📎 Attach" buttons or upload general session-level files.
+  - All artifacts are included in exports (ZIP/Directory) with automatic deduplication.
+- **Technical Implementation**:
+  - **Type System**: Extended `ChatMessage` interface with optional `artifacts` array.
+  - **Export Logic**: Updated `converterService.ts` to collect artifacts from both `metadata.artifacts` and `msg.artifacts`.
+  - **Archive Hub**: Fixed badge counting to include both artifact sources.
+  - **ArtifactManager Modal**: Enhanced to display both types in separate sections with proper context labels.
+  - **Storage Service**: Added `removeMessageArtifact()` method for granular deletion.
+- **User Experience**:
+  - Clear visual separation between session-level and message-level artifacts in the modal.
+  - Message artifacts show which message they're attached to ("💬 Attached to Message #X").
+  - Single unified modal for managing all artifacts regardless of type.
 
 **January 8, 2026 (Session 6) - Visual & Brand Overhaul (v0.5.0)**:
 - **Landing Page**: Complete redesign with "Noosphere Reflect" branding, hero section, and clear feature breakdown.

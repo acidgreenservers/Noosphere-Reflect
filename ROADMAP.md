@@ -1,8 +1,8 @@
 # Noosphere Reflect: Development Roadmap
 
-**Last Updated**: January 8, 2026
-**Current Version**: v0.4.0
-**Current Status**: Phase 4 Extended Complete → Phase 5 In Planning
+**Last Updated**: January 9, 2026
+**Current Version**: v0.5.1
+**Current Status**: Phase 6.1 Complete → Sprint 6.2 In Planning
 
 ---
 
@@ -62,7 +62,7 @@ This roadmap is organized into three tiers:
 
 ---
 
-### Phase 4 Extended: Security Hardening & Memory Archive (v0.3.0-0.3.2) ✅
+### Phase 4 Extended: Security Hardening & Memory Archive (v0.3.0-0.4.0) ✅
 **Goal:** Strengthen security posture and introduce memory management features.
 
 - [x] XSS prevention layer (escapeHtml, sanitizeUrl, validateLanguage)
@@ -77,68 +77,77 @@ This roadmap is organized into three tiers:
 
 ---
 
-## 🚧 PLANNED PHASES (Active Work)
+### Phase 6: Visual & Brand Overhaul (v0.5.0) ✅
+**Goal:** Redesign landing page and implement platform-specific theming.
 
-### Phase 5: Service Integration (v0.5.0)
-**Goal:** Expand platform support and improve service integration UX.
-
-**Status**: 🚧 In Planning
-
-#### Phase 5 Quick Fixes
-- [ ] Add home button to Memory Management page
-- [ ] Fix toast notifications on chat import (stack side-by-side, not on top)
-- [ ] Apply project theming to Memory Management page
-- [ ] Apply project theming to landing page button
-
-#### Phase 5 Main Integration Tasks
-- [ ] Add commonly used services (request user input for priorities)
-- [ ] Nail down export button placement across all service pages
-- [ ] **CRITICAL**: Verify Gemini thinking chains don't bleed into responses (Project Lead sign-off required)
-- [ ] Add export button to Kimi service
-- [ ] Fix Grok service import error (`parseGrokHtml is not defined`)
-
-#### Phase 5 Extension Enhancement
-- [ ] Add right-click menu for importing highlighted text from any website (to Memory)
-- [ ] Add extension settings window to extension hotbar menu
-  - [ ] Export button
-  - [ ] Export memory button
-  - [ ] Message selection button
-  - [ ] Settings menu (rename chat/memory before import, username settings, other options)
-
-**Acceptance Criteria**:
-- All service pages have consistent export button placement
-- Toast notifications stack horizontally instead of vertically
-- Memory Management page matches app theming
-- Extension settings window is accessible and functional
-- Grok import works without errors
-- Gemini thinking separation verified and signed off
+- [x] Landing page redesign with "Noosphere Reflect" branding
+- [x] Full-screen hero section with dual CTA
+- [x] Feature showcase grid
+- [x] Philosophy and support sections
+- [x] Platform theming with official brand colors
+- [x] Archive Hub conversation badges
+- [x] Memory Card styling
+- [x] Extension UI polish (Grok button visibility)
+- [x] Dev container configuration
 
 ---
 
-### Phase 6: Landing Page Overhaul (v0.6.0)
-**Goal:** Redesign landing page with enhanced branding and user experience.
+### Phase 6.1: Dual Artifact System (v0.5.1) ✅
+**Goal:** Implement unified artifact storage supporting both session-level and message-level attachments.
 
-**Status**: 🚧 In Planning
+- [x] Message-level artifact attachments
+- [x] "📎 Attach" buttons on message cards
+- [x] Handler functions for attach/remove operations
+- [x] Visual artifact cards below message content
+- [x] Unified export logic (collect from both sources)
+- [x] Artifact deduplication by ID
+- [x] Archive Hub badge fix (count both sources)
+- [x] Enhanced ArtifactManager modal (grouped display)
+- [x] `removeMessageArtifact()` method in storageService
+- [x] Build verification (0 errors)
 
-#### Phase 6 Tasks
-- [ ] Create brand new landing page with enhanced tone and style
-- [ ] Redesign Archive Hub to match new landing page aesthetic
-- [ ] Add donation button to landing page (guidance: research best practices, position prominently but non-intrusive)
-- [ ] Add Noosphere white links to landing page
-- [ ] Suggest new feature directions based on redesign insights
+---
 
-**Constraints**:
-- ⚠️ **MUST RETAIN** current Noosphere Nexus Green theme color scheme
-- ⚠️ Design should maintain glassmorphism aesthetic
-- ⚠️ All existing functionality must remain accessible
+## 🚧 PLANNED PHASES (Active Work)
+
+### Sprint 6.2: Archive Hub Polish (v0.5.x)
+**Goal:** Enhance Archive Hub with denser, more information-rich conversation cards.
+
+**Status**: 🚧 Next Up
+
+#### Sprint 6.2 Tasks
+- [ ] Redesign conversation cards for higher information density
+- [ ] Improve visual hierarchy (title, metadata, badges)
+- [ ] Enhanced filter UI with better visual feedback
+- [ ] Batch action bar improvements
+- [ ] Responsive layout optimizations
 
 **Acceptance Criteria**:
-- Landing page visually distinct but on-brand
-- Archive Hub updated to match new design language
-- Donation button integrated smoothly
-- All links functional
-- Noosphere branding prominent
-- Green theme preserved throughout
+- Conversation cards display more information without feeling cluttered
+- Improved scannability and visual hierarchy
+- Filter UI is more intuitive and visually consistent
+- Batch operations are more discoverable
+- Responsive design works on all screen sizes
+
+---
+
+### Sprint 5.1: Extension Reliability (v0.5.x)
+**Goal:** Fix toast notification overlaps and improve extension UX.
+
+**Status**: 🚧 Planned
+
+#### Sprint 5.1 Tasks
+- [ ] Implement toast notification queue (prevent overlaps)
+- [ ] Fix toast stacking (side-by-side instead of on top)
+- [ ] Improve error handling and user feedback
+- [ ] Extension settings optimization
+- [ ] Performance improvements for large captures
+
+**Acceptance Criteria**:
+- Toast notifications never overlap
+- Clear visual feedback for all extension actions
+- Graceful error handling with helpful messages
+- Improved performance on large conversations
 
 ---
 
@@ -179,9 +188,12 @@ The following are potential future directions pending strategic decisions:
 | Phase 2 | v0.0.4-0.0.6 | ✅ Complete | Jan 2 | Jan 4, 2026 |
 | Phase 3 | v0.0.7-0.0.8 | ✅ Complete | Jan 4 | Jan 5, 2026 |
 | Phase 4 | v0.1.0-0.2.0 | ✅ Complete | Jan 5 | Jan 6, 2026 |
-| Phase 4 Ext | v0.3.0-0.3.2 | ✅ Complete | Jan 6 | Jan 7, 2026 |
-| **Phase 5** | **v0.5.0** | 🚧 Planning | Jan 8 | TBD |
-| **Phase 6** | **v0.6.0** | 🚧 Planning | TBD | TBD |
+| Phase 4 Ext | v0.3.0-0.4.0 | ✅ Complete | Jan 6 | Jan 7, 2026 |
+| Phase 6 | v0.5.0 | ✅ Complete | Jan 8 | Jan 8, 2026 |
+| Phase 6.1 | v0.5.1 | ✅ Complete | Jan 9 | Jan 9, 2026 |
+| **Sprint 6.2** | **v0.5.x** | 🚧 Next Up | TBD | TBD |
+| **Sprint 5.1** | **v0.5.x** | 🚧 Planned | TBD | TBD |
+| Phase 5 | v0.6.0+ | 🔮 Future | TBD | TBD |
 | Phase 7+ | v0.7.0+ | 🔮 Future | TBD | TBD |
 
 ---
@@ -213,7 +225,7 @@ The following are potential future directions pending strategic decisions:
 
 ---
 
-## 📈 Key Metrics (v0.4.0)
+## 📈 Key Metrics (v0.5.1)
 
 **Code Quality**:
 - 64 modules in production build
@@ -221,23 +233,26 @@ The following are potential future directions pending strategic decisions:
 - TypeScript strict mode
 - React 19 functional components
 - Tailwind CSS v4
+- Build time: ~4s
 
 **Platform Support**:
-- ✅ Claude (claude.ai)
-- ✅ ChatGPT (chatgpt.com, chat.openai.com)
-- ✅ LeChat (chat.mistral.ai)
-- ✅ Llamacoder (llamacoder.together.ai)
-- ✅ Gemini (gemini.google.com)
-- ✅ Grok (grok.com)
+- ✅ Claude (claude.ai) - 🟠 Orange Theme
+- ✅ ChatGPT (chatgpt.com) - 🟢 Green Theme
+- ✅ Gemini (gemini.google.com) - 🔵 Blue Theme
+- ✅ LeChat (chat.mistral.ai) - 🟡 Amber Theme
+- ✅ Grok (x.ai) - ⚫ Black Theme
+- ✅ Llamacoder (llamacoder.together.ai) - ⚪ White Theme
 
 **Features**:
 - One-click extension capture
+- Dual artifact system (session + message-level)
 - Batch operations (select/export/delete)
 - Multi-format exports (HTML/Markdown/JSON)
-- Artifact management
-- Memory Archive
+- Memory Archive with rich metadata
+- Platform-specific theming
 - Global settings with sync
 - XSS prevention ✅
+- Artifact deduplication ✅
 
 ---
 
@@ -271,9 +286,9 @@ The following are potential future directions pending strategic decisions:
 
 ---
 
-**Roadmap Version**: 2.0 (Restructured Jan 8, 2026)
+**Roadmap Version**: 2.1 (Updated Jan 9, 2026)
 **Maintained By**: User + Claude + Antigravity + Gemini
-**Last Review**: January 8, 2026
+**Last Review**: January 9, 2026
 
 
 

@@ -451,6 +451,86 @@ const BasicConverter: React.FC = () => {
         setEditingIndex(null);
     };
 
+    const handleAttachToMessage = async (messageIndex: number) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = '*/*';
+
+        input.onchange = async (e) => {
+            const files = (e.target as HTMLInputElement).files;
+            if (!files || !chatData) return;
+
+            try {
+                const newArtifacts: ConversationArtifact[] = [];
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+
+                    // Validate file size
+                    const validation = validateFileSize(file.size, INPUT_LIMITS.FILE_MAX_SIZE_MB);
+                    if (!validation.valid) {
+                        alert(validation.error || 'File too large');
+                        continue;
+                    }
+
+                    // Read file as base64
+                    const reader = new FileReader();
+                    const fileData = await new Promise<string>((resolve, reject) => {
+                        reader.onload = () => {
+                            const result = reader.result as string;
+                            const base64 = result.split(',')[1];
+                            resolve(base64);
+                        };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+
+                    // Create artifact
+                    const artifact: ConversationArtifact = {
+                        id: crypto.randomUUID(),
+                        fileName: file.name,
+                        fileSize: file.size,
+                        mimeType: file.type || 'application/octet-stream',
+                        fileData: fileData,
+                        uploadedAt: new Date().toISOString()
+                    };
+
+                    newArtifacts.push(artifact);
+                }
+
+                // Update message with new artifacts
+                const updatedMessages = [...chatData.messages];
+                updatedMessages[messageIndex] = {
+                    ...updatedMessages[messageIndex],
+                    artifacts: [
+                        ...(updatedMessages[messageIndex].artifacts || []),
+                        ...newArtifacts
+                    ]
+                };
+
+                setChatData({ ...chatData, messages: updatedMessages });
+            } catch (error) {
+                alert('Failed to upload files: ' + (error as Error).message);
+            }
+        };
+
+        input.click();
+    };
+
+    const handleRemoveMessageArtifact = (messageIndex: number, artifactId: string) => {
+        if (!chatData) return;
+
+        const updatedMessages = [...chatData.messages];
+        const message = updatedMessages[messageIndex];
+
+        if (message.artifacts) {
+            message.artifacts = message.artifacts.filter(a => a.id !== artifactId);
+        }
+
+        setChatData({ ...chatData, messages: updatedMessages });
+    };
+
     const handleArtifactUpload = async (files: FileList | null) => {
         if (!files) return;
 
@@ -816,29 +896,40 @@ const BasicConverter: React.FC = () => {
                                                             </span>
                                                         </div>
 
-                                                        {editingIndex !== idx ? (
+                                                        <div className="flex gap-2">
+                                                            {/* Attach button - always visible */}
                                                             <button
-                                                                onClick={() => handleEditMessage(idx)}
-                                                                className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-green-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                                onClick={() => handleAttachToMessage(idx)}
+                                                                className="text-[10px] uppercase tracking-wider font-bold text-purple-300 hover:text-purple-200 transition-colors bg-purple-600/20 hover:bg-purple-600/40 px-2 py-1 rounded border border-purple-500/30"
                                                             >
-                                                                Edit
+                                                                📎 Attach ({msg.artifacts?.length || 0})
                                                             </button>
-                                                        ) : (
-                                                            <div className="flex gap-2">
+
+                                                            {/* Edit/Save/Cancel buttons */}
+                                                            {editingIndex !== idx ? (
                                                                 <button
-                                                                    onClick={handleSaveEdit}
-                                                                    className="text-[10px] uppercase tracking-wider font-bold text-green-400 hover:text-green-300 transition-colors bg-green-400/10 px-2 py-1 rounded border border-green-400/20"
+                                                                    onClick={() => handleEditMessage(idx)}
+                                                                    className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-green-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
                                                                 >
-                                                                    Save
+                                                                    Edit
                                                                 </button>
-                                                                <button
-                                                                    onClick={handleCancelEdit}
-                                                                    className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-gray-300 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
-                                                                >
-                                                                    Cancel
-                                                                </button>
-                                                            </div>
-                                                        )}
+                                                            ) : (
+                                                                <>
+                                                                    <button
+                                                                        onClick={handleSaveEdit}
+                                                                        className="text-[10px] uppercase tracking-wider font-bold text-green-400 hover:text-green-300 transition-colors bg-green-400/10 px-2 py-1 rounded border border-green-400/20"
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={handleCancelEdit}
+                                                                        className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-gray-300 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
 
                                                     {editingIndex === idx ? (
@@ -851,6 +942,31 @@ const BasicConverter: React.FC = () => {
                                                     ) : (
                                                         <div className="text-gray-300 text-sm line-clamp-4 overflow-hidden whitespace-pre-wrap leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
                                                             {msg.content}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Display attached artifacts */}
+                                                    {msg.artifacts && msg.artifacts.length > 0 && (
+                                                        <div className="mt-3 pt-3 border-t border-gray-700/50 space-y-2">
+                                                            <p className="text-xs text-purple-400 font-semibold">📎 Attached Files ({msg.artifacts.length}):</p>
+                                                            <div className="space-y-1">
+                                                                {msg.artifacts.map(artifact => (
+                                                                    <div key={artifact.id} className="flex items-center justify-between gap-2 bg-purple-900/20 hover:bg-purple-900/30 p-2 rounded border border-purple-500/20 transition-colors">
+                                                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                            <span className="text-purple-300">📄</span>
+                                                                            <span className="text-xs text-gray-300 truncate">{artifact.fileName}</span>
+                                                                            <span className="text-xs text-gray-500">({(artifact.fileSize / 1024).toFixed(1)} KB)</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => handleRemoveMessageArtifact(idx, artifact.id)}
+                                                                            className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded transition-colors"
+                                                                            title="Remove artifact"
+                                                                        >
+                                                                            ✕
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>

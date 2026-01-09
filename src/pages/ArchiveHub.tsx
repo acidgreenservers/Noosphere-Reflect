@@ -242,7 +242,12 @@ const ArchiveHub: React.FC = () => {
 
     const handleSingleExport = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
         try {
-            const hasArtifacts = (session.metadata?.artifacts?.length || 0) > 0;
+            // Count artifacts from BOTH sources
+            const sessionArtifacts = session.metadata?.artifacts?.length || 0;
+            const messageArtifacts = session.chatData?.messages.reduce((count, msg) =>
+                count + (msg.artifacts?.length || 0), 0) || 0;
+            const totalArtifacts = sessionArtifacts + messageArtifacts;
+            const hasArtifacts = totalArtifacts > 0;
 
             if (!hasArtifacts) {
                 // No artifacts - simple single-file export (existing behavior)
@@ -668,33 +673,39 @@ const ArchiveHub: React.FC = () => {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {session.metadata?.artifacts && session.metadata.artifacts.length > 0 && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setSelectedSessionForArtifacts(session);
-                                                    setShowArtifactManager(true);
-                                                }}
-                                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-colors hover:scale-105 shadow-lg shadow-emerald-500/50"
-                                                title="Manage artifacts for this chat"
-                                            >
-                                                <span>📎</span>
-                                                <span>{session.metadata.artifacts.length}</span>
-                                            </button>
-                                        )}
-                                        {(!session.metadata?.artifacts || session.metadata.artifacts.length === 0) && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setSelectedSessionForArtifacts(session);
-                                                    setShowArtifactManager(true);
-                                                }}
-                                                className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-colors font-medium hover:scale-105"
-                                                title="Add artifacts to this chat"
-                                            >
-                                                + Add Artifacts
-                                            </button>
-                                        )}
+                                        {((session.metadata?.artifacts && session.metadata.artifacts.length > 0) ||
+                                            (session.chatData?.messages.some(msg => msg.artifacts && msg.artifacts.length > 0))) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setSelectedSessionForArtifacts(session);
+                                                        setShowArtifactManager(true);
+                                                    }}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-colors hover:scale-105 shadow-lg shadow-emerald-500/50"
+                                                    title="Manage artifacts for this chat"
+                                                >
+                                                    <span>📎</span>
+                                                    <span>{
+                                                        (session.metadata?.artifacts?.length || 0) +
+                                                        (session.chatData?.messages.reduce((count, msg) =>
+                                                            count + (msg.artifacts?.length || 0), 0) || 0)
+                                                    }</span>
+                                                </button>
+                                            )}
+                                        {(!session.metadata?.artifacts || session.metadata.artifacts.length === 0) &&
+                                            (!session.chatData?.messages.some(msg => msg.artifacts && msg.artifacts.length > 0)) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setSelectedSessionForArtifacts(session);
+                                                        setShowArtifactManager(true);
+                                                    }}
+                                                    className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-colors font-medium hover:scale-105"
+                                                    title="Add artifacts to this chat"
+                                                >
+                                                    + Add Artifacts
+                                                </button>
+                                            )}
                                         <button
                                             onClick={(e) => handleDelete(session.id, e)}
                                             className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"

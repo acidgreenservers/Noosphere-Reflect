@@ -47,6 +47,7 @@ export interface ChatMessage {
   type: ChatMessageType;
   content: string;
   isEdited?: boolean;
+  artifacts?: ConversationArtifact[]; // Per-message artifacts
 }
 
 export interface ChatData {

@@ -11,7 +11,116 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Planning for Phase 5: Context Composition (Merging)
+- Planning for Sprint 6.2: Archive Hub Polish (Conversation Card Redesign)
+- Planning for Sprint 5.1: Extension Reliability (Toast Queue)
+
+---
+
+## [v0.5.1] - January 9, 2026
+
+### Added
+
+#### Dual Artifact System
+- **Message-Level Artifacts**: Attach files to individual messages via "📎 Attach" buttons
+  - New `artifacts?: ConversationArtifact[]` field in `ChatMessage` interface
+  - Per-message artifact upload and management
+  - Visual artifact cards displayed below message content
+  - `handleAttachToMessage()` and `handleRemoveMessageArtifact()` handlers in BasicConverter
+- **Session-Level Artifacts**: Existing system for general file attachments
+  - Uploaded via "Manage Artifacts" modal
+  - Stored in `ChatMetadata.artifacts`
+  - Not linked to specific messages
+- **Unified Export Logic**:
+  - Collects artifacts from both `metadata.artifacts` AND `msg.artifacts`
+  - Automatic deduplication by artifact ID (prevents duplicates)
+  - Updated `generateDirectoryExport()` and `generateDirectoryExportWithPicker()`
+  - All artifacts included in ZIP/Directory exports
+- **Enhanced ArtifactManager Modal**:
+  - Grouped display: "📎 Session Artifacts" and "💬 Message Artifacts" sections
+  - Message context labels showing which message artifacts are attached to
+  - Unified deletion interface for both artifact types
+  - Total count displays combined artifacts from both sources
+- **Storage Service Enhancement**:
+  - New `removeMessageArtifact(sessionId, messageIndex, artifactId)` method
+  - Targets specific message's artifacts array for deletion
+  - Maintains data integrity during removal operations
+
+#### Archive Hub Improvements
+- **Artifact Badge Fix**: Badge now appears for sessions with ANY artifacts (session OR message-level)
+- **Accurate Counting**: Badge displays total count from both artifact sources
+- **Visibility Logic**: Updated conditional rendering to check both `metadata.artifacts` and `msg.artifacts`
+
+---
+
+## [v0.5.0] - January 8, 2026
+
+### Added
+
+#### Visual & Brand Overhaul
+- **Landing Page Redesign** (`Home.tsx`):
+  - Full-screen hero section with "Noosphere Reflect" branding
+  - Dual CTA buttons (Get Started / View Archive)
+  - Feature showcase grid (4 cards with hover effects)
+  - Philosophy section explaining the "Noosphere" concept
+  - Support section with links and resources
+- **Platform-Specific Theming**:
+  - Official brand colors for all 6 supported platforms
+  - Claude: 🟠 Orange/Terracotta (`bg-orange-900/40`, `text-orange-200`)
+  - ChatGPT: 🟢 Emerald Green (`bg-emerald-900/40`, `text-emerald-200`)
+  - Gemini: 🔵 Blue (`bg-blue-900/40`, `text-blue-200`)
+  - LeChat: 🟡 Amber (`bg-amber-900/40`, `text-amber-200`)
+  - Grok: ⚫ Black (`bg-black`, `text-white`)
+  - Llamacoder: ⚪ White (`bg-white`, `text-black`)
+- **Archive Hub Badges**: Color-coded platform badges for instant visual recognition
+- **Memory Card Styling**: Consistent theming across Memory Archive
+- **Extension UI Polish**: Updated Grok export button to White/Black for dark mode visibility
+
+#### Development Experience
+- **Dev Container** (`.devcontainer/devcontainer.json`):
+  - Standardized development environment
+  - Consistent dependencies across team
+  - VS Code integration
+
+---
+
+## [v0.4.0] - January 7, 2026
+
+### Added
+
+#### Memory Archive MVP
+- **Dedicated Dashboard** (`/memory-archive` route):
+  - Separate system for storing isolated AI thoughts and snippets
+  - Distinct from full chat sessions
+  - Grid-based visualization with rich metadata
+- **Data Model**:
+  - `Memory` and `MemoryMetadata` interfaces in `types.ts`
+  - IndexedDB v5 schema with `memories` object store
+  - Efficient indexes for AI model and tags
+- **UI Components**:
+  - `MemoryInput.tsx`: Quick-add area for new memories
+  - `MemoryList.tsx`: Grid-based memory visualization
+  - `MemoryCard.tsx`: Individual memory display with metadata
+  - `MemoryEditor.tsx`: Modal-based editing interface
+- **Export Capabilities**:
+  - `generateMemoryHtml()`: Styled HTML export
+  - `generateMemoryMarkdown()`: Clean markdown export
+  - `generateMemoryJson()`: Structured JSON export
+- **Rich Metadata**:
+  - AI Model tracking
+  - Tag system for organization
+  - Word count statistics
+  - Creation date timestamps
+- **Search & Filter**: Find memories by AI model or tags
+
+#### Database Migration
+- **IndexedDB v4 → v5**: Added `memories` object store
+- **Automatic Migration**: Zero data loss, transparent to users
+- **Backward Compatibility**: Existing sessions remain fully functional
+
+### Security
+- **XSS Prevention**: Applied same "Escape First" strategy to memory inputs
+- **Input Validation**: Metadata constraints enforced
+- **Secure Exports**: All memory exports use hardened `converterService` logic
 
 ---
 
@@ -548,4 +657,4 @@ None. All existing sessions remain compatible.
 
 ---
 
-**Last Updated**: January 7, 2026 | **Current Version**: v0.3.2
+**Last Updated**: January 9, 2026 | **Current Version**: v0.5.1

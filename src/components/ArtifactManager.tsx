@@ -16,9 +16,16 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
   onArtifactsChange,
   manualMode = false
 }) => {
-  const [artifacts, setArtifacts] = useState<ConversationArtifact[]>(
-    session.metadata?.artifacts || []
+  // Collect ALL artifacts from both sources
+  const sessionArtifacts = session.metadata?.artifacts || [];
+  const messageArtifacts = messages.flatMap((msg, msgIndex) =>
+    (msg.artifacts || []).map(artifact => ({
+      ...artifact,
+      _messageIndex: msgIndex // Track which message this belongs to
+    }))
   );
+
+  const [artifacts, setArtifacts] = useState<ConversationArtifact[]>(sessionArtifacts);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -101,10 +108,16 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
     handleFileSelect(e.dataTransfer.files);
   };
 
-  const handleRemove = async (artifactId: string) => {
+  const handleRemove = async (artifactId: string, messageIndex?: number) => {
     try {
       if (!manualMode) {
-        await storageService.removeArtifact(session.id, artifactId);
+        if (messageIndex !== undefined) {
+          // Remove from message-level artifacts
+          await storageService.removeMessageArtifact(session.id, messageIndex, artifactId);
+        } else {
+          // Remove from session-level artifacts
+          await storageService.removeArtifact(session.id, artifactId);
+        }
       }
       const newArtifacts = artifacts.filter(a => a.id !== artifactId);
       setArtifacts(newArtifacts);
@@ -196,73 +209,119 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
         </div>
       )}
 
-      {/* Artifacts List */}
-      <div className="artifacts-list mt-6 space-y-3">
-        {artifacts.map(artifact => (
-          <div
-            key={artifact.id}
-            className="artifact-card border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getFileIcon(artifact.mimeType)}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{artifact.fileName}</p>
-                    <p className="text-sm text-gray-500">
-                      {formatFileSize(artifact.fileSize)} · {artifact.mimeType}
-                    </p>
-                  </div>
-                </div>
-
-                {artifact.insertedAfterMessageIndex !== undefined ? (
-                  <p className="text-sm text-green-600 mt-3 flex items-center gap-1">
-                    ✓ Linked after Message #{artifact.insertedAfterMessageIndex + 1}
-                  </p>
-                ) : (
-                  <div className="mt-3 p-3 bg-gray-50 rounded">
-                    <label className="text-sm text-gray-600 block mb-2">Insert link after:</label>
-                    <select
-                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      onChange={(e) => handleInsertLink(artifact.id, parseInt(e.target.value))}
-                      defaultValue=""
-                    >
-                      <option value="" disabled>
-                        Select message...
-                      </option>
-                      {messages.length === 0 ? (
-                        <option disabled>No messages available</option>
-                      ) : (
-                        messages.map((msg, idx) => (
-                          <option key={idx} value={idx}>
-                            Message #{idx + 1} ({msg.type})
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => handleRemove(artifact.id)}
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded text-sm font-medium transition-colors ml-4 flex-shrink-0"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Summary */}
+      {/* Session-Level Artifacts */}
       {artifacts.length > 0 && (
-        <div className="summary mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-          📊 Total: {artifacts.length} file{artifacts.length !== 1 ? 's' : ''} ({formatFileSize(totalSize)})
+        <div className="mt-6">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">📎 Session Artifacts ({artifacts.length})</h4>
+          <p className="text-xs text-gray-500 mb-3">General files not linked to specific messages</p>
+          <div className="space-y-3">
+            {artifacts.map(artifact => (
+              <div
+                key={artifact.id}
+                className="artifact-card border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{getFileIcon(artifact.mimeType)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{artifact.fileName}</p>
+                        <p className="text-sm text-gray-500">
+                          {formatFileSize(artifact.fileSize)} · {artifact.mimeType}
+                        </p>
+                      </div>
+                    </div>
+
+                    {artifact.insertedAfterMessageIndex !== undefined ? (
+                      <p className="text-sm text-green-600 mt-3 flex items-center gap-1">
+                        ✓ Linked after Message #{artifact.insertedAfterMessageIndex + 1}
+                      </p>
+                    ) : (
+                      <div className="mt-3 p-3 bg-gray-50 rounded">
+                        <label className="text-sm text-gray-600 block mb-2">Insert link after:</label>
+                        <select
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          onChange={(e) => handleInsertLink(artifact.id, parseInt(e.target.value))}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>
+                            Select message...
+                          </option>
+                          {messages.length === 0 ? (
+                            <option disabled>No messages available</option>
+                          ) : (
+                            messages.map((msg, idx) => (
+                              <option key={idx} value={idx}>
+                                Message #{idx + 1} ({msg.type})
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handleRemove(artifact.id)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded text-sm font-medium transition-colors ml-4 flex-shrink-0"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {artifacts.length === 0 && !error && !success && (
+      {/* Message-Level Artifacts */}
+      {messageArtifacts.length > 0 && (
+        <div className="mt-6">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">💬 Message Artifacts ({messageArtifacts.length})</h4>
+          <p className="text-xs text-gray-500 mb-3">Files attached to specific messages</p>
+          <div className="space-y-3">
+            {messageArtifacts.map((artifact: any) => (
+              <div
+                key={artifact.id}
+                className="artifact-card border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{getFileIcon(artifact.mimeType)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{artifact.fileName}</p>
+                        <p className="text-sm text-gray-500">
+                          {formatFileSize(artifact.fileSize)} · {artifact.mimeType}
+                        </p>
+                        <p className="text-sm text-purple-600 mt-1 flex items-center gap-1">
+                          💬 Attached to Message #{artifact._messageIndex + 1}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleRemove(artifact.id, artifact._messageIndex)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded text-sm font-medium transition-colors ml-4 flex-shrink-0"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Summary */}
+      {(artifacts.length > 0 || messageArtifacts.length > 0) && (
+        <div className="summary mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+          📊 Total: {artifacts.length + messageArtifacts.length} file{(artifacts.length + messageArtifacts.length) !== 1 ? 's' : ''} ({formatFileSize(totalSize + messageArtifacts.reduce((sum: number, a: any) => sum + a.fileSize, 0))})
+        </div>
+      )}
+
+      {artifacts.length === 0 && messageArtifacts.length === 0 && !error && !success && (
         <div className="empty-state mt-4 p-4 text-center text-gray-400">
           No artifacts yet. Upload files to include them in your export.
         </div>
