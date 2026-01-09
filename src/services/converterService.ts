@@ -1715,7 +1715,7 @@ const parseGeminiHtml = (input: string): ChatData => {
       }
     }
 
-    // 2. Extract thinking (BEFORE response for correct order)
+    // 2. Extract thinking (DESTRUCTIVE READ PATTERN)
     // Gemini structure: .thoughts-container > model-thoughts > [data-test-id="thoughts-content"] > .markdown
     const thoughtsContainer = turn.querySelector('.thoughts-container, model-thoughts');
     if (thoughtsContainer) {
@@ -1734,12 +1734,16 @@ const parseGeminiHtml = (input: string): ChatData => {
           });
         }
       }
+
+      // DESTRUCTIVE READ: Remove thinking block immediately after extraction
+      // to prevent content from bleeding into response text during subsequent extraction
+      thoughtsContainer.remove();
     }
 
     // 3. Extract model response
-    // IMPORTANT: Remove thinking blocks from the turn BEFORE extracting response
-    // to prevent thinking content from bleeding into the response text
-    turn.querySelectorAll('model-thoughts').forEach(el => el.remove());
+    // NOTE: Thinking blocks have been removed above (destructive read), so response
+    // extraction will never accidentally include thinking content
+    turn.querySelectorAll('model-thoughts').forEach(el => el.remove()); // Cleanup redundant removes
 
     const responseEl = turn.querySelector('model-response .message-content .markdown') ||
       turn.querySelector('model-response .message-content') ||

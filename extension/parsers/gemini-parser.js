@@ -84,7 +84,7 @@ function parseGeminiHtml(html) {
       }
     }
 
-    // Extract thought/reasoning blocks
+    // Extract thought/reasoning blocks (DESTRUCTIVE READ PATTERN)
     if (htmlEl.classList.contains('model-thoughts') || htmlEl.classList.contains('thoughts-container')) {
       // CRITICAL: Gemini has TWO elements with class "thoughts-content":
       // 1. Outer wrapper (includes "Show thinking" button)
@@ -98,6 +98,11 @@ function parseGeminiHtml(html) {
       if (thoughtContent && thoughtContent.trim().length > 0) {
         const wrappedContent = `\n<thought>\n${thoughtContent.trim()}\n</thought>\n`;
         messages.push(new ChatMessage(ChatMessageType.Response, wrappedContent));
+
+        // DESTRUCTIVE READ: Remove the thinking element immediately to prevent bleed
+        // into subsequent response extraction
+        htmlEl.remove();
+
         htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
         visited.add(htmlEl);
       }
