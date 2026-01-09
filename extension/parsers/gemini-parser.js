@@ -60,9 +60,13 @@ function parseGeminiHtml(html) {
       (htmlEl.getAttribute('role') === 'heading' && htmlEl.getAttribute('aria-level') === '2');
 
     // Assistant message patterns
-    const isAssistantResponse = htmlEl.classList.contains('response-container') ||
+    // CRITICAL: Skip message-content that's inside thinking blocks
+    const isInsideThinking = htmlEl.closest('.model-thoughts, model-thoughts, .thoughts-container');
+    const isAssistantResponse = !isInsideThinking && (
+      htmlEl.classList.contains('response-container') ||
       htmlEl.classList.contains('message-content') ||
-      htmlEl.classList.contains('structured-content-container');
+      htmlEl.classList.contains('structured-content-container')
+    );
 
     // Extract user message
     if (isUserQuery) {
