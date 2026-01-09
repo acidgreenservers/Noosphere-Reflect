@@ -5,38 +5,6 @@
 
 // Create context menu on install
 chrome.runtime.onInstalled.addListener(() => {
-  // Main Archive Action
-  chrome.contextMenus.create({
-    id: 'noosphere-archive-chat',
-    title: 'Archive Chat to Noosphere Reflect',
-    contexts: ['page'],
-    documentUrlPatterns: [
-      'https://claude.ai/*',
-      'https://chatgpt.com/*',
-      'https://chat.openai.com/*',
-      'https://chat.mistral.ai/*',
-      'https://llamacoder.together.ai/*',
-      'https://gemini.google.com/*',
-      'https://aistudio.google.com/*'
-    ]
-  });
-
-  // Separator
-  chrome.contextMenus.create({
-    id: 'separator-1',
-    type: 'separator',
-    contexts: ['page'],
-    documentUrlPatterns: [
-      'https://claude.ai/*',
-      'https://chatgpt.com/*',
-      'https://chat.openai.com/*',
-      'https://chat.mistral.ai/*',
-      'https://llamacoder.together.ai/*',
-      'https://gemini.google.com/*',
-      'https://aistudio.google.com/*'
-    ]
-  });
-
   // Copy as Markdown
   chrome.contextMenus.create({
     id: 'noosphere-copy-markdown',
@@ -75,9 +43,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   let action = '';
 
   switch (info.menuItemId) {
-    case 'noosphere-archive-chat':
-      action = 'CAPTURE_CHAT';
-      break;
     case 'noosphere-copy-markdown':
       action = 'COPY_MARKDOWN';
       break;
