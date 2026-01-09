@@ -1804,9 +1804,28 @@ const parseGeminiHtml = (input: string): ChatData => {
         htmlEl.classList.contains('structured-content-container');
 
       // CRITICAL: Skip message-content that's inside thinking blocks
-      // Handle both class selectors (.thoughts-container, .model-thoughts) and tag names (model-thoughts)
-      const isInsideThinking = htmlEl.closest('.sidebar, nav, .thoughts-container, .model-thoughts') ||
-        htmlEl.closest('model-thoughts');
+      // Use multiple checks because DOMParser may not properly nest custom elements
+      let isInsideThinking = false;
+
+      // Direct ancestor check with all selector patterns
+      if (htmlEl.closest('.sidebar, nav, .thoughts-container, .model-thoughts') ||
+          htmlEl.closest('model-thoughts')) {
+        isInsideThinking = true;
+      }
+
+      // Fallback: Walk up the parent chain manually for custom element detection
+      if (!isInsideThinking) {
+        let parent = htmlEl.parentElement;
+        while (parent && !isInsideThinking) {
+          if (parent.getAttribute && (
+            parent.getAttribute('data-test-id') === 'model-thoughts' ||
+            parent.classList?.contains('thoughts-content')
+          )) {
+            isInsideThinking = true;
+          }
+          parent = parent.parentElement;
+        }
+      }
 
       if (isAssistantResponse && !isInsideThinking) {
         const content = extractMarkdownFromHtml(htmlEl);

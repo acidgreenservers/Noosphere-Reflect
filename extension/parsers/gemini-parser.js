@@ -61,7 +61,29 @@ function parseGeminiHtml(html) {
 
     // Assistant message patterns
     // CRITICAL: Skip message-content that's inside thinking blocks
-    const isInsideThinking = htmlEl.closest('.model-thoughts, model-thoughts, .thoughts-container');
+    // Check multiple patterns because DOMParser may not properly nest custom elements
+    let isInsideThinking = false;
+
+    // Direct ancestor check
+    if (htmlEl.closest('.thoughts-container, .model-thoughts, model-thoughts')) {
+      isInsideThinking = true;
+    }
+
+    // Fallback: Check if any ancestor has data-test-id="model-thoughts" or contains "Show thinking" text
+    if (!isInsideThinking) {
+      let parent = htmlEl.parentElement;
+      while (parent && !isInsideThinking) {
+        if (parent.getAttribute && (
+          parent.getAttribute('data-test-id') === 'model-thoughts' ||
+          parent.classList.contains('thoughts-content') ||
+          parent.textContent?.includes('Show thinking')
+        )) {
+          isInsideThinking = true;
+        }
+        parent = parent.parentElement;
+      }
+    }
+
     const isAssistantResponse = !isInsideThinking && (
       htmlEl.classList.contains('response-container') ||
       htmlEl.classList.contains('message-content') ||
