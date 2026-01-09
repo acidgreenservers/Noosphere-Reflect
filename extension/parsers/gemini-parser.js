@@ -111,13 +111,19 @@ function parseGeminiHtml(html) {
     }
 
     // Extract thought/reasoning blocks (DESTRUCTIVE READ PATTERN)
-    if (htmlEl.classList.contains('model-thoughts') || htmlEl.classList.contains('thoughts-container')) {
+    // Check both class names AND tag name since DOMParser may not preserve classes on custom elements
+    if (htmlEl.classList.contains('model-thoughts') ||
+        htmlEl.classList.contains('thoughts-container') ||
+        htmlEl.tagName.toLowerCase() === 'model-thoughts') {
       // CRITICAL: Gemini has TWO elements with class "thoughts-content":
       // 1. Outer wrapper (includes "Show thinking" button)
       // 2. Inner content div with data-test-id="thoughts-content" (actual content)
       // We must target the inner one using the data-test-id attribute
-      const contentEl = htmlEl.querySelector('[data-test-id="thoughts-content"]') ||
+      const contentEl = htmlEl.querySelector('[data-test-id="thoughts-content"] .markdown') ||
+        htmlEl.querySelector('[data-test-id="thoughts-content"]') ||
+        htmlEl.querySelector('.thoughts-content[data-test-id] .markdown') ||
         htmlEl.querySelector('.thoughts-content[data-test-id]') ||
+        htmlEl.querySelector('.markdown') ||
         htmlEl;
 
       const thoughtContent = extractMarkdownFromHtml(contentEl);
