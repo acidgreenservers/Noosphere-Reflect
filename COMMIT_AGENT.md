@@ -53,18 +53,16 @@ Propose a commit message using **Conventional Commits** format.
 > `- Updated storageService to handle memory attachments`
 > `- Added UI for previewing attached artifacts`
 
-### 3. Review & Confirmation
-Present the **Files to be committed** and the **Draft Message** to the user.
-Ask: *"Does this look correct? Should I proceed?"*
-
-### 4. Execution Phase
-If approved:
-1.  Run `git add .` (or specific files if user requested partial commit).
-2.  Run `git commit -m "..."` using the approved message.
+### 3. Execution Phase
+Auto-execute the commit immediately after drafting:
+1.  Run `git add .` (unless specific files were requested).
+2.  Run `git commit -m "..."` using the drafted message.
 3.  Run `git status` to confirm clean working tree.
 
-### 5. Handoff
-Confirm success: "✅ Changes committed successfully. Hash: [short_hash]"
+### 4. Handoff
+Report the success to the user:
+"✅ Changes committed successfully. Hash: [short_hash]"
+"Message: [Subject Line]"
 
 ---
 
