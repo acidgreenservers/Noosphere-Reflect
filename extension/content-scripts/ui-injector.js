@@ -56,7 +56,8 @@
       userSelector: null, // Uses alternating pattern
       aiSelector: null,
       expandSelector: null,
-      color: '#000000'
+      color: '#FFFFFF',
+      textColor: '#000000'
     },
     lechat: {
       name: 'Le Chat',
@@ -76,7 +77,8 @@
       userSelector: '.whitespace-pre-wrap.rounded.bg-white',
       aiSelector: '.prose',
       expandSelector: null,
-      color: '#6366F1'
+      color: '#FFFFFF',
+      textColor: '#000000'
     }
   };
 
@@ -110,8 +112,8 @@
 
     .nr-export-btn {
       background: ${platform.color};
-      color: white;
-      border: none;
+      color: ${platform.textColor || 'white'};
+      border: ${platform.textColor === '#000000' ? '1px solid #e5e5e5' : 'none'};
       padding: 10px 16px;
       border-radius: 8px;
       cursor: pointer;
@@ -126,7 +128,7 @@
 
     .nr-export-btn:hover {
       transform: translateY(-2px);
-      filter: brightness(1.1);
+      filter: brightness(0.95);
     }
 
     .nr-export-menu {
@@ -207,7 +209,7 @@
 
     .nr-selection-btn.active {
       background: ${platform.color};
-      color: white;
+      color: ${platform.textColor || 'white'};
       border-color: ${platform.color};
     }
 
@@ -410,19 +412,21 @@
   function showNotification(message, type = 'success') {
     const toast = document.createElement('div');
     const bg = type === 'error' ? '#EF4444' : platform.color;
+    const txtColor = type === 'error' ? 'white' : (platform.textColor || 'white');
 
     toast.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
       background: ${bg};
-      color: white;
+      color: ${txtColor};
       padding: 12px 20px;
       border-radius: 8px;
       z-index: 999999;
       font-family: system-ui, -apple-system, sans-serif;
       font-size: 14px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: ${txtColor === '#000000' ? '1px solid #e5e5e5' : 'none'};
     `;
 
     toast.textContent = message;

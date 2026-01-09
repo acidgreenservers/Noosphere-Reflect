@@ -2,10 +2,19 @@
 
 ## Technology Stack
 - **Frontend**: React 19, TypeScript.
-- **Build Tool**: Vite 6.2.0.
-- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`).
+- **Tailwind CSS v4**: Utility-first CSS framework (Experimental v4).
+- **Vite**: Build tool and dev server.
+- **IndexedDB**: Client-side storage for managing large chat histories.
 - **Routing**: `react-router-dom` (to be added).
 - **AI Integration**: Google Gemini API (`gemini-2.0-flash-exp`).
+
+## Development Environment
+- **Dev Container**: Configured for VS Code / GitHub Codespaces.
+  - **Image**: `mcr.microsoft.com/devcontainers/typescript-node:20` (Node 20 LTS)
+  - **Extensions**: ESLint, Prettier, Tailwind CSS.
+  - **Ports**: 5173 (Vite).
+  - **Automation**: `npm install` on create.
+- **Linting/Formatting**: ESLint + Prettier configured with strict TypeScript rules.
 
 ## Development Setup
 - **Command**: `npm run dev` (starts Vite dev server on port 3000).

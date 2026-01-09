@@ -20,3 +20,20 @@
 - **Granular Message Selection**: (Planned) Allowing users to toggle individual messages for inclusion in the final archive.
 - **Service Pattern**: Parsing logic is isolated in `services/converterService.ts`, keeping UI components clean.
 - **Scoped CSS**: The generated HTML includes its own `<style>` block (Tailwind CDN + Custom CSS) to ensure it looks identical offline.
+
+## Platform Theming Strategy
+To ensure immediate visual recognition while maintaining a cohesive app aesthetic, we employ a strict brand color mapping across the UI (Badges, Cards, Extension):
+- **Claude**: Orange/Terracotta (`bg-orange-900/40`, `text-orange-200`)
+- **ChatGPT**: Emerald Green (`bg-emerald-900/40`, `text-emerald-200`)
+- **Gemini**: Blue (`bg-blue-900/40`, `text-blue-200`)
+- **LeChat**: Amber (`bg-amber-900/40`, `text-amber-200`)
+- **Grok**: Black (`bg-black`, `text-white`) - *High contrast for dark mode*
+- **Llamacoder**: White (`bg-white`, `text-black`) - *Minimalist*
+
+## Visual Design System
+- **Noosphere Nexus Green**: The primary application theme, utilizing `emerald-500` to `green-400` gradients, glassmorphism (`backdrop-blur`), and subtle animations (`animate-pulse-slow`).
+- **Landing Page Architecture**:
+  - **Hero**: Full viewport, dual CTA, stats showcase.
+  - **Feature Grid**: 4-card layout with hover effects.
+  - **Philosophy**: Text-heavy section explaining the "Noosphere" concept.
+

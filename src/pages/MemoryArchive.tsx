@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Memory } from '../types';
 import { storageService } from '../services/storageService';
 import { generateMemoryHtml, generateMemoryMarkdown, generateMemoryJson } from '../services/converterService';
@@ -8,6 +9,7 @@ import MemoryEditor from '../components/MemoryEditor';
 import { sanitizeFilename } from '../utils/securityUtils';
 
 export default function MemoryArchive() {
+    const navigate = useNavigate();
     const [memories, setMemories] = useState<Memory[]>([]);
     const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -100,9 +102,18 @@ export default function MemoryArchive() {
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
             <div className="max-w-6xl mx-auto">
-                <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-                    🧠 Memory Archive
-                </h1>
+                <div className="flex items-center gap-4 mb-8">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-emerald-500 to-green-600 bg-clip-text text-transparent">
+                        🧠 Memory Archive
+                    </h1>
+                    <button
+                        onClick={() => navigate('/hub')}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 hover:border-green-500/50 text-green-400 rounded-lg transition-colors text-sm font-medium"
+                        title="Back to Archive Hub"
+                    >
+                        ← Hub
+                    </button>
+                </div>
 
                 <MemoryInput onSave={handleSaveMemory} />
 
@@ -120,7 +131,7 @@ export default function MemoryArchive() {
                                 placeholder="🔍 Search memories, tags, or models..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-4 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all placeholder-gray-500 text-gray-200"
+                                className="w-full pl-4 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all placeholder-gray-500 text-gray-200"
                             />
                         </div>
                     </div>

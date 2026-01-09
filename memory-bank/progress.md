@@ -106,62 +106,78 @@
     - [x] Security audit passed (XSS prevention)
     - [x] Build verification passing
 
+### Phase 6: Visual & Brand Evolution (v0.5.0) ✅ COMPLETE
+- [x] **Landing Page Overhaul**:
+    - [x] Full-screen Hero section with dual CTA
+    - [x] Feature Showcase grid
+    - [x] Philosophy & Support sections
+    - [x] "Reflect" Logo integration
+- [x] **Platform Theming**:
+    - [x] Strict brand color system (Claude, ChatGPT, Gemini, etc.)
+    - [x] Archive Hub conversation badges
+    - [x] Memory Card styling
+    - [x] Extension UI (White/Black button for Grok)
+- [x] **Dev Experience**:
+    - [x] `.devcontainer` configuration added
+- [x] **UX Polish**:
+    - [x] Memory Archive "Hub" navigation
+    - [x] Visual consistency fixes
+
 ## 🚧 Upcoming Phases
 
-### Phase 5: Advanced Context Composition (v0.5.0)
+### Sprint 6.2: Archive Hub Polish (v0.5.x)
+- [ ] Redesign Conversation Cards (Density/Info)
+- [ ] Enhanced Filter UI
+- [ ] Batch Action Bar improvements
+
+### Phase 5: Advanced Context Composition
 - [ ] Full session merging (Chat A + B → C)
 - [ ] Granular message selection UI
 - [ ] Conflict resolution for timestamps
-- [ ] Message reordering (drag-and-drop)
-- [ ] Context optimization (token counting)
+- [ ] Context optimization
 
-### Phase 6: Enhanced Export & Cloud (v0.6.0+)
+### Phase 7: Enhanced Export & Cloud (v0.6.0+)
 - [ ] PDF export with styling
 - [ ] DOCX (Microsoft Word) format
 - [ ] EPUB for e-readers
 - [ ] Cloud synchronization (optional)
-- [ ] Cross-device sync
-- [ ] Collaboration features
 
 ## 📊 Statistics
 
-**Code Metrics (v0.4.0)**:
+**Code Metrics (v0.5.0)**:
 - 64 modules in production build
 - 0 compilation errors
-- Build time: ~4.13s
-- New components: MemoryArchive, MemoryList, MemoryCard, MemoryInput, MemoryEditor
-- New database version: v5
+- Build time: ~4.05s
+- New components: Hero, Features, Support (Home.tsx)
 
 **File Structure**:
-- `/extension/` - Full Chrome Extension (148 KB, v0.2.0)
+- `/extension/` - Full Chrome Extension (v0.4.0)
 - `/src/` - React web application
-  - `services/storageService.ts` - v5 (Memory Support)
-  - `services/converterService.ts` - Memory Export Functions
-  - `utils/securityUtils.ts` - Extended with Filename Sanitization
-  - `components/ArtifactManager.tsx` - New Artifact UI Component
-  - `/src/pages/MemoryArchive.tsx` - New Dashboard
-- `/public/` - Static assets (favicon.svg)
+- `/.devcontainer/` - VS Code container config
 
 **Platform Support**:
-- ✅ Claude (claude.ai) - Capture + Parse + Title + HTML Paste
-- ✅ ChatGPT (chatgpt.com, chat.openai.com) - Capture + Parse + Title + HTML Paste
-- ✅ LeChat (chat.mistral.ai) - Capture + Parse + Title + HTML Paste
-- ✅ Llamacoder - Capture + Parse (Manual title) + HTML Paste
-- ✅ Gemini (gemini.google.com) - Capture + Parse + Title + HTML Paste
+- ✅ Claude (claude.ai) - Orange/Terracotta Theme
+- ✅ ChatGPT (chatgpt.com) - Emerald Green Theme
+- ✅ LeChat (chat.mistral.ai) - Amber Theme
+- ✅ Llamacoder - White Minimalist Theme
+- ✅ Grok (xAI) - Black High-Contrast Theme
+- ✅ Gemini (gemini.google.com) - Blue Theme
 
 ## 📚 Documentation
 
 **Completed**:
 - [x] README.md - Comprehensive user guide
 - [x] ROADMAP.md - Development phases and timeline
-- [x] Changelog.tsx - v0.1.0 release notes
-- [x] RELEASE_NOTES.md - Feature changelog
-- [x] SECURITY-ROADMAP.md - Security Audit & Plan
-- [x] CLAUDE.md - Architecture and patterns
-- [x] extension/README.md - Extension installation
+- [x] AI_SERVICE_BRAND_COLORS.md - Official color reference
 - [x] GEMINI.md - Project status (updated)
 
 ## 🔄 Recent Changes (Latest Session)
+
+**January 8, 2026 (Session 6) - Visual & Brand Overhaul (v0.5.0)**:
+- **Landing Page**: Complete redesign with "Noosphere Reflect" branding, hero section, and clear feature breakdown.
+- **Theming**: Implemented a comprehensive brand color system. Every supported AI service now has a distinct visual identity in badges and cards.
+- **Extension**: Optimized Grok export button for dark mode visibility (White button/Black text).
+- **DevOps**: Added `.devcontainer` for standardized development.
 
 **January 7, 2026 (Session 5) - Memory Archive MVP (v0.4.0)**:
 - **Core Features**:
@@ -172,41 +188,12 @@
   - **IndexedDB v5 Upgrade**: Added `memories` store with efficient indexes.
   - **Export Logic**: Reused the hardened `converterService` logic to securely export memories as HTML, Markdown, and JSON.
   - **Security**: Applied the same "Escape First" strategy to all memory inputs to prevent persistent XSS.
-- **UX Integration**:
-  - Seamlessly integrated into the app navigation (Home Cards, Header Links).
-  - Designed with the "Noosphere Nexus" green theme for consistency.
-- **Build Status**:
-  - ✅ 64 modules transformed, 0 errors.
-  - Performance remains high despite added complexity.
-
-**January 7, 2026 (Session 4) - Complete UI Restyling: Noosphere Nexus Green Theme (v0.3.2)**:
-- **Visual Overhaul**:
-  - Complete transition from Blue/Purple to Green/Emerald "Nexus" theme.
-  - Updated all 7 major pages to match the new aesthetic.
-  - Preserved glassmorphism while enhancing readability and contrast.
-- **Artifact Management**:
-  - Integrated `ArtifactManager` for handling file uploads within chats.
-  - Added message numbering (#1, #2) to exports.
-- **Extension Update**:
-  - Added Grok (xAI) support with robust parsing and double-escape fixes.
-  - Security audit completed and passed.
-
-**January 7, 2026 (Session 3) - Security Hardening (v0.3.0)**:
-- **Security Audit**:
-  - Fixed 7 XSS vulnerabilities.
-  - Implemented centralized `securityUtils.ts`.
-  - Hardened iframe sandboxes.
-- **Database Safety**:
-  - Implemented atomic duplicate detection (v0.3.1) to prevent data loss during race conditions.
-  - Optimized migrations.
 
 ## ⚡ Next Actions
 
-1. **Phase 5 Planning: Advanced Context Composition**:
-   - [ ] Architecture for merging sessions
-   - [ ] UI for selecting message ranges
-   - [ ] Conflict resolution logic
+1. **Sprint 6.2 (Hub Polish)**:
+   - [ ] Update ConversationCard component density
+   - [ ] Refine Filter visuals
 
-2. **Testing**:
-   - [ ] Verify large memory dataset performance
-   - [ ] Test tag-based filtering scaling
+2. **Sprint 5.1 (Extension)**:
+   - [ ] Implement Toast Queue to fix overlap issues

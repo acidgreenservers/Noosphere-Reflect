@@ -11,7 +11,7 @@
 - **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- **Version**: Web App `v0.4.0` | Extension `v0.4.0`
+- **Version**: Web App `v0.5.0` | Extension `v0.5.0`
 - **Core Functionality**:
   - **ArchiveHub**: robust dashboard for browsing, filtering, and managing saved chats.
   - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0).
@@ -20,7 +20,7 @@
 - **Extension**: Fully functional Chrome Extension supporting:
   - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok.
   - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation.
-- **Goal**: Implement "Phase 5: Context Composition" and further enhance Memory Archive (Search/AI Tagging).
+- **Goal**: Polish Archive Hub visuals and ensure Extension reliability (Toasts).
 
 ## 🔒 Security & QA Workflow: Adversary Auditor (3-Eyes Verification)
 
@@ -183,6 +183,14 @@ The application operates in a Local-First environment but handles untrusted inpu
 2.  **Regex DOS**: `converterService.ts` relies on complex regex for Markdown parsing. Avoid adding NFA-explosive patterns (nested quantifiers like `(a+)+`).
 3.  **Bypassing `applyInlineFormatting`**: Never manually construct HTML strings in `converterService` without passing user content through `escapeHtml` or `applyInlineFormatting`.
 4.  **Extension Parity**: If you update parsing logic in `src/services/converterService.ts`, you **MUST** update the matching logic in `extension/parsers/`.
+
+## 👩‍💻 Git Workflow Agents
+
+### Purpose
+To ensure professional, standardized, and semantic version control operations, strictly follow the protocols defined in the root-level agent files when triggered by specific user phrases.
+
+- **Commit Agent**: When triggered by "Run the Commit Agent", "Commit these changes", or "Prepare a commit", refer to and execute the protocol in `COMMIT_AGENT.md`.
+- **Pull Request (PR) Agent**: When triggered by "Run the PR Agent", "Publish branch", or "Make a PR", refer to and execute the protocol in `PULL_REQUEST_AGENT.md`.
 
 ## Communication Style
 - **Formatting**: Format your responses in GitHub-style markdown. Use headers, bold/italic text for keywords, and backticks for code elements. Format URLs as `[label](url)`.

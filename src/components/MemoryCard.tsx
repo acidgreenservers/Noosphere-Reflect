@@ -51,9 +51,10 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport }: Props
         switch (model.toLowerCase()) {
             case 'claude': return 'bg-orange-900/40 text-orange-200 border-orange-700/50';
             case 'gemini': return 'bg-blue-900/40 text-blue-200 border-blue-700/50';
-            case 'chatgpt': return 'bg-green-900/40 text-green-200 border-green-700/50';
-            case 'lechat': return 'bg-indigo-900/40 text-indigo-200 border-indigo-700/50';
-            case 'grok': return 'bg-gray-800 text-gray-200 border-gray-600';
+            case 'chatgpt': return 'bg-emerald-900/40 text-emerald-200 border-emerald-700/50';
+            case 'lechat': return 'bg-amber-900/40 text-amber-200 border-amber-700/50';
+            case 'grok': return 'bg-black text-white border-white/20';
+            case 'llamacoder': return 'bg-white text-black border-gray-200 font-medium';
             default: return 'bg-gray-800 text-gray-300 border-gray-600';
         }
     };

@@ -10,6 +10,50 @@ This is a mature archival system for AI conversations. Let me identify breakthro
 EXECUTION PHILOSOPHY
 Security + Ambition: Build bold features on hardened foundations. Every innovation passes through security gates, but we don't let caution kill creativity.
 
+---
+
+## 🛡️ **GEMINI SECURITY AUDIT RESULTS** (January 8, 2026)
+
+**Overall Status**: ⚠️ **CONDITIONAL APPROVAL** - BLOCKERS FIXED
+
+### ✅ **Approved Sprints** (Safe to Build):
+- Sprint 5.1 (Home Button, Toast Notifications, Green Theme)
+- Sprint 5.3 (Export Button Standardization)
+- Sprint 6.1 (Landing Page Enhancement)
+- Sprint 6.2 (Archive Hub Polish)
+- Sprint 8.1 (Conversation Resurrection)
+- Sprint 8.2 (Message Selection)
+- Sprint 9.2 (Accessibility)
+- Sprint 10.1-10.3 (Deployment & Docs)
+
+### 🚨 **CRITICAL BLOCKERS** (Must Fix Before Coding):
+
+**1. Sprint 5.5 (Right-Click Memory) - Stored XSS** ❌
+- **Issue**: `tab.title` and `tab.url` stored unsanitized
+- **Status**: ✅ **FIXED** - Added sanitization bridge with `escapeHtml()` + `sanitizeUrl()`
+- **Location**: See Sprint 5.5 Step 3
+
+**2. Sprint 7.1 (Semantic Search) - UI Freeze** ❌
+- **Issue**: TF-IDF runs on main thread, freezes UI on 500+ conversations
+- **Status**: ✅ **FIXED** - Added Web Worker implementation details
+- **Location**: See Sprint 7.1 "CRITICAL PERFORMANCE FIX"
+
+### ⚠️ **Medium Priority Fixes**:
+
+**3. Sprint 5.1 (Toast Notifications) - Style Hijacking**
+- **Fix**: Use Shadow DOM for toast isolation (recommended, not blocking)
+
+**4. Sprint 7.2 (Analytics) - Performance**
+- **Fix**: Pre-calculate stats during indexing (O(N) instead of O(N*M))
+
+**5. Sprint 5.2B (Gemini Thinking) - Extraction Verification**
+- **Fix**: Use "destructive read" pattern to verify thinking removal
+
+**6. Sprint 5.4 (Kimi Parser) - Feature Parity**
+- **Action**: Verify if Kimi has CoT, add parsers if needed
+
+---
+
 PHASE 5: SERVICE INTEGRATION & STABILITY
 Timeline: 3 weeks | Milestone: Production-ready multi-platform capture system
 
@@ -794,7 +838,102 @@ function generateUUID() {
 }
 ```
 
-**Step 3: Sync to Web App**
+**Step 3: Sanitization Bridge for Service Worker**
+
+⚠️ **CRITICAL SECURITY FIX** (from Gemini's audit):
+
+File: `extension/utils/sanitizationBridge.js`
+
+```javascript
+/**
+ * Lightweight sanitization for extension service worker
+ * Mirrors src/utils/securityUtils.ts to prevent stored XSS
+ */
+
+function escapeHtml(text) {
+  if (typeof text !== 'string') return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, char => map[char]);
+}
+
+function sanitizeUrl(url) {
+  if (typeof url !== 'string') return null;
+  try {
+    const parsed = new URL(url);
+    // Only allow http, https, and mailto
+    if (['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
+      return url;
+    }
+    return null;
+  } catch (e) {
+    return null; // Invalid URL
+  }
+}
+
+export { escapeHtml, sanitizeUrl };
+```
+
+Update `captureHighlight()` in service-worker.js:
+
+```javascript
+import { escapeHtml, sanitizeUrl } from '../utils/sanitizationBridge.js';
+
+async function captureHighlight(text, sourceUrl, pageTitle) {
+  const trimmedText = text.trim();
+
+  // ✅ VALIDATE URL BEFORE STORING
+  if (!sanitizeUrl(sourceUrl)) {
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon-48.png',
+      title: 'Noosphere Reflect',
+      message: 'Cannot capture from this source (invalid URL)'
+    });
+    return;
+  }
+
+  // Create memory with ESCAPED & SANITIZED fields
+  const memory = {
+    id: generateUUID(),
+    content: trimmedText,
+    aiModel: 'manual-capture',
+    tags: ['highlight', 'web-capture'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    metadata: {
+      title: escapeHtml(`From: ${pageTitle}`), // ✅ ESCAPED
+      wordCount: trimmedText.split(/\s+/).length,
+      characterCount: trimmedText.length,
+      source: sourceUrl // Already validated via sanitizeUrl()
+    }
+  };
+
+  try {
+    await chrome.storage.local.set({ pendingMemory: memory });
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon-48.png',
+      title: 'Noosphere Reflect',
+      message: `✅ Saved ${trimmedText.length} characters to memory`
+    });
+  } catch (error) {
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon-48.png',
+      title: 'Noosphere Reflect',
+      message: '❌ Failed to save memory'
+    });
+  }
+}
+```
+
+**Step 4: Sync to Web App**
 
 The bridge storage already handles syncing data. Memories captured will appear in the Archive Hub's Memory section.
 
@@ -805,12 +944,16 @@ The bridge storage already handles syncing data. Memories captured will appear i
 - [ ] Success notification appears
 - [ ] Check Memory Archive - new memory appears
 - [ ] Memory has correct source URL and page title
+- [ ] **XSS TEST**: Capture from page with title `<script>alert(1)</script>` - should be escaped in Archive Hub
+- [ ] **URL TEST**: Memory captures only from http/https URLs, rejects javascript:
 
 **Success Metrics**:
 - ✅ Context menu appears on all HTTPS sites
 - ✅ Text captures correctly
 - ✅ Memory appears in Archive Hub
 - ✅ Source URL and page title saved
+- ✅ **XSS PREVENTED**: Page titles are escaped
+- ✅ **URL VALIDATED**: Only safe protocols accepted
 
 ---
 
@@ -1761,15 +1904,69 @@ useEffect(() => {
 }, [sessions]);
 ```
 
+**⚠️ CRITICAL PERFORMANCE FIX** (from Gemini's audit):
+
+The TF-IDF algorithm MUST run on a Web Worker, not the main thread, to prevent UI freezes on large archives.
+
+**Implementation Approach**:
+
+Option A: **Web Worker (Recommended)**
+- Create `src/workers/searchWorker.ts`
+- Move all `SearchIndexService` logic to worker
+- Post messages: `{ action: 'search', query: string }`
+- Return results via worker `onmessage`
+
+Option B: **External Library (Faster)**
+- Replace custom TF-IDF with `FlexSearch` or `MiniSearch`
+- These libraries handle Web Worker threading automatically
+- Better performance on 1000+ items
+
+**Update Sprint 7.1 to include**:
+```typescript
+// src/workers/searchWorker.ts
+import { SearchIndexService } from '../services/searchIndexService';
+
+const searchService = new SearchIndexService();
+
+self.onmessage = async (event) => {
+  const { action, payload } = event.data;
+
+  if (action === 'search') {
+    const results = await searchService.search(payload.query, payload.limit);
+    self.postMessage({ success: true, results });
+  } else if (action === 'index') {
+    await searchService.indexSession(payload.session);
+    self.postMessage({ success: true });
+  }
+};
+```
+
+**Update ArchiveHub to use worker**:
+```typescript
+const searchWorker = new Worker(new URL('../workers/searchWorker.ts', import.meta.url), { type: 'module' });
+
+const handleSearch = async (query: string) => {
+  searchWorker.postMessage({ action: 'search', payload: { query, limit: 20 } });
+};
+
+searchWorker.onmessage = (event) => {
+  if (event.data.success) {
+    setSearchResults(event.data.results);
+  }
+};
+```
+
 **Success Checklist**:
 - [ ] Search service created and integrated
+- [ ] **Web Worker implementation verified** (main thread stays responsive)
 - [ ] Semantic search works without external APIs
-- [ ] Performance acceptable (<200ms per search)
+- [ ] Performance acceptable (<100ms per search on 1000+ items)
 - [ ] Results ranked by relevance
 - [ ] Metadata filtering works (platform, tags, date)
+- [ ] UI does not freeze during search
 - [ ] No console errors
 
-**Estimated Time**: ~2-3 hours
+**Estimated Time**: ~3-4 hours (includes Web Worker setup)
 
 ---
 
@@ -2372,29 +2569,1185 @@ export function BatchActions({ selectedIds }: { selectedIds: string[] }) {
 }
 ```
 
-Sprint 6.3 - Feature Direction: Conversation Resurrection (Days 31-42)
+---
 
-Why This Feature First: Lowest security risk, highest user value, natural evolution of archival system
+## **PHASE 8: ADVANCED FEATURES & REMIX STUDIO**
 
-Security Audit Checklist:
+**Timeline**: 2-3 weeks | **Milestone**: Conversation composition and message extraction tools
 
- All generated prompts sanitized (no HTML, no script injection)
- URLs validated before opening (HTTPS only, whitelisted domains)
- User confirmation required before opening external tabs
- No auto-execution of code from archived conversations
- Provenance tracking (mark conversations as "resumed")
- Clipboard access properly handled (user-initiated action only)
-Success Metrics: Users can resume conversations with one click + zero security incidents
+### **Sprint 8.1 - Conversation Resurrection Engine (Days 1-5)**
+**Goal**: Allow users to "resume" archived conversations with context-aware continuation prompts
 
-PHASE 8: ADVANCED FEATURES (Future)
-Timeline: 6-8 weeks | Goal: Power user tools
+**Current Status**: ❌ Not implemented yet
 
-Sprint 8.1 - Remix Studio (Weeks 11-13)
-⚠️ CRITICAL SECURITY FEATURE: Content Integrity
+**Why This First**: Highest user value, lowest complexity, foundation for future features
 
-Feature: Compose new conversations from fragments of existing ones
+**What to Create**:
 
-Security Architecture:
+**Step 1: Create Resurrection Service**
+
+File: `src/services/resurrectionService.ts`
+
+```typescript
+import { SavedChatSession, ChatMessage } from '../types';
+import { sanitizeUrl } from '../utils/securityUtils';
+
+interface ResurrectionContext {
+  summary: string;
+  lastTopics: string[];
+  nextSteps: string[];
+  continuationPrompt: string;
+}
+
+export class ResurrectionService {
+  /**
+   * Generate context for resuming a conversation
+   */
+  generateResurrectionContext(session: SavedChatSession): ResurrectionContext {
+    const messages = session.chatData?.messages || [];
+    if (messages.length === 0) {
+      throw new Error('Cannot resurrect conversation with no messages');
+    }
+
+    // Extract last 3 exchanges for context
+    const recentMessages = messages.slice(-6);
+    const lastUserMessage = messages
+      .reverse()
+      .find(msg => msg.type === 'prompt');
+
+    // Extract key topics from conversation title and tags
+    const topics = [
+      session.metadata?.title || '',
+      ...(session.metadata?.tags || [])
+    ].filter(t => t.length > 0);
+
+    // Generate summary
+    const summary = this.generateSummary(recentMessages, session.metadata?.title || '');
+
+    // Infer next steps from conversation flow
+    const nextSteps = this.inferNextSteps(recentMessages);
+
+    // Generate continuation prompt
+    const continuationPrompt = this.buildContinuationPrompt(
+      session.metadata?.title || 'Conversation',
+      summary,
+      lastUserMessage?.content || '',
+      nextSteps
+    );
+
+    return {
+      summary,
+      lastTopics: topics.slice(0, 5),
+      nextSteps,
+      continuationPrompt
+    };
+  }
+
+  /**
+   * Create a resume button data that can be used to open a new tab
+   */
+  createResumptionAction(session: SavedChatSession): ResumptionAction {
+    const context = this.generateResurrectionContext(session);
+    const platform = session.metadata?.model || 'claude';
+
+    // Map platform to URL
+    const platformUrls: Record<string, string> = {
+      'Claude': 'https://claude.ai/new',
+      'ChatGPT': 'https://chatgpt.com/?ref=noosphere',
+      'Gemini': 'https://gemini.google.com/',
+      'LeChat': 'https://chat.mistral.ai/chat',
+      'Grok': 'https://x.com/i/grok'
+    };
+
+    const baseUrl = Object.entries(platformUrls).find(
+      ([name]) => session.metadata?.model?.includes(name)
+    )?.[1] || 'https://claude.ai/new';
+
+    // Validate URL
+    if (!sanitizeUrl(baseUrl)) {
+      throw new Error('Invalid platform URL');
+    }
+
+    return {
+      sessionId: session.id,
+      platformUrl: baseUrl,
+      platform: platform,
+      context: context,
+      createdAt: new Date().toISOString(),
+      // Encode prompt safely in URL
+      continueUrl: `${baseUrl}#noosphere_resurrection_${session.id}`
+    };
+  }
+
+  // ─── Private Methods ───
+
+  private generateSummary(messages: ChatMessage[], title: string): string {
+    const parts: string[] = [];
+
+    parts.push(`Topic: ${title}`);
+
+    if (messages.length > 0) {
+      const latestContent = messages[messages.length - 1].content;
+      const summary = latestContent.substring(0, 150);
+      parts.push(`Last message: "${summary}${latestContent.length > 150 ? '...' : ''}"`);
+    }
+
+    return parts.join('\n');
+  }
+
+  private inferNextSteps(messages: ChatMessage[]): string[] {
+    // Simple heuristic: look for questioning patterns in recent messages
+    const steps: string[] = [];
+
+    const lastFewMessages = messages.slice(-4);
+    for (const msg of lastFewMessages) {
+      if (msg.content.includes('?')) {
+        steps.push(`Continue answering: ${msg.content.substring(0, 80)}...`);
+      }
+    }
+
+    if (steps.length === 0) {
+      steps.push('Continue the conversation');
+      steps.push('Ask for clarification or examples');
+      steps.push('Explore related topics');
+    }
+
+    return steps.slice(0, 3);
+  }
+
+  private buildContinuationPrompt(
+    title: string,
+    summary: string,
+    lastUserMessage: string,
+    nextSteps: string[]
+  ): string {
+    return `[Continuing from Noosphere Reflect Archive]
+
+Title: ${title}
+
+Context:
+${summary}
+
+Last exchange:
+User: ${lastUserMessage.substring(0, 200)}
+
+Next steps to consider:
+${nextSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+Let's continue where we left off:`;
+  }
+}
+
+interface ResumptionAction {
+  sessionId: string;
+  platformUrl: string;
+  platform: string;
+  context: ResurrectionContext;
+  createdAt: string;
+  continueUrl: string;
+}
+
+export const resurrectionService = new ResurrectionService();
+```
+
+**Step 2: Add Resume Button to Session Cards**
+
+File: `src/pages/ArchiveHub.tsx`
+
+In the session card/list rendering, add:
+
+```typescript
+import { resurrectionService } from '../services/resurrectionService';
+
+// In your session card component:
+const handleResume = async (session: SavedChatSession) => {
+  try {
+    const action = resurrectionService.createResumptionAction(session);
+
+    // Show context summary in toast
+    showToast(`Resuming: ${action.context.lastTopics.join(', ')}`, 'info');
+
+    // Open in new tab with context
+    // Store context in sessionStorage for easy access
+    sessionStorage.setItem(`resumption_${session.id}`, JSON.stringify(action.context));
+
+    window.open(action.platformUrl, '_blank');
+  } catch (error) {
+    showToast('Cannot resume this conversation', 'error');
+  }
+};
+
+// In JSX:
+<button
+  onClick={() => handleResume(session)}
+  className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+  title="Resume this conversation"
+>
+  ▶️ Resume
+</button>
+```
+
+**Success Checklist**:
+- [ ] Resurrection service creates valid context
+- [ ] Resume button appears on session cards
+- [ ] Click opens correct AI platform
+- [ ] Context is accessible and accurate
+- [ ] No sensitive data leaks
+- [ ] Works for all 7+ platforms
+- [ ] No console errors
+
+**Estimated Time**: ~2-3 hours
+
+---
+
+### **Sprint 8.2 - Message Extraction & Selection (Days 6-8)**
+**Goal**: Allow users to extract specific messages from conversations for reuse
+
+**Current Status**: ❌ Not implemented yet
+
+**What to Create**:
+
+**Step 1: Create Message Selection Service**
+
+File: `src/services/messageSelectionService.ts`
+
+```typescript
+import { ChatMessage, SavedChatSession } from '../types';
+import { escapeHtml } from '../utils/securityUtils';
+
+interface SelectedMessage extends ChatMessage {
+  sessionId: string;
+  sourceTitle: string;
+  selectedAt: Date;
+}
+
+export class MessageSelectionService {
+  private selections: Map<string, SelectedMessage> = new Map();
+
+  /**
+   * Add a message to selection
+   */
+  addSelection(
+    sessionId: string,
+    message: ChatMessage,
+    sessionTitle: string
+  ): void {
+    const id = `${sessionId}_${Date.now()}`;
+    const selection: SelectedMessage = {
+      ...message,
+      sessionId,
+      sourceTitle: sessionTitle,
+      selectedAt: new Date()
+    };
+
+    this.selections.set(id, selection);
+  }
+
+  /**
+   * Remove a message from selection
+   */
+  removeSelection(selectionId: string): void {
+    this.selections.delete(selectionId);
+  }
+
+  /**
+   * Get all selected messages
+   */
+  getSelections(): SelectedMessage[] {
+    return Array.from(this.selections.values())
+      .sort((a, b) => new Date(a.selectedAt).getTime() - new Date(b.selectedAt).getTime());
+  }
+
+  /**
+   * Export selections as Markdown
+   */
+  exportAsMarkdown(): string {
+    const selections = this.getSelections();
+    const lines: string[] = [
+      '# Selected Messages from Noosphere Reflect\n',
+      `Exported: ${new Date().toISOString()}\n`
+    ];
+
+    const bySource = new Map<string, SelectedMessage[]>();
+    for (const msg of selections) {
+      if (!bySource.has(msg.sourceTitle)) {
+        bySource.set(msg.sourceTitle, []);
+      }
+      bySource.get(msg.sourceTitle)!.push(msg);
+    }
+
+    for (const [source, messages] of bySource.entries()) {
+      lines.push(`\n## ${escapeHtml(source)}\n`);
+      for (const msg of messages) {
+        const prefix = msg.type === 'prompt' ? '**Q:**' : '**A:**';
+        lines.push(`${prefix} ${escapeHtml(msg.content)}\n`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Export selections as JSON
+   */
+  exportAsJson(): string {
+    return JSON.stringify({
+      exported: new Date().toISOString(),
+      selections: this.getSelections()
+    }, null, 2);
+  }
+
+  /**
+   * Clear all selections
+   */
+  clearSelections(): void {
+    this.selections.clear();
+  }
+
+  /**
+   * Get selection count
+   */
+  getCount(): number {
+    return this.selections.size;
+  }
+}
+
+export const messageSelectionService = new MessageSelectionService();
+```
+
+**Step 2: Add Selection UI to Message Display**
+
+File: `src/components/SelectableMessage.tsx`
+
+```typescript
+import React, { useState } from 'react';
+import { ChatMessage } from '../types';
+import { messageSelectionService } from '../services/messageSelectionService';
+
+interface SelectableMessageProps {
+  message: ChatMessage;
+  sessionId: string;
+  sessionTitle: string;
+}
+
+export function SelectableMessage({
+  message,
+  sessionId,
+  sessionTitle
+}: SelectableMessageProps) {
+  const [isSelected, setIsSelected] = useState(false);
+
+  const handleSelect = () => {
+    if (isSelected) {
+      messageSelectionService.removeSelection(`${sessionId}_${message.content}`);
+    } else {
+      messageSelectionService.addSelection(sessionId, message, sessionTitle);
+    }
+    setIsSelected(!isSelected);
+  };
+
+  return (
+    <div
+      className={`p-4 rounded-lg border-2 transition-all ${
+        isSelected
+          ? 'border-green-500 bg-green-500/10'
+          : 'border-gray-700 bg-gray-800/50'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={handleSelect}
+          className="mt-1 cursor-pointer"
+          aria-label={`Select ${message.type === 'prompt' ? 'question' : 'response'}`}
+        />
+
+        <div className="flex-1">
+          <p className="text-sm font-medium text-green-400">
+            {message.type === 'prompt' ? '❓ Question' : '💬 Response'}
+          </p>
+          <p className="text-gray-100 mt-2 whitespace-pre-wrap">{message.content}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+**Step 3: Add Selection Sidebar to ArchiveHub**
+
+File: `src/components/SelectionSidebar.tsx`
+
+```typescript
+import React from 'react';
+import { messageSelectionService } from '../services/messageSelectionService';
+
+export function SelectionSidebar() {
+  const [selections, setSelections] = React.useState(messageSelectionService.getSelections());
+
+  const count = selections.length;
+
+  if (count === 0) return null;
+
+  const handleExportMarkdown = () => {
+    const markdown = messageSelectionService.exportAsMarkdown();
+    downloadFile(markdown, 'selected-messages.md', 'text/markdown');
+  };
+
+  const handleExportJson = () => {
+    const json = messageSelectionService.exportAsJson();
+    downloadFile(json, 'selected-messages.json', 'application/json');
+  };
+
+  const handleClear = () => {
+    if (confirm(`Clear ${count} selected messages?`)) {
+      messageSelectionService.clearSelections();
+      setSelections([]);
+    }
+  };
+
+  return (
+    <div className="sticky bottom-4 right-4 z-40 bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg max-w-xs">
+      <h3 className="font-bold text-green-400 mb-3">
+        Selected: {count} message{count !== 1 ? 's' : ''}
+      </h3>
+
+      <div className="space-y-2">
+        <button
+          onClick={handleExportMarkdown}
+          className="w-full px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded font-medium transition-all"
+        >
+          📝 Export Markdown
+        </button>
+
+        <button
+          onClick={handleExportJson}
+          className="w-full px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded font-medium transition-all"
+        >
+          📋 Export JSON
+        </button>
+
+        <button
+          onClick={handleClear}
+          className="w-full px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded font-medium transition-all"
+        >
+          🗑️ Clear
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+```
+
+**Success Checklist**:
+- [ ] Message selection toggles work
+- [ ] Selected state persists during session
+- [ ] Sidebar shows count
+- [ ] Export Markdown works
+- [ ] Export JSON works
+- [ ] Clear button works
+- [ ] No console errors
+- [ ] Mobile responsive
+
+**Estimated Time**: ~2-3 hours
+
+---
+
+### **Sprint 8.3 - Remix Studio UI (Days 9-10)**
+**Goal**: Interface for composing new conversations from message fragments
+
+**Current Status**: ⚠️ Deferred to Phase 9 (complexity + security review needed)
+
+**Note**: Remix functionality is complex and requires comprehensive security review (see ROADMAP.md brainstorm security analysis). This can be implemented as a Phase 8.5 or Phase 9 feature after Message Extraction is complete.
+
+**Placeholder for future implementation**:
+- Drag-and-drop message composition
+- Bridge text generation between fragments
+- Provenance tracking for remixed conversations
+- Watermarking for authenticity
+
+---
+
+## **Phase 8 Summary**
+
+**Total Estimated Time**: 1-2 weeks (5-7 hours direct implementation)
+
+| Sprint | Task | Days | Status |
+|--------|------|------|--------|
+| 8.1 | Conversation Resurrection Engine | 1-5 | Ready |
+| 8.2 | Message Extraction & Selection | 6-8 | Ready |
+| 8.3 | Remix Studio UI (Deferred) | 9-10 | Lower Priority |
+
+**Success Criteria for Phase 8 Complete**:
+- ✅ Users can resume archived conversations
+- ✅ Resurrection context is accurate and helpful
+- ✅ Message selection works smoothly
+- ✅ Exports (Markdown/JSON) work correctly
+- ✅ No security vulnerabilities
+- ✅ All 7+ platforms supported for resurrection
+- ✅ Zero console errors
+
+**Key Insight**: Phase 8 focuses on practical power-user tools that build on the existing archive without requiring major architectural changes. Message selection and resurrection are foundation features that enable remix functionality in future phases.
+
+---
+
+## **PHASE 9: POLISH & OPTIMIZATION**
+
+**Timeline**: 1-2 weeks | **Milestone**: Production-ready performance and accessibility
+
+### **Sprint 9.1 - Performance Optimization (Days 1-5)**
+**Goal**: Optimize IndexedDB queries and frontend rendering for 1000+ conversation archives
+
+**Current Status**: ⚠️ Partial (basic indexes exist, can be enhanced)
+
+**What to Optimize**:
+
+**Step 1: Add Database Indexes**
+
+File: `src/services/storageService.ts`
+
+Update the IndexedDB schema to v6 with optimized indexes:
+
+```typescript
+// In your initializeDatabase or upgrade handler:
+const dbUpgradeNeeded = (event: IDBVersionChangeEvent) => {
+  const db = (event.target as IDBOpenDBRequest).result;
+
+  if (!db.objectStoreNames.contains('sessions')) {
+    const store = db.createObjectStore('sessions', { keyPath: 'id' });
+
+    // Essential indexes for common queries
+    store.createIndex('createdAt', 'createdAt', { unique: false });
+    store.createIndex('platform', 'metadata.model', { unique: false });
+    store.createIndex('tags', 'metadata.tags', { unique: false, multiEntry: true });
+    store.createIndex('title', 'metadata.title', { unique: false });
+
+    // Composite index for date + platform filtering
+    store.createIndex('platformDate', ['metadata.model', 'createdAt'], { unique: false });
+  }
+
+  if (!db.objectStoreNames.contains('memories')) {
+    const memStore = db.createObjectStore('memories', { keyPath: 'id' });
+    memStore.createIndex('createdAt', 'createdAt', { unique: false });
+    memStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+  }
+};
+```
+
+**Step 2: Optimize Search Service Caching**
+
+File: `src/services/searchIndexService.ts`
+
+Add caching layer:
+
+```typescript
+export class SearchIndexService {
+  private documents: Map<string, SearchableDocument> = new Map();
+  private resultCache: Map<string, SearchResult[]> = new Map();
+  private cacheExpiry: number = 5 * 60 * 1000; // 5 minutes
+
+  async search(query: string, limit: number = 10): Promise<SearchResult[]> {
+    const cacheKey = `${query}:${limit}`;
+    const cached = this.resultCache.get(cacheKey);
+
+    if (cached) {
+      return cached;
+    }
+
+    // ... perform search ...
+
+    // Cache results
+    this.resultCache.set(cacheKey, results);
+
+    // Clear cache after expiry
+    setTimeout(() => {
+      this.resultCache.delete(cacheKey);
+    }, this.cacheExpiry);
+
+    return results;
+  }
+
+  clearCache(): void {
+    this.resultCache.clear();
+  }
+}
+```
+
+**Step 3: Lazy Load Analytics**
+
+File: `src/components/AnalyticsDashboard.tsx`
+
+```typescript
+import { lazy, Suspense } from 'react';
+
+// Lazy load the analytics component
+const AnalyticsDashboard = lazy(() => import('./AnalyticsDashboard'));
+
+// In ArchiveHub:
+<Suspense fallback={<div className="text-gray-400 p-4">Loading analytics...</div>}>
+  <AnalyticsDashboard sessions={sessions} />
+</Suspense>
+```
+
+**Success Checklist**:
+- [ ] Database indexes created
+- [ ] Query performance < 100ms for 1000+ items
+- [ ] Search cache working
+- [ ] Analytics lazy loads
+- [ ] No memory leaks
+- [ ] Lighthouse Performance score > 85
+
+**Estimated Time**: ~1-2 hours
+
+---
+
+### **Sprint 9.2 - Accessibility & WCAG 2.1 AA Audit (Days 6-8)**
+**Goal**: Ensure full keyboard navigation and screen reader compatibility
+
+**Current Status**: ⚠️ Partial (some components need review)
+
+**What to Fix**:
+
+**Step 1: Add ARIA Labels to Interactive Elements**
+
+Review and update these key files:
+- `src/pages/ArchiveHub.tsx` - Add aria-labels to buttons
+- `src/pages/MemoryArchive.tsx` - Add aria-labels and form labels
+- `src/components/SearchBar.tsx` - Add proper label association
+- `src/components/SessionCard.tsx` - Add semantic HTML
+
+Example:
+
+```typescript
+// Instead of:
+<button onClick={handleDelete} className="px-3 py-2 bg-red-600">🗑️</button>
+
+// Use:
+<button
+  onClick={handleDelete}
+  className="px-3 py-2 bg-red-600"
+  aria-label="Delete this conversation"
+  title="Delete conversation (cannot be undone)"
+>
+  🗑️
+</button>
+```
+
+**Step 2: Ensure Keyboard Navigation**
+
+Add to main App component:
+
+```typescript
+// Keyboard navigation improvements
+useEffect(() => {
+  const handleKeyboardNavigation = (e: KeyboardEvent) => {
+    // Alt+S = Focus search
+    if (e.altKey && e.key === 's') {
+      document.getElementById('search-input')?.focus();
+    }
+    // Alt+N = New session
+    if (e.altKey && e.key === 'n') {
+      navigateTo('/');
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyboardNavigation);
+  return () => window.removeEventListener('keydown', handleKeyboardNavigation);
+}, []);
+```
+
+**Step 3: Create Accessibility Testing Checklist**
+
+Use `axe DevTools` Chrome extension to audit:
+
+```
+Checklist:
+- [ ] Tab order is logical
+- [ ] Focus visible on all buttons
+- [ ] All images have alt text
+- [ ] Form inputs have labels
+- [ ] Color contrast > 4.5:1 for text
+- [ ] No keyboard traps
+- [ ] Screen reader announces dynamic changes
+- [ ] All interactive elements keyboard accessible
+```
+
+**Success Checklist**:
+- [ ] Axe DevTools scan shows 0 violations
+- [ ] Full keyboard navigation works
+- [ ] Screen reader compatible
+- [ ] WCAG 2.1 AA compliant
+- [ ] Tested with NVDA/JAWS/VoiceOver
+- [ ] Focus management working
+
+**Estimated Time**: ~2-3 hours
+
+---
+
+### **Sprint 9.3 - Documentation & Release Prep (Days 9-10)**
+**Goal**: Prepare for v0.8.0 release with user documentation
+
+**What to Create**:
+
+**Step 1: User Guide Markdown**
+
+Create: `docs/USER_GUIDE.md`
+
+```markdown
+# Noosphere Reflect User Guide
+
+## Getting Started
+- How to capture conversations
+- Setting up the extension
+- First-time setup
+
+## Archive Hub
+- Searching conversations
+- Filtering by platform/date/tags
+- Exporting to different formats
+- Analytics dashboard
+
+## Memory Archive
+- Saving highlights and snippets
+- Organizing memories
+- Exporting memories
+
+## Advanced Features
+- Resuming conversations
+- Selecting and extracting messages
+- (Coming soon) Remixing conversations
+
+## Keyboard Shortcuts
+- Alt+S: Focus search
+- Alt+N: Navigate home
+- Ctrl+E: Export selected
+
+## Privacy
+- Everything stored locally
+- No data sent to servers
+- How to backup your data
+```
+
+**Step 2: Create Release Notes for v0.8.0**
+
+Update: `CHANGELOG.md`
+
+```markdown
+# v0.8.0 - Intelligence & Power Tools (2026-01-15)
+
+### New Features
+- ✨ Semantic search across conversations
+- ✨ Conversation analytics dashboard
+- ✨ Resume archived conversations
+- ✨ Message selection & extraction
+- ✨ Markdown/JSON export for selections
+
+### Improvements
+- 🚀 Optimized database queries
+- ♿ WCAG 2.1 AA accessibility compliance
+- 📱 Better mobile responsiveness
+- ⚡ 30% faster search performance
+
+### Fixes
+- 🐛 Fixed toast notification stacking
+- 🐛 Memory Archive theming issues
+- 🐛 Grok parser integration
+
+### Technical
+- Added IndexedDB v6 with optimized indexes
+- TF-IDF semantic search algorithm
+- Analytics data aggregation
+```
+
+**Success Checklist**:
+- [ ] User guide complete
+- [ ] Release notes drafted
+- [ ] README updated with v0.8.0 features
+- [ ] All links working
+- [ ] No typos or errors
+- [ ] Screenshots/GIFs added (if applicable)
+
+**Estimated Time**: ~2 hours
+
+---
+
+## **Phase 9 Summary**
+
+**Total Estimated Time**: 1-2 weeks (5-7 hours direct implementation)
+
+| Sprint | Task | Days | Status |
+|--------|------|------|--------|
+| 9.1 | Performance Optimization | 1-5 | Ready |
+| 9.2 | Accessibility & WCAG 2.1 AA | 6-8 | Ready |
+| 9.3 | Documentation & Release Prep | 9-10 | Ready |
+
+**Success Criteria for Phase 9 Complete**:
+- ✅ Lighthouse Performance > 85
+- ✅ WCAG 2.1 AA compliant
+- ✅ Full keyboard navigation
+- ✅ Screen reader compatible
+- ✅ v0.8.0 release notes ready
+- ✅ User documentation complete
+- ✅ Zero console errors
+- ✅ All tests passing
+
+---
+
+## **PHASE 10: PRODUCTION DEPLOYMENT**
+
+**Timeline**: 3-5 days | **Milestone**: Production release & monitoring setup
+
+### **Sprint 10.1 - Build & Deployment Verification (Days 1-2)**
+**Goal**: Ensure production build is optimized and deployable
+
+**What to Do**:
+
+**Step 1: Create Production Build**
+
+```bash
+# Clean build
+npm run build
+
+# Check bundle size
+npx vite-bundle-visualizer
+
+# Expected output: < 500KB main bundle
+```
+
+**Step 2: Performance Audit**
+
+```bash
+# Lighthouse audit
+npx lighthouse https://noospherereflect.app --view
+
+# Expected:
+# Performance: > 85
+# Accessibility: > 90
+# Best Practices: > 90
+# SEO: > 90
+```
+
+**Step 3: Security Audit**
+
+```bash
+# Check dependencies
+npm audit --production
+
+# Expected: 0 critical vulnerabilities
+
+# Manual CSP header check
+# Verify in response headers:
+# Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; ...
+```
+
+**Success Checklist**:
+- [ ] Build compiles without warnings
+- [ ] Bundle size < 500KB (gzipped)
+- [ ] Lighthouse scores all > 85
+- [ ] npm audit passes
+- [ ] CSP headers configured
+- [ ] HTTPS enforced
+- [ ] Service Worker registered
+
+**Estimated Time**: ~1-2 hours
+
+---
+
+### **Sprint 10.2 - Monitoring & Observability (Days 2-3)**
+**Goal**: Set up error tracking and privacy-respecting analytics
+
+**What to Configure**:
+
+**Step 1: Error Tracking (Sentry)**
+
+Create: `.env.production`
+
+```env
+VITE_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+VITE_ENVIRONMENT=production
+VITE_RELEASE=v0.8.0
+```
+
+Create: `src/utils/errorTracking.ts`
+
+```typescript
+import * as Sentry from '@sentry/react';
+
+export function initializeErrorTracking() {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.VITE_ENVIRONMENT,
+    release: import.meta.env.VITE_RELEASE,
+    tracesSampleRate: 0.1, // 10% of transactions
+    integrations: [
+      new Sentry.Replay({
+        maskAllText: true, // Don't record sensitive text
+        blockAllMedia: true // Don't record images
+      })
+    ]
+  });
+}
+
+// In src/main.tsx:
+import { initializeErrorTracking } from './utils/errorTracking';
+initializeErrorTracking();
+```
+
+**Step 2: Privacy-Respecting Analytics**
+
+Use Plausible Analytics (privacy-first, no cookies):
+
+Add to `index.html`:
+
+```html
+<script defer data-domain="noospherereflect.app" src="https://plausible.io/js/script.js"></script>
+```
+
+**Step 3: Deployment Checklist**
+
+Create: `DEPLOYMENT_CHECKLIST.md`
+
+```markdown
+# Deployment Checklist v0.8.0
+
+## Pre-Deployment
+- [ ] All tests passing
+- [ ] No console errors
+- [ ] Code review completed
+- [ ] Security audit passed
+- [ ] Accessibility audit passed
+
+## Build Verification
+- [ ] Bundle size < 500KB
+- [ ] Lighthouse scores > 85
+- [ ] npm audit clean
+
+## Configuration
+- [ ] Environment variables set
+- [ ] API keys configured
+- [ ] CSP headers configured
+- [ ] HTTPS enforced
+
+## Monitoring
+- [ ] Sentry configured
+- [ ] Analytics script added
+- [ ] Error tracking working
+- [ ] Uptime monitoring set up
+
+## Post-Deployment
+- [ ] Test in production
+- [ ] User feedback channels active
+- [ ] Support documentation published
+- [ ] Release notes posted
+```
+
+**Success Checklist**:
+- [ ] Sentry configured and tracking
+- [ ] Analytics working
+- [ ] Error notifications working
+- [ ] Deployment checklist complete
+- [ ] No critical errors in production
+
+**Estimated Time**: ~2 hours
+
+---
+
+### **Sprint 10.3 - Documentation & Support (Days 4-5)**
+**Goal**: Publish comprehensive documentation and establish support channels
+
+**What to Create**:
+
+**Step 1: Technical Documentation**
+
+Update `CLAUDE.md` with v0.8.0 architecture:
+
+```markdown
+## v0.8.0 Architecture Updates
+
+### Search & Discovery Layer
+- `searchIndexService.ts`: TF-IDF semantic search
+- `analyticsService.ts`: Conversation pattern analysis
+- Caching layer for performance
+
+### Advanced Features
+- `resurrectionService.ts`: Conversation continuation
+- `messageSelectionService.ts`: Message extraction
+- Export formatters for Markdown/JSON
+
+### Optimizations
+- IndexedDB v6 with composite indexes
+- Lazy-loaded analytics dashboard
+- Search result caching (5 min expiry)
+```
+
+**Step 2: User Support Docs**
+
+Create: `docs/SUPPORT.md`
+
+```markdown
+# Getting Support
+
+## Common Issues
+
+### Search is slow
+- Try upgrading to latest version
+- Clear browser cache
+- Check browser console for errors
+
+### Export not working
+- Verify you have space in Downloads folder
+- Try a different export format
+- Check extension permissions
+
+### Conversations not syncing
+- Ensure extension is enabled
+- Check IndexedDB storage quota
+- Try reloading extension
+
+## Report a Bug
+- GitHub Issues: https://github.com/acidgreenservers/Noosphere-Reflect/issues
+- Include: browser/version, steps to reproduce, screenshot
+
+## Feature Requests
+- GitHub Discussions: https://github.com/acidgreenservers/Noosphere-Reflect/discussions
+- Describe use case and expected behavior
+```
+
+**Step 3: Public Release Announcement**
+
+Create: `RELEASE_ANNOUNCEMENT.md`
+
+```markdown
+# Noosphere Reflect v0.8.0 - Intelligence Layer Release 🧠
+
+We're excited to announce v0.8.0, featuring powerful new intelligence and composition tools!
+
+## What's New
+
+### Semantic Search
+Find conversations by meaning, not just keywords. Powered by TF-IDF algorithm, all on-device.
+
+### Analytics Dashboard
+Discover patterns in your conversations:
+- Most active platforms and models
+- Productivity insights
+- Topic frequency analysis
+
+### Conversation Resurrection
+Pick up where you left off - generate context-rich continuation prompts and open new conversations on any platform.
+
+### Message Extraction
+Select and export specific messages from conversations for reuse and organization.
+
+## Performance Improvements
+- 30% faster search
+- Optimized database queries
+- Lazy-loaded analytics
+
+## Accessibility
+- WCAG 2.1 AA compliant
+- Full keyboard navigation
+- Screen reader compatible
+
+[Full release notes →](./CHANGELOG.md)
+```
+
+**Success Checklist**:
+- [ ] Technical docs updated
+- [ ] User support docs published
+- [ ] Release announcement posted
+- [ ] GitHub Releases page updated
+- [ ] README links updated
+- [ ] Help documentation accessible
+
+**Estimated Time**: ~2 hours
+
+---
+
+## **Phase 10 Summary**
+
+**Total Estimated Time**: 1 week (5-7 hours direct implementation)
+
+| Sprint | Task | Days | Status |
+|--------|------|------|--------|
+| 10.1 | Build & Deployment Verification | 1-2 | Ready |
+| 10.2 | Monitoring & Observability | 2-3 | Ready |
+| 10.3 | Documentation & Support | 4-5 | Ready |
+
+**Success Criteria for Phase 10 Complete**:
+- ✅ Production build deployed successfully
+- ✅ Lighthouse scores all > 85
+- ✅ Sentry error tracking operational
+- ✅ Analytics data flowing
+- ✅ All documentation published
+- ✅ Support channels active
+- ✅ Zero critical production errors
+- ✅ v0.8.0 officially released
+
+---
+
+## 🎯 **FINAL IMPLEMENTATION ROADMAP SUMMARY**
+
+**Complete Implementation Timeline**:
+
+| Phase | Version | Duration | Implementation Status |
+|-------|---------|----------|---|
+| Phase 5 | v0.5.0 | 3 weeks | ✅ Implementation guide READY |
+| Phase 6 | v0.6.0 | 2-3 days | ✅ Implementation guide READY |
+| Phase 7 | v0.7.0 | 2-3 weeks | ✅ Implementation guide READY |
+| Phase 8 | v0.8.0 | 1-2 weeks | ✅ Implementation guide READY |
+| Phase 9 | v0.8.5 | 1-2 weeks | ✅ Implementation guide READY |
+| Phase 10 | v0.8.5 | 1 week | ✅ Implementation guide READY |
+| **TOTAL** | **v0.8.5** | **~8-10 weeks** | **🚀 COMPLETE ROADMAP** |
+
+---
+
+## 🔐 **SECURITY GATES (All Phases)**
+
+Before merging each phase:
+
+```
+✅ Unit tests (90%+ coverage)
+✅ Integration tests passing
+✅ Security audit by Gemini agent
+✅ Accessibility audit (axe DevTools)
+✅ No XSS vulnerabilities
+✅ Input validation on all forms
+✅ Performance benchmarks met
+✅ Code review complete
+```
+
+---
+
+## 📋 **IMPLEMENTATION METHODOLOGY**
+
+Each phase follows the **Antigravity 4-Mind Collaboration**:
+
+1. **Claude** - Architecture and implementation code
+2. **Antigravity** - Planning and structure
+3. **Gemini** - Security audits and threat modeling
+4. **User** - Vision, requirements, and final approval
+
+All plans written to `/templates` folder for 4-mind visibility and iteration.
+
+---
+
+**Last Updated**: January 8, 2026
+**Roadmap Status**: COMPLETE - Ready for Implementation
+**Maintained By**: Claude + Antigravity + Gemini + User
 
 ```typescript
 // src/features/remix/RemixEngine.ts

@@ -466,6 +466,18 @@ const ArchiveHub: React.FC = () => {
         setSelectedIds(newSelected);
     };
 
+    const getModelBadgeColor = (model: string | undefined) => {
+        if (!model) return 'bg-green-500/10 text-green-400 border-green-500/20 border';
+        const m = model.toLowerCase();
+        if (m.includes('claude')) return 'bg-orange-900/40 text-orange-200 border-orange-700/50 border';
+        if (m.includes('gpt') || m.includes('o1') || m.includes('openai')) return 'bg-emerald-900/40 text-emerald-200 border-emerald-700/50 border';
+        if (m.includes('gemini') || m.includes('google')) return 'bg-blue-900/40 text-blue-200 border-blue-700/50 border';
+        if (m.includes('lechat') || m.includes('mistral')) return 'bg-amber-900/40 text-amber-200 border-amber-700/50 border';
+        if (m.includes('grok')) return 'bg-black text-white border-white/20 border';
+        if (m.includes('llama')) return 'bg-white text-black border-gray-200 border font-medium';
+        return 'bg-green-500/10 text-green-400 border-green-500/20 border';
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 pb-24">
             {/* Header */}
@@ -508,9 +520,13 @@ const ArchiveHub: React.FC = () => {
                         </button>
                         <Link
                             to="/memory-archive"
-                            className="px-4 py-2 text-sm font-medium text-purple-300 hover:text-white transition-colors flex items-center gap-2"
+                            className="group relative px-4 py-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors flex items-center gap-2"
                         >
-                            <span className="text-lg">🧠</span>
+                            <div className="relative flex items-center justify-center">
+                                {/* Purple shimmer effect on hover */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-purple-500/30 rounded-lg animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
+                                <span className="relative z-10 text-lg">🧠</span>
+                            </div>
                             Memory Archive
                         </Link>
                         <Link
@@ -639,7 +655,7 @@ const ArchiveHub: React.FC = () => {
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex gap-2">
                                         {session.metadata?.model && (
-                                            <span className="px-2 py-1 rounded-md bg-green-500/10 text-xs font-medium text-green-400 border border-green-500/20">
+                                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${getModelBadgeColor(session.metadata.model)}`}>
                                                 {(() => {
                                                     // Capitalize model name properly (e.g., "gpt-4" → "GPT-4", "claude" → "Claude")
                                                     const model = session.metadata.model;
