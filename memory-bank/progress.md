@@ -56,3 +56,20 @@
 - **Stable Version**: v0.5.3
 - **Team Size**: 5 Specialist Agents + 1 User
 - **Protocol Health**: 100% (6 protocols active)
+
+## 🔄 Recent Git Commits
+
+### Latest Commit: d44b10e957473ec7e9f8def6741516b79ade7611
+**Date**: Sat Jan 10 14:38:34 2026 -0800
+**Author**: XxZIOIMIBIExX
+**Title**: fix(extension): correct extractMarkdown function reference in aistudio-parser
+
+**Changes**:
+- Change extractMarkdown() to extractMarkdownFromHtml() to match actual function name
+- Aligns aistudio-parser.js with other platform parsers (claude-parser, gpt-parser, etc.)
+- Fixes "extractMarkdown is not defined" runtime error
+
+**Additional Improvements**:
+- AI Studio platform configuration with correct selectors
+- Downward-rolling menu (.menu-down) with down arrow (▼)
+- Button positioning near back button (top-left: 200px left, 8px top)
