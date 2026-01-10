@@ -1,33 +1,50 @@
-# Security Audit Walkthrough: Gemini Parser Update (v0.5.2)
+# Security Audit Walkthrough: Governance & Recovery Audit (v0.5.0)
+**Date**: January 9, 2026
+**Auditor**: Adversary Agent
+**Context**: Post-Revert Stability Check & Governance Layer Verification
 
 ## Summary
-Audit of the new `parseGeminiHtml` logic implemented to fix "Thought Bleed". The parser now handles potentially hostile/malformed HTML from console exports by enforcing strict ID validation and destructive reads to prevent data leakage between thinking and response contexts.
+A comprehensive audit following the reversion of the failed "Dual Artifact/Export Status" sprint and the establishment of the new Multi-Agent Governance Layer. The goal is to certify that the codebase has been cleanly restored to the stable v0.5.0 baseline and that the new protocol files introduce no security risks.
+
+**Verdict**: ✅ **SECURE & STABLE**
+The revert was successful. No experimental code remains. The new governance protocols provide a robust framework for future secure development.
 
 ## Audit Findings
 
-### `src/services/converterService.ts`
-#### 1. Vulnerability Check: Cross-Site Scripting (XSS) (Line ~1675)
+### 1. Codebase Integrity (Revert Verification)
+#### Vulnerability Check: Zombie Code
 - **Status**: ✅ Safe
-- **Analysis**: The parser uses `extractMarkdownFromHtml` which extracts `innerText` or handles specific safe elements. It never blindly copies `innerHTML` to the output without processing. Input is parsed via `DOMParser` in a sandboxed document context.
-- **Remediation**: N/A
+- **Analysis**:
+  - `src/types.ts`: Verified `SavedChatSession` contains `reviewStatus` (v0.5.0 feature) but **NOT** `lastExported` or `exportStatus` (failed sprint features).
+  - `src/services/storageService.ts`: Verified `updateSessionStatus` exists, but `markSessionAsExported` is gone.
+  - `src/pages/ArchiveHub.tsx`: Verified `handleStatusToggle` uses `reviewStatus` logic. The "Exported" button logic is completely removed.
+  - **Conclusion**: The codebase is cleanly restored to v0.5.0.
 
-#### 2. Vulnerability Check: Data Leakage (Thought Bleed)
-- **Status**: ✅ Safe (Fixed)
-- **Analysis**: Previous logic allowed thinking text to merge with response text. New logic uses **destructive read**: `thinkingContainer.remove()` is called immediately after extraction. This guarantees that subsequent queries for response content cannot accidentally grab thinking text.
-- **Verification**: Validated against `gemini-console-scraper.md` structure.
-
-#### 3. Vulnerability Check: ID Spoofing/Confusion
+### 2. Protocol Layer Audit
+#### Vulnerability Check: Policy Loopholes
 - **Status**: ✅ Safe
-- **Analysis**: Response extraction strictly requires `id` starting with `message-content-id-r_`. Thinking content is identified by the *absence* of this ID or specific `model-thoughts` container. This strict differentiation prevents confusion.
+- **Analysis**:
+  - `SECURITY_ADVERSARY_AGENT.md`: Correctly enforces "Audit Only" role and lists all critical threat models (XSS, Path Traversal).
+  - `CODING_STANDARDS_PROTOCOL.md`: Explicitly forbids `dangerouslySetInnerHTML` and mandates `escapeHtml`.
+  - `EXTENSION_BRIDGE_PROTOCOL.md`: Enforces schema synchronization, preventing future data corruption.
+  - `QA_TESTING_PROTOCOL.md`: Defines "Critical User Journeys" (CUJs) to catch regressions like the recent directory export failure.
+
+### 3. Visual & Brand Overhaul (v0.5.0)
+#### Vulnerability Check: XSS in New UI
+- **Status**: ✅ Safe
+- **Analysis**:
+  - `Home.tsx` (Landing Page): Uses static text and Tailwind classes. No user input rendering.
+  - Platform Badges: Logic uses a strict lookup map for colors (`bg-orange-900`, etc.), preventing CSS injection.
 
 ## Verification
-- **Build Status**: ✅ Build Succeeded (`npm run build`)
 - **Manual Verification**:
-    - Validated against user-provided HTML dump.
-    - Confirmed separate `id` patterns for thoughts (`""`) vs responses (`"r_..."`).
+  - Verified `git status` is clean (except for the new agent files).
+  - Verified `GEMINI.md` correctly delegates to the `.agents/` directory.
 
-## Changes
-- **Updated `parseGeminiHtml`**:
-    - Replaced fragile class-based traversal with a robust "allNodes" linear scan.
-    - Implemented state machine to handle `User -> Thinking -> Response` turns.
-    - Added `<thought>` wrapping for captured thinking blocks.
+## Security Notes
+- The "Review Status" feature (Approved/Rejected) is confirmed as part of the stable baseline and is safe to use.
+- Future implementation of "Export Status" must use the **Additive UI** approach defined in `activeContext.md` to avoid conflating it with Review Status.
+
+## Next Steps for Developers
+- **Read the Protocols**: Before writing code, review `CODING_STANDARDS_PROTOCOL.md` and `QA_TESTING_PROTOCOL.md`.
+- **Use the Agents**: Trigger `Data Architect` for schema changes and `Design Agent` for UI updates.
