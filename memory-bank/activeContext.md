@@ -1,30 +1,29 @@
 # Active Context
 
 ## Current Focus
-- **ROLE RE-ALIGNMENT**: Gemini is now restricted to **Adversary Auditor (Audits Only)** due to repeated implementation overreach and logic regressions.
-- **Goal**: Provide high-fidelity security and logic analysis without modifying the codebase.
-- **Exception (Jan 9)**: Restored Sprint 5.1 features (ToastManager, Navigation Resilience) at user's explicit request.
+- **GOVERNANCE UPGRADE**: Established a comprehensive multi-agent specialist system and a robust protocol layer to ensure architectural, visual, and data stability.
+- **GOAL**: Transition from ad-hoc implementation to a professional "Mind-State" workflow where specialists (AI Agents) enforce strict standards.
 
 ## Recent Changes
-- **Visual & Brand Overhaul (v0.5.0)**: (STABLE Baseline)
-- **RECOVERY**: All overreaching implementation attempts have been reverted via `git restore`. Branding is restored.
-- **Extension Reliability (Sprint 5.1 RESTORED)**:
-    - **ToastManager**: Sequential notification queue for non-overlapping extension toasts.
-    - **Navigation Resilience**: History API hooks & Watchdog interval in `ui-injector.js` for robust SPA persistence.
-    - **UX Enhancements**: Loading states for export buttons.
-    - **UX Enhancements**: Loading states for export buttons.
-    - **Notification Cleanup**: Removed redundant "Imported to App" toast in `ui-injector.js`.
-
-- **Kimi AI Integration (v0.5.1)**:
-    - **Extension Support**: Added full Kimi platform capture (DOM injection & manual share-copy).
-    - **New Parser**: Implemented both `kimi-parser.js` (DOM) and `KimiShareCopy` (Text) modes.
-    - **UI Injection**: Export buttons added to Kimi chat interface (near send button/header).
-    - **Web App**: Updated `converterService` and `BasicConverter` to handle Kimi formats.
+- **Agent Roster Expansion**:
+    - **Gemini (Adversary Auditor)**: Scope widened to Security, Git Ops, and Project Analysis.
+    - **Claude Code (Builder)**: Scope focused on Engineering, Debugging, and Code Maintenance.
+    - **Antigravity (Consolidator)**: Established as the Workflow System & Architect.
+    - **Data Architect (New)**: Guardian of the Schema and IndexedDB integrity.
+    - **Design Agent (New)**: Enforcer of the "Noosphere Nexus" visual standards.
+- **Protocol Layer Establishment**:
+    - `DESIGN_SYSTEM_PROTOCOL.md`: Visual tokens and component standards.
+    - `CODING_STANDARDS_PROTOCOL.md`: Architectural constraints and style rules.
+    - `QA_TESTING_PROTOCOL.md`: Regression prevention and CUJ checklists.
+    - `EXTENSION_BRIDGE_PROTOCOL.md`: standards for Web<->Extension communication.
+    - `RELEASE_PROTOCOL.md`: Versioning and migration rules.
+    - `AI_COLLABORATION_PROTOCOL.md`: Rules of engagement for AI Agents.
 
 ## Active Decisions
-- **Gemini Role**: Auditor only. No further feature implementation by this agent unless explicitly directed for specific recovery/parity.
-- **Strict Baseline**: v0.5.0 + Sprint 5.1 Fixes is the definitive starting point.
+- **Agent-Based Execution**: All significant changes must now be performed by the appropriate specialist agent according to their protocol.
+- **Audit-First Engineering**: Every feature implementation must pass through the Gemini Security & QA gate before being marked as stable.
+- **Modular Documentation**: `GEMINI.md` is now a hub that delegates to specific protocol and agent files in the `.agents/` directory.
 
 ## Next Steps
-- **Human/Other-AI Implementation**: User will provide code changes.
-- **Gemini Audit**: Analyze new changes for XSS, path traversal, and export logic consistency.
+- **Verify Governance**: Test the new workflow on the next small task (e.g., Sprint 6.2 UX Polish).
+- **Hardened Implementation**: Use the Data Architect and Design Agent to safely re-approach the "Dual Artifact" rendering fix.
