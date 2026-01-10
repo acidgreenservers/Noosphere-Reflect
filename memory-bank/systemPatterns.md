@@ -2,7 +2,8 @@
 
 ## Architecture
 - **Framework**: React 19 (Vite).
-- **Core Engine (`converterService.ts`)**: Surgical extraction logic with specialized strategies for Claude, LeChat, Llamacoder, ChatGPT, and Gemini.
+- **Core Engine (`converterService.ts`)**: Surgical extraction logic with specialized strategies for Claude, LeChat, Llamacoder, ChatGPT, Gemini, and Kimi.
+- **Dual Parsing**: Kimi supports both DOM-based HTML extraction (`kimi-parser.js`) and plain-text "Share Copy" parsing (`KimiShareCopy`), providing a failsafe fallback mechanism.
 - **Shared Extension Libs (`serializers.js`)**: Universal Markdown/JSON generation logic shared across all browser content scripts.
 - **Persistence Layer**: `IndexedDB` based storage using `storageService.ts` for handling `SavedChatSession` objects, replacing `localStorage` to support large datasets.
 - **Archival Hub**: The main entry point for managing the chat library, merging sessions, and browsing archives.
@@ -30,6 +31,7 @@ To ensure immediate visual recognition while maintaining a cohesive app aestheti
 - **LeChat**: Amber (`bg-amber-900/40`, `text-amber-200`)
 - **Grok**: Black (`bg-black`, `text-white`) - *High contrast for dark mode*
 - **Llamacoder**: White (`bg-white`, `text-black`) - *Minimalist*
+- **Kimi**: Purple (`bg-violet-900/40`, `text-violet-200`)
 
 ## Visual Design System
 - **Noosphere Nexus Green**: The primary application theme, utilizing `emerald-500` to `green-400` gradients, glassmorphism (`backdrop-blur`), and subtle animations (`animate-pulse-slow`).

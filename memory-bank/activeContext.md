@@ -12,7 +12,14 @@
     - **ToastManager**: Sequential notification queue for non-overlapping extension toasts.
     - **Navigation Resilience**: History API hooks & Watchdog interval in `ui-injector.js` for robust SPA persistence.
     - **UX Enhancements**: Loading states for export buttons.
+    - **UX Enhancements**: Loading states for export buttons.
     - **Notification Cleanup**: Removed redundant "Imported to App" toast in `ui-injector.js`.
+
+- **Kimi AI Integration (v0.5.1)**:
+    - **Extension Support**: Added full Kimi platform capture (DOM injection & manual share-copy).
+    - **New Parser**: Implemented both `kimi-parser.js` (DOM) and `KimiShareCopy` (Text) modes.
+    - **UI Injection**: Export buttons added to Kimi chat interface (near send button/header).
+    - **Web App**: Updated `converterService` and `BasicConverter` to handle Kimi formats.
 
 ## Active Decisions
 - **Gemini Role**: Auditor only. No further feature implementation by this agent unless explicitly directed for specific recovery/parity.

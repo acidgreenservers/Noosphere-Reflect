@@ -18,6 +18,7 @@ Following implementation overreach and unintended regressions in the export syst
 - [x] **Navigation Resilience**: History API hooks & Watchdog for robust SPA persistence.
 - [x] **UX Polish**: Loading indicators for extension export buttons.
 - [x] **Consolidated Notifications**: Removed redundant "Imported" toast to prevent UI noise.
+- [x] **Kimi AI Support**: Full extension support + "Share Copy" parser mode.
 
 ## ❌ Reversion History
 - **Jan 9, 2026**: Reverted all uncommitted changes targeting "Export Status" and "Dual Artifact Patches" due to breakage in the directory export workflow. Codebase restored to last stable git commit (`ec9be7a`).

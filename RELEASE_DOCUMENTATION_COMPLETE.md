@@ -1,9 +1,9 @@
 ================================================================================
-                    v0.5.1 RELEASE DOCUMENTATION - COMPLETE
+                    v0.5.2 RELEASE DOCUMENTATION - COMPLETE
 ================================================================================
 
 Release Date: January 9, 2026
-Version: v0.5.1 (Minor: Dual Artifact System)
+Version: v0.5.2 (Minor: Kimi Support & Export Status)
 Status: COMPLETE AND VERIFIED
 
 ================================================================================
@@ -11,31 +11,42 @@ Status: COMPLETE AND VERIFIED
 ================================================================================
 
 DOCUMENTATION UPDATED: 6 files
-- README.md (version 0.3.0 → 0.5.1, +120 lines)
-- ROADMAP.md (version 2.0 → 2.1, +85 lines)
-- memory-bank/progress.md (+45 lines)
-- memory-bank/activeContext.md (+35 lines)
-- memory-bank/systemPatterns.md (+5 lines)
-- package.json (version 0.3.2 → 0.5.1)
+- README.md (version 0.5.1 → 0.5.2, status updated)
+- ROADMAP.md (version 2.1 → 2.2)
+- memory-bank/progress.md (Sprint 5.1 complete)
+- memory-bank/activeContext.md (Kimi added)
+- memory-bank/systemPatterns.md (Kimi parsing patterns)
+- package.json (version 0.5.1 → 0.5.2)
 
 DOCUMENTATION CREATED: 1 new file
-- V051_RELEASE_DOCUMENTATION_COMPLETE.txt (~400 lines)
+- V052_RELEASE_DOCUMENTATION_COMPLETE.txt (~400 lines)
 
-TOTAL LINES OF DOCUMENTATION: 690+ lines
+TOTAL LINES OF DOCUMENTATION: 700+ lines
 TOTAL NEW/UPDATED FILES: 7 files
 
 ================================================================================
                          FEATURES DOCUMENTED
 ================================================================================
 
-1. DUAL ARTIFACT SYSTEM (v0.5.1)
+1. KIMI AI INTEGRATION (v0.5.2)
+   - Full support for kimi.moonshot.cn
+   - Dual Parser Modes: "Kimi HTML" (DOM) and "Kimi Share" (Text)
+   - Extension injection into Kimi UI
+   - Official Purple Platform Theme
+   - Updated BasicConverter UI
+
+2. EXPORT STATUS INDICATORS (v0.5.2)
+   - Visual "Status" button in Archive Hub
+   - Purple = Exported / Red = Not Exported
+   - Track progress per session
+   - Optimistic UI updates
+
+3. DUAL ARTIFACT SYSTEM (v0.5.1)
    - Message-level artifact attachments ("📎 Attach" buttons)
    - Session-level artifact management (existing system)
    - Unified export logic collecting from both sources
    - Artifact deduplication by ID
    - Enhanced ArtifactManager modal with grouped display
-   - removeMessageArtifact() method in storageService
-   - Archive Hub badge counting both artifact types
 
 2. MEMORY ARCHIVE MVP (v0.4.0)
    - Dedicated /memory-archive dashboard

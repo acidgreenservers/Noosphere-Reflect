@@ -4,12 +4,12 @@
 ![Version](https://img.shields.io/badge/version-0.5.1-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
-**Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, and Llamacoder.
+**Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
 
 ## 🚀 Features
 
 ### Core Capabilities
-* **🔌 Chrome Extension**: One-click capture directly from 6 major AI platforms
+* **🔌 Chrome Extension**: One-click capture directly from 7 major AI platforms
 * **📚 Archive Hub**: Centralized dashboard to browse, search, filter, and manage your entire chat library
 * **🧠 Memory Archive**: Dedicated system for storing and organizing AI thoughts, snippets, and insights
 * **📎 Dual Artifact System**: Attach files to entire sessions or individual messages with unified export
@@ -164,6 +164,7 @@ The application includes comprehensive security hardening to prevent XSS attacks
 | LeChat (chat.mistral.ai) | ✅ | ✅ | ✅ Auto | 🟡 Amber |
 | Grok (x.ai) | ✅ | ✅ | ✅ Auto | ⚫ Black |
 | Llamacoder | ✅ | ✅ | ✓ Manual | ⚪ White |
+| Kimi (moonshot.cn) | ✅ | ✅ | ✅ Auto | 🟣 Purple |
 
 ## 📚 Documentation
 
@@ -292,9 +293,10 @@ Found an issue or have a suggestion?
 1. Check [extension/README.md](extension/README.md) for common problems
 2. Review [GEMINI.md](GEMINI.md) for architecture details
 3. Open a [GitHub Issue](https://github.com/yourusername/Noosphere-Reflect/issues)
+![Version](https://img.shields.io/badge/version-0.5.2-green.svg)
 
 ---
 
-**Version**: 0.5.1
+**Version**: 0.5.2
 **Last Updated**: January 9, 2026
-**Status**: Stable Release with Dual Artifact System ✅
+**Status**: Stable Release with Kimi Support & Export Status Indicators ✅

@@ -16,6 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.2] - January 9, 2026
+
+### Added
+
+#### Kimi AI Integration
+- **Full Platform Support**: Capture chats from Kimi (kimi.moonshot.cn)
+- **Dual Parser Modes**:
+  - `Kimi HTML`: Comprehensive DOM-based extraction
+  - `Kimi Share`: Robust text parser for Kimi's native "Share Copy" feature
+- **Extension Features**:
+  - Export buttons injected into Kimi interface
+  - Auto-title extraction
+  - Matches Noosphere Reflect's "Purple" platform theme
+- **Web App Updates**:
+  - `parseKimiHtml` and `parseKimiShareCopy` added to converter service
+  - Basic Converter supports both Kimi modes in dropdown
+
+#### Archive Hub Improvements
+- **Export Status Indicator**: Visual "Status" button (Purple=Exported, Red=Not Exported) to track progress per session.
+
+---
+
 ## [v0.5.1] - January 9, 2026
 
 ### Added
@@ -43,9 +65,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Storage Service Enhancement**:
   - New `removeMessageArtifact(sessionId, messageIndex, artifactId)` method
   - Targets specific message's artifacts array for deletion
+  - Targets specific message's artifacts array for deletion
   - Maintains data integrity during removal operations
 
+#### Kimi AI Integration
+- **Full Platform Support**: Capture chats from Kimi (kimi.moonshot.cn)
+- **Dual Parser Modes**:
+  - `Kimi HTML`: Comprehensive DOM-based extraction
+  - `Kimi Share`: Robust text parser for Kimi's native "Share Copy" feature
+- **Extension Features**:
+  - Export buttons injected into Kimi interface
+  - Auto-title extraction
+  - Matches Noosphere Reflect's "Purple" platform theme
+- **Web App Updates**:
+  - `parseKimiHtml` and `parseKimiShareCopy` added to converter service
+  - Basic Converter supports both Kimi modes in dropdown
+
 #### Archive Hub Improvements
+- **Export Status Indicator**: Visual "Status" button (Purple=Exported, Red=Not Exported) to track progress per session.
 - **Artifact Badge Fix**: Badge now appears for sessions with ANY artifacts (session OR message-level)
 - **Accurate Counting**: Badge displays total count from both artifact sources
 - **Visibility Logic**: Updated conditional rendering to check both `metadata.artifacts` and `msg.artifacts`

@@ -4,6 +4,18 @@ import { Link } from 'react-router-dom';
 const Changelog: React.FC = () => {
     const changes = [
         {
+            version: 'v0.5.2',
+            date: 'Jan 9, 2026',
+            title: 'Kimi Support & Status',
+            items: [
+                'Kimi AI Integration: Full extension support for kimi.moonshot.cn with auto-title extraction.',
+                'Dual Kimi Parsers: "Kimi HTML" (DOM) and "Kimi Share" (Text) modes for flexible capture.',
+                'Brand Theming: Official Purple (bg-violet-900) theme for Kimi across Hub and Extension.',
+                'Export Status Indicators: New "Status" button in Archive Hub (Purple=Exported / Red=Not Exported) to track progress.',
+                'Extension Improvements: Export buttons injected directly into Kimi chat interface.',
+            ],
+        },
+        {
             version: 'v0.5.1',
             date: 'Jan 9, 2026',
             title: 'Dual Artifact System',
