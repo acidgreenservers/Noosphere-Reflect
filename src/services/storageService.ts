@@ -164,9 +164,12 @@ class StorageService {
             }
         }
 
-        // Generate secure ID if missing
-        if (!session.id) {
-            session.id = crypto.randomUUID();
+        // Default exportStatus to 'not_exported' for new sessions
+        if (!session.exportStatus) {
+            session.exportStatus = 'not_exported';
+            if (session.metadata) {
+                session.metadata.exportStatus = 'not_exported';
+            }
         }
 
         const db = await this.getDB();
@@ -568,9 +571,9 @@ class StorageService {
     }
 
     /**
-     * Update the review status of a session
+     * Update the export status of a session
      */
-    async updateSessionStatus(id: string, status: 'approved' | 'rejected' | 'pending' | undefined): Promise<void> {
+    async updateExportStatus(id: string, status: 'exported' | 'not_exported'): Promise<void> {
         const db = await this.getDB();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -585,9 +588,9 @@ class StorageService {
                 }
 
                 // Update both top-level and metadata for consistency
-                session.reviewStatus = status;
+                session.exportStatus = status;
                 if (session.metadata) {
-                    session.metadata.reviewStatus = status;
+                    session.metadata.exportStatus = status;
                 }
 
                 const putRequest = store.put(session);

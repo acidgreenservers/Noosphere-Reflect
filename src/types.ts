@@ -41,7 +41,7 @@ export interface ChatMetadata {
   author?: string;
   sourceUrl?: string;
   artifacts?: ConversationArtifact[]; // NEW - Array of uploaded artifacts
-  reviewStatus?: 'approved' | 'rejected' | 'pending'; // Status tracking
+  exportStatus?: 'exported' | 'not_exported'; // Status tracking
 }
 
 export interface ChatMessage {
@@ -101,7 +101,7 @@ export interface SavedChatSession {
   chatData?: ChatData;
   metadata?: ChatMetadata; // Explicit metadata for easier hub access
   normalizedTitle?: string; // Normalized title for duplicate detection indexing
-  reviewStatus?: 'approved' | 'rejected' | 'pending'; // Mirror of metadata.reviewStatus
+  exportStatus?: 'exported' | 'not_exported'; // Mirror of metadata.exportStatus
 }
 
 export interface AppSettings {

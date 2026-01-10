@@ -211,18 +211,18 @@ const ArchiveHub: React.FC = () => {
         e.preventDefault();
         e.stopPropagation(); // Prevent card click
 
-        const current = session.reviewStatus || 'pending';
-        let next: 'approved' | 'rejected' | 'pending';
+        const current = session.exportStatus || 'not_exported';
+        const next: 'exported' | 'not_exported' = current === 'exported' ? 'not_exported' : 'exported';
 
-        if (current === 'pending') next = 'approved';
-        else if (current === 'approved') next = 'rejected';
-        else next = 'pending';
+        await storageService.updateExportStatus(session.id, next);
 
-        await storageService.updateSessionStatus(session.id, next);
-
-        // Optimistic update or reload
-        setSessions(prev => prev.map(s =>
-            s.id === session.id ? { ...s, reviewStatus: next, metadata: { ...s.metadata!, reviewStatus: next } } : s
+        // Optimistic update
+        setSessions((prev: SavedChatSession[]) => prev.map(s =>
+            s.id === session.id ? {
+                ...s,
+                exportStatus: next,
+                metadata: { ...(s.metadata || { title: s.chatTitle, model: '', date: s.date, tags: [] }), exportStatus: next }
+            } : s
         ));
     };
 
@@ -251,6 +251,15 @@ const ArchiveHub: React.FC = () => {
             URL.revokeObjectURL(url);
 
             alert(`✅ Exported ${selectedSessions.length} conversation(s) as ZIP archive`);
+
+            // Mark all as exported
+            for (const s of selectedSessions) {
+                await storageService.updateExportStatus(s.id, 'exported');
+            }
+
+            // Reload to show new status
+            await loadSessions();
+
             setExportModalOpen(false);
             setExportDropdownOpen(false);
         } catch (error) {
@@ -282,6 +291,10 @@ const ArchiveHub: React.FC = () => {
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+
+                // Mark as exported
+                await storageService.updateExportStatus(session.id, 'exported');
+                await loadSessions();
             } else {
                 // Directory export - use File System Access API
                 try {
@@ -372,6 +385,10 @@ const ArchiveHub: React.FC = () => {
                     }
 
                     alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${uniqueArtifacts.length} files)`);
+
+                    // Mark as exported
+                    await storageService.updateExportStatus(session.id, 'exported');
+                    await loadSessions();
                 } catch (error: any) {
                     if (error.name === 'AbortError') {
                         // User cancelled the directory picker
@@ -653,15 +670,13 @@ const ArchiveHub: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={(e) => handleStatusToggle(session, e)}
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${session.reviewStatus === 'approved'
-                                                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                                                    : session.reviewStatus === 'rejected'
-                                                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
-                                                        : 'bg-gray-700/30 border-gray-600 text-gray-500 hover:bg-gray-700 hover:text-gray-300'
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${session.exportStatus === 'exported'
+                                                ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
+                                                : 'bg-red-500/20 border-red-500/50 text-red-400'
                                                 }`}
-                                            title={`Status: ${session.reviewStatus || 'pending'} (Click to toggle)`}
+                                            title={`Export Status: ${session.exportStatus === 'exported' ? 'Exported' : 'Not Exported'} (Click to toggle)`}
                                         >
-                                            {session.reviewStatus === 'approved' ? '✅' : session.reviewStatus === 'rejected' ? '❌' : '○'}
+                                            {session.exportStatus === 'exported' ? '📤' : '📥'}
                                         </button>
                                         {((session.metadata?.artifacts && session.metadata.artifacts.length > 0) ||
                                             (session.chatData?.messages.some(msg => msg.artifacts && msg.artifacts.length > 0))) && (
