@@ -45,8 +45,8 @@
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/AI-Chat-HTML-Converter.git
-   cd AI-Chat-HTML-Converter
+   git clone https://github.com/yourusername/Noosphere-Reflect.git
+   cd Noosphere-Reflect
    ```
 
 2. Install dependencies:
@@ -291,7 +291,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Found an issue or have a suggestion?
 1. Check [extension/README.md](extension/README.md) for common problems
 2. Review [GEMINI.md](GEMINI.md) for architecture details
-3. Open a [GitHub Issue](https://github.com/yourusername/AI-Chat-HTML-Converter/issues)
+3. Open a [GitHub Issue](https://github.com/yourusername/Noosphere-Reflect/issues)
 
 ---
 

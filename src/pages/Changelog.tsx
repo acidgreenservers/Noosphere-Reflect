@@ -245,7 +245,7 @@ const Changelog: React.FC = () => {
                 </div>
 
                 <div className="mt-12 text-center text-gray-600 text-sm">
-                    <p>AI Chat HTML Converter &copy; 2026</p>
+                    <p>Noosphere Reflect &copy; 2026</p>
                 </div>
             </div>
         </div>
