@@ -205,6 +205,7 @@ if (isAssistantResponse && !isInsideThinking) {
 - **beefbcd**: Initial nesting check (extension parser)
 - **b2e3690**: Fallback parser fix (web app)
 - **6d50e5a**: Complete fallback ancestor check (FINAL FIX)
+- **[Latest]**: Robust implementation in `src/services/converterService.ts` using `isInsideThinkingBlock` helper (Jan 10, 2026)
 
 ---
 

@@ -96,6 +96,25 @@
       expandSelector: null,
       color: '#FFFFFF',
       textColor: '#000000'
+    },
+    aistudio: {
+      name: 'Google AI Studio',
+      match: () => window.location.hostname.includes('aistudio.google.com'),
+      inputSelector: '.turn.input',
+      messageSelector: '.turn-container .turn',
+      userSelector: '.turn.input',
+      aiSelector: '.turn.output',
+      expandSelector: null,
+      color: '#4285F4', // Google Blue
+      textColor: '#FFFFFF',
+      menuDirection: 'down', // Menu rolls downward
+      customPosition: {
+        position: 'absolute',
+        top: '8px',
+        left: '200px',
+        bottom: 'auto',
+        right: 'auto'
+      }
     }
   };
 
@@ -125,6 +144,15 @@
       right: 20px;
       z-index: 99999;
       font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    /* AI Studio: position near back button (top-left) */
+    .nr-export-container.aistudio-positioned {
+      position: absolute;
+      bottom: auto;
+      right: auto;
+      left: 200px;
+      top: 8px;
     }
 
     .nr-export-btn {
@@ -175,6 +203,20 @@
       transform: translateY(0) scaleY(1);
       opacity: 1;
       pointer-events: auto;
+    }
+
+    /* Downward menu variant (for AI Studio) */
+    .nr-export-menu.menu-down {
+      bottom: auto;
+      top: 100%;
+      margin-top: 8px;
+      margin-bottom: 0;
+      transform: translateY(-10px) scaleY(0);
+      transform-origin: top;
+    }
+
+    .nr-export-menu.menu-down.open {
+      transform: translateY(0) scaleY(1);
     }
 
     .nr-menu-section {
@@ -351,7 +393,8 @@
       if (isLoading) {
         btn.innerHTML = '⏳ Processing...';
       } else {
-        btn.innerHTML = menuOpen ? '✕ Close' : '📋 Export ▲';
+        const arrow = platform.menuDirection === 'down' ? '▼' : '▲';
+        btn.innerHTML = menuOpen ? '✕ Close' : `📋 Export ${arrow}`;
       }
     }
   }
@@ -476,7 +519,9 @@
     } else {
       checkboxesVisible = false;
       removeCheckboxes();
-      btn.innerHTML = '📋 Export ▲';
+      // Use correct arrow based on menu direction
+      const arrow = platform.menuDirection === 'down' ? '▼' : '▲';
+      btn.innerHTML = `📋 Export ${arrow}`;
     }
   }
 
@@ -505,8 +550,22 @@
     const container = document.createElement('div');
     container.className = 'nr-export-container';
 
+    // Add platform-specific positioning class if needed
+    if (platform.key === 'aistudio') {
+      container.classList.add('aistudio-positioned');
+    }
+
+    // Apply custom positioning if specified (for other platforms)
+    if (platform.customPosition && platform.key !== 'aistudio') {
+      Object.assign(container.style, platform.customPosition);
+    }
+
+    // Determine menu direction class and arrow
+    const menuDirectionClass = platform.menuDirection === 'down' ? 'menu-down' : '';
+    const arrow = platform.menuDirection === 'down' ? '▼' : '▲';
+
     container.innerHTML = `
-      <div class="nr-export-menu">
+      <div class="nr-export-menu ${menuDirectionClass}">
         <div class="nr-menu-section">
           <div class="nr-menu-label">Select Messages</div>
           <div class="nr-selection-group">
@@ -529,10 +588,18 @@
           </div>
         </div>
       </div>
-      <button class="nr-export-btn">📋 Export ▲</button>
+      <button class="nr-export-btn">📋 Export ${arrow}</button>
     `;
 
-    document.body.appendChild(container);
+    // For AI Studio, append to header area; for others, append to body
+    if (platform.key === 'aistudio') {
+      // Find the top toolbar area in AI Studio
+      const toolbar = document.querySelector('header') || document.querySelector('[role="banner"]') || document.body;
+      toolbar.style.position = toolbar.style.position === 'static' ? 'relative' : toolbar.style.position;
+      toolbar.appendChild(container);
+    } else {
+      document.body.appendChild(container);
+    }
 
     // Event handlers
     container.querySelector('.nr-export-btn').addEventListener('click', toggleMenu);

@@ -10,7 +10,8 @@
 ### Release v0.5.3: Export & Parser Hardening
 - [x] **Export Polish**: Added `[Service]` prefix to directories and `export-metadata.json`.
 - [x] **Parser Hardening**: `jsdom` integration, robust LeChat tables, Gemini/Grok thought blocks.
-- [x] **Project Cleanup**: Removed obsolete agent files.
+- [x] **Gemini Thought Fix**: Resolved content bleed in web app parser using two-phase ancestor detection.
+- [x] **Project Status**: Governance layer established with multi-agent protocols. Cleanup**: Removed obsolete agent files.
 
 ### Phase 1-4: Foundation & Memory Archive
 - [x] Core Hub, Metadata, IndexedDB

@@ -84,6 +84,7 @@ export enum ParserMode {
   LeChatHtml = 'lechat-html',
   ChatGptHtml = 'chatgpt-html',
   GeminiHtml = 'gemini-html',
+  AiStudioHtml = 'aistudio-html',
   KimiHtml = 'kimi-html',
   KimiShareCopy = 'kimi-share-copy',
   GrokHtml = 'grok-html',

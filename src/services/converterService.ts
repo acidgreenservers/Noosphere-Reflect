@@ -203,6 +203,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseGeminiHtml(input);
   }
 
+  if (mode === ParserMode.AiStudioHtml) {
+    return parseAiStudioHtml(input);
+  }
+
   if (mode === ParserMode.KimiHtml) {
     return parseKimiHtml(input);
   }
@@ -1982,6 +1986,84 @@ const parseGeminiHtml = (input: string): ChatData => {
 
   if (messages.length === 0) {
     throw new Error('No Gemini-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
+  }
+
+  return { messages };
+};
+
+/**
+ * Specialized parser for Google AI Studio console HTML exports.
+ * Extracts messages from the actual DOM structure used by AI Studio console interface.
+ *
+ * Real DOM Structure (verified from aistudio.google.com/apps):
+ * - Turns: .turn-container > .turn (with .input or .output classes)
+ * - Headers: .turn-header[role="heading"] containing speaker name text
+ * - Thinking: <ms-expandable-turn> with "Thought for X seconds" text
+ * - Content: <ms-console-turn> > <ms-cmark-node> > span.ng-star-inserted
+ */
+const parseAiStudioHtml = (input: string): ChatData => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+  const messages: ChatMessage[] = [];
+
+  // Get all turns (both input and output)
+  const turns = doc.querySelectorAll('.turn-container .turn');
+
+  turns.forEach(turn => {
+    const isInput = turn.classList.contains('input');
+    const isOutput = turn.classList.contains('output');
+
+    if (isInput) {
+      // Extract user prompt
+      const contentElement = turn.querySelector('ms-console-turn ms-cmark-node');
+      if (contentElement) {
+        const content = extractMarkdownFromHtml(contentElement as HTMLElement);
+        if (content && content.trim()) {
+          messages.push({
+            type: ChatMessageType.Prompt,
+            content: content.trim()
+          });
+        }
+      }
+    } else if (isOutput) {
+      // Check for thinking block first
+      const thinkingBlock = turn.querySelector('ms-expandable-turn');
+      let thinkingContent = '';
+
+      if (thinkingBlock) {
+        // Extract thinking content from collapsed-content div
+        const collapsedContent = thinkingBlock.querySelector('.collapsed-content');
+        if (collapsedContent) {
+          const thinking = extractMarkdownFromHtml(collapsedContent as HTMLElement);
+          if (thinking && thinking.trim()) {
+            thinkingContent = thinking.trim();
+          }
+        }
+      }
+
+      // Extract main response content
+      const contentElement = turn.querySelector('ms-console-turn ms-cmark-node');
+      if (contentElement) {
+        const content = extractMarkdownFromHtml(contentElement as HTMLElement);
+        if (content && content.trim()) {
+          // Combine thinking + response if both exist
+          let fullResponse = '';
+          if (thinkingContent) {
+            fullResponse = `<thought>\n${thinkingContent}\n</thought>\n\n`;
+          }
+          fullResponse += content.trim();
+
+          messages.push({
+            type: ChatMessageType.Response,
+            content: fullResponse
+          });
+        }
+      }
+    }
+  });
+
+  if (messages.length === 0) {
+    throw new Error('No AI Studio messages found in the provided HTML. Please ensure you pasted the full page source.');
   }
 
   return { messages };

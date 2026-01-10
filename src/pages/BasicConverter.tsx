@@ -207,6 +207,8 @@ const BasicConverter: React.FC = () => {
                             setParserMode(ParserMode.ChatGptHtml);
                         } else if (content.includes('gemini.google.com')) {
                             setParserMode(ParserMode.GeminiHtml);
+                        } else if (content.includes('aistudio.google.com') || content.includes('<ms-chat-turn')) {
+                            setParserMode(ParserMode.AiStudioHtml);
                         } else if (content.includes('chat.mistral.ai')) {
                             setParserMode(ParserMode.LeChatHtml);
                         } else if (content.includes('llamacoder.together.ai')) {
@@ -772,6 +774,16 @@ const BasicConverter: React.FC = () => {
                                             >
                                                 Grok
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.AiStudioHtml)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.AiStudioHtml
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                🔬 AI Studio
+                                            </button>
                                         </div>
                                     </div>
 
@@ -1028,9 +1040,11 @@ const BasicConverter: React.FC = () => {
                                                         ? "Paste full HTML source from ChatGPT here..."
                                                         : parserMode === ParserMode.GeminiHtml
                                                             ? "Paste full HTML source from Google Gemini here..."
-                                                            : parserMode === ParserMode.KimiHtml
-                                                                ? "Paste full HTML source from Kimi AI here..."
-                                                                : "Paste your chat here (Markdown or JSON)..."}
+                                                            : parserMode === ParserMode.AiStudioHtml
+                                                                ? "Paste full HTML source from Google AI Studio here..."
+                                                                : parserMode === ParserMode.KimiHtml
+                                                                    ? "Paste full HTML source from Kimi AI here..."
+                                                                    : "Paste your chat here (Markdown or JSON)..."}
                                         className="flex-grow w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px]"
                                     />
                                     <button

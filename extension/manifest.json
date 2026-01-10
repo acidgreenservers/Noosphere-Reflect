@@ -120,6 +120,24 @@
     },
     {
       "matches": [
+        "https://aistudio.google.com/*"
+      ],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/shared/serializers.js",
+        "parsers/aistudio-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
+        "content-scripts/aistudio-capture.js",
+        "content-scripts/ui-injector.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
         "https://grok.com/*"
       ],
       "js": [
