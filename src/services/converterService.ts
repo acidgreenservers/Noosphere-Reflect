@@ -1790,6 +1790,39 @@ const parseChatGptHtml = (input: string): ChatData => {
 };
 
 /**
+ * Helper: Check if an HTML element is nested inside a Gemini thinking block.
+ * Uses two-phase detection because DOMParser doesn't properly nest custom elements.
+ *
+ * @param element The HTML element to check
+ * @returns true if element is inside a thinking block, false otherwise
+ */
+const isInsideThinkingBlock = (element: HTMLElement): boolean => {
+  // Phase 1: Fast path - Try closest() selectors
+  if (element.closest('.thoughts-container, .model-thoughts, model-thoughts')) {
+    return true;
+  }
+
+  // Phase 2: Fallback - Manually walk parent chain
+  // This handles cases where DOMParser breaks custom element nesting
+  let parent = element.parentElement;
+  while (parent) {
+    // Check for thinking block markers
+    // Safe casting to Element to access classList/getAttribute
+    if (parent.getAttribute && (
+      parent.getAttribute('data-test-id') === 'model-thoughts' ||
+      parent.classList?.contains('thoughts-content') ||
+      parent.classList?.contains('model-thoughts') ||
+      parent.tagName.toLowerCase() === 'model-thoughts'
+    )) {
+      return true;
+    }
+    parent = parent.parentElement;
+  }
+
+  return false;
+};
+
+/**
  * Specialized parser for Google Gemini HTML exports.
  * Extracts messages from the specific DOM structure used by Gemini.
  * 
@@ -1866,18 +1899,22 @@ const parseGeminiHtml = (input: string): ChatData => {
     // 2. Detect Thinking (and destructively consume)
     // Structure: <model-thoughts> -> ... -> <message-content id="">
     else if (node.tagName.toLowerCase() === 'model-thoughts' || node.classList.contains('thoughts-container')) {
-      // Look for the inner message-content with empty ID
-      const thinkingEl = node.querySelector('message-content:not([id^="message-content-id-r_"])');
+      // Look for ALL message-content elements inside (may be multiple)
+      const thinkingElements = node.querySelectorAll('message-content');
 
-      if (thinkingEl) {
-        const content = extractMarkdownFromHtml(thinkingEl as HTMLElement);
-        if (content && content.trim()) {
-          currentTurn.thoughts = (currentTurn.thoughts || '') + content.trim();
-        }
-        processedNodes.add(thinkingEl); // Mark as processed so we don't handle it again
+      if (thinkingElements.length > 0) {
+        thinkingElements.forEach((thinkingEl) => {
+          const htmlEl = thinkingEl as HTMLElement;
+          const content = extractMarkdownFromHtml(htmlEl);
+          if (content && content.trim()) {
+            currentTurn.thoughts = (currentTurn.thoughts || '') + '\n\n' + content.trim();
+          }
+          // CRITICAL: Mark as processed so step 3 skips it
+          processedNodes.add(thinkingEl);
+        });
       } else {
-        // Fallback: Check for data-test-id="thoughts-content" if message-content isn't found
-        const fallbackThoughts = node.querySelector('[data-test-id="thoughts-content"] .markdown');
+        // Fallback: Check for data-test-id="thoughts-content" or direct markdown
+        const fallbackThoughts = node.querySelector('[data-test-id="thoughts-content"] .markdown, .markdown');
         if (fallbackThoughts) {
           const content = extractMarkdownFromHtml(fallbackThoughts as HTMLElement);
           if (content && content.trim()) {
@@ -1891,6 +1928,20 @@ const parseGeminiHtml = (input: string): ChatData => {
     // 3. Detect Response
     // Structure: <message-content id="message-content-id-r_...">
     else if (node.tagName.toLowerCase() === 'message-content') {
+      const htmlEl = node as HTMLElement;
+
+      // CRITICAL: Skip message-content that's inside thinking blocks
+      // Check BEFORE attempting extraction to prevent bleed
+      const isThinking = isInsideThinkingBlock(htmlEl);
+
+      if (isThinking) {
+        // This message-content is NESTED inside a thinking block
+        // It will be handled by the thinking block processor (step 2)
+        // Skip it here to prevent double-extraction
+        processedNodes.add(node);
+        return; // Skip to next node
+      }
+
       const id = node.getAttribute('id') || '';
 
       // CASE A: It's a Response
