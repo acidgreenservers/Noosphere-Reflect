@@ -65,6 +65,17 @@
       color: '#FFFFFF',
       textColor: '#000000'
     },
+    kimi: {
+      name: 'Kimi',
+      match: () => window.location.hostname.includes('kimi.moonshot.cn'),
+      inputSelector: '.chat-editor-action',
+      messageSelector: '.chat-content-item',
+      userSelector: '.chat-content-item-user',
+      aiSelector: '.chat-content-item-assistant',
+      expandSelector: null,
+      color: '#6366F1', // Kimi brand purple
+      textColor: '#FFFFFF'
+    },
     lechat: {
       name: 'Le Chat',
       match: () => window.location.hostname.includes('chat.mistral.ai'),

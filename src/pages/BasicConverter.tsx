@@ -750,7 +750,17 @@ const BasicConverter: React.FC = () => {
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                                                     }`}
                                             >
-                                                Kimi
+                                                Kimi HTML
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setParserMode(ParserMode.KimiShareCopy)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${parserMode === ParserMode.KimiShareCopy
+                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Kimi Share
                                             </button>
                                             <button
                                                 type="button"

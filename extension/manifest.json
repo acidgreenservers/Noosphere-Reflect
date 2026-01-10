@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Noosphere Reflect Bridge",
   "version": "0.3.0",
-  "description": "Capture AI conversations from Claude, ChatGPT, LeChat, Llamacoder, Gemini, and Grok directly to Noosphere Reflect archive",
+  "description": "Capture AI conversations from Claude, ChatGPT, LeChat, Llamacoder, Gemini, Kimi, and Grok directly to Noosphere Reflect archive",
   "permissions": [
     "storage",
     "contextMenus",
@@ -17,6 +17,7 @@
     "https://gemini.google.com/*",
     "https://aistudio.google.com/*",
     "https://grok.com/*",
+    "https://kimi.moonshot.cn/*",
     "https://noosphere-reflect.pages.dev/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
@@ -130,6 +131,24 @@
         "storage/settings-sync.js",
         "content-scripts/shared/toast-manager.js",
         "content-scripts/grok-capture.js",
+        "content-scripts/ui-injector.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://kimi.moonshot.cn/*"
+      ],
+      "js": [
+        "parsers/shared/types.js",
+        "parsers/shared/markdown-extractor.js",
+        "parsers/shared/serializers.js",
+        "parsers/kimi-parser.js",
+        "storage/bridge-storage.js",
+        "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
+        "content-scripts/kimi-capture.js",
         "content-scripts/ui-injector.js"
       ],
       "run_at": "document_idle",

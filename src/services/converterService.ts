@@ -207,6 +207,10 @@ export const parseChat = async (input: string, fileType: 'markdown' | 'json' | '
     return parseKimiHtml(input);
   }
 
+  if (mode === ParserMode.KimiShareCopy) {
+    return parseKimiShareCopy(input);
+  }
+
   if (mode === ParserMode.GrokHtml) {
     return parseGrokHtml(input);
   }
@@ -1892,6 +1896,66 @@ const parseKimiHtml = (input: string): ChatData => {
 
   if (messages.length === 0) {
     throw new Error('No Kimi-style messages found in the provided HTML. Please ensure you pasted the full conversation HTML.');
+  }
+
+  return { messages };
+};
+
+/**
+ * Parser for Kimi's built-in Share/Copy format
+ * Handles the plain text output from Kimi's share feature
+ * Format: "User: <message>\nKimi: <response>"
+ */
+const parseKimiShareCopy = (input: string): ChatData => {
+  const messages: ChatMessage[] = [];
+
+  // Split by lines and parse User:/Kimi: labels
+  const lines = input.split('\n');
+  let currentRole: 'user' | 'kimi' | null = null;
+  let currentContent: string[] = [];
+
+  const flushMessage = () => {
+    if (currentRole && currentContent.length > 0) {
+      const content = currentContent.join('\n').trim();
+      if (content) {
+        messages.push({
+          type: currentRole === 'user' ? ChatMessageType.Prompt : ChatMessageType.Response,
+          content
+        });
+      }
+      currentContent = [];
+    }
+  };
+
+  for (const line of lines) {
+    // Check if line starts with "User:" or "Kimi:"
+    if (line.startsWith('User:')) {
+      flushMessage();
+      currentRole = 'user';
+      // Add the content after "User:" (if any on same line)
+      const content = line.substring(5).trim();
+      if (content) {
+        currentContent.push(content);
+      }
+    } else if (line.startsWith('Kimi:')) {
+      flushMessage();
+      currentRole = 'kimi';
+      // Add the content after "Kimi:" (if any on same line)
+      const content = line.substring(5).trim();
+      if (content) {
+        currentContent.push(content);
+      }
+    } else {
+      // Continuation of current message
+      currentContent.push(line);
+    }
+  }
+
+  // Flush the last message
+  flushMessage();
+
+  if (messages.length === 0) {
+    throw new Error('No messages found in Kimi share copy format. Please ensure you copied the conversation using Kimi\'s share feature.');
   }
 
   return { messages };
