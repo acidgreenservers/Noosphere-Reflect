@@ -2244,6 +2244,48 @@ export const generateDirectoryExport = (
   return files;
 };
 
+/**
+ * Generate export metadata JSON
+ * @param sessions - Array of sessions being exported
+ * @returns Export metadata object
+ */
+const generateExportMetadata = (sessions: SavedChatSession[]) => {
+  const chatMetadata = sessions.map(session => {
+    const messageCount = session.chatData?.messages.length || 0;
+
+    // Count artifacts from both sources
+    const sessionArtifacts = session.metadata?.artifacts?.length || 0;
+    const messageArtifacts = session.chatData?.messages.reduce((count, msg) =>
+      count + (msg.artifacts?.length || 0), 0) || 0;
+    const artifactCount = sessionArtifacts + messageArtifacts;
+
+    return {
+      filename: `[${session.aiName || 'AI'}] - ${(session.metadata?.title || session.chatTitle).replace(/[^a-z0-9]/gi, '_').toLowerCase()}`,
+      originalTitle: session.metadata?.title || session.chatTitle,
+      service: session.aiName || 'AI',
+      exportDate: new Date().toISOString(),
+      originalDate: session.metadata?.date || session.date,
+      messageCount,
+      artifactCount,
+      tags: session.metadata?.tags || []
+    };
+  });
+
+  return {
+    exportDate: new Date().toISOString(),
+    exportedBy: {
+      tool: 'Noosphere Reflect',
+      version: '0.5.0'
+    },
+    chats: chatMetadata,
+    summary: {
+      totalChats: sessions.length,
+      totalMessages: chatMetadata.reduce((sum, chat) => sum + chat.messageCount, 0),
+      totalArtifacts: chatMetadata.reduce((sum, chat) => sum + chat.artifactCount, 0)
+    }
+  };
+};
+
 
 
 /**
@@ -2259,10 +2301,11 @@ export const generateZipExport = async (
   const zip = new JSZip();
   const files = generateDirectoryExport(session, format);
 
-  // Sanitize folder name
-  const folderName = (session.metadata?.title || session.chatTitle)
-    .replace(/[^a-z0-9]/gi, '_')
-    .toLowerCase();
+  // Generate folder name with service prefix: [Service] - title
+  const serviceName = session.aiName || 'AI';
+  const title = session.metadata?.title || session.chatTitle;
+  const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const folderName = `[${serviceName}] - ${sanitizedTitle}`;
 
   const folder = zip.folder(folderName)!;
 
@@ -2274,6 +2317,10 @@ export const generateZipExport = async (
       folder.file(filename, content);
     }
   }
+
+  // Generate export metadata
+  const metadata = generateExportMetadata([session]);
+  folder.file('export-metadata.json', JSON.stringify(metadata, null, 2));
 
   return await zip.generateAsync({ type: 'blob' });
 };
@@ -2293,10 +2340,11 @@ export const generateBatchZipExport = async (
   for (const session of sessions) {
     const files = generateDirectoryExport(session, format);
 
-    // Sanitize folder name
-    const folderName = (session.metadata?.title || session.chatTitle)
-      .replace(/[^a-z0-9]/gi, '_')
-      .toLowerCase();
+    // Generate folder name with service prefix: [Service] - title
+    const serviceName = session.aiName || 'AI';
+    const title = session.metadata?.title || session.chatTitle;
+    const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const folderName = `[${serviceName}] - ${sanitizedTitle}`;
 
     const folder = zip.folder(folderName)!;
 
@@ -2308,7 +2356,15 @@ export const generateBatchZipExport = async (
         folder.file(filename, content);
       }
     }
+
+    // Add individual chat metadata to this folder
+    const chatMetadata = generateExportMetadata([session]);
+    folder.file('export-metadata.json', JSON.stringify(chatMetadata, null, 2));
   }
+
+  // Generate batch export metadata at root
+  const metadata = generateExportMetadata(sessions);
+  zip.file('export-metadata.json', JSON.stringify(metadata, null, 2));
 
   return await zip.generateAsync({ type: 'blob' });
 };

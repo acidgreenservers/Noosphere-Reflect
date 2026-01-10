@@ -314,9 +314,12 @@ const ArchiveHub: React.FC = () => {
                     const userName = session.userName || 'User';
                     const aiName = session.aiName || 'AI';
                     const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
-                    const baseFilename = (session.metadata?.title || session.chatTitle)
+
+                    // Generate folder name with service prefix: [Service] - title
+                    const sanitizedTitle = (session.metadata?.title || session.chatTitle)
                         .replace(/[^a-z0-9]/gi, '_')
                         .toLowerCase();
+                    const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 
                     // Create a subdirectory for the chat export
                     const chatDirHandle = await rootDirHandle.getDirectoryHandle(baseFilename, { create: true });
@@ -384,7 +387,36 @@ const ArchiveHub: React.FC = () => {
                         }
                     }
 
-                    alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${uniqueArtifacts.length} files)`);
+                    // Generate and write export metadata
+                    const exportMetadata = {
+                        exportDate: new Date().toISOString(),
+                        exportedBy: {
+                            tool: 'Noosphere Reflect',
+                            version: '0.5.0'
+                        },
+                        chats: [{
+                            filename: baseFilename,
+                            originalTitle: title,
+                            service: aiName,
+                            exportDate: new Date().toISOString(),
+                            originalDate: session.metadata?.date || session.date,
+                            messageCount: session.chatData?.messages.length || 0,
+                            artifactCount: uniqueArtifacts.length,
+                            tags: session.metadata?.tags || []
+                        }],
+                        summary: {
+                            totalChats: 1,
+                            totalMessages: session.chatData?.messages.length || 0,
+                            totalArtifacts: uniqueArtifacts.length
+                        }
+                    };
+
+                    const metadataHandle = await chatDirHandle.getFileHandle('export-metadata.json', { create: true });
+                    const metadataWritable = await metadataHandle.createWritable();
+                    await metadataWritable.write(JSON.stringify(exportMetadata, null, 2));
+                    await metadataWritable.close();
+
+                    alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${uniqueArtifacts.length} files)\n  - export-metadata.json`);
 
                     // Mark as exported
                     await storageService.updateExportStatus(session.id, 'exported');
