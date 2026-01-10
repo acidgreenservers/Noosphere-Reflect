@@ -37,6 +37,7 @@
         "parsers/claude-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
         "content-scripts/claude-capture.js",
         "content-scripts/ui-injector.js"
       ],
@@ -55,6 +56,7 @@
         "parsers/gpt-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
         "content-scripts/chatgpt-capture.js",
         "content-scripts/ui-injector.js"
       ],
@@ -72,6 +74,7 @@
         "parsers/lechat-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
         "content-scripts/lechat-capture.js",
         "content-scripts/ui-injector.js"
       ],
@@ -89,6 +92,7 @@
         "parsers/llamacoder-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
         "content-scripts/llamacoder-capture.js",
         "content-scripts/ui-injector.js"
       ],
@@ -106,6 +110,7 @@
         "parsers/gemini-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
         "content-scripts/gemini-capture.js",
         "content-scripts/ui-injector.js"
       ],
@@ -123,6 +128,7 @@
         "parsers/grok-parser.js",
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
+        "content-scripts/shared/toast-manager.js",
         "content-scripts/grok-capture.js",
         "content-scripts/ui-injector.js"
       ],

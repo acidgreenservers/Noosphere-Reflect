@@ -28,9 +28,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 function handleError(error, sendResponse) {
-  sendResponse({ success: false, error: error.message });
+  if (sendResponse) sendResponse({ success: false, error: error.message });
   chrome.runtime.sendMessage({ action: 'CAPTURE_ERROR', error: error.message });
-  showNotification(`Error: ${error.message}`, 'error');
+  window.ToastManager.show(`Error: ${error.message}`, 'error');
 }
 
 async function handleCopyAction(format, sendResponse) {
@@ -45,7 +45,7 @@ async function handleCopyAction(format, sendResponse) {
     }
 
     await navigator.clipboard.writeText(content);
-    showNotification(`✅ Copied as ${format.toUpperCase()}!`);
+    window.ToastManager.show(`✅ Copied as ${format.toUpperCase()}!`);
     sendResponse({ success: true });
   } catch (error) {
     handleError(error, sendResponse);
@@ -79,16 +79,16 @@ async function captureLlamacoderChat() {
   const title = session.name;
 
   if (await isStorageQuotaWarning()) {
-    showNotification('⚠️ Storage nearly full! Consider exporting as JSON.', 'warning');
+    window.ToastManager.show('⚠️ Storage nearly full! Consider exporting as JSON.', 'warning');
   }
 
   try {
     const result = await saveToBridge(session);
-    showNotification(`✅ Chat archived! (${formatBytes(result.size)})`);
+    window.ToastManager.show(`✅ Chat archived! (${formatBytes(result.size)})`);
     return { success: true, title: title };
   } catch (error) {
     if (error.message.includes('too large')) {
-      showNotification('Chat too large. Exporting as JSON...', 'info');
+      window.ToastManager.show('Chat too large. Exporting as JSON...', 'info');
       throw error;
     }
     throw error;
@@ -102,44 +102,6 @@ function extractPageTitle() {
   return null;
 }
 
-function showNotification(message, type = 'success') {
-  const toast = document.createElement('div');
-
-  const colors = {
-    success: { bg: '#FFD93D', text: '#333' },
-    error: { bg: '#EF4444', text: 'white' },
-    warning: { bg: '#F59E0B', text: 'white' },
-    info: { bg: '#3B82F6', text: 'white' }
-  };
-
-  const color = colors[type] || colors.info;
-
-  toast.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: ${color.bg};
-    color: ${color.text};
-    padding: 16px 24px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 999999;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    max-width: 400px;
-    word-wrap: break-word;
-  `;
-
-  toast.textContent = message;
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.transition = 'opacity 0.3s ease-out';
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
 
 function formatBytes(bytes) {
   if (bytes === 0) return '0 Bytes';

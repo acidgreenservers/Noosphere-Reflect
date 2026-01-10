@@ -131,6 +131,12 @@
       filter: brightness(0.95);
     }
 
+    .nr-export-btn.nr-loading {
+      opacity: 0.7;
+      cursor: wait;
+      pointer-events: none;
+    }
+
     .nr-export-menu {
       position: absolute;
       bottom: 100%;
@@ -321,6 +327,18 @@
     });
   }
 
+  function updateButtonLoading(isLoading) {
+    const btn = document.querySelector('.nr-export-btn');
+    if (btn) {
+      btn.classList.toggle('nr-loading', isLoading);
+      if (isLoading) {
+        btn.innerHTML = '⏳ Processing...';
+      } else {
+        btn.innerHTML = menuOpen ? '✕ Close' : '📋 Export ▲';
+      }
+    }
+  }
+
   // ============================================================================
   // AUTO-EXPAND THINKING
   // ============================================================================
@@ -364,8 +382,10 @@
     // Expand thinking first
     const expanded = await expandThinking();
     if (expanded > 0) {
-      console.log(`Expanded ${expanded} thinking blocks`);
+      console.log(`UI Injector: Expanded ${expanded} nodes`);
     }
+
+    updateButtonLoading(true);
 
     // Map action to message type
     const messageActions = {
@@ -402,42 +422,15 @@
         }
       });
     } catch (error) {
-      console.error('Export error:', error);
-      showNotification('❌ Export failed', 'error');
+      console.error('UI Injector: Export error:', error);
+      window.ToastManager.show('❌ Export failed', 'error');
+    } finally {
+      updateButtonLoading(false);
     }
 
     closeMenu();
   }
 
-  function showNotification(message, type = 'success') {
-    const toast = document.createElement('div');
-    const bg = type === 'error' ? '#EF4444' : platform.color;
-    const txtColor = type === 'error' ? 'white' : (platform.textColor || 'white');
-
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: ${bg};
-      color: ${txtColor};
-      padding: 12px 20px;
-      border-radius: 8px;
-      z-index: 999999;
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      border: ${txtColor === '#000000' ? '1px solid #e5e5e5' : 'none'};
-    `;
-
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transition = 'opacity 0.3s';
-      setTimeout(() => toast.remove(), 300);
-    }, 2500);
-  }
 
   // ============================================================================
   // MENU MANAGEMENT
@@ -540,19 +533,48 @@
   // ============================================================================
   // INITIALIZATION
   // ============================================================================
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectUI);
-  } else {
-    injectUI();
+  // ============================================================================
+  // OBSERVERS & PERSISTENCE
+  // ============================================================================
+
+  function ensureUI() {
+    const currentPlatform = detectPlatform();
+    if (!currentPlatform) return;
+
+    const existing = document.querySelector('.nr-export-container');
+    if (!existing) {
+      console.log(`UI Injector: UI missing on ${currentPlatform.name}, re-injecting...`);
+      injectUI();
+    }
   }
 
-  // Re-inject on SPA navigation
-  let lastUrl = location.href;
-  new MutationObserver(() => {
-    if (location.href !== lastUrl) {
-      lastUrl = location.href;
-      setTimeout(injectUI, 1000);
-    }
-  }).observe(document, { subtree: true, childList: true });
+  // Hook into History API to detect SPA navigation instantly
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+
+  history.pushState = function () {
+    originalPushState.apply(this, arguments);
+    setTimeout(ensureUI, 500);
+  };
+
+  history.replaceState = function () {
+    originalReplaceState.apply(this, arguments);
+    setTimeout(ensureUI, 500);
+  };
+
+  window.addEventListener('popstate', () => setTimeout(ensureUI, 500));
+
+  // Fallback Watchdog: Check every 2 seconds to ensure UI hasn't been wiped by app re-renders
+  const watchdog = setInterval(ensureUI, 2000);
+
+  // Initial Injection
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureUI);
+  } else {
+    ensureUI();
+  }
+
+  // Also clean up on extension unload if possible (though content scripts are mostly static)
+  window.addEventListener('unload', () => clearInterval(watchdog));
 
 })();

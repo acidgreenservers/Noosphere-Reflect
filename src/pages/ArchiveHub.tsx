@@ -219,9 +219,9 @@ const ArchiveHub: React.FC = () => {
         else next = 'pending';
 
         await storageService.updateSessionStatus(session.id, next);
-        
+
         // Optimistic update or reload
-        setSessions(prev => prev.map(s => 
+        setSessions(prev => prev.map(s =>
             s.id === session.id ? { ...s, reviewStatus: next, metadata: { ...s.metadata!, reviewStatus: next } } : s
         ));
     };
@@ -261,165 +261,124 @@ const ArchiveHub: React.FC = () => {
 
     const handleSingleExport = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
         try {
-            // Count artifacts from BOTH sources
+            // Count artifacts from BOTH sources (session-level + message-level)
             const sessionArtifacts = session.metadata?.artifacts?.length || 0;
             const messageArtifacts = session.chatData?.messages.reduce((count, msg) =>
                 count + (msg.artifacts?.length || 0), 0) || 0;
             const totalArtifacts = sessionArtifacts + messageArtifacts;
-            const hasArtifacts = totalArtifacts > 0;
 
-            if (!hasArtifacts) {
-                // No artifacts - simple single-file export (existing behavior)
-                let content: string;
-                let extension: string;
-                let mimeType: string;
-
-                const theme = session.selectedTheme || ChatTheme.DarkDefault;
-                const userName = session.userName || 'User';
-                const aiName = session.aiName || 'AI';
-                const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
-
-                if (format === 'html') {
-                    content = generateHtml(
-                        session.chatData!,
-                        title,
-                        theme,
-                        userName,
-                        aiName,
-                        session.parserMode,
-                        session.metadata
-                    );
-                    extension = 'html';
-                    mimeType = 'text/html';
-                } else if (format === 'markdown') {
-                    content = generateMarkdown(
-                        session.chatData!,
-                        title,
-                        userName,
-                        aiName,
-                        session.metadata
-                    );
-                    extension = 'md';
-                    mimeType = 'text/markdown';
-                } else {
-                    content = generateJson(session.chatData!, session.metadata);
-                    extension = 'json';
-                    mimeType = 'application/json';
-                }
-
-                const blob = new Blob([content], { type: mimeType });
-                const url = URL.createObjectURL(blob);
+            // ALWAYS use directory/zip structure (even with 0 artifacts)
+            if (packageType === 'zip') {
+                // ZIP export - uses generateZipExport which handles artifacts automatically
+                const zipBlob = await generateZipExport(session, format);
+                const url = URL.createObjectURL(zipBlob);
                 const a = document.createElement('a');
                 a.href = url;
                 const filename = (session.metadata?.title || session.chatTitle)
                     .replace(/[^a-z0-9]/gi, '_')
                     .toLowerCase();
-                a.download = `${filename}.${extension}`;
+                a.download = `${filename}.zip`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } else {
-                // Has artifacts - check package type
-                if (packageType === 'zip') {
-                    // ZIP export
-                    const zipBlob = await generateZipExport(session, format);
-                    const url = URL.createObjectURL(zipBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    const filename = (session.metadata?.title || session.chatTitle)
+                // Directory export - use File System Access API
+                try {
+                    // Check if File System Access API is supported
+                    if (!('showDirectoryPicker' in window)) {
+                        alert('⚠️ Directory export is not supported in this browser. Please use Chrome, Edge, or Opera, or select ZIP export instead.');
+                        return;
+                    }
+
+                    // Ask user to select a directory
+                    const rootDirHandle = await (window as any).showDirectoryPicker({
+                        mode: 'readwrite',
+                        startIn: 'downloads'
+                    });
+
+                    const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                    const userName = session.userName || 'User';
+                    const aiName = session.aiName || 'AI';
+                    const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+                    const baseFilename = (session.metadata?.title || session.chatTitle)
                         .replace(/[^a-z0-9]/gi, '_')
                         .toLowerCase();
-                    a.download = `${filename}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                } else {
-                    // Directory export - use File System Access API
-                    try {
-                        // Check if File System Access API is supported
-                        if (!('showDirectoryPicker' in window)) {
-                            alert('⚠️ Directory export is not supported in this browser. Please use Chrome, Edge, or Opera, or select ZIP export instead.');
-                            return;
-                        }
 
-                        // Ask user to select a directory
-                        const rootDirHandle = await (window as any).showDirectoryPicker({
-                            mode: 'readwrite',
-                            startIn: 'downloads'
-                        });
+                    // Create a subdirectory for the chat export
+                    const chatDirHandle = await rootDirHandle.getDirectoryHandle(baseFilename, { create: true });
 
-                        const theme = session.selectedTheme || ChatTheme.DarkDefault;
-                        const userName = session.userName || 'User';
-                        const aiName = session.aiName || 'AI';
-                        const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
-                        const baseFilename = (session.metadata?.title || session.chatTitle)
-                            .replace(/[^a-z0-9]/gi, '_')
-                            .toLowerCase();
+                    // Generate conversation content
+                    let content: string;
+                    let extension: string;
 
-                        // Create a subdirectory for the chat export
-                        const chatDirHandle = await rootDirHandle.getDirectoryHandle(baseFilename, { create: true });
-
-                        // Generate conversation content
-                        let content: string;
-                        let extension: string;
-
-                        if (format === 'html') {
-                            content = generateHtml(
-                                session.chatData!,
-                                title,
-                                theme,
-                                userName,
-                                aiName,
-                                session.parserMode,
-                                session.metadata
-                            );
-                            extension = 'html';
-                        } else if (format === 'markdown') {
-                            content = generateMarkdown(
-                                session.chatData!,
-                                title,
-                                userName,
-                                aiName,
-                                session.metadata
-                            );
-                            extension = 'md';
-                        } else {
-                            content = generateJson(session.chatData!, session.metadata);
-                            extension = 'json';
-                        }
-
-                        // Write conversation file to selected directory
-                        const fileHandle = await chatDirHandle.getFileHandle(`${baseFilename}.${extension}`, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(content);
-                        await writable.close();
-
-                        // Create artifacts subdirectory and write artifacts
-                        if (session.metadata?.artifacts && session.metadata.artifacts.length > 0) {
-                            const artifactsDir = await chatDirHandle.getDirectoryHandle('artifacts', { create: true });
-
-                            for (const artifact of session.metadata.artifacts) {
-                                const artifactHandle = await artifactsDir.getFileHandle(artifact.fileName, { create: true });
-                                const artifactWritable = await artifactHandle.createWritable();
-
-                                // Convert base64 to binary
-                                const binaryData = Uint8Array.from(atob(artifact.fileData), c => c.charCodeAt(0));
-                                await artifactWritable.write(binaryData);
-                                await artifactWritable.close();
-                            }
-                        }
-
-                        alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${session.metadata?.artifacts?.length || 0} files)`);
-                    } catch (error: any) {
-                        if (error.name === 'AbortError') {
-                            // User cancelled the directory picker
-                            return;
-                        }
-                        console.error('Directory export failed:', error);
-                        alert('❌ Directory export failed. Please try ZIP export instead.');
+                    if (format === 'html') {
+                        content = generateHtml(
+                            session.chatData!,
+                            title,
+                            theme,
+                            userName,
+                            aiName,
+                            session.parserMode,
+                            session.metadata
+                        );
+                        extension = 'html';
+                    } else if (format === 'markdown') {
+                        content = generateMarkdown(
+                            session.chatData!,
+                            title,
+                            userName,
+                            aiName,
+                            session.metadata
+                        );
+                        extension = 'md';
+                    } else {
+                        content = generateJson(session.chatData!, session.metadata);
+                        extension = 'json';
                     }
+
+                    // Write conversation file to chat directory
+                    const fileHandle = await chatDirHandle.getFileHandle(`${baseFilename}.${extension}`, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+
+                    // Collect artifacts from BOTH sources
+                    const allArtifacts: any[] = [
+                        // Session-level (unlinked)
+                        ...(session.metadata?.artifacts || []),
+                        // Message-level (linked)
+                        ...(session.chatData?.messages.flatMap(msg => msg.artifacts || []) || [])
+                    ];
+
+                    // Remove duplicates by ID
+                    const uniqueArtifacts = Array.from(
+                        new Map(allArtifacts.map(a => [a.id, a])).values()
+                    );
+
+                    // Create artifacts subdirectory and write artifacts (if any exist)
+                    if (uniqueArtifacts.length > 0) {
+                        const artifactsDir = await chatDirHandle.getDirectoryHandle('artifacts', { create: true });
+
+                        for (const artifact of uniqueArtifacts) {
+                            const artifactHandle = await artifactsDir.getFileHandle(artifact.fileName, { create: true });
+                            const artifactWritable = await artifactHandle.createWritable();
+
+                            // Convert base64 to binary
+                            const binaryData = Uint8Array.from(atob(artifact.fileData), c => c.charCodeAt(0));
+                            await artifactWritable.write(binaryData);
+                            await artifactWritable.close();
+                        }
+                    }
+
+                    alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${uniqueArtifacts.length} files)`);
+                } catch (error: any) {
+                    if (error.name === 'AbortError') {
+                        // User cancelled the directory picker
+                        return;
+                    }
+                    console.error('Directory export failed:', error);
+                    alert('❌ Directory export failed. Please try ZIP export instead.');
                 }
             }
 
@@ -694,13 +653,12 @@ const ArchiveHub: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={(e) => handleStatusToggle(session, e)}
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${
-                                                session.reviewStatus === 'approved' 
-                                                    ? 'bg-green-500/20 border-green-500/50 text-green-400' 
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${session.reviewStatus === 'approved'
+                                                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
                                                     : session.reviewStatus === 'rejected'
                                                         ? 'bg-red-500/20 border-red-500/50 text-red-400'
                                                         : 'bg-gray-700/30 border-gray-600 text-gray-500 hover:bg-gray-700 hover:text-gray-300'
-                                            }`}
+                                                }`}
                                             title={`Status: ${session.reviewStatus || 'pending'} (Click to toggle)`}
                                         >
                                             {session.reviewStatus === 'approved' ? '✅' : session.reviewStatus === 'rejected' ? '❌' : '○'}
