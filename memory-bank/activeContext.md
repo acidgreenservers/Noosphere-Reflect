@@ -11,6 +11,9 @@
     - **Antigravity (Consolidator)**: Established as the Workflow System & Architect.
     - **Data Architect (New)**: Guardian of the Schema and IndexedDB integrity.
     - **Design Agent (New)**: Enforcer of the "Noosphere Nexus" visual standards.
+- **Parser Enhancements**:
+    - **LeChat Overhaul**: Added support for timestamps, thinking blocks, rich tables, tool execution markers, and file attachments.
+    - **Shared Logic (GPT/All)**: Improved code block extraction (prioritizing `innerText`), blockquote handling, and UI element cleanup.
 - **Protocol Layer Establishment**:
     - `DESIGN_SYSTEM_PROTOCOL.md`: Visual tokens and component standards.
     - `CODING_STANDARDS_PROTOCOL.md`: Architectural constraints and style rules.

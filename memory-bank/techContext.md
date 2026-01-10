@@ -5,6 +5,7 @@
 - **Tailwind CSS v4**: Utility-first CSS framework (Experimental v4).
 - **Vite**: Build tool and dev server.
 - **IndexedDB**: Client-side storage for managing large chat histories.
+- **Parsing**: `jsdom` for robust server-side/CLI HTML parsing.
 - **Routing**: `react-router-dom` (to be added).
 - **AI Integration**: Google Gemini API (`gemini-2.0-flash-exp`).
 

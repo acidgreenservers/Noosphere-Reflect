@@ -22,6 +22,11 @@
 - [x] **Protocol Suite**: Design, Coding, QA, Bridge, Release, Collaboration.
 - [x] **Agent Directory**: Modularized protocols into `.agents/`.
 
+### Phase 6.6: Parser Robustness (Current)
+- [x] **LeChat**: Full support for rich elements (Tables, Thoughts, Tools).
+- [x] **Shared Extractor**: Improved code block and UI cleanup for GPT/General.
+- [ ] **Grok**: Verify thought block and tool support (Next).
+
 ## 🛡️ Specialist Team Roster
 - **Claude Code (Builder)**: Engineering, Debugging, Maintenance.
 - **Gemini (Auditor)**: Security, Git Ops, Analysis.
