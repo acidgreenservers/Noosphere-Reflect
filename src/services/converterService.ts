@@ -449,6 +449,20 @@ const parseLeChatHtml = (input: string): ChatData => {
 
   const visited = new Set<Element>();
 
+  // Pre-extract thinking time indicators for later use
+  // Structure: animated spans spelling out "Thought for Xs"
+  let pendingThinkingTime = '';
+  const thinkingContainers = doc.querySelectorAll('.flex.items-center.gap-3, .shrink-0');
+  thinkingContainers.forEach(container => {
+    const text = (container as HTMLElement).innerText?.replace(/\s+/g, ' ').trim();
+    if (text && /Thought\s*for\s*\d+s/.test(text)) {
+      const timeMatch = text.match(/(\d+s)/);
+      if (timeMatch) {
+        pendingThinkingTime = `> ⏱️ *Thought for ${timeMatch[1]}*\n\n`;
+      }
+    }
+  });
+
   // Process all likely message containers in document order
   // LeChat messages are usually top-level siblings in a container, but finding them via attributes is safer
   const allElements = doc.querySelectorAll('*');
@@ -465,32 +479,23 @@ const parseLeChatHtml = (input: string): ChatData => {
 
     if (isUserRole || isUserStyle) {
       // Avoid capturing the wrapper if we already captured inner parts, 
-      // but usually the wrapper IS the buble.
+      // but usually the wrapper IS the bubble.
       // We need to find the text content. User text is often in a span with whitespace-pre-wrap
       const contentEl = htmlEl.querySelector('.whitespace-pre-wrap') as HTMLElement || htmlEl;
-      const content = extractMarkdownFromHtml(contentEl);
+      let content = extractMarkdownFromHtml(contentEl);
+
+      // Extract timestamp for user messages
+      const timestampEl = htmlEl.closest('[data-message-id]')?.querySelector('.text-sm.text-hint');
+      const timestamp = timestampEl?.textContent?.trim();
+      if (timestamp && !timestamp.includes('Copy')) {
+        content += `\n\n*[${timestamp}]*`;
+      }
+
       if (content) {
         messages.push({ type: ChatMessageType.Prompt, content });
         // Mark children as visited
         htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
         visited.add(htmlEl);
-      }
-    }
-
-    // LeChat "Thinking Process" Time Header (e.g. "Thought for 1s")
-    // Structure: div with text "Thought", "for", "1s" in spans
-    if (htmlEl.textContent?.includes('Thought') && htmlEl.textContent?.includes('for') && htmlEl.textContent?.match(/\d+s/)) {
-      // This is likely the header. We can capture it as a system message or append it to the next thought block?
-      // Or better, just format it nicely if it's not inside a reasoning block.
-      // Actually, let's treat it as a small "System" note if it appears on its own.
-      // It's often a sibling to the actual reasoning.
-      const text = htmlEl.innerText.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
-      if (text.startsWith('Thought for')) {
-        // We can maybe just skip it if we handle it inside the reasoning block, 
-        // but usually it's separate. Let's add it as a small italic line.
-        // messages.push({ type: ChatMessageType.Response, content: `_<small>${text}</small>_` });
-        // Actually, let's ignore it effectively to keep clean, OR prepend to next AI message?
-        // LeChat logic below handles 'reasoning' parts. 
       }
     }
 
@@ -514,7 +519,10 @@ const parseLeChatHtml = (input: string): ChatData => {
             // Wrap in thought tag if strictly identified as reasoning
             // remove any existing thought tags to avoid double wrapping if extractMarkdown does it
             partContent = partContent.replace(/<\/?thought>/g, '');
-            partContent = `\n<thought>\n${partContent}\n</thought>\n`;
+            // Prepend thinking time if we captured it
+            const thinkingPrefix = pendingThinkingTime;
+            pendingThinkingTime = ''; // Use only once
+            partContent = `\n${thinkingPrefix}<thought>\n${partContent}\n</thought>\n`;
           }
 
           fullContent += partContent + '\n\n';
@@ -522,6 +530,13 @@ const parseLeChatHtml = (input: string): ChatData => {
       } else {
         // Fallback if no specific parts found
         fullContent = extractMarkdownFromHtml(htmlEl);
+      }
+
+      // Extract timestamp for AI messages
+      const timestampEl = htmlEl.closest('[data-message-id]')?.querySelector('.text-sm.text-hint');
+      const timestamp = timestampEl?.textContent?.trim();
+      if (timestamp && !timestamp.includes('Copy') && fullContent.trim()) {
+        fullContent = fullContent.trim() + `\n\n*[${timestamp}]*`;
       }
 
       if (fullContent.trim()) {
@@ -677,54 +692,127 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
 
   // 6. Handle LeChat "Context" badges (e.g. Personal Library)
   // Usually in a span with 'bg-state-soft' and 'rounded-full'
+  // Preserve as special markdown format: [!BADGE:text]
   clone.querySelectorAll('.bg-state-soft.rounded-full').forEach(badge => {
     const text = (badge as HTMLElement).innerText.trim();
     if (text) {
-      badge.replaceWith(document.createTextNode(`\n> 📎 **Context: ${text}**\n`));
+      badge.replaceWith(document.createTextNode(`[!BADGE:${text}]`));
     }
   });
 
-  // 7. Handle LeChat "Tool Executed"
-  // Structure: div with text "Tool" and "executed" split. Often has a Wrench icon somewhere.
-  // We can look for the container that has "Tool" and "executed" in text-subtle
-  const toolExecutors = clone.querySelectorAll('.text-subtle');
-  toolExecutors.forEach(el => {
-    if (el.textContent?.trim() === 'Tool' || el.textContent?.trim() === 'executed') {
-      // Find the main wrapper for this tool event interaction seems hard without a stable class.
-      // However, the provided structure shows they are often in a container with 'text-muted'.
-      // Let's look for the wrench icon SVG specifically as a marker if possible, or just text pattern.
+  // 7. Handle LeChat Rich Tables (Structured Data Grids)
+  // These use ARIA roles instead of standard table elements
+  clone.querySelectorAll('.rich-table, [role="table"]').forEach(richTable => {
+    const container = richTable.closest('.rounded-card-md, .border.border-default.bg-card');
+    const titleEl = container?.querySelector('.rich-table-title-bar .text-base, .border-b .text-base');
+    const title = titleEl?.textContent?.trim() || 'Data Table';
+
+    const headers = Array.from(richTable.querySelectorAll('[role="columnheader"]'))
+      .map(h => (h as HTMLElement).textContent?.trim()?.replace(/\n/g, ' ') || '');
+
+    const cells = Array.from(richTable.querySelectorAll('[role="cell"]'))
+      .map(c => (c as HTMLElement).textContent?.trim()?.replace(/\n/g, ' ') || '');
+
+    if (headers.length > 0 && cells.length > 0) {
+      const colCount = headers.length;
+      let mdTable = `\n\n### 📊 ${title}\n\n`;
+
+      // Header row
+      mdTable += `| ${headers.join(' | ')} |\n`;
+      mdTable += `| ${headers.map(() => '---').join(' | ')} |\n`;
+
+      // Data rows
+      for (let i = 0; i < cells.length; i += colCount) {
+        const row = cells.slice(i, i + colCount);
+        if (row.length === colCount) {
+          mdTable += `| ${row.join(' | ')} |\n`;
+        }
+      }
+
+      mdTable += '\n';
+      const replaceTarget = container || richTable;
+      replaceTarget.replaceWith(document.createTextNode(mdTable));
     }
   });
-  // Alternative: Replace specific repetitive structures found in LeChat logs
-  // "Tool executed" often appears as text content.
-  // "Tool executed" often appears as text content.
-  const textContent = clone.innerText || clone.textContent || '';
-  if (textContent.includes('Tool') && textContent.includes('executed')) {
-    // This is too broad for the whole element, but let's try to target the visual rows
-  }
 
-  // Better approach for Tool/Libraries:
-  // Look for the specific icons or the text-subtle wrappers.
-  // LeChat specific: "Tool" "executed"
-  // We can try to match the specific construct for Tools
+  // 8. Handle LeChat File Attachments
+  // File preview cards with badges (JSON, PDF, etc.)
+  clone.querySelectorAll('.max-w-2xs').forEach(wrapper => {
+    const card = wrapper.querySelector('.rounded-md.bg-muted, .relative.rounded-md');
+    if (card) {
+      const badge = card.querySelector('[class*="bg-badge-"], .bg-badge-emerald, .bg-badge-cyan');
+      const badgeText = badge?.textContent?.trim() || 'FILE';
+      const filename = card.querySelector('.line-clamp-2, p.font-medium')?.textContent?.trim();
+
+      if (filename) {
+        const fileType = badgeText.toUpperCase();
+        const icon = fileType === 'JSON' ? '📋' :
+          fileType === 'PDF' ? '📄' :
+            fileType === 'IMAGE' ? '🖼️' : '📎';
+
+        wrapper.replaceWith(document.createTextNode(`\n> ${icon} **Attachment**: ${filename} (${fileType})\n`));
+      }
+    }
+  });
+
+  // 9. Handle LeChat Tool Events (Improved icon-based detection)
+  // Look for wrench icon (lucide-wrench) for tool executions
+  clone.querySelectorAll('.lucide-wrench, [class*="lucide-wrench"]').forEach(icon => {
+    const container = icon.closest('.w-full.overflow-hidden, .flex.w-full.flex-col, .pb-6');
+    if (container) {
+      // Look for tool name/description
+      const toolTexts = Array.from(container.querySelectorAll('.text-md.font-medium.text-subtle'))
+        .map(el => (el as HTMLElement).textContent?.trim())
+        .filter(t => t && t !== 'Tool' && t !== 'executed');
+
+      const toolName = toolTexts.length > 0 ? toolTexts.join(' ') : 'Tool Executed';
+      container.replaceWith(document.createTextNode(`\n> 🔧 **${toolName}**\n`));
+    }
+  });
+
+  // 10. Handle LeChat Library Search Events
+  // Look for library icon (lucide-library) for library searches
+  clone.querySelectorAll('.lucide-library, [class*="lucide-library"]').forEach(icon => {
+    const container = icon.closest('.w-full.overflow-hidden, .flex.w-full.flex-col, .pb-6');
+    if (container) {
+      const queryEl = container.querySelector('.text-medium, button .text-medium, .wrap-break-word');
+      const query = queryEl?.textContent?.trim() || '';
+
+      const searchText = query ? `Searched Libraries: "${query}"` : 'Searched Libraries';
+      container.replaceWith(document.createTextNode(`\n> 📚 **${searchText}**\n`));
+    }
+  });
+
+  // Fallback text-based detection for Tool/Libraries (if icons not found)
   clone.querySelectorAll('.text-md.font-medium.text-subtle').forEach(el => {
     const text = el.textContent?.trim();
     if (text === 'Tool') {
-      // Check sibling or next element for 'executed'
-      // For now, let's just mark it.
       const container = el.closest('.w-full.overflow-hidden');
-      if (container) {
-        container.replaceWith(document.createTextNode('\n> 🛠️ **Tool Executed**\n'));
+      if (container && document.contains(container)) {
+        container.replaceWith(document.createTextNode('\n> 🔧 **Tool Executed**\n'));
       }
     }
     if (text === 'Searched') {
       const container = el.closest('.w-full.overflow-hidden');
-      if (container) {
-        // Try to find the query content if possible, usually in a button/text-medium
+      if (container && document.contains(container)) {
         const queryEl = container.querySelector('.text-medium');
         const query = queryEl ? queryEl.textContent?.trim() : '';
         container.replaceWith(document.createTextNode(`\n> 📚 **Searched Libraries**: ${query}\n`));
       }
+    }
+  });
+
+  // 11. Handle LeChat Follow-up Questions
+  // These are interactive spans with data-question attributes
+  const followupQuestions: string[] = [];
+  clone.querySelectorAll('.followup-block, [data-question]').forEach((block, index) => {
+    const question = block.getAttribute('data-question');
+    const text = (block as HTMLElement).textContent?.trim();
+
+    if (question && text) {
+      const refNum = index + 1;
+      followupQuestions.push(`[^${refNum}]: ${question}`);
+      block.replaceWith(document.createTextNode(`${text}[^${refNum}]`));
     }
   });
 
@@ -806,9 +894,14 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   });
 
 
-  // 5. Final cleanup of resulting text
-  // 5. Final cleanup of resulting text
-  const finalText = clone.innerText || clone.textContent || '';
+  // Final cleanup of resulting text
+  let finalText = clone.innerText || clone.textContent || '';
+
+  // Append follow-up question footnotes if any were collected
+  if (followupQuestions.length > 0) {
+    finalText += `\n\n---\n**Follow-up Questions:**\n${followupQuestions.join('\n')}`;
+  }
+
   return finalText.replace(/\n{3,}/g, '\n\n').trim();
 };
 
@@ -851,6 +944,21 @@ const applyInlineFormatting = (text: string): string => {
   escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
     const safeUrl = sanitizeUrl(url);
     return safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${text}</a>` : text;
+  });
+
+  // Convert LeChat context badges ([!BADGE:text])
+  // Note: This must be AFTER link conversion to avoid conflicts
+  escaped = escaped.replace(/\[!BADGE:([^\]]+)\]/g, (match, badgeText) => {
+    return `<span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium bg-teal-500/20 text-teal-300 border border-teal-500/30 mx-0.5">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block shrink-0">
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+        <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+        <path d="M10 9H8"></path>
+        <path d="M16 13H8"></path>
+        <path d="M16 17H8"></path>
+      </svg>
+      <span>${badgeText}</span>
+    </span>`;
   });
 
   return escaped;

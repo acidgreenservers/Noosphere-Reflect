@@ -14,7 +14,8 @@ function extractMarkdownFromHtml(element) {
     const code = pre.querySelector('code');
     const langMatch = code?.className.match(/language-(\w+)/);
     const lang = langMatch ? langMatch[1] : '';
-    const codeText = pre.innerText.trim();
+    // Prioritize code.innerText to avoid capturing UI elements like "Copy code" buttons
+    const codeText = code ? code.innerText.trim() : pre.innerText.trim();
     const mdBlock = `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
     pre.replaceWith(document.createTextNode(mdBlock));
   });
@@ -192,7 +193,14 @@ function extractMarkdownFromHtml(element) {
     list.replaceWith(document.createTextNode(mdList));
   });
 
-  // 10. Handle Tables
+  // 10. Handle Blockquotes (for novel outputs like haikus)
+  clone.querySelectorAll('blockquote').forEach(blockquote => {
+    const lines = blockquote.innerText.trim().split('\n');
+    const quotedLines = lines.map(line => `> ${line}`).join('\n');
+    blockquote.replaceWith(document.createTextNode(`\n${quotedLines}\n`));
+  });
+
+  // 11. Handle Tables
   clone.querySelectorAll('table').forEach(table => {
     let mdTable = '\n';
     const rows = Array.from(table.querySelectorAll('tr'));
@@ -215,7 +223,7 @@ function extractMarkdownFromHtml(element) {
     table.replaceWith(document.createTextNode(mdTable));
   });
 
-  // 11. Clean up extra buttons/SVGs
+  // 12. Clean up extra buttons/SVGs
   clone.querySelectorAll('button, svg, [aria-label*="Copy"], [aria-label*="Retry"], [aria-label*="Edit"], [aria-label*="Delete"], [data-testid*="action-bar"]').forEach(el => {
     if (document.contains(el) || clone.contains(el)) {
       el.remove();
