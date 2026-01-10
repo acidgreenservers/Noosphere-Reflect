@@ -14,9 +14,11 @@ import {
     ChatMessageType,
     ChatMetadata,
     ConversationArtifact,
+    ChatMessage,
 } from '../types';
 import { storageService } from '../services/storageService';
 import { validateFileSize, validateBatchImport, INPUT_LIMITS } from '../utils/securityUtils';
+import { MessageEditorModal } from '../components/MessageEditorModal';
 
 // Theme definitions (reused to ensure consistency within component state usage)
 const themeMap: Record<ChatTheme, ThemeClasses> = {
@@ -145,8 +147,7 @@ const BasicConverter: React.FC = () => {
         setShowSavedSessions(false);
     }, []);
 
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
-    const [editContent, setEditContent] = useState<string>('');
+    const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
     const [showArtifactManager, setShowArtifactManager] = useState<boolean>(false);
 
     // Load sessions from storage
@@ -417,23 +418,21 @@ const BasicConverter: React.FC = () => {
 
     const handleEditMessage = (index: number) => {
         if (!chatData) return;
-        setEditingIndex(index);
-        setEditContent(chatData.messages[index].content);
+        setEditingMessageIndex(index);
     };
 
-    const handleSaveEdit = () => {
-        if (!chatData || editingIndex === null) return;
+    const handleSaveMessage = async (updatedContent: string) => {
+        if (!chatData || editingMessageIndex === null) return;
 
         const newMessages = [...chatData.messages];
-        newMessages[editingIndex] = {
-            ...newMessages[editingIndex],
-            content: editContent,
+        newMessages[editingMessageIndex] = {
+            ...newMessages[editingMessageIndex],
+            content: updatedContent,
             isEdited: true
         };
 
         const newData = { ...chatData, messages: newMessages };
         setChatData(newData);
-        setEditingIndex(null);
 
         // Re-generate HTML
         const html = generateHtml(
@@ -443,14 +442,32 @@ const BasicConverter: React.FC = () => {
             userName,
             aiName,
             parserMode,
-            undefined,
+            metadata,
             false
         );
         setGeneratedHtml(html);
-    };
 
-    const handleCancelEdit = () => {
-        setEditingIndex(null);
+        // If this is a loaded session, persist the change
+        if (loadedSessionId) {
+            const updatedSession: SavedChatSession = {
+                id: loadedSessionId,
+                name: chatTitle,
+                date: metadata.date,
+                inputContent,
+                chatTitle,
+                userName,
+                aiName,
+                selectedTheme,
+                parserMode,
+                chatData: newData,
+                metadata: {
+                    ...metadata,
+                    title: chatTitle,
+                    artifacts: artifacts
+                }
+            };
+            await storageService.saveSession(updatedSession);
+        }
     };
 
     const handleAttachToMessage = async (messageIndex: number) => {
@@ -902,9 +919,7 @@ const BasicConverter: React.FC = () => {
                                             {chatData.messages.map((msg, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className={`p-4 rounded-xl border transition-all ${editingIndex === idx
-                                                        ? 'bg-green-600/10 border-green-500/50 ring-1 ring-blue-500/20'
-                                                        : msg.type === ChatMessageType.Prompt
+                                                    className={`p-4 rounded-xl border transition-all ${msg.type === ChatMessageType.Prompt
                                                             ? 'bg-gray-900/40 border-gray-700 hover:border-green-500/30'
                                                             : 'bg-gray-800/40 border-gray-700 hover:border-cyan-500/30'
                                                         }`}
@@ -927,45 +942,20 @@ const BasicConverter: React.FC = () => {
                                                                 📎 Attach ({msg.artifacts?.length || 0})
                                                             </button>
 
-                                                            {/* Edit/Save/Cancel buttons */}
-                                                            {editingIndex !== idx ? (
-                                                                <button
-                                                                    onClick={() => handleEditMessage(idx)}
-                                                                    className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-green-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
-                                                                >
-                                                                    Edit
-                                                                </button>
-                                                            ) : (
-                                                                <>
-                                                                    <button
-                                                                        onClick={handleSaveEdit}
-                                                                        className="text-[10px] uppercase tracking-wider font-bold text-green-400 hover:text-green-300 transition-colors bg-green-400/10 px-2 py-1 rounded border border-green-400/20"
-                                                                    >
-                                                                        Save
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={handleCancelEdit}
-                                                                        className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-gray-300 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
-                                                                    >
-                                                                        Cancel
-                                                                    </button>
-                                                                </>
-                                                            )}
+
+                                                            {/* Edit button */}
+                                                            <button
+                                                                onClick={() => handleEditMessage(idx)}
+                                                                className="text-[10px] uppercase tracking-wider font-bold text-gray-400 hover:text-green-400 transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                                                            >
+                                                                Edit
+                                                            </button>
                                                         </div>
                                                     </div>
 
-                                                    {editingIndex === idx ? (
-                                                        <textarea
-                                                            className="w-full bg-gray-900/80 text-gray-200 p-3 rounded-lg border border-green-500/50 focus:ring-2 focus:ring-green-500/20 outline-none transition-all text-sm font-mono min-h-[120px] resize-y"
-                                                            value={editContent}
-                                                            onChange={(e) => setEditContent(e.target.value)}
-                                                            autoFocus
-                                                        />
-                                                    ) : (
-                                                        <div className="text-gray-300 text-sm line-clamp-4 overflow-hidden whitespace-pre-wrap leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
-                                                            {msg.content}
-                                                        </div>
-                                                    )}
+                                                    <div className="text-gray-300 text-sm line-clamp-4 overflow-hidden whitespace-pre-wrap leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        {msg.content}
+                                                    </div>
 
                                                     {/* Display attached artifacts */}
                                                     {msg.artifacts && msg.artifacts.length > 0 && (
@@ -1214,6 +1204,17 @@ const BasicConverter: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Message Editor Modal */}
+            {chatData && editingMessageIndex !== null && (
+                <MessageEditorModal
+                    message={chatData.messages[editingMessageIndex]}
+                    messageIndex={editingMessageIndex}
+                    isOpen={editingMessageIndex !== null}
+                    onClose={() => setEditingMessageIndex(null)}
+                    onSave={handleSaveMessage}
+                />
             )}
         </div >
     );
