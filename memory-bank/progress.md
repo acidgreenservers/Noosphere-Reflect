@@ -1,11 +1,16 @@
 # Progress Tracker
 
-**Last Updated**: January 9, 2026 | **Current Release**: v0.5.0 (Stable Baseline) | **Team Roster**: Expanded Specialists
+**Last Updated**: January 10, 2026 | **Current Release**: v0.5.3 (Feature Release) | **Team Roster**: Expanded Specialists
 
 ## 🎯 Current Status
 **Governance Layer Established.** The project has transitioned to a multi-agent system with specialized roles and strict protocols. This marks the end of the "Recovery Phase" and the start of the "Hardened Implementation" era.
 
 ## ✅ Completed Phases
+
+### Release v0.5.3: Export & Parser Hardening
+- [x] **Export Polish**: Added `[Service]` prefix to directories and `export-metadata.json`.
+- [x] **Parser Hardening**: `jsdom` integration, robust LeChat tables, Gemini/Grok thought blocks.
+- [x] **Project Cleanup**: Removed obsolete agent files.
 
 ### Phase 1-4: Foundation & Memory Archive
 - [x] Core Hub, Metadata, IndexedDB
@@ -42,10 +47,11 @@
 - [ ] **Gemini**: Perform adversary audit on the fix.
 
 ### Sprint 6.2: Archive Hub Polish
+- [x] **Export Logic**: Service Name prefixes & Metadata JSON generation.
 - [ ] **Design Agent**: Propose "Dense" conversation card layout.
 - [ ] **Claude**: Implement the new card component.
 
 ## 📊 Statistics
-- **Stable Version**: v0.5.0
+- **Stable Version**: v0.5.3
 - **Team Size**: 5 Specialist Agents + 1 User
 - **Protocol Health**: 100% (6 protocols active)

@@ -14,6 +14,7 @@
 - **Parser Enhancements**:
     - **LeChat Overhaul**: Added support for timestamps, thinking blocks, rich tables, tool execution markers, and file attachments.
     - **Shared Logic (GPT/All)**: Improved code block extraction (prioritizing `innerText`), blockquote handling, and UI element cleanup.
+    - **Export Logic**: Implemented Service Name prefixes (`[Claude] - title`) and automated `export-metadata.json` generation.
 - **Protocol Layer Establishment**:
     - `DESIGN_SYSTEM_PROTOCOL.md`: Visual tokens and component standards.
     - `CODING_STANDARDS_PROTOCOL.md`: Architectural constraints and style rules.

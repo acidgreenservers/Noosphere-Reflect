@@ -13,6 +13,7 @@
 - **"Escape First" Strategy**: Security baseline where HTML entities are escaped *before* markdown formatting is applied.
 - **Dual Artifact Storage**: Support for session-level and message-level artifacts with unified export handling.
 - **Atomic Persistence**: Database writes wrapped in transactions with unique index collision handling.
+- **Export Schema**: Naming convention `[Service] - [Title]` and `export-metadata.json` manifest at chat and batch levels.
 
 ### Visual Patterns (Noosphere Nexus)
 - **Glassmorphism**: `backdrop-blur-md` with semi-transparent overlays (`bg-gray-800/50`).

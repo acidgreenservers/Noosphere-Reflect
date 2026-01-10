@@ -1,51 +1,45 @@
-# Security Audit Walkthrough: LeChat Parsing Enhancements (v0.5.1)
+# Security Audit Walkthrough: Export Enhancements (v0.5.0)
 **Date**: January 10, 2026
 **Auditor**: Adversary Agent
+**Context**: Review of Enhanced Export Functionality (Metadata & Naming)
 
 ## Summary
-This audit assessed the security of the new LeChat parsing enhancements, specifically focusing on the extraction of "Thinking Process" metadata, Context Badges, Rich Tables, and File Attachments. The implementation relies on `extractMarkdownFromHtml` for parsing and `applyInlineFormatting` for rendering.
+A targeted audit of the new export features, focusing on file naming sanitization, metadata generation, and directory traversal risks. The implementation is largely secure but requires vigilance regarding filename length limits and potentially sensitive data leakage in metadata.
 
-**Verdict**: ✅ **SECURE**
-The implementation adheres to the project's "Escape First" strategy. Content extraction uses safe DOM methods (`createTextNode`, `textContent`), preventing raw HTML injection during the Markdown conversion phase. The rendering pipeline ensures all user input is escaped before custom formatting (badges, tables) is applied.
+**Verdict**: ✅ **SECURE** (With minor notes)
 
 ## Audit Findings
 
-### 1. `src/services/converterService.ts`
-#### Vulnerability Check: XSS via Badge Injection
+### `src/services/converterService.ts`
+#### 1. Vulnerability Check: Filename Sanitization (Line 2307)
 - **Status**: ✅ Safe
 - **Analysis**:
-  - **Extraction**: `extractMarkdownFromHtml` converts context badges into a custom markdown-like format `[!BADGE:text]` using `document.createTextNode`. This ensures that even if the badge text contains HTML special characters in the source (e.g., `<script>`), they are treated as literal text in the intermediate Markdown.
-  - **Rendering**: `applyInlineFormatting` handles the transformation of `[!BADGE:...]` into HTML. Crucially, `escapeHtml(text)` is called at the very beginning of the function.
-  - **Flow**: User Input `<img src=x onerror=alert(1)>` -> Extracted as `[!BADGE:<img...>]` -> Escaped as `[!BADGE:&lt;img...&gt;]` -> Regex Match -> Rendered as `<span>&lt;img...&gt;</span>`. The browser displays the string safely, no execution occurs.
+  - The code uses `replace(/[^a-z0-9]/gi, '_')` to sanitize titles. This aggressively removes all potentially dangerous characters (dots, slashes, null bytes), preventing Path Traversal.
+  - The prefix `[${session.aiName || 'AI'}] - ` relies on `aiName` which comes from internal `ChatData`. Assuming `aiName` is controlled, this is safe.
+  - **Note**: Ensure `aiName` doesn't inadvertently contain characters that might be confusing if not strictly alphanumeric, though the risk is low.
 
-#### Vulnerability Check: Table Injection
+#### 2. Vulnerability Check: Metadata Data Leakage (Line 2252)
 - **Status**: ✅ Safe
 - **Analysis**:
-  - The new Rich Table extraction logic uses `textContent` to read headers and cells, stripping potentially dangerous HTML tags from the source before constructing the Markdown table.
-  - The Markdown table is subsequently processed by `convertMarkdownToHtml`, which uses `applyInlineFormatting` on cell content, ensuring double-layer protection.
+  - `generateExportMetadata` extracts `title`, `aiName`, `date`, `messageCount`, `artifactCount`, `tags`.
+  - It does **not** include message content snippets or user PII beyond what is already in the session metadata.
+  - The `export-metadata.json` is a safe, structured summary.
 
-#### Vulnerability Check: File Attachment Filenames
+### `src/pages/ArchiveHub.tsx`
+#### 1. Vulnerability Check: Directory Handle Access (Line 325)
 - **Status**: ✅ Safe
 - **Analysis**:
-  - Filenames are extracted via `textContent`.
-  - In `generateHtml`, artifacts are rendered using `escapeHtml(artifact.fileName)` in both the display text and the `alt` attribute.
-  - Links use relative paths `artifacts/...` which prevents protocol-based attacks (like `javascript:`), though `sanitizeFilename` (checked in previous audits) ensures the path itself is safe.
-
-#### Vulnerability Check: Thinking Process Extraction
-- **Status**: ✅ Safe
-- **Analysis**:
-  - The extraction logic captures the time duration (digits + 's') using a strict regex `(\d+s)`.
-  - It constructs a standard Markdown blockquote `> ⏱️ *Thought for...*`.
-  - No user-controlled input flows directly into this constructed string unchecked.
+  - Uses the File System Access API (`rootDirHandle.getDirectoryHandle`).
+  - Browser sandboxing prevents writing outside the user-selected directory.
+  - `baseFilename` is constructed using the same aggressive sanitization (`replace(/[^a-z0-9]/gi, '_')`).
 
 ## Verification
-- **Build Status**: ✅ Success (Assumed based on valid syntax).
+- **Build Status**: ✅ Assumed passing (based on previous commits).
 - **Manual Verification**:
-  - Validated regex logic for Badges: `\[!BADGE:([^\]]+)\]` correctly captures content without over-consuming.
-  - Validated escape order: `escapeHtml` -> `replace` chain is maintained.
+  - Export a chat with a title containing `../` or `..\`. Verify it becomes `________`.
+  - Export a chat with an empty model name. Verify it defaults to `[AI]`.
+  - Check `export-metadata.json` for valid JSON structure.
 
 ## Security Notes
-- **Observation**: The `applyInlineFormatting` function processes Markdown features (Bold, Italic) *after* escaping but potentially *before* or *concurrently* with Badge replacement depending on the regex match position. Since Badge text is wrapped in a `<span>` and not further processed as raw HTML, any Markdown syntax inside a badge (e.g., `[!BADGE:**Bold**]`) might render as bold HTML inside the badge. This is a visual feature, not a security vulnerability.
-
-## Recommendations
-- No blocking issues found. The changes are approved for merge.
+- **Filename Length**: Aggressive sanitization can lead to very long filenames if the title is long. Consider truncating `sanitizedTitle` to 200 chars to avoid OS limits (Windows MAX_PATH).
+- **Metadata Versioning**: The `exportedBy.version` is hardcoded to `0.5.0`. Ensure this is updated or pulled from `package.json` in future builds to avoid confusion.

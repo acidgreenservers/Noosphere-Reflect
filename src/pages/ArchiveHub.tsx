@@ -392,7 +392,7 @@ const ArchiveHub: React.FC = () => {
                         exportDate: new Date().toISOString(),
                         exportedBy: {
                             tool: 'Noosphere Reflect',
-                            version: '0.5.0'
+                            version: '0.5.3'
                         },
                         chats: [{
                             filename: baseFilename,

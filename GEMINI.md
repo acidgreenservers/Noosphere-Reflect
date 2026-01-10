@@ -11,7 +11,7 @@
 - **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- **Version**: Web App `v0.5.0` | Extension `v0.5.0`
+- **Version**: Web App `v0.5.3` | Extension `v0.5.3`
 - **Core Functionality**:
   - **ArchiveHub**: robust dashboard for browsing, filtering, and managing saved chats.
   - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0).

@@ -2,7 +2,20 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const Changelog: React.FC = () => {
-    const changes = [
+    // Reverse chronological order
+    const changes: Release[] = [
+        {
+            version: 'v0.5.3',
+            date: 'Jan 10, 2026',
+            title: 'Export & Parser Hardening',
+            items: [
+                'Enhanced Export Structure: Exported directories now include the AI Service name (e.g., "[Claude] - My Chat") for better organization.',
+                'Metadata Manifests: All exports now generate a detailed "export-metadata.json" file with chat statistics and artifact counts.',
+                'Parser Robustness: Integrated "jsdom" for server-side HTML parsing reliability.',
+                'LeChat Improvements: Full support for "Rich Tables", "Thought Process" blocks, and tool execution markers.',
+                'Governance: Established comprehensive Agent Protocols (Security, Design, Data) for project stability.',
+            ]
+        },
         {
             version: 'v0.5.2',
             date: 'Jan 9, 2026',

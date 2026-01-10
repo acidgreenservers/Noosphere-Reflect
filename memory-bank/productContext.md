@@ -17,3 +17,4 @@ AI chat logs are ephemeral, scattered across platforms (Claude, ChatGPT, etc.), 
 - **Full Creative Control**: Inline editing of messages and metadata to "perfect" the archive before final export.
 - **Visual Excellence**: A premium, "studio-like" dashboard for managing the library.
 - **Portability**: Standalone output that looks identical to the original chat but works anywhere without an internet connection.
+- **Metadata Fidelity**: Automatic generation of `export-metadata.json` manifests to preserve context (stats, dates, models) alongside raw content.
