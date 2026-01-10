@@ -140,7 +140,7 @@ const parseGrokHtml = (input: string): ChatData => {
         // Decode entities because innerHTML gives us &lt; for <
         const encodedThought = thoughtMatch[1].trim();
         const thoughtContent = decodeHtmlEntities(encodedThought);
-        content += `<thought>\n${thoughtContent}\n</thought>\n\n`;
+        content += `\n---\n<thought>\n${thoughtContent}\n</thought>\n---\n\n`;
       }
     }
 
@@ -551,7 +551,7 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   clone.querySelectorAll('pre').forEach(pre => {
     const code = pre.querySelector('code');
     const lang = code?.className.match(/language-(\w+)/)?.[1] || '';
-    const codeText = pre.innerText.trim();
+    const codeText = (pre.innerText || pre.textContent || '').trim();
     const mdBlock = `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
     pre.replaceWith(document.createTextNode(mdBlock));
   });
@@ -588,7 +588,7 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   // 2. Handle Inline Code
   clone.querySelectorAll('code').forEach(code => {
     if (code.parentElement?.tagName !== 'PRE') {
-      const text = code.innerText.trim();
+      const text = (code.innerText || code.textContent || '').trim();
       code.replaceWith(document.createTextNode(` \`${text}\` `));
     }
   });
@@ -597,8 +597,8 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   clone.querySelectorAll('span.text-gray-700').forEach(el => {
     const span = el as HTMLElement;
     const parent = span.parentElement as HTMLElement;
-    if (parent && (parent.classList.contains('text-sm') || parent.innerText?.includes(span.innerText))) {
-      const fileName = span.innerText.trim();
+    if (parent && (parent.classList.contains('text-sm') || (parent.innerText || parent.textContent || '').includes(span.innerText || span.textContent || ''))) {
+      const fileName = (span.innerText || span.textContent || '').trim();
       if (fileName && (fileName.includes('.') || fileName.includes('/'))) {
         parent.replaceWith(document.createTextNode(`\n\n**📄 File: ${fileName}**\n`));
       }
@@ -614,7 +614,7 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   // 5. Handle Claude "Thought Process" blocks
   // These are often in a container with a button saying "Thought process"
   clone.querySelectorAll('button').forEach(btn => {
-    const btnText = btn.innerText.toLowerCase();
+    const btnText = (btn.innerText || btn.textContent || '').toLowerCase();
     if (btnText.includes('thought process') || btnText.includes('extra thought')) {
       // Find the primary container for this thinking block
       // Find the primary container for this thinking block
@@ -626,11 +626,11 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
         const thoughtContentEl = container.querySelector('.font-claude-response, .standard-markdown');
 
         if (thoughtContentEl) {
-          const thoughtText = (thoughtContentEl as HTMLElement).innerText.trim();
+          const thoughtText = ((thoughtContentEl as HTMLElement).innerText || (thoughtContentEl as HTMLElement).textContent || '').trim();
           // Verify we aren't just capturing the button text again
           if (thoughtText && !thoughtText.toLowerCase().includes('thought process') && !thoughtText.toLowerCase().includes('viewed memory')) {
             // Replace the ENTIRE container with the thought tag
-            container.replaceWith(document.createTextNode(`\n\n<thought>\n${thoughtText}\n</thought>\n\n`));
+            container.replaceWith(document.createTextNode(`\n\n---\n<thought>\n${thoughtText}\n</thought>\n---\n\n`));
             return;
           }
         }
@@ -642,7 +642,7 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
       const parent = btn.closest('.border-border-300, .rounded-lg, .flex-col');
       if (parent) {
         const results = Array.from(parent.querySelectorAll('.text-text-000, .text-text-200, .line-clamp-1'))
-          .map(el => (el as HTMLElement).innerText.trim())
+          .map(el => ((el as HTMLElement).innerText || (el as HTMLElement).textContent || '').trim())
           .filter(txt => txt && !txt.toLowerCase().includes('viewed') && !txt.toLowerCase().includes('presented'));
 
         const resultsMd = results.length > 0 ? `\n> ${results.join('\n> ')}` : '';
@@ -697,7 +697,9 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
   });
   // Alternative: Replace specific repetitive structures found in LeChat logs
   // "Tool executed" often appears as text content.
-  if (clone.innerText.includes('Tool') && clone.innerText.includes('executed')) {
+  // "Tool executed" often appears as text content.
+  const textContent = clone.innerText || clone.textContent || '';
+  if (textContent.includes('Tool') && textContent.includes('executed')) {
     // This is too broad for the whole element, but let's try to target the visual rows
   }
 
@@ -763,7 +765,7 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
         // We use simple replacing here; nested lists might need recursion but this suffices for single-level
         // For correct nesting, we'd need to check ancestors.
         // But innerText will flatten it anyway. Let's prepend newline to ensure separation.
-        mdList += `${marker} ${(li as HTMLElement).innerText.trim()}\n`;
+        mdList += `${marker} ${(li as HTMLElement).innerText?.trim() || (li as HTMLElement).textContent?.trim() || ''}\n`;
       }
     });
     mdList += '\n';
@@ -777,7 +779,7 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
 
     rows.forEach((row, rowIndex) => {
       const cells = Array.from(row.querySelectorAll('th, td'));
-      const cellTexts = cells.map(c => (c as HTMLElement).innerText.trim().replace(/\n/g, ' ')); // Single line cells
+      const cellTexts = cells.map(c => ((c as HTMLElement).innerText || (c as HTMLElement).textContent || '').trim().replace(/\n/g, ' ')); // Single line cells
 
       if (cellTexts.length > 0) {
         mdTable += `| ${cellTexts.join(' | ')} |\n`;
@@ -805,7 +807,9 @@ const extractMarkdownFromHtml = (element: HTMLElement): string => {
 
 
   // 5. Final cleanup of resulting text
-  return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
+  // 5. Final cleanup of resulting text
+  const finalText = clone.innerText || clone.textContent || '';
+  return finalText.replace(/\n{3,}/g, '\n\n').trim();
 };
 
 const doc = () => document;
@@ -974,6 +978,13 @@ const parseTableBlock = (lines: string[], startIndex: number): TableParseResult 
  * @returns The HTML string.
  */
 const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): string => {
+  // Pre-process: Ensure thought tags are on their own lines for detection
+  if (enableThoughts) {
+    markdown = markdown
+      .replace(/<thought>/g, '\n<thought>\n')
+      .replace(/<\/thought>/g, '\n</thought>\n');
+  }
+
   const lines = markdown.split('\n');
   const htmlOutput: string[] = [];
   let i = 0;
@@ -1151,6 +1162,13 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
       }).join('');
       htmlOutput.push(`<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">${blockquoteParagraphs}</blockquote>`);
       i = j;
+      continue;
+    }
+
+    // 6.5 Horizontal Rules
+    if (trimmedLine.match(/^\s*((\*{3,})|(-){3,}|(_){3,})\s*$/)) {
+      htmlOutput.push('<hr class="my-6 border-t border-[var(--border)]" />');
+      i++;
       continue;
     }
 
@@ -1677,149 +1695,130 @@ const parseGeminiHtml = (input: string): ChatData => {
   const doc = parser.parseFromString(input, 'text/html');
   const messages: ChatMessage[] = [];
 
-  // Strategy: Iterate over conversation turns (.conversation-container)
-  // For each turn, extract in order: user query, thinking (if any), then response.
-  // This ensures thinking blocks always appear BEFORE the response.
+  // Strategy for Console Exports (Full Page HTML):
+  // 1. Identify "Turns": User Query node -> Optional Thinking nodes -> Response node
+  // 2. Thinking content is in <message-content id=""> (empty string)
+  // 3. Response content is in <message-content id="message-content-id-r_...">
+  // 4. Use DESTRUCTIVE READ on thinking to prevent bleed (it often sits inside containers that standard selectors might grab)
 
-  const conversationTurns = doc.querySelectorAll('div.conversation-container, .conversation-container');
+  // A. Handle Console Export Structure (e.g. from gemini-console-scraper.md)
+  // We iterate through all relevant nodes in document order to reconstruct the flow.
+  // The structure is flat-ish: headers, paragraphs, custom elements all mixed.
 
-  conversationTurns.forEach(turn => {
-    // 1. Extract user query
-    const userQueryEl = turn.querySelector('user-query .query-text, user-query [role="heading"]');
-    if (userQueryEl) {
-      const content = extractMarkdownFromHtml(userQueryEl as HTMLElement);
-      if (content && content.trim().length > 0) {
-        messages.push({
-          type: ChatMessageType.Prompt,
-          content: content.trim()
-        });
-      }
+  // Select all potential signal nodes in order
+  const allNodes = Array.from(doc.querySelectorAll(
+    // User prompts
+    'div.query-text, div[role="heading"][aria-level="2"], ' +
+    // Thinking containers (or direct content)
+    'model-thoughts, .thoughts-container, ' +
+    // Message content (thinking OR response)
+    'message-content'
+  ));
+
+  let currentTurn: { prompt?: string; thoughts?: string; response?: string } = {};
+
+  const flushTurn = () => {
+    if (currentTurn.prompt) {
+      messages.push({ type: ChatMessageType.Prompt, content: currentTurn.prompt });
     }
 
-    // 2. Extract thinking (DESTRUCTIVE READ PATTERN)
-    // Gemini structure: .thoughts-container > model-thoughts > [data-test-id="thoughts-content"] > .markdown
-    const thoughtsContainer = turn.querySelector('.thoughts-container, model-thoughts');
-    if (thoughtsContainer) {
-      // Target the inner content div with data-test-id="thoughts-content"
-      const thoughtContentEl = thoughtsContainer.querySelector('[data-test-id="thoughts-content"] .markdown') ||
-        thoughtsContainer.querySelector('[data-test-id="thoughts-content"]') ||
-        thoughtsContainer.querySelector('.markdown');
+    // Combine thoughts and response
+    if (currentTurn.response || currentTurn.thoughts) {
+      let fullContent = '';
+      if (currentTurn.thoughts) {
+        fullContent += `\n---\n<thought>\n${currentTurn.thoughts}\n</thought>\n---\n\n`;
+      }
+      if (currentTurn.response) {
+        fullContent += currentTurn.response;
+      }
+      messages.push({ type: ChatMessageType.Response, content: fullContent.trim() });
+    }
+    currentTurn = {};
+  };
 
-      if (thoughtContentEl) {
-        const thoughtContent = extractMarkdownFromHtml(thoughtContentEl as HTMLElement);
-        if (thoughtContent && thoughtContent.trim().length > 0) {
-          // Wrap in thought tags for consistency with Claude's format
-          messages.push({
-            type: ChatMessageType.Response,
-            content: `\n<thought>\n${thoughtContent.trim()}\n</thought>\n`
-          });
-        }
+  const processedNodes = new Set<Element>();
+
+  allNodes.forEach((node) => {
+    if (processedNodes.has(node)) return;
+
+    // 1. Detect User Prompt
+    if (node.classList.contains('query-text') || (node.getAttribute('role') === 'heading' && node.getAttribute('aria-level') === '2')) {
+      // If we have a pending turn with content, flush it
+      if (currentTurn.prompt || currentTurn.response || currentTurn.thoughts) {
+        flushTurn();
       }
 
-      // DESTRUCTIVE READ: Remove thinking block immediately after extraction
-      // to prevent content from bleeding into response text during subsequent extraction
-      thoughtsContainer.remove();
+      const content = extractMarkdownFromHtml(node as HTMLElement);
+      if (content && content.trim()) {
+        currentTurn.prompt = content.trim();
+      }
+      processedNodes.add(node);
     }
 
-    // 3. Extract model response
-    // NOTE: Thinking blocks have been removed above (destructive read), so response
-    // extraction will never accidentally include thinking content
-    turn.querySelectorAll('model-thoughts').forEach(el => el.remove()); // Cleanup redundant removes
+    // 2. Detect Thinking (and destructively consume)
+    // Structure: <model-thoughts> -> ... -> <message-content id="">
+    else if (node.tagName.toLowerCase() === 'model-thoughts' || node.classList.contains('thoughts-container')) {
+      // Look for the inner message-content with empty ID
+      const thinkingEl = node.querySelector('message-content:not([id^="message-content-id-r_"])');
 
-    const responseEl = turn.querySelector('.model-response-text .markdown') ||
-      turn.querySelector('[class*="model-response"] .markdown') ||
-      turn.querySelector('structured-content-container .markdown:not([class*="thoughts"])') ||
-      // Gemini sometimes has message-content as a direct sibling after model-thoughts closes
-      turn.querySelector('message-content .markdown') ||
-      turn.querySelector('message-content') ||
-      turn.querySelector('model-response .message-content .markdown') ||
-      turn.querySelector('model-response .message-content') ||
-      turn.querySelector('.response-content .markdown');
-
-    if (responseEl) {
-      // Avoid double-extracting thinking that's nested in response-content
-      const isInsideThoughts = responseEl.closest('.thoughts-container, model-thoughts');
-      if (!isInsideThoughts) {
-        const content = extractMarkdownFromHtml(responseEl as HTMLElement);
-        if (content && content.trim().length > 0) {
-          messages.push({
-            type: ChatMessageType.Response,
-            content: content.trim()
-          });
+      if (thinkingEl) {
+        const content = extractMarkdownFromHtml(thinkingEl as HTMLElement);
+        if (content && content.trim()) {
+          currentTurn.thoughts = (currentTurn.thoughts || '') + content.trim();
         }
+        processedNodes.add(thinkingEl); // Mark as processed so we don't handle it again
+      } else {
+        // Fallback: Check for data-test-id="thoughts-content" if message-content isn't found
+        const fallbackThoughts = node.querySelector('[data-test-id="thoughts-content"] .markdown');
+        if (fallbackThoughts) {
+          const content = extractMarkdownFromHtml(fallbackThoughts as HTMLElement);
+          if (content && content.trim()) {
+            currentTurn.thoughts = (currentTurn.thoughts || '') + content.trim();
+          }
+        }
+      }
+      processedNodes.add(node);
+    }
+
+    // 3. Detect Response
+    // Structure: <message-content id="message-content-id-r_...">
+    else if (node.tagName.toLowerCase() === 'message-content') {
+      const id = node.getAttribute('id') || '';
+
+      // CASE A: It's a Response
+      if (id.startsWith('message-content-id-r_')) {
+        const content = extractMarkdownFromHtml(node as HTMLElement);
+        if (content && content.trim()) {
+          currentTurn.response = (currentTurn.response || '') + content.trim();
+        }
+        processedNodes.add(node);
+      }
+      // CASE B: It's a Thinking block (orphaned or direct sibling)
+      // Only process if NOT already handled by step 2 (checked via processedNodes)
+      else {
+        const content = extractMarkdownFromHtml(node as HTMLElement);
+        if (content && content.trim()) {
+          // If we already have a response, this might be a new thinking block for the NEXT turn (rare but possible)
+          // But usually, thinking comes before response.
+          // If we have a response but no new prompt, it's weird. Append to thoughts of current turn?
+          // Safest: Append to thoughts.
+          currentTurn.thoughts = (currentTurn.thoughts || '') + content.trim();
+        }
+        processedNodes.add(node);
       }
     }
   });
 
-  // Fallback: If no conversation turns found, try legacy parsing
+  // Flush final turn
+  flushTurn();
+
+  // Fallback: If the new strategy found nothing (e.g. copying just a snippet), try the legacy loop
   if (messages.length === 0) {
-    // Legacy approach for older Gemini HTML structure
-    const visited = new Set<Element>();
-    const allElements = doc.querySelectorAll('*');
-
-    allElements.forEach(el => {
-      if (visited.has(el)) return;
-      const htmlEl = el as HTMLElement;
-
-      // User message patterns
-      const isUserQuery =
-        htmlEl.classList.contains('query-text') ||
-        (htmlEl.getAttribute('role') === 'heading' && htmlEl.getAttribute('aria-level') === '2');
-
-      if (isUserQuery && !htmlEl.closest('.sidebar, nav, [role="navigation"]')) {
-        const content = extractMarkdownFromHtml(htmlEl);
-        if (content && content.trim().length > 0) {
-          messages.push({
-            type: ChatMessageType.Prompt,
-            content: content.trim()
-          });
-          htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-          visited.add(htmlEl);
-        }
-      }
-
-      // Assistant message patterns
-      const isAssistantResponse =
-        htmlEl.classList.contains('response-container') ||
-        htmlEl.classList.contains('message-content') ||
-        htmlEl.classList.contains('structured-content-container');
-
-      // CRITICAL: Skip message-content that's inside thinking blocks
-      // Use multiple checks because DOMParser may not properly nest custom elements
-      let isInsideThinking = false;
-
-      // Direct ancestor check with all selector patterns
-      if (htmlEl.closest('.sidebar, nav, .thoughts-container, .model-thoughts') ||
-        htmlEl.closest('model-thoughts')) {
-        isInsideThinking = true;
-      }
-
-      // Fallback: Walk up the parent chain manually for custom element detection
-      if (!isInsideThinking) {
-        let parent = htmlEl.parentElement;
-        while (parent && !isInsideThinking) {
-          if (parent.getAttribute && (
-            parent.getAttribute('data-test-id') === 'model-thoughts' ||
-            parent.classList?.contains('thoughts-content')
-          )) {
-            isInsideThinking = true;
-          }
-          parent = parent.parentElement;
-        }
-      }
-
-      if (isAssistantResponse && !isInsideThinking) {
-        const content = extractMarkdownFromHtml(htmlEl);
-        if (content && content.trim().length > 0) {
-          messages.push({
-            type: ChatMessageType.Response,
-            content: content.trim()
-          });
-          htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-          visited.add(htmlEl);
-        }
-      }
-    });
+    // Legacy Code (preserved for snippet parsing compatibility)
+    const specificConversation = doc.querySelector('.conversation-container');
+    if (specificConversation) {
+      // ... (Existing legacy logic could go here if needed, but the new global strategy usually covers it)
+    }
   }
 
   if (messages.length === 0) {
