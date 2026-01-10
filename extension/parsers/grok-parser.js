@@ -99,6 +99,7 @@ function parseGrokHtml(html) {
 
         let content = '';
 
+        // Handle thought blocks separately
         if (hasThought) {
             // Extract and wrap thought process
             const thoughtMatch = htmlContent.match(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/);
@@ -110,70 +111,13 @@ function parseGrokHtml(html) {
             }
         }
 
-        // Extract main content from <p> tags
-        const paragraphs = container.querySelectorAll('p.break-words');
-        paragraphs.forEach(p => {
-            const text = p.textContent?.trim() || '';
-            if (text) {
-                content += text + '\n\n';
-            }
-        });
-
-        // Extract code blocks
-        const codeBlocks = container.querySelectorAll('div.not-prose pre code');
-        codeBlocks.forEach(code => {
-            const languageSpan = code.closest('div.not-prose')?.querySelector('span.font-mono');
-            const language = languageSpan?.textContent?.trim() || 'plaintext';
-            const codeContent = code.textContent || '';
-            content += `\
-\
-```${language}\n${codeContent}\n\
-\
-```\
-\
-\
-`;
-        });
-
-        // Extract tables
-        const tables = container.querySelectorAll('table');
-        tables.forEach(table => {
-            content += extractTableMarkdown(table) + '\n\n';
-        });
-
-        // Extract images
-        const images = container.querySelectorAll('img');
-        images.forEach(img => {
-            const src = img.getAttribute('src') || '';
-            const alt = img.getAttribute('alt') || 'Image';
-            if (src) {
-                content += `![${alt}](${sanitizeUrl(src)})\n\n`;
-            }
-        });
-
-        // Extract canvas elements (charts)
-        const canvases = container.querySelectorAll('canvas');
-        canvases.forEach(canvas => {
-            const id = canvas.getAttribute('id') || 'chart';
-            content += `[Chart: ${id}]\n\n`;
-        });
-
-        // Extract Knowledge Cluster Prompts (suggested follow-up questions)
-        const clusterPrompts = container.querySelectorAll('button');
-        const prompts = [];
-        clusterPrompts.forEach(button => {
-            const text = button.textContent?.trim() || '';
-            // Filter out UI buttons - cluster prompts are longer
-            if (text.length > 20 && !text.includes('Copy') && !text.includes('Run')) {
-                prompts.push(text);
-            }
-        });
-        if (prompts.length > 0) {
-            content += '\n**Suggested follow-up questions:**\n';
-            prompts.forEach(prompt => {
-                content += `- ${prompt}\n`;
-            });
-            content += '\n';
+        // Use extractMarkdownFromHtml to get all content comprehensively
+        // This handles headings, lists, paragraphs, code blocks, tables, images, etc.
+        const markdownContent = extractMarkdownFromHtml(container);
+        
+        // Append the extracted markdown (thought block is already added above if present)
+        if (markdownContent.trim()) {
+            content += markdownContent;
         }
 
         if (content.trim()) {
@@ -197,3 +141,5 @@ function parseGrokHtml(html) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { parseGrokHtml, extractTableMarkdown };
 }
+// Confirm parser loaded
+console.log('Grok parser loaded. parseGrokHtml available:', typeof parseGrokHtml !== 'undefined');

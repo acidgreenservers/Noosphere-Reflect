@@ -12,6 +12,12 @@
 (function () {
   'use strict';
 
+  // Early check: Ensure chrome.runtime is available
+  if (typeof chrome === 'undefined' || !chrome.runtime) {
+    console.error('UI Injector: chrome.runtime not available, skipping initialization');
+    return;
+  }
+
   // ============================================================================
   // PLATFORM DETECTION & CONFIGURATION
   // ============================================================================
@@ -400,13 +406,21 @@
     // Send message to background script, which will relay to content script
     // Background script uses chrome.tabs.sendMessage to send back to this content script
     try {
+      // Check if chrome.runtime is available
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+        console.error('UI Injector: chrome.runtime not available');
+        window.ToastManager.show('❌ Extension not loaded properly', 'error');
+        updateButtonLoading(false);
+        return;
+      }
+
       chrome.runtime.sendMessage({
         action: 'TRIGGER_CAPTURE',
         captureAction: messageType
       }, (response) => {
         if (chrome.runtime.lastError) {
           console.error('Error:', chrome.runtime.lastError);
-          showNotification('❌ Export failed', 'error');
+          window.ToastManager.show('❌ Export failed', 'error');
           return;
         }
 
@@ -416,9 +430,9 @@
             'json': '✅ Copied as JSON!',
             'markdown': '✅ Copied as Markdown!'
           };
-          showNotification(messages[action] || '✅ Success!');
+          window.ToastManager.show(messages[action] || '✅ Success!');
         } else {
-          showNotification(`❌ ${response?.error || 'Unknown error'}`, 'error');
+          window.ToastManager.show(`❌ ${response?.error || 'Unknown error'}`, 'error');
         }
       });
     } catch (error) {

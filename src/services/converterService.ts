@@ -132,6 +132,7 @@ const parseGrokHtml = (input: string): ChatData => {
 
     let content = '';
 
+    // Handle thought blocks separately
     if (hasThought) {
       // Extract and wrap thought process
       const thoughtMatch = htmlContent.match(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/);
@@ -139,71 +140,17 @@ const parseGrokHtml = (input: string): ChatData => {
         // Decode entities because innerHTML gives us &lt; for <
         const encodedThought = thoughtMatch[1].trim();
         const thoughtContent = decodeHtmlEntities(encodedThought);
-        // Do NOT escapeHtml here; generateHtml handles it
         content += `<thought>\n${thoughtContent}\n</thought>\n\n`;
       }
     }
 
-    // Extract main content from <p> tags
-    const paragraphs = container.querySelectorAll('p.break-words');
-    paragraphs.forEach(p => {
-      const text = p.textContent?.trim() || '';
-      if (text) {
-        content += text + '\n\n';
-      }
-    });
+    // Use extractMarkdownFromHtml to get all content comprehensively
+    // This handles headings, lists, paragraphs, code blocks, tables, images, etc.
+    const markdownContent = extractMarkdownFromHtml(container as HTMLElement);
 
-    // Extract code blocks
-    const codeBlocks = container.querySelectorAll('div.not-prose pre code');
-    codeBlocks.forEach(code => {
-      const languageSpan = code.closest('div.not-prose')?.querySelector('span.font-mono');
-      const language = languageSpan?.textContent?.trim() || 'plaintext';
-      const codeContent = code.textContent || '';
-      content += `\`\`\`${validateLanguage(language)}\n${codeContent}\n\`\`\`\n\n`;
-    });
-
-    // Extract tables
-    const tables = container.querySelectorAll('table');
-    tables.forEach(table => {
-      content += extractTableMarkdown(table) + '\n\n';
-    });
-
-    // Extract images
-    const images = container.querySelectorAll('img');
-    images.forEach(img => {
-      const src = img.getAttribute('src') || '';
-      const alt = img.getAttribute('alt') || 'Image';
-      if (src) {
-        // No escapeHtml needed for alt if renderer handles it, but sanitizeUrl IS needed
-        content += `![${alt}](${sanitizeUrl(src)})\n\n`;
-      }
-    });
-
-    // Extract canvas elements (charts)
-    const canvases = container.querySelectorAll('canvas');
-    canvases.forEach(canvas => {
-      const id = canvas.getAttribute('id') || 'chart';
-      content += `[Chart: ${id}]\n\n`;
-    });
-
-    // Extract Knowledge Cluster Prompts (suggested follow-up questions)
-    // These appear as buttons, typically at the end of AI responses
-    const clusterPrompts = container.querySelectorAll('button');
-    const prompts: string[] = [];
-    clusterPrompts.forEach(button => {
-      const text = button.textContent?.trim() || '';
-      // Filter out UI buttons (Copy, Run, etc.) - cluster prompts are longer
-      if (text.length > 20 && !text.includes('Copy') && !text.includes('Run')) {
-        prompts.push(text);
-      }
-    });
-    if (prompts.length > 0) {
-      content += '\n**Suggested follow-up questions:**\n';
-      prompts.forEach(prompt => {
-        // Do NOT escapeHtml here; generateHtml handles it
-        content += `- ${prompt}\n`;
-      });
-      content += '\n';
+    // Append the extracted markdown (thought block is already added above if present)
+    if (markdownContent.trim()) {
+      content += markdownContent;
     }
 
     if (content.trim()) {
