@@ -252,39 +252,39 @@ This project operates under a **Hardened Governance Framework** with 5 specialis
 
 ### Agent Roster & Responsibilities
 
-**See `.agents/project-agents/` for detailed agent personas:**
+**See `agents/project-agents/` for detailed agent personas:**
 
 1. **Claude Code (Builder)** - `CLAUDE.md` (this file)
    - Implementation planning, feature coding, debugging, code maintenance
    - Drafting architectural plans and walkthroughs
    - Primary responsibility: Engineering execution
 
-2. **Gemini (Auditor)** - See `.agents/project-agents/SECURITY_ADVERSARY_AGENT.md`
+2. **Gemini (Auditor)** - See `agents/project-agents/SECURITY_ADVERSARY_AGENT.md`
    - Security audits, vulnerability assessment, git operations
    - Project analysis and regression testing
    - CRITICAL: Audit only, no feature code. Flags stop development.
 
 3. **Antigravity (Consolidator)** - AI Collaboration Protocol
    - Workflow system architect, plan consolidation
-   - Maintains Memory Bank (`memory-bank/activeContext.md`, `memory-bank/progress.md`)
+   - Maintains Memory Bank (`agents/memory-bank/activeContext.md`, `agents/memory-bank/progress.md`)
    - Ensures architectural cohesion across agents
 
-4. **Data Architect (Guardian)** - `.agents/project-agents/DATA_ARCHITECT_AGENT.md`
+4. **Data Architect (Guardian)** - `agents/project-agents/DATA_ARCHITECT_AGENT.md`
    - Schema consistency and validation
    - IndexedDB migration and integrity
    - Type system oversight
 
-5. **Design Agent (Enforcer)** - `.agents/project-agents/DESIGN_AGENT.md`
+5. **Design Agent (Enforcer)** - `agents/project-agents/DESIGN_AGENT.md`
    - UI/UX and accessibility enforcement
    - Noosphere Nexus design system compliance
    - Visual design direction and consistency
 
 ### Core Protocols
 
-**See `.agents/protocols/` for detailed protocol definitions:**
+**See `agents/protocols/` for detailed protocol definitions:**
 
 1. **AI_COLLABORATION_PROTOCOL.md** - Role boundaries, handoff procedures, conflict resolution
-   - Handoff Rule: Update `memory-bank/activeContext.md` and `memory-bank/progress.md` before stopping
+   - Handoff Rule: Update `agents/memory-bank/activeContext.md` and `agents/memory-bank/progress.md` before stopping
    - Conflict Rules: Plan wins over code, Auditor flags stop work, Code must pass audit before merge
    - Boundaries: Auditor reports issues (no fixes), Builder codes (no merging without audit), User final approval
 
@@ -305,7 +305,7 @@ This project operates under a **Hardened Governance Framework** with 5 specialis
    - Thought block detection and preservation across all 7 platforms
 
 5. **MEMORY_BANK_PROTOCOL.md** - Context persistence across sessions
-   - Files: memory-bank/projectBrief.md, memory-bank/activeContext.md, memory-bank/progress.md
+   - Files: agents/memory-bank/projectBrief.md, agents/memory-bank/activeContext.md, agents/memory-bank/progress.md
    - Update Trigger: Before agent handoff, after significant changes
    - Content: Current focus, recent changes, active decisions, next steps
 
@@ -317,11 +317,11 @@ This project operates under a **Hardened Governance Framework** with 5 specialis
 7. **RELEASE_PROTOCOL.md** - Version management and deployment
    - Invoke UPDATE_AGENT for version bumping (see below)
    - Atomic updates across 7 locations: package.json, manifest.json, Changelog.tsx, README.md, converterService.ts, ArchiveHub.tsx, CHANGELOG.md
-   - See .agents/VERSION_REFERENCE_MAP.md for exact locations and line numbers
+   - See `agents/protocols/VERSION_REFERENCE_MAP.md` for exact locations and line numbers
 
 ### Specialist Agents for Common Tasks
 
-**See `.agents/project-agents/` for full persona details:**
+**See `agents/project-agents/` for full persona details:**
 
 1. **UPDATE_AGENT.md** - Version synchronization
    - When to invoke: User says "bump version to X.X.X"
@@ -345,7 +345,7 @@ This project operates under a **Hardened Governance Framework** with 5 specialis
 
 ### Workflow & Planning Templates
 
-**See `.agents/templates/` for workflow templates:**
+**See `agents/templates/` for workflow templates:**
 
 1. **IMPLEMENTATION_PLAN_TEMPLATE.md** - Use BEFORE major features
    - Problem statement and root cause analysis
@@ -408,7 +408,7 @@ USER REQUEST
 
 ### Memory Bank Integration
 
-**Location**: `memory-bank/` directory
+**Location**: `agents/memory-bank/` directory
 
 **Key Files**:
 - `activeContext.md` - Current focus, recent changes, active decisions, next steps

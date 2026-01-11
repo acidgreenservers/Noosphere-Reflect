@@ -260,7 +260,7 @@ The `generateHtml()` function creates self-contained HTML files with:
 
 ## Memory Bank Integration
 
-This project uses a Memory Bank system (in `memory-bank/` directory) to maintain project context across sessions. Key files include `projectBrief.md`, `activeContext.md`, and `progress.md`. When starting new work, review these files for current focus and architectural decisions.
+This project uses a Memory Bank system (in `agents/memory-bank/` directory) to maintain project context across sessions. Key files include `projectBrief.md`, `activeContext.md`, and `progress.md`. When starting new work, review these files for current focus and architectural decisions.
 
 ## Antigravity Collaboration System
 
@@ -275,7 +275,7 @@ This project uses a **4-Mind Collaboration Workflow** with structured planning a
 
 ### Structured Planning Templates
 
-When planning or implementing features, refer to these templates in `.templates/`:
+When planning or implementing features, refer to these templates in `agents/templates/`:
 
 1. **IMPLEMENTATION_PLAN_TEMPLATE.md** - Use BEFORE coding
    - Problem statement with root cause
@@ -323,19 +323,19 @@ To ensure professional, standardized, and semantic operations, strictly follow t
 - **Commit Agent**: Refer to [`COMMIT_AGENT.md`](./COMMIT_AGENT.md).
 - **PR Agent**: Refer to [`PULL_REQUEST_AGENT.md`](./PULL_REQUEST_AGENT.md).
 - **Security Agent**: Refer to [`SECURITY_ADVERSARY_AGENT.md`](./SECURITY_ADVERSARY_AGENT.md).
-- **Data Architect**: Refer to [`DATA_ARCHITECT_AGENT.md`](./.agents/project-agents/DATA_ARCHITECT_AGENT.md).
-- **Design Agent**: Refer to [`DESIGN_AGENT.md`](./.agents/project-agents/DESIGN_AGENT.md).
-- **Design System**: Refer to [`DESIGN_SYSTEM_PROTOCOL.md`](./.agents/protocols/DESIGN_SYSTEM_PROTOCOL.md).
-- **Coding Standards**: Refer to [`CODING_STANDARDS_PROTOCOL.md`](./.agents/protocols/CODING_STANDARDS_PROTOCOL.md).
-- **QA & Testing**: Refer to [`QA_TESTING_PROTOCOL.md`](./.agents/protocols/QA_TESTING_PROTOCOL.md).
-- **Implementation**: Refer to [`IMPLEMENTATION_PROTOCOL.md`](./.agents/protocols/IMPLEMENTATION_PROTOCOL.md).
-- **Deployment**: Refer to [`GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md`](./.agents/protocols/GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md).
-- **Extension Bridge**: Refer to [`EXTENSION_BRIDGE_PROTOCOL.md`](./.agents/protocols/EXTENSION_BRIDGE_PROTOCOL.md).
-- **Release Strategy**: Refer to [`RELEASE_PROTOCOL.md`](./.agents/protocols/RELEASE_PROTOCOL.md).
-- **AI Collaboration**: Refer to [`AI_COLLABORATION_PROTOCOL.md`](./.agents/protocols/AI_COLLABORATION_PROTOCOL.md).
+- **Data Architect**: Refer to [`DATA_ARCHITECT_AGENT.md`](./agents/project-agents/DATA_ARCHITECT_AGENT.md).
+- **Design Agent**: Refer to [`DESIGN_AGENT.md`](./agents/project-agents/DESIGN_AGENT.md).
+- **Design System**: Refer to [`DESIGN_SYSTEM_PROTOCOL.md`](./agents/protocols/DESIGN_SYSTEM_PROTOCOL.md).
+- **Coding Standards**: Refer to [`CODING_STANDARDS_PROTOCOL.md`](./agents/protocols/CODING_STANDARDS_PROTOCOL.md).
+- **QA & Testing**: Refer to [`QA_TESTING_PROTOCOL.md`](./agents/protocols/QA_TESTING_PROTOCOL.md).
+- **Implementation**: Refer to [`IMPLEMENTATION_PROTOCOL.md`](./agents/protocols/IMPLEMENTATION_PROTOCOL.md).
+- **Deployment**: Refer to [`GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md`](./agents/protocols/GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md).
+- **Extension Bridge**: Refer to [`EXTENSION_BRIDGE_PROTOCOL.md`](./agents/protocols/EXTENSION_BRIDGE_PROTOCOL.md).
+- **Release Strategy**: Refer to [`RELEASE_PROTOCOL.md`](./agents/protocols/RELEASE_PROTOCOL.md).
+- **AI Collaboration**: Refer to [`AI_COLLABORATION_PROTOCOL.md`](./agents/protocols/AI_COLLABORATION_PROTOCOL.md).
 
 ## Memory Bank Protocol
 
 The Memory Bank is the persistent context for the project. For the complete structure and workflow, refer to the protocol file.
 
-👉 **Refer to [`MEMORY_BANK_PROTOCOL.md`](./MEMORY_BANK_PROTOCOL.md) for the Memory Bank standards.**
+👉 **Refer to [`MEMORY_BANK_PROTOCOL.md`](./agents/protocols/MEMORY_BANK_PROTOCOL.md) for the Memory Bank standards.**

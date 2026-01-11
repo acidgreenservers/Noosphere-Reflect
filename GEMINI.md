@@ -67,16 +67,16 @@ To ensure professional, standardized, and semantic operations, strictly follow t
 - **Commit Agent**: Refer to [`COMMIT_AGENT.md`](./COMMIT_AGENT.md).
 - **PR Agent**: Refer to [`PULL_REQUEST_AGENT.md`](./PULL_REQUEST_AGENT.md).
 - **Security Agent**: Refer to [`SECURITY_ADVERSARY_AGENT.md`](./SECURITY_ADVERSARY_AGENT.md).
-- **Data Architect**: Refer to [`DATA_ARCHITECT_AGENT.md`](./.agents/project-agents/DATA_ARCHITECT_AGENT.md).
-- **Design Agent**: Refer to [`DESIGN_AGENT.md`](./.agents/project-agents/DESIGN_AGENT.md).
-- **Design System**: Refer to [`DESIGN_SYSTEM_PROTOCOL.md`](./.agents/protocols/DESIGN_SYSTEM_PROTOCOL.md).
-- **Coding Standards**: Refer to [`CODING_STANDARDS_PROTOCOL.md`](./.agents/protocols/CODING_STANDARDS_PROTOCOL.md).
-- **QA & Testing**: Refer to [`QA_TESTING_PROTOCOL.md`](./.agents/protocols/QA_TESTING_PROTOCOL.md).
-- **Implementation**: Refer to [`IMPLEMENTATION_PROTOCOL.md`](./.agents/protocols/IMPLEMENTATION_PROTOCOL.md).
-- **Deployment**: Refer to [`GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md`](./.agents/protocols/GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md).
-- **Extension Bridge**: Refer to [`EXTENSION_BRIDGE_PROTOCOL.md`](./.agents/protocols/EXTENSION_BRIDGE_PROTOCOL.md).
-- **Release Strategy**: Refer to [`RELEASE_PROTOCOL.md`](./.agents/protocols/RELEASE_PROTOCOL.md).
-- **AI Collaboration**: Refer to [`AI_COLLABORATION_PROTOCOL.md`](./.agents/protocols/AI_COLLABORATION_PROTOCOL.md).
+- **Data Architect**: Refer to [`DATA_ARCHITECT_AGENT.md`](./agents/project-agents/DATA_ARCHITECT_AGENT.md).
+- **Design Agent**: Refer to [`DESIGN_AGENT.md`](./agents/project-agents/DESIGN_AGENT.md).
+- **Design System**: Refer to [`DESIGN_SYSTEM_PROTOCOL.md`](./agents/protocols/DESIGN_SYSTEM_PROTOCOL.md).
+- **Coding Standards**: Refer to [`CODING_STANDARDS_PROTOCOL.md`](./agents/protocols/CODING_STANDARDS_PROTOCOL.md).
+- **QA & Testing**: Refer to [`QA_TESTING_PROTOCOL.md`](./agents/protocols/QA_TESTING_PROTOCOL.md).
+- **Implementation**: Refer to [`IMPLEMENTATION_PROTOCOL.md`](./agents/protocols/IMPLEMENTATION_PROTOCOL.md).
+- **Deployment**: Refer to [`GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md`](./agents/protocols/GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md).
+- **Extension Bridge**: Refer to [`EXTENSION_BRIDGE_PROTOCOL.md`](./agents/protocols/EXTENSION_BRIDGE_PROTOCOL.md).
+- **Release Strategy**: Refer to [`RELEASE_PROTOCOL.md`](./agents/protocols/RELEASE_PROTOCOL.md).
+- **AI Collaboration**: Refer to [`AI_COLLABORATION_PROTOCOL.md`](./agents/protocols/AI_COLLABORATION_PROTOCOL.md).
 
 ## Communication Style
 - **Formatting**: Format your responses in GitHub-style markdown. Use headers, bold/italic text for keywords, and backticks for code elements. Format URLs as `[label](url)`.
@@ -91,6 +91,6 @@ MEMORY BANK SECTION
 
 The Memory Bank is the persistent context for the project. For the complete structure and workflow, refer to the protocol file.
 
-👉 **Refer to [`MEMORY_BANK_PROTOCOL.md`](./MEMORY_BANK_PROTOCOL.md) for the Memory Bank standards.**
+👉 **Refer to [`MEMORY_BANK_PROTOCOL.md`](./agents/protocols/MEMORY_BANK_PROTOCOL.md) for the Memory Bank standards.**
 
 END MEMORY BANK SECTION
