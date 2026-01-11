@@ -140,19 +140,10 @@
   const STYLES = `
     .nr-export-container {
       position: fixed;
-      bottom: 80px;
-      right: 20px;
+      top: 8px;
+      left: 200px;
       z-index: 99999;
       font-family: system-ui, -apple-system, sans-serif;
-    }
-
-    /* AI Studio: position near back button (top-left) */
-    .nr-export-container.aistudio-positioned {
-      position: absolute;
-      bottom: auto;
-      right: auto;
-      left: 200px;
-      top: 8px;
     }
 
     .nr-export-btn {
@@ -550,19 +541,14 @@
     const container = document.createElement('div');
     container.className = 'nr-export-container';
 
-    // Add platform-specific positioning class if needed
-    if (platform.key === 'aistudio') {
-      container.classList.add('aistudio-positioned');
-    }
-
-    // Apply custom positioning if specified (for other platforms)
-    if (platform.customPosition && platform.key !== 'aistudio') {
+    // Apply custom positioning if specified (platform-specific overrides)
+    if (platform.customPosition) {
       Object.assign(container.style, platform.customPosition);
     }
 
-    // Determine menu direction class and arrow
-    const menuDirectionClass = platform.menuDirection === 'down' ? 'menu-down' : '';
-    const arrow = platform.menuDirection === 'down' ? '▼' : '▲';
+    // Determine menu direction class and arrow (default to 'down' for top position)
+    const menuDirectionClass = platform.menuDirection === 'up' ? '' : 'menu-down';
+    const arrow = platform.menuDirection === 'up' ? '▲' : '▼';
 
     container.innerHTML = `
       <div class="nr-export-menu ${menuDirectionClass}">

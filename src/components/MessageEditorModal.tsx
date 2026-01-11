@@ -54,7 +54,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
 
         const newContent = `${before}<thought>\n${selectedText}\n</thought>${after}`;
         setEditedContent(newContent);
-        
+
         // Focus back on textarea after update
         setTimeout(() => {
             textarea.focus();
@@ -179,7 +179,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                     Wrap Thought
                                 </button>
                             </div>
-                            
+
                             <button
                                 onClick={() => setEditedContent(message.content)}
                                 className="text-[10px] uppercase font-bold text-gray-500 hover:text-gray-300 transition-colors"
