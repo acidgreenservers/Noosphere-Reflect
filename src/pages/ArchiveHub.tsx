@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import logo from '../assets/logo.png';
 import { SavedChatSession, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
 import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateBatchZipExport } from '../services/converterService';
 import { storageService } from '../services/storageService';
@@ -516,24 +517,11 @@ const ArchiveHub: React.FC = () => {
             <header className="sticky top-0 z-50 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <svg className="w-8 h-8 drop-shadow-lg shadow-green-500/20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                            <defs>
-                                <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style={{ stopColor: '#86efac', stopOpacity: 1 }} />
-                                    <stop offset="50%" style={{ stopColor: '#22c55e', stopOpacity: 1 }} />
-                                    <stop offset="100%" style={{ stopColor: '#14532d', stopOpacity: 1 }} />
-                                </linearGradient>
-                            </defs>
-                            <circle cx="50" cy="50" r="45" fill="url(#greenGrad)" />
-                            <ellipse cx="35" cy="25" rx="15" ry="10" fill="white" opacity="0.2" transform="rotate(-45 35 25)" />
-                            <g stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.9">
-                                <circle cx="50" cy="50" r="4" fill="white" stroke="none" />
-                                <path d="M50 25 C 65 25, 75 35, 75 50" />
-                                <path d="M50 75 C 35 75, 25 65, 25 50" />
-                                <circle cx="75" cy="50" r="3" fill="white" stroke="none" />
-                                <circle cx="25" cy="50" r="3" fill="white" stroke="none" />
-                            </g>
-                        </svg>
+                        <img
+                            src={logo}
+                            alt="Noosphere Reflect Logo"
+                            className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                        />
                         <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 via-purple-400 to-emerald-500 bg-clip-text text-transparent">
                             Archival Hub
                         </h1>

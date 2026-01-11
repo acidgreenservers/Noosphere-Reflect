@@ -1,9 +1,28 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo.png';
+
+interface Release {
+    version: string;
+    date: string;
+    title: string;
+    items: string[];
+}
 
 const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
+        {
+            version: 'v0.5.4',
+            date: 'Jan 11, 2026',
+            title: 'Vortex Brand Overhaul',
+            items: [
+                'New Brand Identity: Replaced legacy "brain/memory" logo with a premium "Vortex" abstract icon (Green & Purple lines).',
+                'Visual Refresh: Updated color gradients across all headers and titles to include "Purple-500" for better brand alignment.',
+                'Favicon Update: Migrated from legacy SVG to the new Vortex PNG logo for improved browser tab visibility.',
+                'Archive Hub Consistency: Header logo and titles now match the new landing page aesthetic.',
+            ]
+        },
         {
             version: 'v0.5.3',
             date: 'Jan 10, 2026',
@@ -229,15 +248,18 @@ const Changelog: React.FC = () => {
         <div className="min-h-screen bg-gray-900 text-gray-100 p-8 font-sans selection:bg-green-500/30">
             <div className="max-w-3xl mx-auto">
                 <div className="mb-8 flex items-center justify-between">
-                    <Link
-                        to="/"
-                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors border border-gray-700 text-sm font-medium"
-                    >
-                        ← Back to Home
-                    </Link>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-emerald-500">
-                        Changelog
-                    </h1>
+                    <div className="flex items-center gap-4">
+                        <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                            <img
+                                src={logo}
+                                alt="Noosphere Reflect Logo"
+                                className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                            />
+                        </Link>
+                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-purple-400 to-emerald-500">
+                            Changelog
+                        </h1>
+                    </div>
                 </div>
 
                 <div className="space-y-8">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Memory } from '../types';
+import logo from '../assets/logo.png';
 import { storageService } from '../services/storageService';
 import { generateMemoryHtml, generateMemoryMarkdown, generateMemoryJson } from '../services/converterService';
 import MemoryInput from '../components/MemoryInput';
@@ -103,7 +104,13 @@ export default function MemoryArchive() {
         <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
             <div className="max-w-6xl mx-auto">
                 <div className="flex items-center gap-4 mb-8">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-emerald-500 to-green-600 bg-clip-text text-transparent">
+                    <img
+                        src={logo}
+                        alt="Noosphere Reflect Logo"
+                        className="w-10 h-10 mix-blend-screen drop-shadow-[0_0_12px_rgba(168,85,247,0.4)] object-contain cursor-pointer"
+                        onClick={() => navigate('/')}
+                    />
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-purple-500 to-emerald-600 bg-clip-text text-transparent">
                         🧠 Memory Archive
                     </h1>
                     <button

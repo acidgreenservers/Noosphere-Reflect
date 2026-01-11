@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import logo from '../assets/logo.png';
 import { parseChat, generateHtml } from '../services/converterService';
 import MetadataEditor from '../components/MetadataEditor';
 import { ArtifactManager } from '../components/ArtifactManager';
@@ -405,7 +406,7 @@ const BasicConverter: React.FC = () => {
         setGeneratedHtml(null);
         setError(null);
         setChatData(null);
-        setEditingIndex(null);
+        setEditingMessageIndex(null);
         setArtifacts([]); // Clear uploaded artifacts
         setMetadata({
             title: '',
@@ -608,11 +609,18 @@ const BasicConverter: React.FC = () => {
             {/* Navigation Header */}
             <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                            <img
+                                src={logo}
+                                alt="Noosphere Reflect Logo"
+                                className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                            />
+                        </Link>
                         <Link to="/hub" className="text-gray-400 hover:text-white transition-colors">
                             ← Back
                         </Link>
-                        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-emerald-600">
+                        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-purple-400 to-emerald-600">
                             Basic Converter
                         </h1>
                     </div>
@@ -920,8 +928,8 @@ const BasicConverter: React.FC = () => {
                                                 <div
                                                     key={idx}
                                                     className={`p-4 rounded-xl border transition-all ${msg.type === ChatMessageType.Prompt
-                                                            ? 'bg-gray-900/40 border-gray-700 hover:border-green-500/30'
-                                                            : 'bg-gray-800/40 border-gray-700 hover:border-cyan-500/30'
+                                                        ? 'bg-gray-900/40 border-gray-700 hover:border-green-500/30'
+                                                        : 'bg-gray-800/40 border-gray-700 hover:border-cyan-500/30'
                                                         }`}
                                                 >
                                                     <div className="flex justify-between items-center mb-3">
