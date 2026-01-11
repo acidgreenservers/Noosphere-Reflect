@@ -71,6 +71,21 @@ Noosphere Reflect is a comprehensive AI chat archival system designed to preserv
 - **[extension/README.md](extension/README.md)**: Extension installation & troubleshooting
 - **[memory-bank/](memory-bank/)**: Project memory and context files
 
+**🤖 Workflow Agents & Protocols:**
+Strictly follow these protocols when performing specialized tasks:
+- **Commit Agent**: [`COMMIT_AGENT.md`](./COMMIT_AGENT.md)
+- **PR Agent**: [`PULL_REQUEST_AGENT.md`](./PULL_REQUEST_AGENT.md)
+- **Security Agent**: [`SECURITY_ADVERSARY_AGENT.md`](./SECURITY_ADVERSARY_AGENT.md)
+- **Data Architect**: [`DATA_ARCHITECT_AGENT.md`](./.agents/project-agents/DATA_ARCHITECT_AGENT.md)
+- **Design Agent**: [`DESIGN_AGENT.md`](./.agents/project-agents/DESIGN_AGENT.md)
+- **Design System**: [`DESIGN_SYSTEM_PROTOCOL.md`](./.agents/protocols/DESIGN_SYSTEM_PROTOCOL.md)
+- **Coding Standards**: [`CODING_STANDARDS_PROTOCOL.md`](./.agents/protocols/CODING_STANDARDS_PROTOCOL.md)
+- **QA & Testing**: [`QA_TESTING_PROTOCOL.md`](./.agents/protocols/QA_TESTING_PROTOCOL.md)
+- **Implementation**: [`IMPLEMENTATION_PROTOCOL.md`](./.agents/protocols/IMPLEMENTATION_PROTOCOL.md)
+- **Extension Bridge**: [`EXTENSION_BRIDGE_PROTOCOL.md`](./.agents/protocols/EXTENSION_BRIDGE_PROTOCOL.md)
+- **Release Strategy**: [`RELEASE_PROTOCOL.md`](./.agents/protocols/RELEASE_PROTOCOL.md)
+- **AI Collaboration**: [`AI_COLLABORATION_PROTOCOL.md`](./.agents/protocols/AI_COLLABORATION_PROTOCOL.md)
+
 **Quick Start:**
 1. **Basic Web Import:**
    ```bash
@@ -128,6 +143,6 @@ Found an issue or have a suggestion?
 2. Review [GEMINI.md](GEMINI.md) for architecture details
 3. Open a [GitHub Issue](https://github.com/yourusername/Noosphere-Reflect/issues)
 
-**Version**: 0.5.2
-**Last Updated**: January 9, 2026
-**Status**: Stable Release with Kimi Support & Export Status Indicators ✅
+**Version**: 0.5.3
+**Last Updated**: January 10, 2026
+**Status**: Stable Release with Full Database Export & UI Hardening ✅
