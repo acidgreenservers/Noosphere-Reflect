@@ -1,5 +1,6 @@
 import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
+import { validateImportData } from '../utils/importValidator';
 
 const DB_NAME = 'AIChatArchiverDB';
 const DB_VERSION = 5;
@@ -622,6 +623,37 @@ class StorageService {
             version: DB_VERSION,
             exportedAt: new Date().toISOString()
         };
+    }
+
+    /**
+     * Import a database backup (sessions, settings, memories)
+     * WITH SECURITY VALIDATION - addresses CURRENT_SECURITY_AUDIT.md findings
+     */
+    async importDatabase(data: unknown): Promise<void> {
+        // 1. Validate schema and sanitize content
+        const validatedData = validateImportData(data);
+
+        // 2. Import settings if present
+        if (validatedData.settings) {
+            await this.saveSettings(validatedData.settings);
+        }
+
+        // 3. Import sessions if present (content already sanitized by Zod transform)
+        if (validatedData.sessions && Array.isArray(validatedData.sessions)) {
+            for (const session of validatedData.sessions) {
+                // Cast to SavedChatSession to satisfy TypeScript enum requirements
+                await this.saveSession(session as SavedChatSession);
+            }
+        }
+
+        // 4. Import memories if present (content already sanitized by Zod transform)
+        if (validatedData.memories && Array.isArray(validatedData.memories)) {
+            for (const memory of validatedData.memories) {
+                await this.saveMemory(memory);
+            }
+        }
+
+        console.log('✅ Database import complete (validated and sanitized)');
     }
 }
 

@@ -59,6 +59,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         }
     };
 
+    const handleImportDatabase = async () => {
+        try {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = async (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    try {
+                        const jsonData = JSON.parse(event.target?.result as string);
+                        await storageService.importDatabase(jsonData);
+
+                        // Reload the page to reflect imported data
+                        window.location.reload();
+                    } catch (err) {
+                        console.error('Failed to import database:', err);
+
+                        // Show specific error for validation failures
+                        if (err instanceof Error && err.message.includes('validation')) {
+                            setError(`Invalid backup file: ${err.message}`);
+                        } else if (err instanceof SyntaxError) {
+                            setError('Invalid JSON file. Please ensure the file is a valid Noosphere Reflect export.');
+                        } else {
+                            setError('Failed to import database. Please ensure the file is valid.');
+                        }
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        } catch (err) {
+            console.error('Failed to import database:', err);
+            setError('Failed to import database.');
+        }
+    };
+
     const handleCancel = () => {
         setLocalSettings(settings); // Reset to original
         setError(null);
@@ -106,14 +145,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             </div>
                             <h2 className="text-xl font-bold text-white">Settings</h2>
                         </div>
-                        <button
-                            onClick={handleCancel}
-                            className="text-gray-400 hover:text-white transition-colors p-1"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {/* Export Database Button */}
+                            <button
+                                onClick={handleExportDatabase}
+                                className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-1.5"
+                                title="Export Database"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Export
+                            </button>
+                            {/* Import Database Button */}
+                            <button
+                                onClick={handleImportDatabase}
+                                className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1.5"
+                                title="Import Database"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L9 8m4-4v12" />
+                                </svg>
+                                Import
+                            </button>
+                            {/* Close Button */}
+                            <button
+                                onClick={handleCancel}
+                                className="text-gray-400 hover:text-white transition-colors p-1"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Body */}
@@ -168,12 +232,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                     {/* Footer */}
                     <div className="border-t border-gray-700 p-6 flex gap-3 justify-end">
                         <button
-                            onClick={handleExportDatabase}
-                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                        >
-                            Export Database
-                        </button>
-                        <button
                             onClick={handleCancel}
                             className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                         >
@@ -182,11 +240,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className={`px-6 py-2 text-sm font-bold text-white rounded-lg shadow-lg transition-all ${
-                                isSaving
-                                    ? 'bg-gray-600 cursor-not-allowed opacity-75'
-                                    : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-blue-500/25'
-                            }`}
+                            className={`px-6 py-2 text-sm font-bold text-white rounded-lg shadow-lg transition-all ${isSaving
+                                ? 'bg-gray-600 cursor-not-allowed opacity-75'
+                                : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-blue-500/25'
+                                }`}
                         >
                             {isSaving ? (
                                 <span className="flex items-center gap-2">

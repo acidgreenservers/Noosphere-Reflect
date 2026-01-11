@@ -7,6 +7,29 @@
 - **Code Quality**: Maintaining clean, well-documented codebase with comprehensive testing.
 
 ## Recent Changes
+- **v0.5.4 Release (In Progress)**:
+  - **Vortex Brand Overhaul**: 
+    - Replaced legacy brain/memory logo with premium "Vortex" abstract icon (emerald green & deep electric purple)
+    - Applied `mix-blend-screen` CSS effect for seamless logo blending into dark backgrounds
+    - Updated all page headers with purple-infused gradients (green → purple → emerald)
+    - Consistent branding across Home, Archive Hub, Basic Converter, Memory Archive, and Changelog
+  - **TypeScript Environment Setup**:
+    - Created `tsconfig.json` and `tsconfig.node.json` for proper React + Vite configuration
+    - Added `vite-env.d.ts` for image asset type declarations
+    - Installed `@types/react` and `@types/react-dom` packages
+    - Resolved 400+ TypeScript lint errors related to JSX and React.FC
+  - **Features Page**:
+    - Created comprehensive `/features` route showcasing all archival capabilities
+    - Interactive visual mockups for Archive System, Artifact Management, Memory Archive, and Multi-Format Export
+    - Premium design with glassmorphism effects and hover animations
+    - Updated home page "Explore Features" button to link to new page
+  - **Database Import/Export Enhancement**:
+    - Added `importDatabase()` method to storage service for complete data restoration
+    - Reorganized Settings modal header with Export (green) and Import (purple) buttons
+    - Both buttons positioned in right corner of modal header for intuitive access
+    - Import triggers automatic page reload to reflect imported data
+    - Removed redundant Export button from modal footer
+
 - **v0.5.3 Release**:
   - **Full Database Export**: Added a "Export Database" button in Settings that dumps all sessions, memories, and settings to a JSON file.
   - **Extension UI Hardening**: Fixed export button locations with precise pixel positioning and Z-index overrides for all 7 platforms.
