@@ -246,52 +246,175 @@ The `generateHtml()` function creates self-contained HTML files with:
 - **Avoid full table scans**: Don't use `getAllSessions()` in loops; use index lookups when available
 - **Batch operations**: Support batch imports/exports for large datasets (max 50 files, 100MB total currently)
 
-## Memory Bank Integration
+## Multi-Agent Governance System
 
-This project uses a Memory Bank system (in `memory-bank/` directory) to maintain project context across sessions. Key files include `projectBrief.md`, `activeContext.md`, and `progress.md`. When starting new work, review these files for current focus and architectural decisions.
+This project operates under a **Hardened Governance Framework** with 5 specialist agents, 7 core protocols, and modular documentation. All significant work follows the multi-agent specialist system to ensure quality, security, and architectural cohesion.
 
-## Antigravity Collaboration System
+### Agent Roster & Responsibilities
 
-This project uses a **4-Mind Collaboration Workflow** with structured planning and documentation. All significant work follows the Antigravity methodology to ensure clarity, quality, and coordination across team members.
+**See `.agents/project-agents/` for detailed agent personas:**
 
-### Team Roles
-- **Claude Code**: Implementation planning, coding, walkthroughs
-- **Antigravity**: Architecture design, complex coding, plan refinement
-- **Gemini**: Security audits, vulnerability assessment, adversary testing
-- **User**: Vision, direction, priority decisions, plan approval
+1. **Claude Code (Builder)** - `CLAUDE.md` (this file)
+   - Implementation planning, feature coding, debugging, code maintenance
+   - Drafting architectural plans and walkthroughs
+   - Primary responsibility: Engineering execution
 
-### Structured Planning Templates
+2. **Gemini (Auditor)** - See `.agents/project-agents/SECURITY_ADVERSARY_AGENT.md`
+   - Security audits, vulnerability assessment, git operations
+   - Project analysis and regression testing
+   - CRITICAL: Audit only, no feature code. Flags stop development.
 
-When planning or implementing features, refer to these templates in `.templates/`:
+3. **Antigravity (Consolidator)** - AI Collaboration Protocol
+   - Workflow system architect, plan consolidation
+   - Maintains Memory Bank (`memory-bank/activeContext.md`, `memory-bank/progress.md`)
+   - Ensures architectural cohesion across agents
 
-1. **IMPLEMENTATION_PLAN_TEMPLATE.md** - Use BEFORE coding
-   - Problem statement with root cause
-   - Proposed solution and design decisions
+4. **Data Architect (Guardian)** - `.agents/project-agents/DATA_ARCHITECT_AGENT.md`
+   - Schema consistency and validation
+   - IndexedDB migration and integrity
+   - Type system oversight
+
+5. **Design Agent (Enforcer)** - `.agents/project-agents/DESIGN_AGENT.md`
+   - UI/UX and accessibility enforcement
+   - Noosphere Nexus design system compliance
+   - Visual design direction and consistency
+
+### Core Protocols
+
+**See `.agents/protocols/` for detailed protocol definitions:**
+
+1. **AI_COLLABORATION_PROTOCOL.md** - Role boundaries, handoff procedures, conflict resolution
+   - Handoff Rule: Update `memory-bank/activeContext.md` and `memory-bank/progress.md` before stopping
+   - Conflict Rules: Plan wins over code, Auditor flags stop work, Code must pass audit before merge
+   - Boundaries: Auditor reports issues (no fixes), Builder codes (no merging without audit), User final approval
+
+2. **CODING_STANDARDS_PROTOCOL.md** - Code style, React/TypeScript patterns, security gates
+   - Comments: Explain why, not what; JSDoc headers on exports
+   - Naming: camelCase variables, PascalCase components, UPPER_SNAKE_CASE constants
+   - Security Gates: Always escape HTML input, validate URLs, never use unsafe innerHTML injection, no any types
+   - Adversary Audit Trigger: Required after changes to converterService.ts, storageService.ts, securityUtils.ts, file uploads
+
+3. **DESIGN_SYSTEM_PROTOCOL.md** - Noosphere Nexus visual standards
+   - Color Palette: Primary Green #10b981, Accent Green #16a34a, Backgrounds #111827, Text #f3f4f6
+   - Component Style: Pill-shaped buttons, rounded cards (rounded-3xl), glassmorphism (backdrop-blur-md)
+   - Theme: Dark-only (no light toggle), proper contrast ratios, focus rings, semantic HTML
+
+4. **EXTENSION_BRIDGE_PROTOCOL.md** - Chrome extension communication patterns
+   - IndexedDB bridge for session persistence (bridge-storage.js)
+   - Settings synchronization via Chrome.storage.sync (settings-sync.js)
+   - Thought block detection and preservation across all 7 platforms
+
+5. **MEMORY_BANK_PROTOCOL.md** - Context persistence across sessions
+   - Files: memory-bank/projectBrief.md, memory-bank/activeContext.md, memory-bank/progress.md
+   - Update Trigger: Before agent handoff, after significant changes
+   - Content: Current focus, recent changes, active decisions, next steps
+
+6. **QA_TESTING_PROTOCOL.md** - Security and regression testing
+   - Adversary audit required for sensitive changes
+   - Test coverage for edge cases, XSS vectors, injection attacks
+   - Batch operation limits and file size validation
+
+7. **RELEASE_PROTOCOL.md** - Version management and deployment
+   - Invoke UPDATE_AGENT for version bumping (see below)
+   - Atomic updates across 7 locations: package.json, manifest.json, Changelog.tsx, README.md, converterService.ts, ArchiveHub.tsx, CHANGELOG.md
+   - See .agents/VERSION_REFERENCE_MAP.md for exact locations and line numbers
+
+### Specialist Agents for Common Tasks
+
+**See `.agents/project-agents/` for full persona details:**
+
+1. **UPDATE_AGENT.md** - Version synchronization
+   - When to invoke: User says "bump version to X.X.X"
+   - Responsibility: Atomic updates across all 7 version reference points
+   - Output: Verification grep results, list of modified files, git commit approval prompt
+
+2. **SECURITY_ADVERSARY_AGENT.md** - Vulnerability assessment
+   - When to invoke: After touching converterService.ts, storageService.ts, securityUtils.ts
+   - Responsibility: Identify XSS, injection, authentication, and data leakage vectors
+   - Output: Risk report with severity ratings and remediation guidance
+
+3. **COMMIT_AGENT.md** - Git commit workflow
+   - When to invoke: After feature completion, before pushing
+   - Responsibility: Semantic commit messages, change description, verification
+   - Output: Formatted commit with proper attribution
+
+4. **PULL_REQUEST_AGENT.md** - PR creation and management
+   - When to invoke: Feature branch ready for review
+   - Responsibility: PR title, summary, test plan, GitHub integration
+   - Output: PR URL for sharing and tracking
+
+### Workflow & Planning Templates
+
+**See `.agents/templates/` for workflow templates:**
+
+1. **IMPLEMENTATION_PLAN_TEMPLATE.md** - Use BEFORE major features
+   - Problem statement and root cause analysis
+   - Proposed solution with design decisions
    - Detailed changes with code snippets
-   - Verification plan and edge cases
+   - Verification plan and edge case coverage
 
-2. **TASK_TEMPLATE.md** - Use DURING coding
+2. **TASK_TEMPLATE.md** - Use DURING implementation
    - Objective and acceptance criteria
-   - Implementation checklist (granular steps)
-   - Progress log (updated as work progresses)
+   - Granular implementation checklist
+   - Progress log (updated incrementally)
    - Risk tracking and blockers
 
 3. **WALKTHROUGH_TEMPLATE.md** - Use AFTER coding
    - Summary of what was accomplished
-   - Detailed changes with before/after code
-   - How it works + verification results
+   - Before/after code comparisons
+   - How it works and verification results
    - Lessons learned and next steps
 
-4. **ANTIGRAVITY_PLANNING_GUIDE.md** - Complete methodology guide
+4. **ANTIGRAVITY_PLANNING_GUIDE.md** - Complete methodology
    - Detailed instructions for each artifact
    - Best practices and quality checklist
    - Workflow integration and examples
+   - 4-Mind team coordination guidelines
 
-### Workflow Summary
+### Governance Workflow
 
 ```
-USER REQUEST → PLAN (Implementation Plan) → TASK (Track Progress) →
-CODE (Follow Plan) → VERIFY (Test) → WALKTHROUGH (Document) → DONE
+USER REQUEST
+  → PLAN (Use EnterPlanMode or IMPLEMENTATION_PLAN_TEMPLATE)
+  → TASK (TodoWrite to track progress)
+  → CODE (Follow CODING_STANDARDS_PROTOCOL, use appropriate templates)
+  → VERIFY (Run security adversary audit if needed)
+  → COMMIT (Use COMMIT_AGENT or manual git following AI_COLLABORATION_PROTOCOL)
+  → HANDOFF (Update Memory Bank with activeContext.md & progress.md)
+  → DONE
 ```
 
-All plan files are shared so all 4 minds can see progress, provide feedback, and iterate together.
+### Key Governance Rules
+
+**From AI_COLLABORATION_PROTOCOL.md:**
+- Plan takes precedence over code: If code contradicts plan, update code to match plan
+- Audit takes precedence over code: If Gemini flags security risk, stop work until mitigated
+- Update Memory Bank before agent switching
+- User retains final approval authority
+
+**From CODING_STANDARDS_PROTOCOL.md:**
+- IndexedDB is source of truth (never add localStorage keys)
+- All user input must use escapeHtml function from securityUtils.ts
+- Never use unsafe HTML injection methods without proper sanitization
+- No any types in TypeScript
+- Thought blocks are sacred (preserve Claude/Gemini processes)
+- Adversary audit required for sensitive file changes
+
+**From DESIGN_SYSTEM_PROTOCOL.md:**
+- Use Noosphere Nexus color palette (emerald greens, dark backgrounds)
+- Glassmorphism for premium feel (backdrop-blur-md)
+- Dark-only theme (no light toggle)
+- Proper contrast ratios and accessibility standards
+
+### Memory Bank Integration
+
+**Location**: `memory-bank/` directory
+
+**Key Files**:
+- `activeContext.md` - Current focus, recent changes, active decisions, next steps
+- `progress.md` - Release status, completed phases, upcoming tasks, statistics
+- `projectBrief.md` - Project overview, core requirements, goals
+- `projectVision.md` - Long-term vision and strategic direction
+- `systemPatterns.md` - Architectural patterns and design decisions
+
+**Update Trigger**: Before agent handoff or after significant context changes
