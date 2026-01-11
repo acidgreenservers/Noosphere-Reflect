@@ -50,7 +50,17 @@ export function extractArtifactNamesFromChat(messages: ChatMessage[]): string[] 
   return artifactNames;
 }
 
-// Simple fuzzy matching for filename comparison
+// Neutralized extensions from securityUtils.ts
+const DANGEROUS_EXTENSIONS = [
+  '.html', '.htm', '.xhtml', // HTML pages (XSS vector)
+  '.svg',                    // SVG (can contain JS)
+  '.xml',                    // XML (can render via XSLT)
+  '.php', '.php5',           // Server-side scripts (if served)
+  '.exe', '.bat', '.sh',     // Executables (download risk)
+  '.jar', '.msi', '.app'
+];
+
+// Simple fuzzy matching for filename comparison with neutralized extension fallback
 export function matchFileName(uploadedName: string, extractedName: string): boolean {
   const normalize = (str: string) => str.toLowerCase().replace(/[^a-zA-Z0-9.-]/g, '');
 
@@ -74,5 +84,34 @@ export function matchFileName(uploadedName: string, extractedName: string): bool
   const fuzzyUploaded = normalizedUploaded.replace(/[\s_-]/g, '');
   const fuzzyExtracted = normalizedExtracted.replace(/[\s_-]/g, '');
 
-  return fuzzyUploaded === fuzzyExtracted;
+  if (fuzzyUploaded === fuzzyExtracted) {
+    return true;
+  }
+
+  // Neutralized extension fallback
+  // If extracted name has a dangerous extension, try matching against neutralized version
+  const lowerExtracted = extractedName.toLowerCase();
+  const hasDangerousExt = DANGEROUS_EXTENSIONS.some(ext => lowerExtracted.endsWith(ext));
+
+  if (hasDangerousExt) {
+    // What the extracted name would become after neutralization
+    const neutralizedExtracted = `${extractedName}.txt`;
+
+    // Try all the matching logic again with the neutralized version
+    if (normalize(uploadedName) === normalize(neutralizedExtracted)) {
+      return true;
+    }
+
+    const neutralizedBase = neutralizedExtracted.replace(/\.[^.]+$/, '');
+    if (uploadedBase === normalize(neutralizedBase)) {
+      return true;
+    }
+
+    const neutralizedFuzzy = neutralizedExtracted.replace(/[\s_-]/g, '').toLowerCase();
+    if (fuzzyUploaded === neutralizedFuzzy) {
+      return true;
+    }
+  }
+
+  return false;
 }
