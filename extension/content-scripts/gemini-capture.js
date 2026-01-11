@@ -15,41 +15,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => handleError(error, sendResponse));
     return true;
   }
-
-  if (request.action === 'COPY_MARKDOWN') {
-    handleCopyAction('markdown', sendResponse);
-    return true;
-  }
-
-  if (request.action === 'COPY_JSON') {
-    handleCopyAction('json', sendResponse);
-    return true;
-  }
 });
 
 function handleError(error, sendResponse) {
   if (sendResponse) sendResponse({ success: false, error: error.message });
   chrome.runtime.sendMessage({ action: 'CAPTURE_ERROR', error: error.message });
   window.ToastManager.show(`Error: ${error.message}`, 'error');
-}
-
-async function handleCopyAction(format, sendResponse) {
-  try {
-    const session = await extractSessionData();
-    let content = '';
-
-    if (format === 'markdown') {
-      content = serializeAsMarkdown(session.chatData, session.metadata);
-    } else {
-      content = serializeAsJson(session.chatData);
-    }
-
-    await navigator.clipboard.writeText(content);
-    window.ToastManager.show(`✅ Copied as ${format.toUpperCase()}!`);
-    sendResponse({ success: true });
-  } catch (error) {
-    handleError(error, sendResponse);
-  }
 }
 
 async function extractSessionData() {

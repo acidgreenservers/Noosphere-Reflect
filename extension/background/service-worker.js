@@ -1,65 +1,7 @@
 /**
  * Background service worker for Noosphere Reflect Bridge
- * Handles context menu creation and message routing
+ * Handles message routing for UI injector
  */
-
-// Create context menu on install
-chrome.runtime.onInstalled.addListener(() => {
-  // Copy as Markdown
-  chrome.contextMenus.create({
-    id: 'noosphere-copy-markdown',
-    title: 'Copy Chat as Markdown',
-    contexts: ['page'],
-    documentUrlPatterns: [
-      'https://claude.ai/*',
-      'https://chatgpt.com/*',
-      'https://chat.openai.com/*',
-      'https://chat.mistral.ai/*',
-      'https://llamacoder.together.ai/*',
-      'https://gemini.google.com/*',
-      'https://aistudio.google.com/*'
-    ]
-  });
-
-  // Copy as JSON
-  chrome.contextMenus.create({
-    id: 'noosphere-copy-json',
-    title: 'Copy Chat as JSON',
-    contexts: ['page'],
-    documentUrlPatterns: [
-      'https://claude.ai/*',
-      'https://chatgpt.com/*',
-      'https://chat.openai.com/*',
-      'https://chat.mistral.ai/*',
-      'https://llamacoder.together.ai/*',
-      'https://gemini.google.com/*',
-      'https://aistudio.google.com/*'
-    ]
-  });
-});
-
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  let action = '';
-
-  switch (info.menuItemId) {
-    case 'noosphere-copy-markdown':
-      action = 'COPY_MARKDOWN';
-      break;
-    case 'noosphere-copy-json':
-      action = 'COPY_JSON';
-      break;
-  }
-
-  if (action) {
-    // Send message to content script to capture the chat
-    chrome.tabs.sendMessage(tab.id, {
-      action: action
-    }).catch(error => {
-      console.error('Failed to send message to content script:', error);
-    });
-  }
-});
 
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
