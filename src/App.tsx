@@ -7,6 +7,7 @@ import ArchiveHub from './pages/ArchiveHub';
 import BasicConverter from './pages/BasicConverter';
 import MemoryArchive from './pages/MemoryArchive';
 import Changelog from './pages/Changelog';
+import Features from './pages/Features';
 function App() {
   return (
     <Router>
@@ -17,6 +18,7 @@ function App() {
         <Route path="/converter" element={<BasicConverter />} />
         <Route path="/basic" element={<BasicConverter />} />
         <Route path="/changelog" element={<Changelog />} />
+        <Route path="/features" element={<Features />} />
       </Routes>
     </Router>
   );

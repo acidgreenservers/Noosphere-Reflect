@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.1-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.4-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
@@ -16,6 +16,7 @@
 * **💾 Robust Persistence**: Saves thousands of chats locally using **IndexedDB** with auto-migration
 * **📦 Batch Operations**: Multi-select chats to export, delete, or organize them in bulk
 * **⚙️ Global Settings**: Set default username across all imports (overridable per-session)
+* **🌩️ Data Sovereignty**: Full database export (backup) functionality to keep your data safe and portable
 
 ### Parsing & Export
 * **⚡ Dual Parsing Workflows**:
@@ -27,7 +28,7 @@
 
 ### Design & Security
 * **🎨 Platform Theming**: Official brand colors for Claude (Orange), ChatGPT (Green), Gemini (Blue), etc.
-* **✨ Premium UI**: Modern "Glassmorphism" interface with rich metadata editing
+* **✨ Premium UI**: Modern "Glassmorphism" interface with rich metadata editing and Vortex branding
 * **🛡️ Security Hardened**: XSS protection, URL protocol validation, input sanitization, comprehensive file size limits
 
 ## 🛠️ Tech Stack
@@ -72,24 +73,17 @@
    ```
    Deploy `dist/` directory to GitHub Pages or your hosting
 
-### Chrome Extension
+### Chrome Extension (Manual Install)
 
-1. Extract the extension archive:
-   ```bash
-   tar -xzf noosphere-reflect-bridge-v0.5.0.tar.gz
-   ```
+Since the extension is not yet on the Chrome Web Store, follow these steps:
 
-2. Open Chrome and navigate to `chrome://extensions/`
+1. **Download**: Get the latest `noosphere-reflect-extension-vX.X.X.tar.gz` from [GitHub Releases](https://github.com/yourusername/Noosphere-Reflect/releases).
+2. **Extract**: Unpack the archive to a local folder.
+3. **Load**: Open Chrome and navigate to `chrome://extensions/`.
+4. **Dev Mode**: Enable **"Developer mode"** (toggle in the top-right).
+5. **Install**: Click **"Load unpacked"** and select the extracted `extension/` folder.
 
-3. Enable "Developer mode" (top-right corner)
-
-4. Click "Load unpacked" and select the `extension/` directory
-
-5. Configure global username in the Archive Hub (Settings button)
-
-6. Navigate to any supported AI platform and right-click to capture
-
-See [extension/README.md](extension/README.md) for detailed instructions.
+See [extension/README.md](extension/README.md) for detailed platform-specific notes.
 
 ## 📖 Usage
 
@@ -100,7 +94,7 @@ Your central command center for managing all captured and imported conversations
 - **Metadata Editing**: Edit titles, tags, and model information
 - **Artifact Management**: View and manage attached files (session-level and message-level)
 - **Platform Badges**: Color-coded badges for instant platform recognition
-- **Settings**: Configure default username and other preferences
+- **Settings**: Configure default username and export your entire database for backup
 - **New Import**: Add chats via Basic Converter or AI Studio
 
 ### Memory Archive (`/memory-archive`)
@@ -171,7 +165,7 @@ The application includes comprehensive security hardening to prevent XSS attacks
 * **[ROADMAP.md](ROADMAP.md)** - Future roadmap and planned features
 * **[GEMINI.md](GEMINI.md)** - Project status and architecture
 * **[extension/README.md](extension/README.md)** - Extension installation & troubleshooting
-* **[memory-bank/](memory-bank/)** - Project memory and context files
+* **[agents/memory-bank/](agents/memory-bank/)** - Project memory and context files
 
 ## 🔄 Quick Start
 
@@ -204,47 +198,36 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.1
+## 🆕 What's New in v0.5.4
 
-### Dual Artifact System
-- **Message-Level Attachments**: Attach files to individual messages via "📎 Attach" buttons
-- **Session-Level Attachments**: Upload general files via "Manage Artifacts"
-- **Unified Export**: All artifacts (both types) automatically included in ZIP/Directory exports
-- **Smart Deduplication**: Prevents duplicate files if same artifact attached multiple times
-- **Enhanced Modal**: ArtifactManager displays both types in separate sections with context labels
+### Vortex Brand Refresh
+- **New Brand Identity**: Replaced legacy "brain" logo with the premium **Vortex** abstract icon.
+- **Visual Overhaul**: Updated gradients and UI elements across all pages to include Green & Purple transitions.
+- **Improved Consistency**: Unified brand experience from the landing page to the Archive Hub.
 
-### Recent Updates (v0.4.0 - v0.5.0)
-- **Memory Archive MVP** (v0.4.0): Dedicated system for AI thoughts/snippets
-- **Platform Theming** (v0.5.0): Official brand colors for all 6 supported platforms
-- **Landing Page Redesign** (v0.5.0): Full-screen hero, feature showcase, philosophy section
-- **Dev Container** (v0.5.0): Standardized development environment
+### Recent Updates (v0.5.1 - v0.5.3)
+- **Database Export (v0.5.3)**: Backup your entire local database to a JSON file.
+- **Extension UI Hardening (v0.5.3)**: Stabilized button positioning across all 7 AI platforms.
+- **Dual Artifact System (v0.5.1)**: Message-level and session-level file attachments.
 
 ### Earlier Releases
 <details>
-<summary>v0.1.0 - v0.3.0 (Click to expand)</summary>
+<summary>v0.1.0 - v0.4.0 (Click to expand)</summary>
+
+**v0.4.0** - Memory Archive MVP
+- Dedicated system for AI thoughts/snippets
 
 **v0.3.0** - Security Hardening & Grok Support
 - Comprehensive XSS prevention and input validation
 - Grok (xAI) platform integration
-- Extension copy features (Markdown/JSON)
 
 **v0.2.0** - Gemini Support & Copy Features
 - Gemini HTML parser and extension capture
-- Context menu: "Copy Chat as Markdown/JSON"
 - Thought process detection for Gemini
 
 **v0.1.0** - Chrome Extension & ChatGPT
 - Chrome Extension with Manifest V3
 - ChatGPT HTML parser and capture
-- Context menu integration
-- IndexedDB bridge for extension storage
-
-**v0.0.x** - Foundation
-- React 19 + Vite + TypeScript setup
-- Archive Hub dashboard
-- Claude, LeChat, Llamacoder parsers
-- Batch operations and metadata editing
-- IndexedDB migration from localStorage
 </details>
 
 ## 🐛 Known Limitations
@@ -260,14 +243,9 @@ npm run dev
 - Enhanced filter UI
 - Batch action bar improvements
 
-**Sprint 5.1**: Extension Reliability
-- Toast notification queue (fix overlaps)
-- Improved error handling
-
 **Phase 5**: Deep Context Composition
 - Full session merging
 - Surgical message selection
-- Conflict resolution
 
 **Phase 7**: Advanced Export & Cloud
 - PDF/DOCX export formats
@@ -287,16 +265,8 @@ Contributions welcome! Areas of interest:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 💬 Support
-
-Found an issue or have a suggestion?
-1. Check [extension/README.md](extension/README.md) for common problems
-2. Review [GEMINI.md](GEMINI.md) for architecture details
-3. Open a [GitHub Issue](https://github.com/yourusername/Noosphere-Reflect/issues)
-![Version](https://img.shields.io/badge/version-0.5.2-green.svg)
-
 ---
 
-**Version**: 0.5.2
-**Last Updated**: January 9, 2026
-**Status**: Stable Release with Kimi Support & Export Status Indicators ✅
+**Version**: 0.5.4
+**Last Updated**: January 10, 2026
+**Status**: Stable Release with Vortex Branding & Full DB Export ✅

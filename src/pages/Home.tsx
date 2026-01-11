@@ -41,12 +41,12 @@ const Home: React.FC = () => {
                         >
                             Open Archive Hub
                         </Link>
-                        <a
-                            href="#features"
+                        <Link
+                            to="/features"
                             className="px-8 py-4 bg-gray-800/80 backdrop-blur-xl border border-gray-700 hover:border-green-500/50 text-white rounded-full font-bold transition-all text-lg hover:scale-105"
                         >
                             Explore Features
-                        </a>
+                        </Link>
                     </div>
 
                     {/* Stats */}
