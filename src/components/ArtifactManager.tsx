@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { ConversationArtifact, ChatMessage, SavedChatSession } from '../types';
 import { validateFileSize, INPUT_LIMITS, sanitizeFilename, neutralizeDangerousExtension } from '../utils/securityUtils';
+import { extractArtifactNamesFromChat, matchFileName } from '../utils/textNormalization';
 import { storageService } from '../services/storageService';
 
 interface ArtifactManagerProps {
@@ -39,6 +40,10 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
     setSuccess(null);
 
     try {
+      // Extract artifact names from chat for auto-matching
+      const extractedNames = extractArtifactNamesFromChat(messages);
+      const autoMatches: string[] = [];
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
@@ -75,9 +80,33 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
           uploadedAt: new Date().toISOString()
         };
 
+        // Auto-match against extracted names
+        if (extractedNames.length > 0) {
+          for (let msgIndex = 0; msgIndex < messages.length; msgIndex++) {
+            const message = messages[msgIndex];
+            // Check if this message contains artifact references
+            for (const extractedName of extractedNames) {
+              if (matchFileName(safeName, extractedName) &&
+                  message.content.toLowerCase().includes(extractedName.toLowerCase())) {
+                // Auto-link the artifact to this message
+                artifact.insertedAfterMessageIndex = msgIndex;
+                autoMatches.push(`${safeName} → Message #${msgIndex + 1}`);
+                break;
+              }
+            }
+            if (artifact.insertedAfterMessageIndex !== undefined) break;
+          }
+        }
+
         // Save to IndexedDB if not in manual mode
         if (!manualMode) {
           await storageService.attachArtifact(session.id, artifact);
+          // If auto-matched, update the link
+          if (artifact.insertedAfterMessageIndex !== undefined) {
+            await storageService.updateArtifact(session.id, artifact.id, {
+              insertedAfterMessageIndex: artifact.insertedAfterMessageIndex
+            });
+          }
         }
 
         const newArtifacts = [...artifacts, artifact];
@@ -85,7 +114,15 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
         onArtifactsChange(newArtifacts);
       }
 
-      setSuccess(`✅ ${files.length} file(s) uploaded successfully`);
+      // Build success message with auto-match info
+      let successMessage = `✅ ${files.length} file(s) uploaded successfully`;
+      if (autoMatches.length > 0) {
+        successMessage += `\n🎯 Auto-matched: ${autoMatches.join(', ')}`;
+      } else if (extractedNames.length > 0) {
+        successMessage += `\n💡 Found ${extractedNames.length} potential artifact references in chat - upload matching files for auto-linking`;
+      }
+
+      setSuccess(successMessage);
     } catch (err) {
       setError('Failed to upload file: ' + (err as Error).message);
     } finally {

@@ -1,71 +1,78 @@
-/**
- * Text Normalization Utilities
- * Provides secure Unicode normalization for title indexing and duplicate detection.
- * Addresses CVE-002 (Unicode normalization bypass) from security audit.
- */
+import { ChatMessage } from '../types';
 
-/**
- * Normalizes text for duplicate detection and indexing.
- * Handles Unicode equivalence, homoglyphs, and zero-width characters.
- *
- * @param title - The title string to normalize
- * @returns Normalized title safe for use as database index
- * @throws Error if title is invalid (empty, too long, or wrong type)
- *
- * @example
- * normalizeTitle("café") === normalizeTitle("café") // true (NFC vs NFD)
- * normalizeTitle("  Test  ") === "test" // true (whitespace normalized)
- * normalizeTitle("Te​st") === "test" // true (zero-width char removed)
- */
+// Normalize title for duplicate detection (used by storageService)
 export function normalizeTitle(title: string): string {
   if (!title || typeof title !== 'string') {
     throw new Error('Title must be a non-empty string');
   }
 
-  let normalized = title
-    .trim()
-    // Unicode normalization (NFKC = Compatibility Decomposition + Canonical Composition)
-    // This handles cases like "café" (NFC) vs "café" (NFD)
-    .normalize('NFKC')
-    // Remove zero-width characters (U+200B, U+200C, U+200D, U+FEFF)
-    // These are invisible characters that could be used to bypass duplicate detection
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    // Remove directional marks (U+202A-U+202E)
-    // These control text direction and could be used maliciously
-    .replace(/[\u202A-\u202E]/g, '')
-    // Lowercase for case-insensitive comparison
+  return title
     .toLowerCase()
-    // Collapse multiple spaces to single space
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (normalized.length === 0) {
-    throw new Error('Title cannot be empty after normalization');
-  }
-
-  if (normalized.length > 500) {
-    throw new Error('Title exceeds maximum length of 500 characters');
-  }
-
-  return normalized;
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
 }
 
-/**
- * Validates that a title meets security requirements.
- *
- * @param title - The title string to validate
- * @returns Object with `valid` boolean and optional `error` message
- *
- * @example
- * validateTitle("My Chat") // { valid: true }
- * validateTitle("") // { valid: false, error: "Title must be a non-empty string" }
- * validateTitle("A".repeat(600)) // { valid: false, error: "Title exceeds maximum length..." }
- */
-export function validateTitle(title: string): { valid: boolean; error?: string } {
-  try {
-    normalizeTitle(title);
-    return { valid: true };
-  } catch (e: any) {
-    return { valid: false, error: e.message };
+// Extract potential artifact filenames from chat messages
+export function extractArtifactNamesFromChat(messages: ChatMessage[]): string[] {
+  const artifactNames: string[] = [];
+  const seenNames = new Set<string>();
+
+  // Common artifact patterns in AI chat exports
+  const patterns = [
+    // Claude/Gemini artifact format: 📦 **Artifact: filename.ext**
+    /📦?\s*\*\*Artifact:\s*([^*\n]+)\*\*/gi,
+    // File attachment format: 📎 filename.ext
+    /📎\s*([^\n]+\.[a-zA-Z0-9]{2,4})/gi,
+    // Generic file references: "filename.ext" (in quotes)
+    /"([^"\n]+\.[a-zA-Z0-9]{2,4})"/gi,
+    // Common file extensions in text
+    /\b([a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|gif|pdf|csv|json|txt|md|py|js|ts|html|css|xml|zip|rar|doc|docx|xls|xlsx))\b/gi
+  ];
+
+  for (const message of messages) {
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(message.content)) !== null) {
+        const fileName = match[1].trim();
+        // Clean up filename and avoid duplicates
+        const cleanName = fileName.replace(/^[^a-zA-Z0-9_-]+|[^a-zA-Z0-9_.-]+$/g, '');
+        if (cleanName && cleanName.length > 2 && !seenNames.has(cleanName.toLowerCase())) {
+          artifactNames.push(cleanName);
+          seenNames.add(cleanName.toLowerCase());
+        }
+      }
+    }
   }
+
+  return artifactNames;
+}
+
+// Simple fuzzy matching for filename comparison
+export function matchFileName(uploadedName: string, extractedName: string): boolean {
+  const normalize = (str: string) => str.toLowerCase().replace(/[^a-zA-Z0-9.-]/g, '');
+
+  const normalizedUploaded = normalize(uploadedName);
+  const normalizedExtracted = normalize(extractedName);
+
+  // Exact match
+  if (normalizedUploaded === normalizedExtracted) {
+    return true;
+  }
+
+  // Extension match (same name, different extension)
+  const uploadedBase = normalizedUploaded.replace(/\.[^.]+$/, '');
+  const extractedBase = normalizedExtracted.replace(/\.[^.]+$/, '');
+
+  if (uploadedBase === extractedBase) {
+    return true;
+  }
+
+  // Fuzzy match - allow for minor variations (spaces, underscores, case)
+  const fuzzyUploaded = normalizedUploaded.replace(/[\s_-]/g, '');
+  const fuzzyExtracted = normalizedExtracted.replace(/[\s_-]/g, '');
+
+  return fuzzyUploaded === fuzzyExtracted;
 }

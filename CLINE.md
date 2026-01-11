@@ -30,7 +30,7 @@ npm run preview      # Preview production build locally
 
 ## Current Status
 
-- **Version**: Web App `v0.5.0` | Extension `v0.5.0`
+- **Version**: Web App `v0.5.3` | Extension `v0.5.3`
 - **Core Functionality**:
   - **ArchiveHub**: Robust dashboard for browsing, filtering, and managing saved chats
   - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0)
@@ -328,6 +328,7 @@ To ensure professional, standardized, and semantic operations, strictly follow t
 - **Design System**: Refer to [`DESIGN_SYSTEM_PROTOCOL.md`](./.agents/protocols/DESIGN_SYSTEM_PROTOCOL.md).
 - **Coding Standards**: Refer to [`CODING_STANDARDS_PROTOCOL.md`](./.agents/protocols/CODING_STANDARDS_PROTOCOL.md).
 - **QA & Testing**: Refer to [`QA_TESTING_PROTOCOL.md`](./.agents/protocols/QA_TESTING_PROTOCOL.md).
+- **Implementation**: Refer to [`IMPLEMENTATION_PROTOCOL.md`](./.agents/protocols/IMPLEMENTATION_PROTOCOL.md).
 - **Extension Bridge**: Refer to [`EXTENSION_BRIDGE_PROTOCOL.md`](./.agents/protocols/EXTENSION_BRIDGE_PROTOCOL.md).
 - **Release Strategy**: Refer to [`RELEASE_PROTOCOL.md`](./.agents/protocols/RELEASE_PROTOCOL.md).
 - **AI Collaboration**: Refer to [`AI_COLLABORATION_PROTOCOL.md`](./.agents/protocols/AI_COLLABORATION_PROTOCOL.md).
