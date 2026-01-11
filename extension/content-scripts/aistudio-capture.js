@@ -52,11 +52,32 @@ async function handleCopyAction(format, sendResponse) {
   }
 }
 
+/**
+ * Expands all collapsed thought blocks to ensure content is captured.
+ * Returns a promise that resolves when expansion is complete.
+ */
+async function expandAllThoughts() {
+  const collapsedThoughts = document.querySelectorAll('ms-expandable-turn .container:not(.expanded) .header');
+
+  if (collapsedThoughts.length === 0) return;
+
+  console.log(`Expanding ${collapsedThoughts.length} thought blocks for capture...`);
+
+  // Click all collapsed headers
+  collapsedThoughts.forEach(header => header.click());
+
+  // Wait for animations/DOM updates (1 second should be sufficient)
+  return new Promise(resolve => setTimeout(resolve, 1000));
+}
+
 async function extractSessionData() {
-  // 1. Extract full HTML
+  // 1. Expand all thoughts first
+  await expandAllThoughts();
+
+  // 2. Extract full HTML
   const htmlContent = document.documentElement.outerHTML;
 
-  // 2. Parse using AI Studio parser
+  // 3. Parse using AI Studio parser
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
   const chatData = {

@@ -1,6 +1,8 @@
-import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory } from '../types';
+import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, ParserMode, ChatTheme } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 import { validateImportData } from '../utils/importValidator';
+import { validateReflectFile } from '../utils/reflectValidator';
+import { parseChat } from './converterService';
 
 const DB_NAME = 'AIChatArchiverDB';
 const DB_VERSION = 5;
@@ -654,6 +656,134 @@ class StorageService {
         }
 
         console.log('✅ Database import complete (validated and sanitized)');
+    }
+
+    /**
+     * Import sessions from a directory of Noosphere Reflect export files
+     * Validates attribution and supports JSON, Markdown, and HTML formats
+     * @param files FileList from directory picker
+     * @returns Import results with success/failure counts
+     */
+    async importFromDirectory(files: FileList): Promise<{
+        successful: number;
+        failed: number;
+        skipped: number;
+        errors: Array<{ fileName: string; error: string }>;
+    }> {
+        const results = {
+            successful: 0,
+            failed: 0,
+            skipped: 0,
+            errors: [] as Array<{ fileName: string; error: string }>
+        };
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            // Skip non-file entries (directories, etc.)
+            if (!file.type && file.size === 0) {
+                results.skipped++;
+                continue;
+            }
+
+            try {
+                const content = await file.text();
+
+                // Validate Noosphere Reflect attribution
+                const validation = validateReflectFile(file.name, content);
+
+                if (!validation.isValid) {
+                    results.failed++;
+                    results.errors.push({
+                        fileName: file.name,
+                        error: validation.error || 'Invalid Noosphere Reflect export'
+                    });
+                    continue;
+                }
+
+                // Parse based on file type
+                let session: SavedChatSession | null = null;
+
+                if (validation.type === 'json') {
+                    // Parse JSON export
+                    const parsed = JSON.parse(content);
+
+                    // Check if it's a full session export or just chat data
+                    if (parsed.id && parsed.chatData) {
+                        // Full session export
+                        session = parsed as SavedChatSession;
+                    } else if (parsed.messages) {
+                        // Chat data only - create session wrapper
+                        session = {
+                            id: crypto.randomUUID(),
+                            name: parsed.metadata?.title || file.name.replace('.json', ''),
+                            date: new Date().toISOString(),
+                            inputContent: content,
+                            chatTitle: parsed.metadata?.title || file.name.replace('.json', ''),
+                            userName: 'User',
+                            aiName: parsed.metadata?.model || 'AI',
+                            selectedTheme: ChatTheme.DarkDefault,
+                            parserMode: ParserMode.Basic,
+                            chatData: {
+                                messages: parsed.messages,
+                                metadata: parsed.metadata
+                            },
+                            metadata: parsed.metadata
+                        };
+                    }
+                } else if (validation.type === 'markdown') {
+                    // Parse Markdown export with relaxed parser
+                    const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
+
+                    session = {
+                        id: crypto.randomUUID(),
+                        name: file.name.replace('.md', ''),
+                        date: new Date().toISOString(),
+                        inputContent: content,
+                        chatTitle: chatData.metadata?.title || file.name.replace('.md', ''),
+                        userName: 'User',
+                        aiName: chatData.metadata?.model || 'AI',
+                        selectedTheme: ChatTheme.DarkDefault,
+                        parserMode: ParserMode.Basic,
+                        chatData,
+                        metadata: chatData.metadata
+                    };
+                } else if (validation.type === 'html') {
+                    // For HTML, we need to detect which parser mode to use
+                    // For now, skip HTML imports as they require platform-specific parsing
+                    results.skipped++;
+                    results.errors.push({
+                        fileName: file.name,
+                        error: 'HTML import not yet supported (coming soon)'
+                    });
+                    continue;
+                }
+
+                if (session) {
+                    // Import the session
+                    await this.saveSession(session);
+                    results.successful++;
+                    console.log(`✅ Imported: ${file.name}`);
+                } else {
+                    results.failed++;
+                    results.errors.push({
+                        fileName: file.name,
+                        error: 'Could not parse file into session'
+                    });
+                }
+
+            } catch (err) {
+                results.failed++;
+                results.errors.push({
+                    fileName: file.name,
+                    error: err instanceof Error ? err.message : 'Unknown error'
+                });
+                console.error(`❌ Failed to import ${file.name}:`, err);
+            }
+        }
+
+        console.log(`📁 Directory import complete: ${results.successful} successful, ${results.failed} failed, ${results.skipped} skipped`);
+        return results;
     }
 }
 
