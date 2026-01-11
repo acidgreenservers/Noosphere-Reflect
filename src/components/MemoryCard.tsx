@@ -68,7 +68,7 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, isSelec
                 : 'bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 hover:border-purple-500/30 hover:shadow-purple-900/10 hover:shadow-lg hover:shadow-purple-500/20'
             }`}>
             {/* Selection Checkbox - Hub Style */}
-            <div className="absolute top-4 left-4 z-10">
+            <div className="absolute bottom-4 left-4 z-10">
                 <button
                     onClick={(e) => {
                         e.preventDefault();
