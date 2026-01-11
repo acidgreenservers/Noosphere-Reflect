@@ -99,7 +99,7 @@ export default function MemoryArchive() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${sanitizeFilename(memory.metadata.title)}.${extension}`;
+            a.download = `${sanitizeFilename(memory.metadata.title, appSettings.fileNamingCase)}.${extension}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
