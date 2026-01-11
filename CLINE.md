@@ -112,7 +112,7 @@ The app uses **HashRouter** for client-side routing (suitable for static deploym
 ### Configuration
 
 - **Vite config** (`vite.config.ts`):
-  - Base path: `/AI-Chat-HTML-Converter/` (GitHub Pages deployment)
+  - Base path: `/Noosphere-Reflect/` (GitHub Pages deployment)
   - Dev server: port 3000, host 0.0.0.0
   - Path alias: `@` → `./src`
   - Gemini API key injected at build time via `VITE_GEMINI_API_KEY` env var
