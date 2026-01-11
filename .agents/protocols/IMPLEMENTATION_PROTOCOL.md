@@ -113,3 +113,94 @@ Positioning the "Export" button requires platform-specific strategies. Use these
 1.  **Manifest**: `version` in `manifest.json` must match `package.json`.
 2.  **Key**: `extension.pem` must be preserved (not committed) to maintain the Extension ID.
 3.  **Verification**: Drag-and-drop `.crx` into `chrome://extensions` is the mandatory final test.
+
+## 8. Artifact Auto-Matching System
+
+### 8.1. Overview
+The Artifact Auto-Matching System provides intelligent automatic linking of uploaded files to chat message references. It eliminates manual linking friction while maintaining security through neutralized extension handling.
+
+**Location**: `src/components/ArtifactManager.tsx`, `src/utils/textNormalization.ts`
+
+### 8.2. Text Extraction Algorithm
+**Purpose**: Parse chat messages to identify potential artifact filenames.
+
+**Patterns Matched**:
+```javascript
+const patterns = [
+  /📦?\s*\*\*Artifact:\s*([^*\n]+)\*\*/gi,  // Claude/Gemini format
+  /📎\s*([^\n]+\.[a-zA-Z0-9]{2,4})/gi,     // File attachment format
+  /"([^"\n]+\.[a-zA-Z0-9]{2,4})"/gi,       // Quoted filenames
+  /\b([a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|gif|pdf|csv|json|txt|md|py|js|ts|html|css|xml|zip|rar|doc|docx|xls|xlsx))\b/gi  // Extension patterns
+];
+```
+
+**Processing**:
+- Extracts clean filenames from matched patterns
+- Deduplicates case-insensitive matches
+- Filters out invalid filenames (< 2 chars)
+
+### 8.3. Intelligent Matching Algorithm
+**Purpose**: Match uploaded filenames against extracted references with multiple fallback strategies.
+
+**Matching Hierarchy**:
+1. **Exact Match**: `filename.ext` ↔ `filename.ext`
+2. **Extension Match**: `filename.pdf` ↔ `filename.docx` (same base, different ext)
+3. **Fuzzy Match**: `my_file` ↔ `my-file` ↔ `my file` (spacing/case variations)
+4. **Neutralized Extension Fallback**: `filename.html` ↔ `filename.html.txt`
+
+**Neutralized Extension Logic**:
+```javascript
+const DANGEROUS_EXTENSIONS = ['.html', '.htm', '.xhtml', '.svg', '.xml', '.php', '.exe', '.bat', '.sh'];
+
+if (extractedNameHasDangerousExt) {
+  const neutralizedName = `${extractedName}.txt`;
+  // Retry all matching logic with neutralized version
+}
+```
+
+### 8.4. Auto-Linking Process
+**Trigger**: On file upload in `ArtifactManager.handleFileSelect()`
+
+**Workflow**:
+1. Extract artifact names from all chat messages
+2. For each uploaded file, test against all extracted names
+3. On successful match, automatically set `insertedAfterMessageIndex`
+4. Persist link to IndexedDB via `storageService.updateArtifact()`
+5. Display success feedback: `"🎯 Auto-matched: filename.ext → Message #3"`
+
+### 8.5. Security Integration
+**Neutralized Extensions**: Maintains security-first approach by accounting for `neutralizeDangerousExtension()` transformations:
+- HTML files become `.html.txt`
+- SVG files become `.svg.txt`
+- XML files become `.xml.txt`
+
+**Input Validation**: All matching respects existing security boundaries:
+- Filenames still go through `sanitizeFilename()`
+- File sizes validated via `validateFileSize()`
+- MIME types preserved for proper handling
+
+### 8.6. Usage Examples
+
+**Standard Workflow**:
+```
+User exports chat containing: "📦 **Artifact: analysis.pdf**"
+User downloads analysis.pdf from service
+User uploads analysis.pdf to chat
+Result: ✅ Auto-matched "analysis.pdf" → Message #5
+```
+
+**Neutralized Extension Case**:
+```
+Chat contains: "📎 report.html"
+User downloads report.html
+Upload becomes: report.html.txt (security neutralization)
+Result: ✅ Auto-matched "report.html" → Message #2
+```
+
+### 8.7. Fallback to Manual
+**Preserved Functionality**: All manual linking capabilities remain available:
+- Dropdown selection: "Insert link after: Message #X"
+- Individual file management
+- Override auto-matched links
+
+**User Control**: Auto-matching is enhancement, not replacement. Users retain full control over final linking decisions.
