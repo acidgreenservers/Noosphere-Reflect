@@ -135,36 +135,150 @@
   }
 
   // ============================================================================
+  // UI CONFIGURATION OVERRIDES
+  // ============================================================================
+  // Custom positioning and behavior for export button on specific platforms
+  const UI_OVERRIDES = {
+    // Google AI Studio
+    aistudio: {
+      parentSelector: 'header, [role="banner"], body',
+      menuDirection: 'down',
+      style: {
+        position: 'absolute',
+        top: '14px',
+        left: '150px',
+        bottom: 'auto',
+        right: 'auto'
+      },
+      className: 'nr-fixed'
+    },
+    // Claude.ai
+    claude: {
+      parentSelector: 'body',
+      menuDirection: 'up',
+      style: {
+        position: 'fixed !important',
+        bottom: '65px !important',
+        right: '330px !important',
+        left: 'auto !important',
+        top: 'auto !important',
+        zIndex: '999999 !important'
+      },
+      // No 'nr-fixed' class needed as we use custom fixed positioning
+      className: ''
+    },
+    // Gemini
+    gemini: {
+      parentSelector: 'body',
+      menuDirection: 'up',
+      style: {
+        position: 'fixed !important',
+        bottom: '85px !important',
+        right: '195px !important',
+        left: 'auto !important',
+        top: 'auto !important',
+        zIndex: '999999 !important'
+      },
+      className: ''
+    },
+    // ChatGPT
+    chatgpt: {
+      parentSelector: 'body',
+      menuDirection: 'up',
+      style: {
+        position: 'fixed !important',
+        bottom: '46px !important',
+        right: '210px !important',
+        left: 'auto !important',
+        top: 'auto !important',
+        zIndex: '999999 !important'
+      },
+      className: ''
+    },
+    // Grok
+    grok: {
+      parentSelector: 'body',
+      menuDirection: 'up',
+      style: {
+        position: 'fixed !important',
+        bottom: '44px !important',
+        right: '200px !important',
+        left: 'auto !important',
+        top: 'auto !important',
+        zIndex: '999999 !important'
+      },
+      className: ''
+    },
+    // Le Chat
+    lechat: {
+      parentSelector: 'body',
+      menuDirection: 'up',
+      style: {
+        position: 'fixed !important',
+        bottom: '85px !important',
+        right: '210px !important',
+        left: 'auto !important',
+        top: 'auto !important',
+        zIndex: '999999 !important'
+      },
+      className: ''
+    },
+    // Llamacoder
+    llamacoder: {
+      parentSelector: 'body',
+      menuDirection: 'down',
+      style: {
+        position: 'fixed !important',
+        bottom: 'auto !important',
+        right: 'auto !important',
+        left: '285px',
+        top: '12px',
+        zIndex: '999999 !important'
+      },
+      className: ''
+    }
+  };
+
+  // ============================================================================
   // STYLES
   // ============================================================================
   const STYLES = `
     .nr-export-container {
-      position: fixed;
-      top: 8px;
-      left: 200px;
       z-index: 99999;
       font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .nr-export-container.nr-fixed {
+      position: fixed;
+      top: 12px;
+      left: 200px;
     }
 
     .nr-export-btn {
       background: ${platform.color};
       color: ${platform.textColor || 'white'};
       border: ${platform.textColor === '#000000' ? '1px solid #e5e5e5' : 'none'};
-      padding: 10px 16px;
-      border-radius: 8px;
+      padding: 0 12px;
+      border-radius: 6px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 14px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-size: 13px;
+      height: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: transform 0.2s, background 0.2s;
+      transition: all 0.2s;
+      white-space: nowrap;
     }
 
     .nr-export-btn:hover {
-      transform: translateY(-2px);
-      filter: brightness(0.95);
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
 
     .nr-export-btn.nr-loading {
@@ -546,9 +660,21 @@
       Object.assign(container.style, platform.customPosition);
     }
 
-    // Determine menu direction class and arrow (default to 'down' for top position)
-    const menuDirectionClass = platform.menuDirection === 'up' ? '' : 'menu-down';
-    const arrow = platform.menuDirection === 'up' ? '▲' : '▼';
+    // Determine menu direction class and arrow
+    // Priority: UI_OVERRIDES > PLATFORMS > Default (up)
+    const overrideConfig = UI_OVERRIDES[platform.key];
+    const platformConfig = platform;
+
+    // Default to 'up' unless specified otherwise
+    let direction = 'up';
+    if (overrideConfig && overrideConfig.menuDirection) {
+      direction = overrideConfig.menuDirection;
+    } else if (platformConfig.menuDirection) {
+      direction = platformConfig.menuDirection;
+    }
+
+    const menuDirectionClass = direction === 'up' ? '' : 'menu-down';
+    const arrow = direction === 'up' ? '▲' : '▼';
 
     container.innerHTML = `
       <div class="nr-export-menu ${menuDirectionClass}">
@@ -577,13 +703,47 @@
       <button class="nr-export-btn">📋 Export ${arrow}</button>
     `;
 
-    // For AI Studio, append to header area; for others, append to body
-    if (platform.key === 'aistudio') {
-      // Find the top toolbar area in AI Studio
-      const toolbar = document.querySelector('header') || document.querySelector('[role="banner"]') || document.body;
-      toolbar.style.position = toolbar.style.position === 'static' ? 'relative' : toolbar.style.position;
-      toolbar.appendChild(container);
+
+    // Apply positioning logic
+    if (overrideConfig) {
+      console.log(`UI Injector: Applying custom positioning for ${platform.name}`);
+
+      // 1. Find parent
+      let parent = document.body;
+      if (overrideConfig.parentSelector && overrideConfig.parentSelector !== 'body') {
+        const found = document.querySelector(overrideConfig.parentSelector);
+        if (found) parent = found;
+      }
+
+      // 2. Apply classes
+      container.className = 'nr-export-container';
+      if (overrideConfig.className) {
+        container.classList.add(overrideConfig.className);
+      }
+
+      // 3. Apply styles
+      if (overrideConfig.style) {
+        // Convert style object to string for setAttribute to handle !important
+        const styleString = Object.entries(overrideConfig.style)
+          .map(([k, v]) => {
+            // Convert camelCase to kebap-case (e.g. zIndex -> z-index)
+            const key = k.replace(/([A-Z])/g, '-$1').toLowerCase();
+            return `${key}: ${v}`;
+          })
+          .join('; ');
+
+        container.setAttribute('style', styleString);
+      }
+
+      // Extra: Handle AI Studio specific parent relative positioning
+      if (platform.key === 'aistudio' && parent !== document.body) {
+        parent.style.position = parent.style.position === 'static' ? 'relative' : parent.style.position;
+      }
+
+      parent.appendChild(container);
     } else {
+      // Default positioning (others)
+      container.classList.add('nr-fixed');
       document.body.appendChild(container);
     }
 
