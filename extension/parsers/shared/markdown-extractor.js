@@ -8,6 +8,18 @@
 function extractMarkdownFromHtml(element) {
   const clone = element.cloneNode(true);
 
+  // 0. Check for granular selection
+  // If the message is inside a container that has a selection checkbox,
+  // we check if it's actually selected. If not, we return empty.
+  const msgContainer = element.closest('.nr-message-container');
+  if (msgContainer) {
+    const checkbox = msgContainer.querySelector('.nr-checkbox');
+    // If checkbox exists but is NOT checked, skip this message
+    if (checkbox && !checkbox.hasAttribute('checked')) {
+      return '';
+    }
+  }
+
   // 1. Handle Code Blocks
   // Standard PRE > CODE
   clone.querySelectorAll('pre').forEach(pre => {

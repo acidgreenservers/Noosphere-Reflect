@@ -1,10 +1,15 @@
 # Active Context
 
 ## Current Focus
-- **GOVERNANCE UPGRADE**: Established a comprehensive multi-agent specialist system and a robust protocol layer to ensure architectural, visual, and data stability.
-- **GOAL**: Transition from ad-hoc implementation to a professional "Mind-State" workflow where specialists (AI Agents) enforce strict standards.
+- **Extension Stabilization**: Ensuring reliable UI injection and capture across all supported platforms (Gemini, Claude, ChatGPT, Grok, LeChat, Llamacoder).
+- **Data Sovereignty**: Implementing full database backup capabilities to ensure users own their data completely.
+- **GOVERNANCE MAINTENANCE**: Continuing to enforce the multi-agent specialist system and protocol layer.
 
 ## Recent Changes
+- **v0.5.3 Release**:
+    - **Full Database Export**: Added a "Export Database" button in Settings that dumps all sessions, memories, and settings to a JSON file.
+    - **Extension UI Hardening**: Fixed export button locations with precise pixel positioning and Z-index overrides for all 7 platforms.
+    - **Platform Specifics**: tailored CSS injection for Gemini, Claude, ChatGPT, AI Studio, Grok, LeChat, and Llamacoder.
 - **Agent Roster Expansion**:
     - **Gemini (Adversary Auditor)**: Scope widened to Security, Git Ops, and Project Analysis.
     - **Claude Code (Builder)**: Scope focused on Engineering, Debugging, and Code Maintenance.
@@ -15,13 +20,6 @@
     - **LeChat Overhaul**: Added support for timestamps, thinking blocks, rich tables, tool execution markers, and file attachments.
     - **Shared Logic (GPT/All)**: Improved code block extraction (prioritizing `innerText`), blockquote handling, and UI element cleanup.
     - **Export Logic**: Implemented Service Name prefixes (`[Claude] - title`) and automated `export-metadata.json` generation.
-- **Protocol Layer Establishment**:
-    - `DESIGN_SYSTEM_PROTOCOL.md`: Visual tokens and component standards.
-    - `CODING_STANDARDS_PROTOCOL.md`: Architectural constraints and style rules.
-    - `QA_TESTING_PROTOCOL.md`: Regression prevention and CUJ checklists.
-    - `EXTENSION_BRIDGE_PROTOCOL.md`: standards for Web<->Extension communication.
-    - `RELEASE_PROTOCOL.md`: Versioning and migration rules.
-    - `AI_COLLABORATION_PROTOCOL.md`: Rules of engagement for AI Agents.
 
 ## Active Decisions
 - **Agent-Based Execution**: All significant changes must now be performed by the appropriate specialist agent according to their protocol.

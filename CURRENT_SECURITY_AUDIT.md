@@ -1,50 +1,57 @@
-# Current Security Audit Report
-**Date:** Saturday, January 10, 2026
-**Auditor:** Dietpi (via Security Adversary Agent)
-**Version:** v0.5.3
+# Security Audit Walkthrough: Extension Hardening & Backup
 
-## 1. Executive Summary
-The Noosphere Reflect codebase (v0.5.3) maintains a strong security posture. The core "Escape-First" strategy in `converterService.ts` effectively mitigates XSS risks. Input validation is robust across the Web App and Chrome Extension. The newly implemented "Memory Archive" and "Artifacts" features integrate safely with existing patterns.
+## Summary
+**Overall Security Posture**: ✅ **SAFE**
 
-## 2. Threat Model Analysis
-| Threat | Mitigation Strategy | Verdict |
-| :--- | :--- | :--- |
-| **Stored XSS** (Chat Logs) | `applyInlineFormatting` escapes HTML *before* processing markdown. | ✅ **SECURE** |
-| **Reflected XSS** (Imports) | JSON/HTML imports are parsed to text/markdown, then re-rendered via the secure pipeline. | ✅ **SECURE** |
-| **DOM-based XSS** (Extension) | Extension captures DOM state but stores it as inert strings/markdown. | ✅ **SECURE** |
-| **Zip Slip / Path Traversal** | `sanitizeFilename` strips paths and neutralizes `..` tokens. | ✅ **SECURE** |
-| **DoS** (Large Inputs) | `validateFileSize` (10MB) and `INPUT_LIMITS` enforced at boundaries. | ✅ **SECURE** |
-| **CSS Injection** | Styles are scoped via Tailwind classes; no user-provided styles are rendered. | ✅ **SECURE** |
+The v0.5.3 release introduces a critical Data Sovereignty feature (Full Database Export) and hardens the Chrome Extension's UI injection and capture logic. The changes are local-first, utilize standard browser APIs, and include appropriate fallbacks.
 
-## 3. Detailed Component Audit
+## Audit Findings
 
-### 3.1 Input Layer (`src/utils/securityUtils.ts`)
-*   **Validation**: `validateFileSize` and `validateBatchImport` correctly enforce limits (10MB single, 100MB batch).
-*   **Sanitization**: `sanitizeFilename` aggressively removes special characters and path separators. `neutralizeDangerousExtension` prevents execution of `.html` or `.svg` files by appending `.txt`.
-*   **Limits**: `INPUT_LIMITS` constant provides a central source of truth for constraints.
+### 1. Full Database Export (Backup)
+*Files: `src/services/storageService.ts`, `src/components/SettingsModal.tsx`*
 
-### 3.2 Processing Layer (`src/services/converterService.ts`)
-*   **HTML Escaping**: `applyInlineFormatting` implements the "Escape First" pattern. All user content is passed through `escapeHtml` before any markdown syntax replacements (bold, italic, links) are applied.
-*   **Link Sanitization**: `sanitizeUrl` allows only `http`, `https`, and `mailto`. It explicitly checks for and blocks `javascript:` and `data:` protocols, even if encoded.
-*   **Parser Safety**:
-    *   `parseGrokHtml` (and others) use `DOMParser` to extract text content (`innerText`) or specific attributes.
-    *   `extractMarkdownFromHtml` converts DOM elements to Markdown strings. This conversion acts as a sanitization step, stripping active HTML elements (scripts, iframes) effectively.
-    *   **Verified**: The interaction between `extractMarkdownFromHtml` (outputting markdown text) and `convertMarkdownToHtml` (consuming markdown text) is safe because the consumer *always* escapes content before rendering.
+#### Vulnerability Check: Data Leakage
+- **Analysis**: The `exportDatabase` function aggregates all local IndexedDB stores (`sessions`, `settings`, `memories`) into a single JSON object. This is triggered only by user action in the Settings modal.
+- **Safety**: The data never leaves the client. It is blobbed and downloaded directly to the user's file system.
+- **Status**: ✅ **Safe**
 
-### 3.3 Storage Layer (`src/services/storageService.ts`)
-*   **Isolation**: IndexedDB provides inherent origin isolation.
-*   **Atomicity**: `saveSession` uses `readwrite` transactions to ensure data integrity.
-*   **Collision Handling**: `ConstraintError` handling in `saveSession` correctly renames duplicates rather than overwriting or failing insecurely.
+#### Vulnerability Check: Schema Integrity
+- **Analysis**: The export includes `version: 5` and `exportedAt` metadata, ensuring future import logic can handle schema migrations if necessary.
+- **Status**: ✅ **Safe**
 
-### 3.4 Chrome Extension (`extension/content-scripts/`)
-*   **Content Security**: The extension uses `DOMParser` logic shared with the main app (via `converterService` logic mirrored or imported).
-*   **Data Handling**: Captured HTML is stored as "source" but processed into `ChatData` (JSON/Markdown) before display. The raw HTML is never rendered directly into the DOM without parsing.
+### 2. Extension UI Hardening
+*Files: `extension/content-scripts/ui-injector.js`*
 
-## 4. Recommendations
-1.  **Continuous Monitoring**: Ensure `neutralizeDangerousExtension` list is updated if new dangerous file types are identified (e.g., `.mjs`).
-2.  **CSP Header**: Verify the production deployment (e.g., Vercel, Netlify) sends a strict `Content-Security-Policy` header to add a layer of defense-in-depth.
-3.  **Test Coverage**: Add unit tests specifically for `parseGrokHtml` with malicious payloads (e.g., `<script>` inside a thought block) to prevent future regressions.
+#### Vulnerability Check: DOM Injection (XSS)
+- **Analysis**: `innerHTML` is used in `updateButtonState` (Line 501, 530, 661).
+- **Context**: The injected content is static text ("⏳ Processing...", "✕ Close", "📋 Export") combined with a directional arrow. The arrow direction is derived from `platform.menuDirection` or `UI_OVERRIDES`, which are hardcoded configurations within the extension bundle.
+- **Status**: ✅ **Safe**
 
-## 5. Audit Conclusion
-**Status:** 🟢 **PASSED**
-The system is secure for production use. No critical vulnerabilities were found.
+#### Vulnerability Check: Checkbox State Synchronization
+- **Analysis**: The injector now explicitly calls `setAttribute('checked', 'checked')` when a checkbox is toggled.
+- **Reasoning**: This is required because `cloneNode(true)` (used in parsers) does not preserve the dynamic `.checked` property state, only the HTML attribute. This ensures the "Export Selected" feature works correctly when parsing the DOM snapshot.
+- **Status**: ✅ **Safe** (Logic fix, not a security flaw)
+
+### 3. Markdown Extraction Logic
+*Files: `extension/parsers/shared/markdown-extractor.js`*
+
+#### Vulnerability Check: Content Omission
+- **Analysis**: The `extractMarkdownFromHtml` function now checks for `.nr-checkbox` within a `.nr-message-container`.
+- **Fallback**: If the checkbox does not exist (e.g., UI injector failed), the logic defaults to extracting the content. This "fail-open" approach ensures that if the UI is broken, the user can still capture the chat, rather than getting an empty file.
+- **Status**: ✅ **Safe**
+
+## Verification
+
+### Build Verification
+- **Build Status**: Pending (User to verify).
+- **Manual Verification Needed**:
+    1.  **Export Database**: Click the button, inspect the JSON. Ensure `memories` are included.
+    2.  **Extension**:
+        -   Open a chat (e.g., Claude).
+        -   Uncheck one message.
+        -   Click "Export".
+        -   Verify the unchecked message is MISSING from the output.
+        -   Verify the formatting of the remaining messages is intact.
+
+## Security Notes
+- **Future Consideration**: When implementing "Import Database", strict schema validation will be required to prevent malicious JSON files from corrupting the IndexedDB (e.g., prototype pollution or massive payloads).

@@ -1,48 +1,54 @@
-Claude Extension/Bridge Logic Guide
-To build a Chrome extension or a real-time "bridge" for this app, you can use the following logic to surgically extract Claude's responses while keeping thoughts separate.
+# Chrome Extension Architecture & Logic
 
-1. Core Extraction Logic (JavaScript)
-This logic focuses on the font-claude-response container which holds the entire turn.
+## 1. Core Extraction Logic (Platform Agnostic)
+The extraction logic is built on a "Parser" pattern. Each platform (Claude, Gemini, etc.) has a dedicated parser that normalizes the DOM into a standard format.
 
-/**
- * Standalone logic to extract a Claude message turn.
- * @param {HTMLElement} turnElement - The '.font-claude-response' element.
- * @returns {Object} { thoughts: string, answer: string }
- */
-function extractClaudeTurn(turnElement) {
-    // 1. Get the Thought Process (Internal Reasoning)
-    const thoughtBtn = turnElement.querySelector('button'); // Usually contains "Thought process"
-    let thoughts = "";
-    
-    if (thoughtBtn && thoughtBtn.innerText.toLowerCase().includes('thought')) {
-        const thoughtContainer = thoughtBtn.closest('.border-border-300, .rounded-lg');
-        if (thoughtContainer) {
-            // Target the actual markdown inside the thinking block
-            const contentEl = thoughtContainer.querySelector('.standard-markdown, .text-text-300');
-            if (contentEl) {
-                thoughts = contentEl.innerText.trim();
-            }
-        }
-    }
-    // 2. Get the Actual Answer
-    // We look for the 'standard-markdown' that is NOT inside a thought container
-    const allMarkdownBlocks = Array.from(turnElement.querySelectorAll('.standard-markdown'));
-    const answerBlock = allMarkdownBlocks.find(el => !el.closest('.border-border-300, .rounded-lg'));
-    
-    let answer = answerBlock ? answerBlock.innerText.trim() : "";
-    return { thoughts, answer };
+### Standardized Turn Structure
+```javascript
+{
+    role: "user" | "model",
+    content: "Raw HTML or Markdown content",
+    thinking: "Hidden thought process (if available)",
+    timestamp: "ISO String",
+    artifacts: [] // Code snippets, images, files
 }
-2. Integration with AI-Chat-HTML-Converter
-If you want to pull this into the app:
+```
 
-Scrape: Use document.querySelectorAll('.font-claude-response') on the Claude page.
-Convert: Use the function above to create a YAML-like or JSON structure.
-Export:
-For Markdown: Wrap thoughts in \n\n<thought>\n${thoughts}\n</thought>\n\n.
-For JSON: Save as { type: "response", content: "<thought>...</thought>..." }.
-3. Real-time Bridge Concept
-If you build an extension:
+## 2. UI Injector Architecture (`ui-injector.js`)
+Instead of a simple "copy" button, the extension injects a robust control panel into the target AI platform's interface.
 
-Inject a "Copy to HTML Converter" button on each message.
-When clicked, it finds the parent .font-claude-response.
-It performs the extraction and sends the JSON to your local app (e.g. via postMessage if the app is open in another tab, or by copying to clipboard in the specific format).
+### Injection Strategy
+- **Detection**: Identifies platform via `window.location.hostname`.
+- **Positioning**: Uses fixed positioning with high z-index (`999999`) to float above native UIs.
+- **Isolation**: Uses platform-specific CSS overrides (`UI_OVERRIDES`) to prevent style conflicts.
+
+### Platform-Specific Overrides
+| Platform | Position | Selector Strategy |
+|----------|----------|-------------------|
+| **Gemini** | Bottom-Right | `rich-textarea` |
+| **Claude** | Bottom-Right | `[data-testid="chat-input"]` |
+| **ChatGPT** | Bottom-Right | `#prompt-textarea` |
+| **AI Studio** | Top-Left | `header` (Absolute) |
+| **Grok** | Bottom-Right | `textarea` |
+| **LeChat** | Bottom-Right | `textarea` |
+
+### Features
+1.  **Selection Buttons**: `All`, `User Only`, `AI Only`, `None`.
+    - Injects hidden checkboxes (`.nr-checkbox`) into message containers for granular control.
+2.  **Export Menu**: Upward/Downward rolling menu based on screen position.
+    - **Import to App**: Sends data to the main Noosphere Reflect app.
+    - **Copy as JSON**: Copies standardized JSON to clipboard.
+    - **Copy as Markdown**: Copies formatted markdown to clipboard.
+3.  **Auto-Expand**: Automatically clicks "Expand Thinking" buttons (e.g., on Gemini) before capture.
+
+## 3. The Bridge (Localhost Communication)
+To communicate with the Web App running on `localhost`:
+
+1.  **Content Script**: Listens for `window.postMessage` events.
+2.  **Background Script**: Manages the "Bridge Storage" (IndexedDB or `chrome.storage.local`).
+3.  **Web App**: Polls for the bridge data or listens for injected events.
+
+## 4. Security & Permissions
+- **Manifest V3**: Strict permission scoping.
+- **Host Permissions**: Explicitly listed for supported domains only.
+- **Scripting API**: Used to inject CSS/JS only when necessary.

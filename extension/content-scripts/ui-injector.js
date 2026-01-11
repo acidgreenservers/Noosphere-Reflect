@@ -421,8 +421,18 @@
   // UI STATE
   // ============================================================================
   let menuOpen = false;
-  let checkboxesVisible = false;
   let selectionMode = 'all'; // 'all' | 'none' | 'user' | 'ai'
+
+  function getMenuDirection() {
+    const overrideConfig = UI_OVERRIDES[platform?.key];
+    if (overrideConfig && overrideConfig.menuDirection) {
+      return overrideConfig.menuDirection;
+    }
+    if (platform && platform.menuDirection) {
+      return platform.menuDirection;
+    }
+    return 'up';
+  }
 
   // ============================================================================
   // CHECKBOX MANAGEMENT
@@ -431,6 +441,9 @@
     const messages = document.querySelectorAll(platform.messageSelector);
 
     messages.forEach((msg, index) => {
+      // Mark as message container for the parser
+      msg.classList.add('nr-message-container');
+
       if (msg.querySelector('.nr-checkbox')) return;
 
       // Determine message type
@@ -452,8 +465,18 @@
       checkbox.type = 'checkbox';
       checkbox.className = 'nr-checkbox';
       checkbox.checked = true;
+      checkbox.setAttribute('checked', 'checked'); // Sync for outerHTML capture
       checkbox.dataset.type = type;
       checkbox.dataset.index = index;
+
+      // Listen for changes to sync attribute (needed for static HTML parsing)
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          checkbox.setAttribute('checked', 'checked');
+        } else {
+          checkbox.removeAttribute('checked');
+        }
+      });
 
       msg.style.position = 'relative';
       msg.appendChild(checkbox);
@@ -472,15 +495,21 @@
       switch (mode) {
         case 'all':
           cb.checked = true;
+          cb.setAttribute('checked', 'checked');
           break;
         case 'none':
           cb.checked = false;
+          cb.removeAttribute('checked');
           break;
         case 'user':
           cb.checked = cb.dataset.type === 'user';
+          if (cb.checked) cb.setAttribute('checked', 'checked');
+          else cb.removeAttribute('checked');
           break;
         case 'ai':
           cb.checked = cb.dataset.type === 'ai';
+          if (cb.checked) cb.setAttribute('checked', 'checked');
+          else cb.removeAttribute('checked');
           break;
       }
     });
@@ -498,7 +527,7 @@
       if (isLoading) {
         btn.innerHTML = '⏳ Processing...';
       } else {
-        const arrow = platform.menuDirection === 'down' ? '▼' : '▲';
+        const arrow = getMenuDirection() === 'down' ? '▼' : '▲';
         btn.innerHTML = menuOpen ? '✕ Close' : `📋 Export ${arrow}`;
       }
     }
@@ -617,15 +646,16 @@
       menu.classList.toggle('open', menuOpen);
     }
 
+    if (btn) {
+      btn.classList.toggle('nr-active', menuOpen);
+    }
+
     if (menuOpen) {
-      checkboxesVisible = true;
       injectCheckboxes();
       btn.innerHTML = '✕ Close';
     } else {
-      checkboxesVisible = false;
-      removeCheckboxes();
-      // Use correct arrow based on menu direction
-      const arrow = platform.menuDirection === 'down' ? '▼' : '▲';
+      const direction = getMenuDirection();
+      const arrow = direction === 'up' ? '▲' : '▼';
       btn.innerHTML = `📋 Export ${arrow}`;
     }
   }
@@ -661,18 +691,8 @@
     }
 
     // Determine menu direction class and arrow
-    // Priority: UI_OVERRIDES > PLATFORMS > Default (up)
     const overrideConfig = UI_OVERRIDES[platform.key];
-    const platformConfig = platform;
-
-    // Default to 'up' unless specified otherwise
-    let direction = 'up';
-    if (overrideConfig && overrideConfig.menuDirection) {
-      direction = overrideConfig.menuDirection;
-    } else if (platformConfig.menuDirection) {
-      direction = platformConfig.menuDirection;
-    }
-
+    const direction = getMenuDirection();
     const menuDirectionClass = direction === 'up' ? '' : 'menu-down';
     const arrow = direction === 'up' ? '▲' : '▼';
 
@@ -697,6 +717,9 @@
           </div>
           <div class="nr-menu-item" data-action="json">
             📋 Copy as JSON
+          </div>
+          <div class="nr-menu-item" data-action="clear-selectors" style="color: #d93025; margin-top: 4px; border-top: 1px solid #eee; padding-top: 12px;">
+            ✕ Remove Selectors
           </div>
         </div>
       </div>
@@ -755,7 +778,14 @@
     });
 
     container.querySelectorAll('.nr-menu-item').forEach(item => {
-      item.addEventListener('click', () => handleExport(item.dataset.action));
+      item.addEventListener('click', () => {
+        if (item.dataset.action === 'clear-selectors') {
+          removeCheckboxes();
+          closeMenu();
+        } else {
+          handleExport(item.dataset.action);
+        }
+      });
     });
 
     // Close menu on click outside

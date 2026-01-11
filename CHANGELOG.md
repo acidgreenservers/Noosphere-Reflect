@@ -16,6 +16,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.3] - January 10, 2026
+
+### Added
+
+#### Full Database Export
+- **One-Click Backup**: New "Export Database" button in Settings Modal.
+- **Comprehensive Dump**: Exports all sessions, settings, and memories into a single JSON file.
+- **Data Portability**: Ensures complete user data sovereignty and backup capability.
+- **Schema**:
+  ```json
+  {
+    "sessions": [...],
+    "settings": {...},
+    "memories": [...],
+    "version": 5,
+    "exportedAt": "ISO-8601"
+  }
+  ```
+
+#### Extension UI Hardening
+- **Fixed Button Locations**: Platform-specific positioning for all services (Gemini, Claude, ChatGPT, Grok, LeChat, Llamacoder, AI Studio).
+- **Z-Index Stabilization**: Ensures export buttons remain visible above platform UIs (`z-index: 999999`).
+- **Style Isolation**: Prevents platform CSS from interfering with extension UI.
+- **Platform Specifics**:
+  - **Gemini**: Bottom-right (`bottom: 85px`, `right: 195px`)
+  - **Claude**: Bottom-right (`bottom: 65px`, `right: 330px`)
+  - **ChatGPT**: Bottom-right (`bottom: 46px`, `right: 210px`)
+  - **AI Studio**: Top-left absolute positioning relative to header
+  - **Grok**: Bottom-right (`bottom: 44px`, `right: 200px`)
+  - **LeChat**: Bottom-right (`bottom: 85px`, `right: 210px`)
+
+### Fixed
+
+- **UI flicker**: Stabilized extension button injection on SPA navigation.
+- **Button overlap**: Adjusted positioning to avoid covering chat input or send buttons.
+
+---
+
 ## [v0.5.2] - January 9, 2026
 
 ### Added
