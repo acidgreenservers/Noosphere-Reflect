@@ -15,12 +15,13 @@ const Changelog: React.FC = () => {
         {
             version: 'v0.5.4',
             date: 'Jan 11, 2026',
-            title: 'Vortex Brand Overhaul',
+            title: 'Configurable Exports & Memory Batch Ops',
             items: [
-                'New Brand Identity: Replaced legacy "brain/memory" logo with a premium "Vortex" abstract icon (Green & Purple lines).',
-                'Visual Refresh: Updated color gradients across all headers and titles to include "Purple-500" for better brand alignment.',
-                'Favicon Update: Migrated from legacy SVG to the new Vortex PNG logo for improved browser tab visibility.',
-                'Archive Hub Consistency: Header logo and titles now match the new landing page aesthetic.',
+                'Configurable Filename Casing: Choose export casing (kebab-case, PascalCase, etc.) with live previews in Settings.',
+                'Memory Archive Batch Actions: Multi-select memories to Export (HTML/MD/JSON) or Delete in bulk.',
+                'Export Status Tracking: Visual "✓ Exported" badges on memories to track archival progress.',
+                'Visual Overhaul: Updated Memory Archive UI to match Archive Hub with purple glassmorphism and rounded-3xl styling.',
+                'Floating Action Bar: Modern bottom-bar interface for batch operations.',
             ]
         },
         {

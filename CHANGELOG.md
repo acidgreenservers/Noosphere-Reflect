@@ -16,6 +16,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.4] - January 11, 2026
+
+### Added
+
+#### Configurable Export Filename Casing
+- **User Settings System**: New persistent settings in IndexedDB (via `SettingsModal`).
+- **6 Casing Options**: `kebab-case`, `Kebab-Case`, `snake_case`, `Snake_Case`, `PascalCase`, `camelCase`.
+- **Visual UI**:
+  - Live preview examples updating in real-time.
+  - Capitalization toggle switches.
+  - "Apply" logic integrated into `sanitizeFilename` for all exports.
+
+#### Memory Archive Enhancements
+- **Batch Operations**:
+  - Multi-select memories via checkboxes or "Select All".
+  - Bulk Export (HTML/Markdown/JSON) or Delete.
+  - Floating Action Bar (glassmorphism style) for managing selection.
+- **Export Status Tracking**:
+  - New `exportStatus` field in database.
+  - Visual "✓ Exported" badges (Green) on memory cards.
+  - Automatically updates status upon successful export.
+- **Visual Overhaul**:
+  - Matched Archive Hub's premium design language.
+  - Purple-themed glassmorphism for selected cards.
+  - Rounded-3xl card styling and hover animations.
+  - Custom checkbox styling (dark rounded box, purple fill).
+
+---
+
 ## [v0.5.3] - January 10, 2026
 
 ### Added

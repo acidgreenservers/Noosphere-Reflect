@@ -15,7 +15,7 @@
 * **📎 Dual Artifact System**: Attach files to entire sessions or individual messages with unified export
 * **💾 Robust Persistence**: Saves thousands of chats locally using **IndexedDB** with auto-migration
 * **📦 Batch Operations**: Multi-select chats to export, delete, or organize them in bulk
-* **⚙️ Global Settings**: Set default username across all imports (overridable per-session)
+* **⚙️ Global Settings**: Set default username and **filename casing** (kebab-case, PascalCase, etc.)
 * **🌩️ Data Sovereignty**: Full database export (backup) functionality to keep your data safe and portable
 
 ### Parsing & Export
@@ -101,7 +101,9 @@ Your central command center for managing all captured and imported conversations
 Dedicated space for storing isolated AI thoughts and snippets:
 - **Quick Add**: Capture thoughts with AI model, tags, and content
 - **Grid View**: Browse memories with rich metadata (word count, date, model)
-- **Export Options**: Export individual memories as HTML, Markdown, or JSON
+- **Export Options**: Export individual memories or batches as HTML, Markdown, or JSON
+- **Batch Operations**: Multi-select memories to export or delete in bulk
+- **Status Tracking**: Visual badges indicate which memories have been exported
 - **Search & Filter**: Find memories by AI model or tags
 - **Separation**: Memories remain distinct from full chat sessions
 
@@ -200,10 +202,17 @@ npm run dev
 
 ## 🆕 What's New in v0.5.4
 
-### Vortex Brand Refresh
-- **New Brand Identity**: Replaced legacy "brain" logo with the premium **Vortex** abstract icon.
-- **Visual Overhaul**: Updated gradients and UI elements across all pages to include Green & Purple transitions.
-- **Improved Consistency**: Unified brand experience from the landing page to the Archive Hub.
+### Configurable Export Filename Casing
+- **6 Casing Options**: Choose from `kebab-case`, `Kebab-Case`, `snake_case`, `Snake_Case`, `PascalCase`, and `camelCase`.
+- **Live Previews**: Visual settings UI showing exactly how your files will look.
+- **Smart Capitalization**: Toggle capitalization for relevant formats.
+- **Universal Application**: Applies to all chat and memory exports automatically.
+
+### Memory Archive Enhancements
+- **Batch Operations**: Select multiple memories to export or delete at once.
+- **Export Status**: Visual "✓ Exported" badges help you track what you've already archived.
+- **Visual Overhaul**: Updated UI to match the premium Archive Hub design (Purple Glassmorphism).
+- **Floating Action Bar**: Modern, convenient controls for batch actions.
 
 ### Recent Updates (v0.5.1 - v0.5.3)
 - **Database Export (v0.5.3)**: Backup your entire local database to a JSON file.
@@ -268,5 +277,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Version**: 0.5.4
-**Last Updated**: January 10, 2026
-**Status**: Stable Release with Vortex Branding & Full DB Export ✅
+**Last Updated**: January 11, 2026
+**Status**: Stable Release with Configurable Exports & Memory Batch Ops ✅

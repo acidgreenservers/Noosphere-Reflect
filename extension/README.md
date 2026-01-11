@@ -1,7 +1,7 @@
 # Noosphere Reflect Bridge - Chrome Extension
 
 **Status**: Stable Release ✅ (Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, Kimi)
-**Version**: v0.5.3
+**Version**: v0.5.4
 
 ## Overview
 

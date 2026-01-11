@@ -11,16 +11,33 @@
 - **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- **Version**: Web App `v0.5.3` | Extension `v0.5.3`
+- **Version**: Web App `v0.5.4` | Extension `v0.5.4`
 - **Core Functionality**:
-  - **ArchiveHub**: robust dashboard for browsing, filtering, and managing saved chats.
-  - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0).
-  - **Import/Export**: Full JSON import/export; Batch import; Memory exports (HTML/MD/JSON).
+  - **ArchiveHub**: Robust dashboard with batch selection, export options, and visual consistency.
+    - Batch operations: Select multiple chats, export in various formats (HTML/MD/JSON), delete selected.
+    - Floating glassmorphism action bar for batch operations.
+    - Export status tracking with visual badges.
+  - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0+).
+    - **NEW**: Batch selection system matching Archive Hub UX.
+    - **NEW**: Export status tracking (`exported` / `not_exported`).
+    - **NEW**: Floating action bar with purple-themed export options.
+    - **NEW**: Purple glassmorphism selection highlighting.
+    - Memory exports (HTML/MD/JSON) with automatic export status marking.
+  - **Settings System**:
+    - **NEW**: Configurable export filename casing (kebab-case, Kebab-Case, snake_case, Snake_Case, PascalCase, camelCase).
+    - **NEW**: Visual UI with live preview examples and capitalization toggle.
+    - Persistent settings stored in IndexedDB.
+    - Default username configuration for imports.
+  - **Import/Export**: Full JSON import/export; Batch import; Directory import with attribution validation.
   - **Security**: Comprehensive XSS hardening, Input validation, and Atomic duplicate detection (v0.3.0+).
 - **Extension**: Fully functional Chrome Extension supporting:
   - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok.
   - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation.
-- **Goal**: Polish Archive Hub visuals and ensure Extension reliability (Toasts).
+- **Recent Improvements**:
+  - Visual consistency between Archive Hub and Memory Archive (purple theme, glassmorphism).
+  - Enhanced filename sanitization with multiple case format support.
+  - Improved batch operation UX with floating action bars.
+  - Export status badges for tracking exported content.
 
 ## 🔒 Security & QA Workflow: Adversary Auditor (3-Eyes Verification)
 
