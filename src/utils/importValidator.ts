@@ -117,7 +117,8 @@ const SavedChatSessionSchema = z.object({
 
 // App Settings Schema - matching AppSettings interface
 const AppSettingsSchema = z.object({
-    defaultUserName: z.string().max(100)
+    defaultUserName: z.string().max(100),
+    fileNamingCase: z.enum(['kebab-case', 'Kebab-Case', 'snake_case', 'Snake_Case', 'PascalCase', 'camelCase']).default('kebab-case')
 });
 
 // Memory Metadata Schema - matching MemoryMetadata interface

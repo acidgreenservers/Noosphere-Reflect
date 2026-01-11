@@ -191,38 +191,80 @@ export function validateTag(tag: string, maxLength: number = 50): { valid: boole
 
 /**
  * Sanitizes a filename to prevent path traversal (Zip Slip) and control character injection.
- * Replaces dangerous characters with underscores.
+ * Replaces dangerous characters with underscores and applies the specified case format.
  *
  * @param filename - The original filename
+ * @param caseFormat - The desired case format
  * @returns The sanitized filename
  */
-export function sanitizeFilename(filename: string): string {
-  if (!filename) return 'unnamed_file';
-  
+export function sanitizeFilename(
+  filename: string,
+  caseFormat: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase' = 'kebab-case'
+): string {
+  if (!filename) {
+    return caseFormat.includes('snake') ? 'unnamed_file' : 'unnamed-file';
+  }
+
   // 1. Remove path information (everything before the last slash/backslash)
-  let name = filename.replace(/^.*[\\\/]/, '');
-  
+  let name = filename.replace(/^.*[\\/]/, '');
+
   // 2. Replace control characters and other dangerous filesystem characters with underscore
   // Allowed: alphanumeric, dot, underscore, dash, space, parenthesis
   name = name.replace(/[^a-zA-Z0-9._\- ()]/g, '_');
-  
-  // 3. Prevent ".." traversal
+
+  // 3. Apply case format
+  if (caseFormat === 'kebab-case') {
+    name = name.replace(/\s+/g, '-').replace(/_/g, '-').replace(/-+/g, '-').toLowerCase();
+  } else if (caseFormat === 'Kebab-Case') {
+    // Capitalize first letter of each word, join with hyphens
+    name = name
+      .split(/[-_\s]+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('-');
+  } else if (caseFormat === 'snake_case') {
+    name = name.replace(/\s+/g, '_').replace(/-/g, '_').replace(/_+/g, '_').toLowerCase();
+  } else if (caseFormat === 'Snake_Case') {
+    // Capitalize first letter of each word, join with underscores
+    name = name
+      .split(/[-_\s]+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('_');
+  } else if (caseFormat === 'PascalCase') {
+    // Remove separators and capitalize each word
+    name = name
+      .split(/[-_\s]+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('');
+  } else if (caseFormat === 'camelCase') {
+    // First word lowercase, rest capitalized, no separators
+    const words = name.split(/[-_\s]+/);
+    name = words
+      .map((word, index) =>
+        index === 0
+          ? word.toLowerCase()
+          : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      )
+      .join('');
+  }
+
+  // 4. Prevent ".." traversal
   while (name.includes('..')) {
     name = name.replace('..', '__');
   }
-  
-  // 4. Ensure it's not empty or just dot/space
-  if (!name.trim() || name.trim() === '.') {
-    return 'unnamed_file';
+
+  // 5. Ensure it's not empty or just dot/dash/underscore
+  const trimmed = name.trim();
+  if (!trimmed || trimmed === '.' || trimmed === '-' || trimmed === '_') {
+    return caseFormat.includes('snake') ? 'unnamed_file' : 'unnamed-file';
   }
-  
-  // 5. Limit length
+
+  // 6. Limit length
   if (name.length > 200) {
     const ext = name.split('.').pop();
     const base = name.substring(0, 200 - (ext ? ext.length + 1 : 0));
     name = ext ? `${base}.${ext}` : name.substring(0, 200);
   }
-  
+
   return name;
 }
 
@@ -243,15 +285,15 @@ export function neutralizeDangerousExtension(filename: string): string {
     '.exe', '.bat', '.sh',     // Executables (download risk)
     '.jar', '.msi', '.app'
   ];
-  
+
   const lowerName = filename.toLowerCase();
-  
+
   for (const ext of dangerousExtensions) {
     if (lowerName.endsWith(ext)) {
       return `${filename}.txt`;
     }
   }
-  
+
   return filename;
 }
 

@@ -108,10 +108,12 @@ export interface SavedChatSession {
 
 export interface AppSettings {
   defaultUserName: string;
+  fileNamingCase: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase';
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  defaultUserName: 'User'
+  defaultUserName: 'User',
+  fileNamingCase: 'kebab-case'
 };
 
 // Memory Archive Types
@@ -121,6 +123,7 @@ export interface MemoryMetadata {
   characterCount: number;
   sourceUrl?: string;            // Optional: where memory came from
   notes?: string;                // User notes about the memory
+  exportStatus?: 'exported' | 'not_exported'; // Export tracking
 }
 
 export interface Memory {

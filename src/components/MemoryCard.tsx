@@ -6,9 +6,11 @@ interface Props {
     onEdit: (memory: Memory) => void;
     onDelete: (id: string) => void;
     onExport: (memory: Memory, format: 'html' | 'markdown' | 'json') => void;
+    isSelected: boolean;
+    onToggleSelect: (id: string) => void;
 }
 
-export default function MemoryCard({ memory, onEdit, onDelete, onExport }: Props) {
+export default function MemoryCard({ memory, onEdit, onDelete, onExport, isSelected, onToggleSelect }: Props) {
     const [showExportMenu, setShowExportMenu] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -60,13 +62,37 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport }: Props
     };
 
     return (
-        <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-5 hover:border-gray-600 transition-all shadow-lg hover:shadow-xl group relative">
+        <div className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105
+            ${isSelected
+                ? 'bg-purple-900/20 border-purple-500/50 shadow-purple-900/10 shadow-lg shadow-purple-500/20'
+                : 'bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 hover:border-purple-500/30 hover:shadow-purple-900/10 hover:shadow-lg hover:shadow-purple-500/20'
+            }`}>
+            {/* Selection Checkbox - Hub Style */}
+            <div className="absolute top-4 right-4 z-10">
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onToggleSelect(memory.id);
+                    }}
+                    className={`w-6 h-6 rounded border flex items-center justify-center transition-all
+                        ${isSelected
+                            ? 'bg-purple-500 border-purple-500 text-white'
+                            : 'bg-gray-900/50 border-gray-600 hover:border-purple-400 text-transparent'
+                        }`}
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                </button>
+            </div>
+
             <div className="flex justify-between items-start mb-3 gap-4">
                 <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-bold text-gray-200 truncate">
                         {memory.metadata.title}
                     </h3>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-1 flex-wrap">
                         <span className={`px-2 py-0.5 rounded border ${getModelColor(memory.aiModel)}`}>
                             {memory.aiModel}
                         </span>
@@ -76,6 +102,15 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport }: Props
                             <>
                                 <span>•</span>
                                 <span>{memory.metadata.wordCount} words</span>
+                            </>
+                        )}
+                        {/* Export Status Badge */}
+                        {memory.metadata.exportStatus === 'exported' && (
+                            <>
+                                <span>•</span>
+                                <span className="px-2 py-0.5 bg-green-900/40 text-green-300 border border-green-700/50 rounded flex items-center gap-1">
+                                    ✓ Exported
+                                </span>
                             </>
                         )}
                     </div>

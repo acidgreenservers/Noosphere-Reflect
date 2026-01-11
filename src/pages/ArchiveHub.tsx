@@ -809,17 +809,6 @@ const ArchiveHub: React.FC = () => {
 
                     </div>
 
-                    <button
-                        className="flex items-center gap-2 text-sm font-medium text-emerald-400/50 cursor-not-allowed"
-                        title="Merge feature coming soon"
-                        disabled
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        Merge
-                    </button>
-
                     <div className="w-px h-4 bg-white/10 mx-1"></div>
 
                     <button
