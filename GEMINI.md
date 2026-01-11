@@ -73,6 +73,7 @@ To ensure professional, standardized, and semantic operations, strictly follow t
 - **Coding Standards**: Refer to [`CODING_STANDARDS_PROTOCOL.md`](./.agents/protocols/CODING_STANDARDS_PROTOCOL.md).
 - **QA & Testing**: Refer to [`QA_TESTING_PROTOCOL.md`](./.agents/protocols/QA_TESTING_PROTOCOL.md).
 - **Implementation**: Refer to [`IMPLEMENTATION_PROTOCOL.md`](./.agents/protocols/IMPLEMENTATION_PROTOCOL.md).
+- **Deployment**: Refer to [`GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md`](./.agents/protocols/GITHUB_PAGES_DEPLOYMENT_PROTOCOL.md).
 - **Extension Bridge**: Refer to [`EXTENSION_BRIDGE_PROTOCOL.md`](./.agents/protocols/EXTENSION_BRIDGE_PROTOCOL.md).
 - **Release Strategy**: Refer to [`RELEASE_PROTOCOL.md`](./.agents/protocols/RELEASE_PROTOCOL.md).
 - **AI Collaboration**: Refer to [`AI_COLLABORATION_PROTOCOL.md`](./.agents/protocols/AI_COLLABORATION_PROTOCOL.md).
