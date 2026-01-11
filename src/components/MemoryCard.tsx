@@ -6,11 +6,12 @@ interface Props {
     onEdit: (memory: Memory) => void;
     onDelete: (id: string) => void;
     onExport: (memory: Memory, format: 'html' | 'markdown' | 'json') => void;
+    onStatusToggle: (memory: Memory, e: React.MouseEvent) => void;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function MemoryCard({ memory, onEdit, onDelete, onExport, isSelected, onToggleSelect }: Props) {
+export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatusToggle, isSelected, onToggleSelect }: Props) {
     const [showExportMenu, setShowExportMenu] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -117,6 +118,18 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, isSelec
                 </div>
 
                 <div className={`flex items-center gap-1 transition-opacity ${showExportMenu ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}>
+                    {/* Export Status Toggle Button */}
+                    <button
+                        onClick={(e) => onStatusToggle(memory, e)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${memory.metadata.exportStatus === 'exported'
+                            ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
+                            : 'bg-red-500/20 border-red-500/50 text-red-400'
+                            }`}
+                        title={`Export Status: ${memory.metadata.exportStatus === 'exported' ? 'Exported' : 'Not Exported'} (Click to toggle)`}
+                    >
+                        {memory.metadata.exportStatus === 'exported' ? '📤' : '📥'}
+                    </button>
+
                     <div className="relative" ref={exportMenuRef}>
                         <button
                             onClick={() => setShowExportMenu(!showExportMenu)}

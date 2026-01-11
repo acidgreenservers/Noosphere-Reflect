@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Memory } from '../types';
+import { Memory, AppSettings, DEFAULT_SETTINGS } from '../types';
 import logo from '../assets/logo.png';
 import { storageService } from '../services/storageService';
-import { generateMemoryHtml, generateMemoryMarkdown, generateMemoryJson } from '../services/converterService';
+import {
+    generateMemoryHtml,
+    generateMemoryMarkdown,
+    generateMemoryJson,
+    generateMemoryBatchZipExport,
+    generateMemoryBatchDirectoryExportWithPicker
+} from '../services/converterService';
 import MemoryInput from '../components/MemoryInput';
 import MemoryList from '../components/MemoryList';
 import MemoryEditor from '../components/MemoryEditor';
+import { ExportModal } from '../components/ExportModal';
 import { sanitizeFilename } from '../utils/securityUtils';
 
 export default function MemoryArchive() {
@@ -16,11 +23,20 @@ export default function MemoryArchive() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isExporting, setIsExporting] = useState(false);
     const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
-    const [showSelectionModal, setShowSelectionModal] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
+    const [exportPackage, setExportPackage] = useState<'directory' | 'zip'>('zip');
+    const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
     useEffect(() => {
         loadMemories();
+        loadSettings();
     }, []);
+
+    const loadSettings = async () => {
+        const settings = await storageService.getSettings();
+        setAppSettings(settings);
+    };
 
     const loadMemories = async () => {
         const allMemories = await storageService.getAllMemories();
@@ -133,21 +149,79 @@ export default function MemoryArchive() {
             await storageService.deleteMemory(id);
         }
         setSelectedMemories(new Set());
-        setShowSelectionModal(false);
+        setShowExportModal(false);
         await loadMemories();
     };
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json') => {
+    const handleStatusToggle = async (memory: Memory, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const current = memory.metadata.exportStatus || 'not_exported';
+        const next: 'exported' | 'not_exported' = current === 'exported' ? 'not_exported' : 'exported';
+
+        const updated = {
+            ...memory,
+            metadata: {
+                ...memory.metadata,
+                exportStatus: next
+            }
+        };
+
+        await storageService.updateMemory(updated);
+        await loadMemories();
+    };
+
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
         if (selectedMemories.size === 0) return;
 
         const selected = memories.filter(m => selectedMemories.has(m.id));
+        const caseFormat = appSettings.fileNamingCase;
 
-        for (const memory of selected) {
-            await handleExport(memory, format);
+        try {
+            if (packageType === 'zip' || selectedMemories.size > 1) {
+                // Batch export always uses ZIP
+                const zipBlob = await generateMemoryBatchZipExport(selected, format, caseFormat);
+                const url = URL.createObjectURL(zipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+
+                // Generate timestamp-datestamp for filename
+                const now = new Date();
+                const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                a.download = `Noosphere-Memories-${timestamp}.zip`;
+
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'memory' : 'memories'} as ZIP archive`);
+            } else {
+                // Single memory directory export
+                await generateMemoryBatchDirectoryExportWithPicker(selected, format, caseFormat);
+                alert(`✅ Exported memory to directory`);
+            }
+
+            // Mark all as exported
+            for (const memory of selected) {
+                const updated = {
+                    ...memory,
+                    metadata: {
+                        ...memory.metadata,
+                        exportStatus: 'exported' as const
+                    }
+                };
+                await storageService.updateMemory(updated);
+            }
+
+            await loadMemories();
+            setSelectedMemories(new Set());
+            setShowExportModal(false);
+        } catch (error) {
+            console.error('Batch export failed:', error);
+            alert('Export failed. Check console for details.');
         }
-
-        setSelectedMemories(new Set());
-        setShowSelectionModal(false);
     };
 
     const filteredMemories = memories.filter(m =>
@@ -223,6 +297,7 @@ export default function MemoryArchive() {
                         onEdit={setEditingMemory}
                         onDelete={handleDeleteMemory}
                         onExport={handleExport}
+                        onStatusToggle={handleStatusToggle}
                         selectedMemories={selectedMemories}
                         onToggleSelect={handleToggleSelect}
                     />
@@ -249,7 +324,7 @@ export default function MemoryArchive() {
 
                         <div className="relative">
                             <button
-                                onClick={() => setShowSelectionModal(true)}
+                                onClick={() => setShowExportModal(true)}
                                 className="flex items-center gap-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors"
                                 title="Export selected memories"
                             >
@@ -284,45 +359,19 @@ export default function MemoryArchive() {
                     </div>
                 )}
 
-                {/* Export Format Modal */}
-                {showSelectionModal && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-                        <div className="bg-gray-800 rounded-3xl shadow-2xl p-8 max-w-md w-full border border-gray-700">
-                            <h2 className="text-2xl font-bold mb-6 text-purple-300">Export Format</h2>
-                            <p className="text-gray-400 text-sm mb-6">
-                                Choose export format for {selectedMemories.size} {selectedMemories.size === 1 ? 'memory' : 'memories'}
-                            </p>
-
-                            <div className="grid grid-cols-3 gap-3 mb-6">
-                                <button
-                                    onClick={() => handleBatchExport('html')}
-                                    className="px-4 py-3 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-300 rounded-lg transition-colors font-medium"
-                                >
-                                    HTML
-                                </button>
-                                <button
-                                    onClick={() => handleBatchExport('markdown')}
-                                    className="px-4 py-3 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 hover:border-green-500/50 text-green-300 rounded-lg transition-colors font-medium"
-                                >
-                                    Markdown
-                                </button>
-                                <button
-                                    onClick={() => handleBatchExport('json')}
-                                    className="px-4 py-3 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 hover:border-purple-500/50 text-purple-300 rounded-lg transition-colors font-medium"
-                                >
-                                    JSON
-                                </button>
-                            </div>
-
-                            <button
-                                onClick={() => setShowSelectionModal(false)}
-                                className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors font-medium"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                )}
+                {/* Export Modal */}
+                <ExportModal
+                    isOpen={showExportModal}
+                    onClose={() => setShowExportModal(false)}
+                    onExport={(format, packageType) => handleBatchExport(format, packageType)}
+                    selectedCount={selectedMemories.size}
+                    hasArtifacts={false}
+                    exportFormat={exportFormat}
+                    setExportFormat={setExportFormat}
+                    exportPackage={exportPackage}
+                    setExportPackage={setExportPackage}
+                    accentColor="purple"
+                />
             </div>
         </div>
     );

@@ -6,6 +6,7 @@ import { generateHtml, generateMarkdown, generateJson, generateZipExport, genera
 import { storageService } from '../services/storageService';
 import SettingsModal from '../components/SettingsModal';
 import { ArtifactManager } from '../components/ArtifactManager';
+import { ExportModal } from '../components/ExportModal';
 
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSession[]>([]);
@@ -245,7 +246,10 @@ const ArchiveHub: React.FC = () => {
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `noosphere-reflect-batch-${format}-${Date.now()}.zip`;
+            // Generate timestamp-datestamp for filename
+            const now = new Date();
+            const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: 2026-01-11T10-30-45
+            a.download = `Noosphere-Chats-${timestamp}.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -657,21 +661,7 @@ const ArchiveHub: React.FC = () => {
                                         : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-green-500/30 hover:shadow-green-900/10 hover:shadow-lg hover:shadow-green-500/20'
                                     }`}
                             >
-                                {/* Selection Checkbox */}
-                                <div className="absolute top-4 right-4 z-10">
-                                    <button
-                                        onClick={(e) => toggleSelection(session.id, e)}
-                                        className={`w-6 h-6 rounded border flex items-center justify-center transition-all
-                                            ${selectedIds.has(session.id)
-                                                ? 'bg-green-500 border-green-500 text-white'
-                                                : 'bg-gray-900/50 border-gray-600 hover:border-green-400 text-transparent'
-                                            }`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </button>
-                                </div>
+
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex gap-2">
                                         {session.metadata?.model && (
@@ -764,9 +754,21 @@ const ArchiveHub: React.FC = () => {
                                         </svg>
                                         {new Date(session.metadata?.date || session.date).toLocaleDateString()}
                                     </div>
-                                    <span className="text-xs text-green-400 font-medium group-hover:translate-x-1 transition-transform">
-                                        Open Studio &rarr;
-                                    </span>
+                                    <div className="flex items-center justify-center">
+                                        <button
+                                            onClick={(e) => toggleSelection(session.id, e)}
+                                            className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110
+                                                ${selectedIds.has(session.id)
+                                                    ? 'bg-green-500 border-green-500 text-white'
+                                                    : 'bg-gray-900/50 border-gray-600 hover:border-green-400 text-transparent'
+                                                }`}
+                                            title={selectedIds.has(session.id) ? "Deselect this chat" : "Select this chat"}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </Link>
                         ))
@@ -833,101 +835,28 @@ const ArchiveHub: React.FC = () => {
             )}
 
             {/* Export Modal */}
-            {exportModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-                    <div className="bg-gray-800 rounded-3xl shadow-2xl p-8 max-w-md w-full border border-gray-700">
-                        <h2 className="text-2xl font-bold mb-6 text-green-300">Export Options</h2>
-
-                        <div className="space-y-6">
-                            {/* Format Selection */}
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-300 mb-3">Format:</label>
-                                <div className="flex gap-3">
-                                    {(['html', 'markdown', 'json'] as const).map(fmt => (
-                                        <label key={fmt} className="flex items-center gap-2 flex-1 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="format"
-                                                value={fmt}
-                                                checked={exportFormat === fmt}
-                                                onChange={(e) => setExportFormat(e.target.value as any)}
-                                                className="w-4 h-4"
-                                            />
-                                            <span className="text-sm text-gray-200 capitalize">{fmt === 'markdown' ? 'Markdown' : fmt.toUpperCase()}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Package Selection (only for single export) */}
-                            {selectedIds.size === 1 && (
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-300 mb-3">Package:</label>
-                                    <div className="flex gap-3">
-                                        <label className="flex items-center gap-2 flex-1 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="package"
-                                                value="directory"
-                                                checked={exportPackage === 'directory'}
-                                                onChange={(e) => setExportPackage(e.target.value as any)}
-                                                className="w-4 h-4"
-                                            />
-                                            <span className="text-sm text-gray-200">Directory</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 flex-1 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="package"
-                                                value="zip"
-                                                checked={exportPackage === 'zip'}
-                                                onChange={(e) => setExportPackage(e.target.value as any)}
-                                                className="w-4 h-4"
-                                            />
-                                            <span className="text-sm text-gray-200">ZIP</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Batch Export Warning */}
-                            {selectedIds.size > 1 && (
-                                <div className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-3">
-                                    <p className="text-sm text-yellow-200">
-                                        ⚠️ Batch exports are packaged as ZIP archives
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-3 mt-8">
-                            <button
-                                onClick={() => {
-                                    if (selectedIds.size === 1) {
-                                        const sessionId = Array.from(selectedIds)[0];
-                                        const session = sessions.find(s => s.id === sessionId);
-                                        if (session) {
-                                            handleSingleExport(session, exportFormat, exportPackage);
-                                        }
-                                    } else {
-                                        handleBatchExport(exportFormat);
-                                    }
-                                }}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                            >
-                                Export
-                            </button>
-                            <button
-                                onClick={() => setExportModalOpen(false)}
-                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ExportModal
+                isOpen={exportModalOpen}
+                onClose={() => setExportModalOpen(false)}
+                onExport={(format, packageType) => {
+                    if (selectedIds.size === 1) {
+                        const sessionId = Array.from(selectedIds)[0];
+                        const session = sessions.find(s => s.id === sessionId);
+                        if (session) {
+                            handleSingleExport(session, format, packageType);
+                        }
+                    } else {
+                        handleBatchExport(format);
+                    }
+                }}
+                selectedCount={selectedIds.size}
+                hasArtifacts={true}
+                exportFormat={exportFormat}
+                setExportFormat={setExportFormat}
+                exportPackage={exportPackage}
+                setExportPackage={setExportPackage}
+                accentColor="green"
+            />
 
             {/* Artifact Manager Modal */}
             {showArtifactManager && selectedSessionForArtifacts && (

@@ -2683,3 +2683,186 @@ ${memory.content}
 export const generateMemoryJson = (memory: Memory): string => {
   return JSON.stringify(memory, null, 2);
 };
+
+/**
+ * Helper: Generate simplified export metadata for memories (no artifacts)
+ */
+const generateMemoryExportMetadata = (memories: Memory[]) => {
+  return {
+    exportedAt: new Date().toISOString(),
+    version: '1.0',
+    type: 'memory-archive',
+    count: memories.length,
+    memories: memories.map(m => ({
+      id: m.id,
+      title: m.metadata.title,
+      aiModel: m.aiModel,
+      createdAt: m.createdAt,
+      tags: m.tags
+    }))
+  };
+};
+
+/**
+ * Helper: Handle filename collisions by appending incrementing counters
+ */
+const deduplicateFilename = (filename: string, existingFilenames: Set<string>): string => {
+  if (!existingFilenames.has(filename)) {
+    return filename;
+  }
+
+  const parts = filename.split('.');
+  const ext = parts.length > 1 ? parts.pop() : '';
+  const base = parts.join('.');
+
+  let counter = 1;
+  let newFilename = ext ? `${base}_${counter}.${ext}` : `${base}_${counter}`;
+
+  while (existingFilenames.has(newFilename)) {
+    counter++;
+    newFilename = ext ? `${base}_${counter}.${ext}` : `${base}_${counter}`;
+  }
+
+  return newFilename;
+};
+
+/**
+ * Create batch ZIP export with multiple memories
+ * @param memories - Array of memories to export
+ * @param format - Export format (html, markdown, json)
+ * @param caseFormat - Filename case format from settings
+ * @returns Blob of ZIP file
+ */
+export const generateMemoryBatchZipExport = async (
+  memories: Memory[],
+  format: 'html' | 'markdown' | 'json',
+  caseFormat: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase' = 'kebab-case'
+): Promise<Blob> => {
+  const zip = new JSZip();
+  const usedFilenames = new Set<string>();
+
+  for (const memory of memories) {
+    let content: string;
+    let extension: string;
+
+    // Generate content based on format
+    if (format === 'html') {
+      content = generateMemoryHtml(memory);
+      extension = 'html';
+    } else if (format === 'markdown') {
+      content = generateMemoryMarkdown(memory);
+      extension = 'md';
+    } else {
+      content = generateMemoryJson(memory);
+      extension = 'json';
+    }
+
+    // Sanitize filename with case format
+    const sanitizedTitle = sanitizeFilename(memory.metadata.title, caseFormat);
+    let filename = `${sanitizedTitle}.${extension}`;
+
+    // Handle collisions
+    filename = deduplicateFilename(filename, usedFilenames);
+    usedFilenames.add(filename);
+
+    // Add file to ZIP
+    zip.file(filename, content);
+  }
+
+  // Add batch export metadata at root
+  const metadata = generateMemoryExportMetadata(memories);
+  zip.file('export-metadata.json', JSON.stringify(metadata, null, 2));
+
+  return await zip.generateAsync({ type: 'blob' });
+};
+
+/**
+ * Generate directory structure for batch memory export (for File System Access API)
+ * @param memories - Array of memories to export
+ * @param format - Export format
+ * @param caseFormat - Filename case format from settings
+ * @returns Object mapping filenames to content
+ */
+export const generateMemoryBatchDirectoryExport = (
+  memories: Memory[],
+  format: 'html' | 'markdown' | 'json',
+  caseFormat: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase' = 'kebab-case'
+): Record<string, string> => {
+  const files: Record<string, string> = {};
+  const usedFilenames = new Set<string>();
+
+  for (const memory of memories) {
+    let content: string;
+    let extension: string;
+
+    // Generate content based on format
+    if (format === 'html') {
+      content = generateMemoryHtml(memory);
+      extension = 'html';
+    } else if (format === 'markdown') {
+      content = generateMemoryMarkdown(memory);
+      extension = 'md';
+    } else {
+      content = generateMemoryJson(memory);
+      extension = 'json';
+    }
+
+    // Sanitize filename with case format
+    const sanitizedTitle = sanitizeFilename(memory.metadata.title, caseFormat);
+    let filename = `${sanitizedTitle}.${extension}`;
+
+    // Handle collisions
+    filename = deduplicateFilename(filename, usedFilenames);
+    usedFilenames.add(filename);
+
+    files[filename] = content;
+  }
+
+  // Add metadata
+  const metadata = generateMemoryExportMetadata(memories);
+  files['export-metadata.json'] = JSON.stringify(metadata, null, 2);
+
+  return files;
+};
+
+/**
+ * Batch export memories to directory using File System Access API
+ * @param memories - Array of memories to export
+ * @param format - Export format
+ * @param caseFormat - Filename case format from settings
+ */
+export const generateMemoryBatchDirectoryExportWithPicker = async (
+  memories: Memory[],
+  format: 'html' | 'markdown' | 'json',
+  caseFormat: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase' = 'kebab-case'
+): Promise<void> => {
+  // Check if File System Access API is supported
+  if (!('showDirectoryPicker' in window)) {
+    throw new Error('Directory export is not supported in this browser. Please use Chrome, Edge, or Opera, or select ZIP export instead.');
+  }
+
+  // Ask user to select a directory
+  const rootDirHandle = await (window as any).showDirectoryPicker({
+    mode: 'readwrite',
+    startIn: 'downloads'
+  });
+
+  // Generate timestamp-datestamp for directory name
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: 2026-01-11T10-30-45
+  const dirName = `Noosphere-Memories-${timestamp}`;
+
+  // Create subdirectory
+  const memoryDirHandle = await rootDirHandle.getDirectoryHandle(dirName, { create: true });
+
+  // Generate all files
+  const files = generateMemoryBatchDirectoryExport(memories, format, caseFormat);
+
+  // Write each file
+  for (const [filename, content] of Object.entries(files)) {
+    const fileHandle = await memoryDirHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(content);
+    await writable.close();
+  }
+};

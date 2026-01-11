@@ -7,11 +7,12 @@ interface Props {
     onEdit: (memory: Memory) => void;
     onDelete: (id: string) => void;
     onExport: (memory: Memory, format: 'html' | 'markdown' | 'json') => void;
+    onStatusToggle: (memory: Memory, e: React.MouseEvent) => void;
     selectedMemories: Set<string>;
     onToggleSelect: (id: string) => void;
 }
 
-export default function MemoryList({ memories, onEdit, onDelete, onExport, selectedMemories, onToggleSelect }: Props) {
+export default function MemoryList({ memories, onEdit, onDelete, onExport, onStatusToggle, selectedMemories, onToggleSelect }: Props) {
     if (memories.length === 0) {
         return (
             <div className="text-center py-20 bg-gray-800/20 rounded-xl border border-dashed border-gray-700">
@@ -33,6 +34,7 @@ export default function MemoryList({ memories, onEdit, onDelete, onExport, selec
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onExport={onExport}
+                    onStatusToggle={onStatusToggle}
                     isSelected={selectedMemories.has(memory.id)}
                     onToggleSelect={onToggleSelect}
                 />
@@ -40,4 +42,3 @@ export default function MemoryList({ memories, onEdit, onDelete, onExport, selec
         </div>
     );
 }
-
