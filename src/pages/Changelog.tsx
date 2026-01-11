@@ -26,13 +26,16 @@ const Changelog: React.FC = () => {
         {
             version: 'v0.5.3',
             date: 'Jan 10, 2026',
-            title: 'Export & Parser Hardening',
+            title: 'Governance Framework & Parser Hardening',
             items: [
-                'Enhanced Export Structure: Exported directories now include the AI Service name (e.g., "[Claude] - My Chat") for better organization.',
-                'Metadata Manifests: All exports now generate a detailed "export-metadata.json" file with chat statistics and artifact counts.',
-                'Parser Robustness: Integrated "jsdom" for server-side HTML parsing reliability.',
-                'LeChat Improvements: Full support for "Rich Tables", "Thought Process" blocks, and tool execution markers.',
-                'Governance: Established comprehensive Agent Protocols (Security, Design, Data) for project stability.',
+                'Multi-Agent System: Established 5 specialist agents (Builder, Auditor, Consolidator, Data Architect, Design Agent).',
+                '7 Core Protocols: AI Collaboration, Coding Standards, Design System, Extension Bridge, Memory Bank, QA Testing, Release.',
+                'Governance Documentation: 5 new docs (GOVERNANCE_QUICK_START, REFERENCE, INDEX, SUMMARY, AGENT_ROSTER).',
+                'Planning Templates: 4 templates for implementation plans, task tracking, walkthroughs, and methodology.',
+                'AI Studio Platform: Added support for aistudio.google.com with full parser integration (7+ platforms total).',
+                'Extension Hardening: Platform-specific UI positioning, z-index stabilization, Gemini thought block fixes.',
+                'Database Export: Full backup functionality for sessions, settings, and memories.',
+                'Parser Enhancements: LeChat tables/thoughts, unified markdown extraction, improved thought block detection.',
             ]
         },
         {

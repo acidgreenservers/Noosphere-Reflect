@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Planning for Sprint 6.2: Archive Hub Polish (Conversation Card Redesign)
+- Planning for Sprint 6.3: Archive Hub Polish (Conversation Card Redesign, v0.6.0)
 - Planning for Sprint 5.1: Extension Reliability (Toast Queue)
 
 ---
@@ -20,7 +20,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### Full Database Export
+#### Governance Framework & Multi-Agent System
+- **Multi-Agent Specialist System**: Established 5 specialist agents (Builder, Auditor, Consolidator, Data Architect, Design Agent)
+- **7 Core Protocols**:
+  - AI_COLLABORATION_PROTOCOL: Role boundaries, handoff procedures, conflict resolution
+  - CODING_STANDARDS_PROTOCOL: Code style, React patterns, security gates
+  - DESIGN_SYSTEM_PROTOCOL: Noosphere Nexus visual standards
+  - EXTENSION_BRIDGE_PROTOCOL: Chrome extension communication patterns
+  - MEMORY_BANK_PROTOCOL: Context persistence across sessions
+  - QA_TESTING_PROTOCOL: Security and regression testing procedures
+  - RELEASE_PROTOCOL: Atomic version synchronization across 7 locations
+- **6 Specialist Task Agents**: UPDATE_AGENT, SECURITY_ADVERSARY_AGENT, COMMIT_AGENT, PULL_REQUEST_AGENT, DATA_ARCHITECT_AGENT, DESIGN_AGENT
+- **4 Planning Templates**: IMPLEMENTATION_PLAN_TEMPLATE, TASK_TEMPLATE, WALKTHROUGH_TEMPLATE, ANTIGRAVITY_PLANNING_GUIDE
+- **Governance Documentation Suite**:
+  - GOVERNANCE_QUICK_START.md: 5 practical development checklists
+  - GOVERNANCE_REFERENCE.md: Comprehensive governance reference guide
+  - GOVERNANCE_INDEX.md: Navigation hub for all governance docs
+  - GOVERNANCE_SUMMARY.md: Master overview and integration guide
+  - AGENT_ROSTER.md: Detailed agent personas and decision trees
+- **Enhanced CLAUDE.md**: Added comprehensive references to all governance components
+
+#### Extension Platform Expansion
+- **AI Studio Support (aistudio.google.com)**: New platform parser with correct function references
+- **Platform Count**: Now supporting 7+ AI platforms (Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, AI Studio)
+
+#### Parser Robustness
+- **LeChat Parser Enhancements**: Improved support for rich tables, thought processes, and tool execution markers
+- **Shared Markdown Extraction**: Unified markdown extraction logic across GPT, Claude, and general parsers
+- **Thought Block Detection**: Improved Gemini and Grok thought block preservation
+
+### Fixed
+
+- **Extension Parser References**: Corrected function name references in aistudio-parser.js (extractMarkdown → extractMarkdownFromHtml)
+- **Gemini Thought Content Bleed**: Resolved issue where Gemini thought blocks were appearing in chat content (two-phase ancestor detection)
+- **Extension UI Consistency**: All platform export buttons now positioned consistently with proper z-index layering
+
+#### Database Export & UI Hardening
 - **One-Click Backup**: New "Export Database" button in Settings Modal.
 - **Comprehensive Dump**: Exports all sessions, settings, and memories into a single JSON file.
 - **Data Portability**: Ensures complete user data sovereignty and backup capability.
