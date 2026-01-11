@@ -600,6 +600,29 @@ class StorageService {
             getRequest.onerror = () => reject(getRequest.error);
         });
     }
+
+    /**
+     * Export the entire database (sessions, settings, memories)
+     */
+    async exportDatabase(): Promise<{
+        sessions: SavedChatSession[];
+        settings: AppSettings;
+        memories: Memory[];
+        version: number;
+        exportedAt: string;
+    }> {
+        const sessions = await this.getAllSessions();
+        const settings = await this.getSettings();
+        const memories = await this.getAllMemories();
+
+        return {
+            sessions,
+            settings,
+            memories,
+            version: DB_VERSION,
+            exportedAt: new Date().toISOString()
+        };
+    }
 }
 
 export const storageService = new StorageService();

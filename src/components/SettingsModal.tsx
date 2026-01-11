@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppSettings } from '../types';
+import { storageService } from '../services/storageService';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -37,6 +38,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
             setError('Failed to save settings. Please try again.');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleExportDatabase = async () => {
+        try {
+            const data = await storageService.exportDatabase();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `noosphere-reflect-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to export database:', err);
+            setError('Failed to export database.');
         }
     };
 
@@ -148,6 +167,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
                     {/* Footer */}
                     <div className="border-t border-gray-700 p-6 flex gap-3 justify-end">
+                        <button
+                            onClick={handleExportDatabase}
+                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                        >
+                            Export Database
+                        </button>
                         <button
                             onClick={handleCancel}
                             className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
