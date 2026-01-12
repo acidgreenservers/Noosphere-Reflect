@@ -10,6 +10,7 @@ interface SearchDocument {
     type: 'prompt' | 'response' | 'thought';
     timestamp: number;
     sessionTitle: string;
+    model?: string;
 }
 
 interface SearchResult {
@@ -29,7 +30,7 @@ let db: IDBPDatabase | null = null;
 // Initialize MiniSearch
 miniSearch = new MiniSearch<SearchDocument>({
     fields: ['content', 'sessionTitle'], // fields to index
-    storeFields: ['sessionId', 'messageIndex', 'type', 'timestamp', 'sessionTitle', 'content'], // fields to return
+    storeFields: ['sessionId', 'messageIndex', 'type', 'timestamp', 'sessionTitle', 'content', 'model'], // fields to return
     searchOptions: {
         boost: { sessionTitle: 2 }, // boost title matches
         fuzzy: 0.2, // allow typos
@@ -58,7 +59,7 @@ async function loadIndex() {
     if (stored?.data) {
         miniSearch = MiniSearch.loadJSON(stored.data, {
             fields: ['content', 'sessionTitle'],
-            storeFields: ['sessionId', 'messageIndex', 'type', 'timestamp', 'sessionTitle', 'content'],
+            storeFields: ['sessionId', 'messageIndex', 'type', 'timestamp', 'sessionTitle', 'content', 'model'],
             searchOptions: {
                 boost: { sessionTitle: 2 },
                 fuzzy: 0.2,
@@ -92,6 +93,7 @@ async function recordIndexTime(sessionId: string, timestamp: number): Promise<vo
 // Index a session
 function indexSession(session: SavedChatSession) {
     const sessionTitle = session.metadata?.title || session.chatTitle || 'Untitled';
+    const model = session.metadata?.model || '';
     const documents: SearchDocument[] = [];
 
     session.chatData?.messages.forEach((message: ChatMessage, index: number) => {
@@ -102,7 +104,8 @@ function indexSession(session: SavedChatSession) {
             content: message.content,
             type: message.type,
             timestamp: Date.now(),
-            sessionTitle
+            sessionTitle,
+            model
         });
     });
 
@@ -148,11 +151,11 @@ function search(query: string, filters?: SearchFilters): SearchResult[] {
                 }
             }
 
-            // Filter by model/session title keyword
+            // Filter by model
             if (filters.models && filters.models.length > 0) {
-                const titleLower = doc.sessionTitle.toLowerCase();
-                const matchesModel = filters.models.some(model =>
-                    titleLower.includes(model.toLowerCase())
+                const docModel = (doc.model || '').toLowerCase();
+                const matchesModel = filters.models.some(filterModel =>
+                    docModel.includes(filterModel.toLowerCase())
                 );
                 if (!matchesModel) return false;
             }
@@ -214,8 +217,8 @@ self.onmessage = async (e: MessageEvent) => {
             case 'INDEX_WITH_CHECK':
                 // Incremental indexing: skip if session unchanged
                 const lastIndexed = await getLastIndexedTime(payload.session.id);
-                const sessionUpdated = payload.session.metadata?.updatedAt 
-                    ? new Date(payload.session.metadata.updatedAt).getTime() 
+                const sessionUpdated = payload.session.metadata?.updatedAt
+                    ? new Date(payload.session.metadata.updatedAt).getTime()
                     : Date.now();
 
                 if (lastIndexed && sessionUpdated <= lastIndexed) {
