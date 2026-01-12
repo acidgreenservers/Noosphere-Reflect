@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatData, ChatTheme, ParserMode, ChatMetadata, SavedChatSession } from '../types';
 import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateDirectoryExportWithPicker } from '../services/converterService';
+import { storageService } from '../services/storageService';
+import { sanitizeFilename } from '../utils/securityUtils';
 
 interface ExportDropdownProps {
   chatData: ChatData;
@@ -59,14 +61,59 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
   }, [isOpen]);
 
   const handleExport = async (format: 'html' | 'markdown' | 'json') => {
-    if (!session) {
-      alert('Session data is not available for export. Please save the session first.');
+    if (!chatData) {
+      alert('Chat data is not available for export.');
       setIsOpen(false);
       return;
     }
-    // Always use the directory picker export for consistency
-    await generateDirectoryExportWithPicker(session, format);
-    setIsOpen(false);
+
+    try {
+      // Import utilities
+      // Generate filename with [AIName] - chatname format (matching ArchiveHub)
+      const appSettings = await storageService.getSettings();
+
+      const sanitizedTitle = sanitizeFilename(
+        chatTitle,
+        appSettings.fileNamingCase
+      );
+      const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
+
+      // Generate content based on format
+      let content: string;
+      let extension: string;
+      let mimeType: string;
+
+      if (format === 'html') {
+        content = generateHtml(chatData, chatTitle, selectedTheme, userName, aiName, parserMode, metadata);
+        extension = 'html';
+        mimeType = 'text/html';
+      } else if (format === 'markdown') {
+        content = generateMarkdown(chatData, chatTitle, userName, aiName, metadata);
+        extension = 'md';
+        mimeType = 'text/markdown';
+      } else {
+        content = generateJson(chatData, metadata);
+        extension = 'json';
+        mimeType = 'application/json';
+      }
+
+      // Create blob and download (simple single-file download)
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseFilename}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+      setIsOpen(false);
+    }
   };
 
   return (

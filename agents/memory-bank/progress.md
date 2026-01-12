@@ -155,3 +155,26 @@
 ---
 
 **Next Major Release:** v0.6.0 - Advanced Search & Analytics (Q1 2026)
+---
+
+## Recent Updates (January 12, 2026)
+
+### Search Enhancement Fixes ✅
+- ✅ **Model Filter Logic**: Implemented smart category mapping (ChatGPT→gpt/openai, Gemini→gemini/google, etc.)
+- ✅ **Deep Navigation**: Added message IDs (`id="message-${idx}"`) for scroll-to-message functionality
+- ✅ **UI Bug Fixes**: Fixed button nesting error and filter toggle event bubbling in SearchInterface
+- ✅ **Model Badges**: Search results now display AI model badges for visual confirmation
+- ✅ **Type System**: Added `Thought = 'thought'` to ChatMessageType enum
+- ✅ **Forced Re-indexing**: Automatic schema migration for sessions indexed before model field support
+- ✅ **Search Analytics**: Privacy-preserving local tracking with automatic 30-day cleanup
+
+### Export System Improvements ✅
+- ✅ **Filename Convention**: BasicConverter exports now use `[AIName] - chatname.ext` format
+- ✅ **Single-File Downloads**: Replaced directory picker with simple blob downloads for BasicConverter
+- ✅ **Naming Consistency**: Matched ArchiveHub's naming convention across all export methods
+- ✅ **Settings Integration**: Exports respect user's configured filename casing preferences
+
+### Build Quality
+- **Build Status**: ✅ 148 modules transformed, 0 errors (4.79s)
+- **Code Quality**: ✅ No lint errors, clean TypeScript compilation
+- **Performance**: ✅ Optimized bundle size (628KB, 181KB gzipped)

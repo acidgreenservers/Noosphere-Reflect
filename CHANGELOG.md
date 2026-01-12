@@ -16,8 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.5.4] - January 11, 2026
-
 ### Added
 
 #### Configurable Export Filename Casing
@@ -44,6 +42,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Custom checkbox styling (dark rounded box, purple fill).
 
 ---
+
+
+#### Advanced Search Enhancements (Added Jan 12, 2026)
+- **Smart Model Filtering**: Category mapping (ChatGPT→gpt/openai, Gemini→gemini/google, etc.) with "Other" category.
+- **Deep Navigation**: Click search results to scroll to specific messages with purple highlight.
+- **Model Badges**: Visual confirmation of AI model in search results.
+- **Index Migration**: Automatic re-indexing for schema updates.
+
+#### Export System Refinements (Added Jan 12, 2026)
+- **Unified Naming**: BasicConverter exports use `[AIName] - chatname.ext` format.
+- **Simple Downloads**: Single-file blob downloads (no directory picker).
+- **Bug Fixes**: Button nesting, event bubbling, and type system improvements.
 
 ## [v0.5.3] - January 10, 2026
 

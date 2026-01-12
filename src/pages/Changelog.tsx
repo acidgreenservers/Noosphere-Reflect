@@ -22,6 +22,8 @@ const Changelog: React.FC = () => {
                 'Export Status Tracking: Visual "✓ Exported" badges on memories to track archival progress.',
                 'Visual Overhaul: Updated Memory Archive UI to match Archive Hub with purple glassmorphism and rounded-3xl styling.',
                 'Floating Action Bar: Modern bottom-bar interface for batch operations.',
+                'Advanced Search: Smart model filtering with category mapping, deep navigation to messages, and model badges.',
+                'Export Refinements: Unified [AIName] - chatname.ext naming convention across all exports.',
             ]
         },
         {

@@ -7,6 +7,24 @@
 - **Code Quality**: Maintaining clean, well-documented codebase with comprehensive testing.
 
 ## Recent Changes
+- **January 12, 2026 - Search Enhancement Fixes**:
+  - **Advanced Search Improvements**:
+    - Implemented smart model filtering with category mapping (ChatGPT→gpt/openai, Gemini→gemini/google, Claude→claude/anthropic, LeChat→lechat/mistral)
+    - Added "Other" category for non-mainstream AI models
+    - Fixed deep navigation by adding `id="message-${idx}"` to message containers in BasicConverter
+    - Added model badges to search results for visual confirmation
+    - Fixed button nesting error and filter toggle event bubbling in SearchInterface
+    - Added `Thought = 'thought'` to ChatMessageType enum for proper type support
+  - **Search Index Migration**:
+    - Implemented forced re-indexing for sessions indexed before model field support
+    - Added automatic schema migration on first load after update
+    - Sessions indexed before Jan 11, 2026 21:00 UTC are automatically re-indexed
+  - **Export System Refinement**:
+    - Updated BasicConverter exports to use `[AIName] - chatname.ext` naming format
+    - Replaced directory picker API with simple blob downloads for single-file exports
+    - Matched ArchiveHub's naming convention across all export methods
+    - Integrated user's configured filename casing preferences (kebab-case, snake_case, etc.)
+
 - **v0.5.4 Release (In Progress)**:
   - **Vortex Brand Overhaul**: 
     - Replaced legacy brain/memory logo with premium "Vortex" abstract icon (emerald green & deep electric purple)

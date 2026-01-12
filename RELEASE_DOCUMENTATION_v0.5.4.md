@@ -208,3 +208,57 @@ DOCUMENTATION: COMPREHENSIVE ✓
                     Release: v0.5.4
                     Status: Verified & Complete
 ================================================================================
+
+================================================================================
+                    JANUARY 12, 2026 - ADDITIONAL UPDATES
+================================================================================
+
+4. ADVANCED SEARCH ENHANCEMENTS (Added Jan 12, 2026)
+   - Smart Model Filtering
+     • Category mapping for AI models:
+       - ChatGPT → matches "gpt", "openai", "chatgpt"
+       - Gemini → matches "gemini", "google"
+       - Claude → matches "claude", "anthropic"
+       - LeChat → matches "lechat", "mistral"
+       - Other → matches non-mainstream models
+     • Intelligent fallback logic for model name variations
+   
+   - Deep Navigation
+     • Click search results to scroll to specific messages
+     • Added `id="message-${idx}"` to message containers
+     • Purple highlight ring animation on target message
+   
+   - Model Badges
+     • Search results display AI model name badges
+     • Visual confirmation of which model generated each result
+   
+   - Search Index Migration
+     • Automatic re-indexing for schema migration
+     • Populates new `model` field in SearchDocument
+
+5. EXPORT SYSTEM REFINEMENTS (Added Jan 12, 2026)
+   - Unified Naming Convention
+     • BasicConverter exports now use `[AIName] - chatname.ext` format
+     • Matches ArchiveHub's directory export naming
+   
+   - Single-File Downloads
+     • Replaced directory picker API with simple blob downloads
+     • Faster export workflow for BasicConverter
+   
+   - Bug Fixes
+     • Fixed button nesting error in SearchInterface
+     • Fixed filter toggle event bubbling
+     • Added `Thought = 'thought'` to ChatMessageType enum
+     • Fixed missing appSettings in ExportDropdown
+
+FILES MODIFIED (Jan 12 additions):
+- src/types.ts (ChatMessageType enum)
+- src/services/searchWorker.ts (model field, smart filtering)
+- src/services/searchService.ts (model in SearchResult)
+- src/components/SearchInterface.tsx (UI fixes)
+- src/pages/BasicConverter.tsx (message IDs)
+- src/components/ExportDropdown.tsx (blob downloads, naming)
+- src/services/converterService.ts (naming convention)
+
+BUILD STATUS (Jan 12): ✅ 148 modules, 0 errors, 4.79s
+

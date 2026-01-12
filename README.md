@@ -214,6 +214,15 @@ npm run dev
 - **Visual Overhaul**: Updated UI to match the premium Archive Hub design (Purple Glassmorphism).
 - **Floating Action Bar**: Modern, convenient controls for batch actions.
 
+### Advanced Search (Added Jan 12, 2026)
+- **Smart Model Filtering**: Category mapping for AI models with intelligent "Other" category.
+- **Deep Navigation**: Click search results to scroll directly to specific messages with purple highlight.
+- **Model Badges**: Visual confirmation of which AI model generated each result.
+- **Export Refinements**: Unified `[AIName] - chatname.ext` naming across all exports.
+
+### Recent Updates (v0.5.1 - v0.5.3)
+
+### Previous Release (v0.5.4)
 ### Recent Updates (v0.5.1 - v0.5.3)
 - **Database Export (v0.5.3)**: Backup your entire local database to a JSON file.
 - **Extension UI Hardening (v0.5.3)**: Stabilized button positioning across all 7 AI platforms.

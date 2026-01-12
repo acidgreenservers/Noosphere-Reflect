@@ -1,6 +1,7 @@
 import { ChatData, ChatMessage, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMetadata, SavedChatSession, ConversationManifest, ConversationArtifact, Memory } from '../types';
 import { escapeHtml, sanitizeUrl, validateLanguage, sanitizeFilename, neutralizeDangerousExtension } from '../utils/securityUtils';
 import JSZip from 'jszip';
+import { storageService } from './storageService';
 
 /**
  * Checks if a string is valid JSON.
@@ -2529,9 +2530,16 @@ export const generateDirectoryExportWithPicker = async (
     const userName = session.userName || 'User';
     const aiName = session.aiName || 'AI';
     const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
-    const baseFilename = (session.metadata?.title || session.chatTitle)
-      .replace(/[^a-z0-9]/gi, '_')
-      .toLowerCase();
+    
+    // Get app settings for filename casing
+    const appSettings = await storageService.getSettings();
+    
+    // Generate folder name with AI name prefix: [AIName] - title (matching ArchiveHub convention)
+    const sanitizedTitle = sanitizeFilename(
+        session.metadata?.title || session.chatTitle,
+        appSettings.fileNamingCase
+    );
+    const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 
     // Create a subdirectory for the chat export
     const chatDirHandle = await dirHandle.getDirectoryHandle(baseFilename, { create: true });
