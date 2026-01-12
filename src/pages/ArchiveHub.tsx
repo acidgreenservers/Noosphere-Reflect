@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { SavedChatSession, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
 import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateBatchZipExport } from '../services/converterService';
@@ -8,6 +8,8 @@ import SettingsModal from '../components/SettingsModal';
 import { ArtifactManager } from '../components/ArtifactManager';
 import { ExportModal } from '../components/ExportModal';
 import { sanitizeFilename } from '../utils/securityUtils';
+import { SearchInterface } from '../components/SearchInterface';
+import { searchService } from '../services/searchService';
 
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSession[]>([]);
@@ -23,7 +25,9 @@ const ArchiveHub: React.FC = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedSessionForArtifacts, setSelectedSessionForArtifacts] = useState<SavedChatSession | null>(null);
     const [showArtifactManager, setShowArtifactManager] = useState(false);
+    const [showSearch, setShowSearch] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
 
     useEffect(() => {
         let cancelled = false;
@@ -93,6 +97,24 @@ const ArchiveHub: React.FC = () => {
             console.error('Failed to load sessions', e);
         }
     };
+
+    // Initialize search service and index sessions
+    useEffect(() => {
+        const initSearch = async () => {
+            try {
+                await searchService.init();
+                // Index all sessions
+                for (const session of sessions) {
+                    await searchService.indexSession(session);
+                }
+            } catch (error) {
+                console.error('Failed to initialize search:', error);
+            }
+        };
+        if (sessions.length > 0) {
+            initSearch();
+        }
+    }, [sessions]);
 
     const checkExtensionBridge = async () => {
         // Use window messaging to communicate with localhost-bridge content script
@@ -518,6 +540,12 @@ const ArchiveHub: React.FC = () => {
         return 'bg-green-500/10 text-green-400 border-green-500/20 border';
     };
 
+    const handleSearchResult = (sessionId: string, messageIndex: number) => {
+        // Navigate to the converter page with the session loaded
+        navigate(`/converter?load=${sessionId}`);
+        // Note: messageIndex could be used in future to scroll to specific message
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 pb-24">
             {/* Header */}
@@ -535,6 +563,15 @@ const ArchiveHub: React.FC = () => {
                     </Link>
 
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setShowSearch(true)}
+                            className="p-2 text-gray-400 hover:text-purple-400 hover:bg-white/5 rounded-lg transition-colors"
+                            title="Search conversations"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </button>
                         <button
                             onClick={() => setSettingsModalOpen(true)}
                             className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
@@ -908,6 +945,14 @@ const ArchiveHub: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Search Interface */}
+            {showSearch && (
+                <SearchInterface
+                    onResultSelect={handleSearchResult}
+                    onClose={() => setShowSearch(false)}
+                />
             )}
 
             {/* Settings Modal */}
