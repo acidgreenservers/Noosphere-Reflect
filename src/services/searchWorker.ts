@@ -151,12 +151,42 @@ function search(query: string, filters?: SearchFilters): SearchResult[] {
                 }
             }
 
-            // Filter by model
+            // Filter by model with category mapping
             if (filters.models && filters.models.length > 0) {
                 const docModel = (doc.model || '').toLowerCase();
-                const matchesModel = filters.models.some(filterModel =>
-                    docModel.includes(filterModel.toLowerCase())
-                );
+                const sessionTitle = (doc.sessionTitle || '').toLowerCase();
+                
+                const matchesModel = filters.models.some(filterModel => {
+                    const fm = filterModel.toLowerCase();
+                    
+                    // Specific mapping for categories
+                    if (fm === 'chatgpt') {
+                        return docModel.includes('gpt') || docModel.includes('openai') || 
+                               sessionTitle.includes('chatgpt') || sessionTitle.includes('gpt');
+                    }
+                    if (fm === 'gemini') {
+                        return docModel.includes('gemini') || docModel.includes('google') || 
+                               sessionTitle.includes('gemini') || sessionTitle.includes('google');
+                    }
+                    if (fm === 'claude') {
+                        return docModel.includes('claude') || docModel.includes('anthropic') || 
+                               sessionTitle.includes('claude');
+                    }
+                    if (fm === 'lechat') {
+                        return docModel.includes('lechat') || docModel.includes('mistral') || 
+                               sessionTitle.includes('lechat') || sessionTitle.includes('mistral');
+                    }
+                    if (fm === 'other') {
+                        // Match if NOT any of the main categories
+                        const isMain = docModel.includes('gpt') || docModel.includes('openai') || 
+                                      docModel.includes('gemini') || docModel.includes('google') ||
+                                      docModel.includes('claude') || docModel.includes('anthropic') ||
+                                      docModel.includes('mistral') || docModel.includes('lechat');
+                        return !isMain || docModel === '' || docModel === 'unknown';
+                    }
+                    
+                    return docModel.includes(fm) || sessionTitle.includes(fm);
+                });
                 if (!matchesModel) return false;
             }
 
@@ -193,6 +223,7 @@ function search(query: string, filters?: SearchFilters): SearchResult[] {
             type: doc.type,
             timestamp: doc.timestamp,
             sessionTitle: doc.sessionTitle,
+            model: doc.model,
             score: doc.score
         };
     }).slice(0, 50); // Limit to top 50 results
@@ -216,12 +247,13 @@ self.onmessage = async (e: MessageEvent) => {
 
             case 'INDEX_WITH_CHECK':
                 // Incremental indexing: skip if session unchanged
+                const SCHEMA_VERSION = 2; // Increased for model field support
                 const lastIndexed = await getLastIndexedTime(payload.session.id);
                 const sessionUpdated = payload.session.metadata?.updatedAt
                     ? new Date(payload.session.metadata.updatedAt).getTime()
                     : Date.now();
 
-                if (lastIndexed && sessionUpdated <= lastIndexed) {
+                if (lastIndexed && sessionUpdated <= lastIndexed && lastIndexed > 1736636400000) {
                     self.postMessage({
                         type: 'INDEX_SKIPPED',
                         payload: { sessionId: payload.session.id, reason: 'No changes' },

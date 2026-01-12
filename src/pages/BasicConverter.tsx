@@ -177,31 +177,6 @@ const BasicConverter: React.FC = () => {
         init();
     }, [searchParams, loadSession]);
 
-    // Deep navigation: scroll to specific message
-    useEffect(() => {
-        const msgIndex = searchParams.get('msg');
-        if (msgIndex && chatData) {
-            const msgIndexNum = parseInt(msgIndex, 10);
-            if (!isNaN(msgIndexNum)) {
-                // Use requestAnimationFrame to ensure DOM is ready
-                const checkAndScroll = () => {
-                    const messageElement = document.getElementById(`message-${msgIndexNum}`);
-                    if (messageElement) {
-                        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        messageElement.classList.add('ring-2', 'ring-purple-500');
-                        setTimeout(() => {
-                            messageElement.classList.remove('ring-2', 'ring-purple-500');
-                        }, 2000);
-                    } else {
-                        // Element not in DOM yet, retry on next frame
-                        requestAnimationFrame(checkAndScroll);
-                    }
-                };
-                requestAnimationFrame(checkAndScroll);
-            }
-        }
-    }, [searchParams, chatData]);
-
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;

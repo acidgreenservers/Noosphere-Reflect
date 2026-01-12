@@ -1,6 +1,7 @@
 export enum ChatMessageType {
   Prompt = 'prompt',
   Response = 'response',
+  Thought = 'thought',
 }
 
 export interface ConversationArtifact {

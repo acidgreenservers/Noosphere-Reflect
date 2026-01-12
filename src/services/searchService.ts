@@ -8,6 +8,7 @@ interface SearchResult {
     type: string;
     timestamp: number;
     sessionTitle: string;
+    model?: string;
     score: number;
 }
 

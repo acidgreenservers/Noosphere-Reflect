@@ -244,9 +244,14 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
                         >
                             <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-purple-400">
+                                    <span className="text-sm font-medium text-purple-400 truncate max-w-[200px]">
                                         {result.sessionTitle}
                                     </span>
+                                    {result.model && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-400 border border-gray-600/30">
+                                            {result.model}
+                                        </span>
+                                    )}
                                     <span className={`text-xs px-2 py-0.5 rounded ${result.type === 'prompt'
                                         ? 'bg-blue-500/20 text-blue-300'
                                         : 'bg-green-500/20 text-green-300'
