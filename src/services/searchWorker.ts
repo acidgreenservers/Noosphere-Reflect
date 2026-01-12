@@ -1,6 +1,6 @@
 import MiniSearch from 'minisearch';
 import { openDB, type IDBPDatabase } from 'idb';
-import type { SavedChatSession, ChatMessage } from '../types';
+import type { SavedChatSession, ChatMessage, SearchFilters } from '../types';
 
 interface SearchDocument {
     id: string;
@@ -39,9 +39,14 @@ miniSearch = new MiniSearch<SearchDocument>({
 
 // Initialize IndexedDB for persistence
 async function initDB() {
-    db = await openDB('search-index-db', 1, {
-        upgrade(database) {
-            database.createObjectStore('index', { keyPath: 'key' });
+    db = await openDB('search-index-db', 2, {
+        upgrade(database, oldVersion) {
+            if (oldVersion < 1) {
+                database.createObjectStore('index', { keyPath: 'key' });
+            }
+            if (oldVersion < 2) {
+                database.createObjectStore('index-metadata', { keyPath: 'sessionId' });
+            }
         }
     });
 }
@@ -69,6 +74,20 @@ async function saveIndex() {
     const data = JSON.stringify(miniSearch);
     await db!.put('index', { key: 'minisearch-data', data });
 }
+
+// Get last indexing timestamp for session
+async function getLastIndexedTime(sessionId: string): Promise<number | null> {
+    if (!db) await initDB();
+    const metadata = await db!.get('index-metadata', sessionId);
+    return metadata?.lastIndexed || null;
+}
+
+// Record indexing timestamp
+async function recordIndexTime(sessionId: string, timestamp: number): Promise<void> {
+    if (!db) await initDB();
+    await db!.put('index-metadata', { sessionId, lastIndexed: timestamp });
+}
+
 
 // Index a session
 function indexSession(session: SavedChatSession) {
@@ -102,12 +121,45 @@ function indexSession(session: SavedChatSession) {
 }
 
 // Search
-function search(query: string): SearchResult[] {
+function search(query: string, filters?: SearchFilters): SearchResult[] {
     if (!query || query.length < 2) return [];
 
-    const results = miniSearch.search(query, {
+    let results = miniSearch.search(query, {
         combineWith: 'AND'
     });
+
+    // Apply filters
+    if (filters) {
+        results = results.filter(result => {
+            const doc = result as unknown as SearchDocument & { score: number };
+
+            // Filter by message type
+            if (filters.messageTypes && filters.messageTypes.length > 0) {
+                if (!filters.messageTypes.includes(doc.type as 'prompt' | 'response' | 'thought')) {
+                    return false;
+                }
+            }
+
+            // Filter by date range
+            if (filters.dateRange) {
+                const msgTime = doc.timestamp;
+                if (msgTime < filters.dateRange.start || msgTime > filters.dateRange.end) {
+                    return false;
+                }
+            }
+
+            // Filter by model/session title keyword
+            if (filters.models && filters.models.length > 0) {
+                const titleLower = doc.sessionTitle.toLowerCase();
+                const matchesModel = filters.models.some(model =>
+                    titleLower.includes(model.toLowerCase())
+                );
+                if (!matchesModel) return false;
+            }
+
+            return true;
+        });
+    }
 
     return results.map(result => {
         const doc = result as unknown as SearchDocument & { score: number };
@@ -158,6 +210,31 @@ self.onmessage = async (e: MessageEvent) => {
                 indexSession(payload.session);
                 await saveIndex();
                 self.postMessage({ type: 'INDEX_COMPLETE', payload: { sessionId: payload.session.id }, messageId });
+
+            case 'INDEX_WITH_CHECK':
+                // Incremental indexing: skip if session unchanged
+                const lastIndexed = await getLastIndexedTime(payload.session.id);
+                const sessionUpdated = payload.session.metadata?.updatedAt 
+                    ? new Date(payload.session.metadata.updatedAt).getTime() 
+                    : Date.now();
+
+                if (lastIndexed && sessionUpdated <= lastIndexed) {
+                    self.postMessage({
+                        type: 'INDEX_SKIPPED',
+                        payload: { sessionId: payload.session.id, reason: 'No changes' },
+                        messageId
+                    });
+                } else {
+                    indexSession(payload.session);
+                    await saveIndex();
+                    await recordIndexTime(payload.session.id, Date.now());
+                    self.postMessage({
+                        type: 'INDEX_COMPLETE',
+                        payload: { sessionId: payload.session.id },
+                        messageId
+                    });
+                }
+                break;
                 break;
 
             case 'SEARCH':

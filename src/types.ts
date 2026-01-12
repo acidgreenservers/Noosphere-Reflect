@@ -135,3 +135,10 @@ export interface Memory {
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: MemoryMetadata;
 }
+
+// Search Filters
+export interface SearchFilters {
+  messageTypes?: ('prompt' | 'response' | 'thought')[];
+  dateRange?: { start: number; end: number };
+  models?: string[];
+}

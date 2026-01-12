@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { searchService, type SearchResult } from '../services/searchService';
+import type { SearchFilters } from '../types';
 
 interface SearchInterfaceProps {
     onResultSelect: (sessionId: string, messageIndex: number) => void;
@@ -44,6 +45,11 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const [selectedMessageTypes, setSelectedMessageTypes] = useState<('prompt' | 'response' | 'thought')[]>([]);
+    const [dateFrom, setDateFrom] = useState<string>('');
+    const [dateTo, setDateTo] = useState<string>('');
+    const [selectedModels, setSelectedModels] = useState<string[]>([]);
 
     // Debounced search
     useEffect(() => {
@@ -57,7 +63,22 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
             setError(null);
 
             try {
-                const searchResults = await searchService.search(query);
+                // Build filters object from state
+                const activeFilters: SearchFilters = {};
+                if (selectedMessageTypes.length > 0) {
+                    activeFilters.messageTypes = selectedMessageTypes;
+                }
+                if (dateFrom || dateTo) {
+                    activeFilters.dateRange = {
+                        start: dateFrom ? new Date(dateFrom).getTime() : 0,
+                        end: dateTo ? new Date(dateTo).getTime() : Date.now()
+                    };
+                }
+                if (selectedModels.length > 0) {
+                    activeFilters.models = selectedModels;
+                }
+
+                const searchResults = await searchService.search(query, activeFilters);
                 setResults(searchResults);
             } catch (err) {
                 console.error('Search failed:', err);
@@ -68,7 +89,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [query]);
+    }, [query, selectedMessageTypes, dateFrom, dateTo, selectedModels]);
 
     const handleResultClick = useCallback((result: SearchResult) => {
         onResultSelect(result.sessionId, result.messageIndex);
@@ -101,6 +122,92 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
                         </svg>
                     </button>
                 </div>
+
+                {/* Filter Toggle */}
+                <div className="p-3 border-b border-white/10 flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Search filters</span>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setShowFilters(!showFilters); }}
+                        className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-gray-200 transition-colors"
+                    >
+                        {showFilters ? '▼' : '▶'}
+                    </button>
+                </div>
+
+                {/* Collapsible Filters */}
+                {showFilters && (
+                    <div className="p-4 bg-gray-900/50 border-b border-white/10 space-y-4">
+                        {/* Message Type Filter */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-400 block mb-2">Message Type</label>
+                            <div className="flex gap-2 flex-wrap">
+                                {(['prompt', 'response', 'thought'] as const).map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setSelectedMessageTypes(prev =>
+                                            prev.includes(type)
+                                                ? prev.filter(t => t !== type)
+                                                : [...prev, type]
+                                        )}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                                            selectedMessageTypes.includes(type)
+                                                ? 'bg-purple-600 text-white'
+                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Date Range Filter */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-400 block mb-2">From</label>
+                                <input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                    className="w-full px-3 py-2 bg-gray-800 text-white text-xs rounded border border-gray-700 focus:border-purple-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-400 block mb-2">To</label>
+                                <input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                    className="w-full px-3 py-2 bg-gray-800 text-white text-xs rounded border border-gray-700 focus:border-purple-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Model Filter */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-400 block mb-2">AI Model</label>
+                            <div className="flex gap-2 flex-wrap">
+                                {['Claude', 'ChatGPT', 'Gemini', 'LeChat', 'Other'].map(model => (
+                                    <button
+                                        key={model}
+                                        onClick={() => setSelectedModels(prev =>
+                                            prev.includes(model)
+                                                ? prev.filter(m => m !== model)
+                                                : [...prev, model]
+                                        )}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                                            selectedModels.includes(model)
+                                                ? 'bg-purple-600 text-white'
+                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {model}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Results */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -141,8 +248,8 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
                                         {result.sessionTitle}
                                     </span>
                                     <span className={`text-xs px-2 py-0.5 rounded ${result.type === 'prompt'
-                                            ? 'bg-blue-500/20 text-blue-300'
-                                            : 'bg-green-500/20 text-green-300'
+                                        ? 'bg-blue-500/20 text-blue-300'
+                                        : 'bg-green-500/20 text-green-300'
                                         }`}>
                                         {result.type}
                                     </span>

@@ -1,4 +1,4 @@
-import type { SavedChatSession } from '../types';
+import type { SavedChatSession, SearchFilters } from '../types';
 
 interface SearchResult {
     id: string;
@@ -78,9 +78,13 @@ class SearchService {
         await this.sendMessage('INDEX_SESSION', { session });
     }
 
-    async search(query: string): Promise<SearchResult[]> {
-        const result = await this.sendMessage('SEARCH', { query });
+    async search(query: string, filters?: SearchFilters): Promise<SearchResult[]> {
+        const result = await this.sendMessage('SEARCH', { query, filters });
         return result.results || [];
+    }
+
+    async indexSessionWithCheck(session: SavedChatSession): Promise<void> {
+        await this.sendMessage('INDEX_WITH_CHECK', { session });
     }
 
     async clearIndex(): Promise<void> {

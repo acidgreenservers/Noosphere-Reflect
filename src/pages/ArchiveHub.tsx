@@ -542,7 +542,7 @@ const ArchiveHub: React.FC = () => {
 
     const handleSearchResult = (sessionId: string, messageIndex: number) => {
         // Navigate to the converter page with the session loaded
-        navigate(`/converter?load=${sessionId}`);
+        navigate(`/converter?load=${sessionId}&msg=${messageIndex}`);
         // Note: messageIndex could be used in future to scroll to specific message
     };
 
