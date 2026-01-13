@@ -12,6 +12,7 @@
 * **🔌 Chrome Extension**: One-click capture directly from 7 major AI platforms
 * **📚 Archive Hub**: Centralized dashboard to browse, search, filter, and manage your entire chat library
 * **🧠 Memory Archive**: Dedicated system for storing and organizing AI thoughts, snippets, and insights
+* **💡 Prompt Archive**: New reusable prompt library with category-based organization and batch operations
 * **📎 Dual Artifact System**: Attach files to entire sessions or individual messages with unified export
 * **💾 Robust Persistence**: Saves thousands of chats locally using **IndexedDB** with auto-migration
 * **📦 Batch Operations**: Multi-select chats to export, delete, or organize them in bulk
@@ -107,6 +108,16 @@ Dedicated space for storing isolated AI thoughts and snippets:
 - **Search & Filter**: Find memories by AI model or tags
 - **Separation**: Memories remain distinct from full chat sessions
 
+### Prompt Archive (`/prompt-archive`)
+New reusable prompt library for organizing and managing your best prompts:
+- **Quick Save**: Add prompts with category, tags, and optional title
+- **Category Organization**: 7 fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other)
+- **Grid View**: Browse prompts with word/character count and timestamps
+- **Export Options**: Export individual prompts or batches as HTML, Markdown, or JSON
+- **Batch Operations**: Multi-select prompts to export or delete in bulk
+- **Search & Filter**: Find prompts by title, content, category, or tags
+- **Full CRUD**: Create, read, update, delete with persistent storage
+
 ### Basic Converter (`/basic`)
 For clean, structured chat exports:
 1. Paste or import your chat text
@@ -200,7 +211,7 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.4
+## 🆕 What's New in v0.5.5 (Expanded)
 
 ### Configurable Export Filename Casing
 - **6 Casing Options**: Choose from `kebab-case`, `Kebab-Case`, `snake_case`, `Snake_Case`, `PascalCase`, and `camelCase`.
@@ -226,13 +237,25 @@ npm run dev
 - **Visual Overhaul**: Updated UI to match the premium Archive Hub design (Purple Glassmorphism).
 - **Floating Action Bar**: Modern, convenient controls for batch actions.
 
-### Enhanced Two-Way Artifact Linking (v0.5.5 - Added Jan 12, 2026)
+### Enhanced Two-Way Artifact Linking & UI (v0.5.5 - Added Jan 13, 2026)
 - **Auto-Matching**: Uploaded files automatically attach to messages referencing the filename.
-- **Smart Deletion**: 
-  - Delete from Pool: Removes artifacts everywhere (Cleanup).
-  - Delete from Message: Unlinks only, keeping the file in the pool (Safety).
-- **Deduplication**: Prevents duplicate file uploads via optimized content matching.
-- **Performance**: O(M+A) matching algorithm ensures speed even with thousands of messages.
+- **Smart Deletion**: Synchronized removal from pool and/or messages based on intent.
+- **Re-Download**: artifacts can be downloaded back from browser storage (Base64 -> Blob).
+- **Preview Integration**: Artifacts fully clickable and downloadable within Reader Mode.
+- **UI Hydration**: Intelligent state recovery ensuring message badges appear even for legacy sessions.
+- **Performance**: Instant WYSIWYG synchronization between upload, preview, and export states.
+
+### Prompt Archive (v0.5.5 - Added Jan 13, 2026)
+- **New Dedicated Page**: `/prompt-archive` for organizing and managing reusable prompts
+- **Category Organization**: 7 fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other)
+- **Full CRUD Operations**: Create, read, update, delete with auto-generated titles from first line
+- **Rich Metadata**: Word count, character count, creation/update timestamps
+- **Tag System**: Organize and filter prompts by custom tags
+- **Batch Export & Delete**: Multi-select prompts to export or delete in bulk
+- **Visual Cohesion**: Blue/cyan gradient theme with shimmer effects on landing page
+- **Three-Archive System**: Archives (green) → Memories (purple) → Prompts (blue)
+- **Component Reusability**: Uses isPromptArchive flag pattern with Memory components (zero code duplication)
+- **IndexedDB v6**: New prompts object store with indexes on createdAt and tags
 
 ### Advanced Search (v0.5.4)
 - **Smart Model Filtering**: Category mapping for AI models with intelligent "Other" category.
@@ -305,6 +328,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 0.5.4
-**Last Updated**: January 11, 2026
-**Status**: Stable Release with Configurable Exports & Memory Batch Ops ✅
+**Version**: 0.5.5
+**Last Updated**: January 13, 2026
+**Status**: Stable Release with Artifact UI Hydration & Prompt Archive ✅

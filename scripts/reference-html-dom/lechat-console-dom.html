@@ -1,0 +1,121 @@
+<!-- LECHAT CONSOLE SCRAPER - DOM REFERENCE -->
+<!-- Clean DOM structure from Mistral's LeChat interface -->
+
+<!-- ===== CHAT TITLE ===== -->
+<div class="block min-h-5.5 w-full flex-1 flex-row items-center justify-between truncate text-sm leading-5.5 font-[450]">Chat Assistance</div>
+
+<!-- ===== USER PROMPT BUBBLE ===== -->
+<div class="ms-auto flex w-fit max-w-full min-w-0 flex-col items-stretch justify-between gap-1 rounded-3xl bg-basic-gray-alpha-4 px-5 py-2.5">
+  <div class="flex w-full flex-col gap-2 break-words" dir="auto">
+    <div style="opacity: 1;">
+      <div>
+        <div class="select-text">
+          <span class="whitespace-pre-wrap">hello lechat</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FILE REFERENCE IN MESSAGE ===== -->
+<div class="ms-auto flex w-fit max-w-full min-w-0 flex-col items-stretch justify-between gap-1 rounded-3xl bg-basic-gray-alpha-4 px-5 py-2.5">
+  <div class="flex w-full flex-col gap-2 break-words" dir="auto">
+    <div style="opacity: 1;">
+      <div>
+        <div class="select-text">
+          <span class="transition-colors [p,div]:whitespace-pre-line mx-0.5 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium bg-state-soft cursor-auto">
+            <span class="transition-colors [p,div]:whitespace-pre-line" spellcheck="false">
+              <span class="inline-block shrink-0 content-center rounded-4 align-middle bg-basic-teal-accent mr-1 size-3.5 mb-[1px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text transition-colors [p,div]:whitespace-pre-line text-inverted-default h-4/7 w-4/7 m-auto block align-middle" aria-hidden="true">
+                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+                  <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+                  <path d="M10 9H8"></path>
+                  <path d="M16 13H8"></path>
+                  <path d="M16 17H8"></path>
+                </svg>
+              </span>
+              <span class="inline w-auto">Personal Library</span>
+            </span>
+          </span>
+          <span class="whitespace-pre-wrap"> </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== COPY BUTTON ===== -->
+<button type="button" class="flex items-center justify-center text-center font-medium cursor-pointer outline-hidden focus-visible:ring-3 relative whitespace-nowrap transition-colors focus-visible:ring-default focus-visible:ring-offset-1 aria-disabled:text-hint aria-disabled:cursor-not-allowed aria-busy:cursor-wait aria-busy:text-transparent aria-disabled:aria-busy:text-transparent bg-state-ghost text-default hover:not-disabled:bg-state-ghost-hover active:not-disabled:bg-state-ghost-press gap-1 text-sm rounded-md h-8 w-8 p-2" aria-label="Copy to clipboard" data-state="closed">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true">
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+  </svg>
+</button>
+
+<!-- ===== LECHAT RESPONSE MESSAGE ===== -->
+<div class="flex w-full flex-col pb-6">
+  <div class="flex font-light text-muted me-5" style="opacity: 1; transform: none;">
+    <div class="mt-[4px] flex w-5 flex-col items-center gap-1">
+      <div class="pointer-events-none flex h-6 w-5 items-center justify-center bg-inherit text-icon-default-muted" style="opacity: 1; transform: none;">
+        <div class="flex size-5 items-center justify-center">
+          <div class="flex size-4 items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wrench" aria-hidden="true">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="flex w-full flex-col ps-4 pb-4">
+        <div class="flex flex-row items-center justify-between gap-6 pt-[3px]">
+          <div class="flex items-center gap-2.5">
+            <div class="text-md font-medium text-subtle" style="opacity: 1; transform: none;">Tool executed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CODE BLOCK WITH SYNTAX HIGHLIGHTING ===== -->
+<div data-testid="code-block" class="relative m-0 rounded-md border border-default bg-default whitespace-break-spaces">
+  <div data-exclude-copy="true" class="sticky top-0 mb-1 flex items-center justify-between gap-1 rounded-t-md border-b border-default bg-default px-3 font-sans select-none">
+    <div class="inline-flex items-center gap-2">
+      <i role="img" aria-label="html icon" class="devicon-html5-plain colored"></i>
+      <span class="text-xs capitalize">html</span>
+    </div>
+    <div class="inline-flex h-10 items-center gap-1">
+      <button aria-disabled="false" type="button" class="flex items-center justify-center text-center font-medium cursor-pointer outline-hidden focus-visible:ring-3 relative whitespace-nowrap transition-colors focus-visible:ring-default focus-visible:ring-offset-1 aria-disabled:text-hint aria-disabled:cursor-not-allowed aria-busy:cursor-wait aria-busy:text-transparent aria-disabled:aria-busy:text-transparent bg-state-ghost hover:not-disabled:bg-state-ghost-hover active:not-disabled:bg-state-ghost-press h-6 gap-1 px-1.5 text-xs rounded-md text-subtle" aria-label="Copy code to clipboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy in-aria-busy:text-transparent size-4" aria-hidden="true">
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+        </svg>Copy
+      </button>
+    </div>
+  </div>
+  <div class="text-sm text-default select-text" style="display: block; overflow-x: auto; padding: 1rem; background: transparent;">
+    <code class="language-html" style="white-space: pre-wrap;">
+      &lt;div class="chat-message"&gt;
+        &lt;div class="chat-header"&gt;
+          &lt;span class="chat-timestamp"&gt;2026-01-04 12:00:00&lt;/span&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    </code>
+  </div>
+</div>
+
+<!-- ===== LECHAT KEY ATTRIBUTES ===== -->
+<!--
+Key attributes to detect in LeChat DOM:
+- class "ms-auto" - Right-aligned message (user)
+- class "rounded-3xl" - Message bubble shape
+- class "bg-basic-gray-alpha-4" - Message background
+- dir="auto" - Text direction detection
+- class "whitespace-pre-wrap" - Preserve formatting
+- style="opacity: 1; transform: none;" - Animation ready
+- class "lucide lucide-*" - Icon library (file, copy, wrench, etc.)
+- class "[p,div]:whitespace-pre-line" - Markdown class utilities
+- aria-label patterns - Accessibility
+- bg-state-soft, bg-state-ghost - State-based backgrounds
+- class "rounded-full" - Pill-shaped elements (tags, badges)
+- class "flex items-center justify-center" - Flexbox centering
+-->

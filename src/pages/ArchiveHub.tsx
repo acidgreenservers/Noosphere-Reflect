@@ -586,7 +586,7 @@ const ArchiveHub: React.FC = () => {
                         </button>
                         <Link
                             to="/memory-archive"
-                            className="group relative px-4 py-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors flex items-center gap-2"
+                            className="group relative px-4 py-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-2"
                         >
                             <div className="relative flex items-center justify-center">
                                 {/* Purple shimmer effect on hover */}
@@ -594,6 +594,17 @@ const ArchiveHub: React.FC = () => {
                                 <span className="relative z-10 text-lg">🧠</span>
                             </div>
                             Memory Archive
+                        </Link>
+                        <Link
+                            to="/prompt-archive"
+                            className="group relative px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2"
+                        >
+                            <div className="relative flex items-center justify-center">
+                                {/* Blue shimmer effect on hover */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-lg animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
+                                <span className="relative z-10 text-lg">💡</span>
+                            </div>
+                            Prompt Archive
                         </Link>
                         <Link
                             to="/converter"

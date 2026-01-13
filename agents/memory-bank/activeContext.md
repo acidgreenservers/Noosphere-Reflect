@@ -1,12 +1,44 @@
 # Active Context
 
 ## Current Focus
-- **Extension Stabilization**: Ensuring reliable UI injection and capture across all supported platforms (Gemini, Claude, ChatGPT, Grok, LeChat, Llamacoder).
-- **Data Sovereignty**: Implementing full database backup capabilities to ensure users own their data completely.
-- **Artifact Intelligence**: Advanced auto-matching system for uploaded files to chat references.
-- **Code Quality**: Maintaining clean, well-documented codebase with comprehensive testing.
+- **Prompt Archive Feature**: New dedicated page for saving, organizing, and exporting prompts by category (Coding, Writing, Analysis, Research, Creative, General).
+- **Visual Cohesion**: Unified color scheme across Archives Hub (green), Memory Archive (purple), and Prompt Archive (blue).
+- **Component Reusability**: Leveraging Memory components with `isPromptArchive` flag pattern to minimize code duplication.
+- **User Workflow Enhancement**: Expanding archival capabilities beyond chat logs to include reusable prompt library.
 
 ## Recent Changes
+- **January 13, 2026 - Artifact UI Sync & Preview Fixes**:
+  - **Preview Modal**: Made artifacts in preview modals clickable and downloadable (Base64 -> Blob conversion).
+  - **UI Hydration Logic**: Implemented "Message Artifact Hydration" in `loadSession` and `handleConvert`.
+    - **Problem**: Sessions saved with global metadata links but missing message-level links (legacy/stale data) showed no UI badges.
+    - **Fix**: On load, system automatically backfills message `artifacts` arrays from `metadata.artifacts` using `insertedAfterMessageIndex`.
+  - **State Synchronization**: Updated `BasicConverter` to immediately regenerate HTML previews and persist to storage upon artifact uploads or link changes, ensuring WYSIWYG consistency.
+
+- **January 13, 2026 - Prompt Archive Feature Implementation**:
+  - **New Data Model**: Added `Prompt` interface and `PromptMetadata` to `types.ts` with category field instead of AI model.
+  - **IndexedDB v6 Migration**: Extended storage service with new `prompts` object store, indexes on `createdAt` and `tags`.
+  - **Storage Methods**: Implemented `savePrompt()`, `getAllPrompts()`, `getPromptById()`, `updatePrompt()`, `deletePrompt()` following exact pattern as Memory methods.
+  - **PromptArchive Page**: Full-featured CRUD dashboard (`src/pages/PromptArchive.tsx`) with search, filtering, category selection, tags, batch export/delete.
+  - **Component Reusability Pattern**: Extended MemoryInput, MemoryList, MemoryCard, MemoryPreviewModal with `isPromptArchive` boolean flag to support both Memory and Prompt types without code duplication.
+  - **Visual Cohesion - Landing Page (`Home.tsx`)**:
+    - Updated grid from 2-column to 3-column layout for three archive cards
+    - Archives card: Green gradient with green shimmer effect on hover
+    - Memory Archive card: Purple gradient with purple shimmer effect on hover (changed from green)
+    - Prompt Archive card: Blue/cyan gradient with blue shimmer effect on hover
+    - All cards maintain consistent styling: rounded-3xl, glassmorphism, scale-105 on hover
+  - **Visual Cohesion - Archive Hub (`ArchiveHub.tsx`)**:
+    - Memory Archive button changed from green-400 to purple-400 with purple-900/50 icon background
+    - Added new Prompt Archive button with blue-400 text and blue shimmer effect on icon
+    - Both buttons positioned between main archive navigation and settings
+  - **Dynamic Component Coloring**:
+    - MemoryCard: Uses `accentColor` variable (blue for Prompts, purple for Memories)
+    - Applied to: selected state backgrounds, borders, shadows, checkbox states, preview button colors
+    - Fallback pattern for mixed types: `(memory as any).aiModel || (memory as any).metadata?.category || 'General'`
+  - **Category Dropdown**: Prompt input supports fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other) instead of dynamic AI Model dropdown.
+  - **Error Handling**: Added try/catch blocks in `loadPrompts()` and `handleSavePrompt()` with user-facing alerts for storage failures.
+  - **Routing**: Added `/prompt-archive` route in `App.tsx` mapped to PromptArchive component.
+  - **Production Build**: All changes compile cleanly with successful build (4.64s, 664 KB JS bundle).
+
 - **January 12, 2026 - Search Enhancement Fixes**:
   - **Advanced Search Improvements**:
     - Implemented smart model filtering with category mapping (ChatGPT→gpt/openai, Gemini→gemini/google, Claude→claude/anthropic, LeChat→lechat/mistral)

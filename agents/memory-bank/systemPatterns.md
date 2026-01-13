@@ -16,6 +16,7 @@
   - *Global Delete* = Cleanup (Remove from Pool + All Messages). 
   - *Message Delete* = Unlink (Remove form Message ONLY).
 - **Atomic Persistence**: Database writes wrapped in transactions with unique index collision handling.
+- **Integration Pattern (Hydration)**: `loadSession` logic auto-syncs `chatData.messages[].artifacts` from `metadata.artifacts` to ensure UI consistency (Badges/Links) regardless of save state.
 - **Export Schema**: Naming convention `[Service] - [Title]` and `export-metadata.json` manifest at chat and batch levels.
 
 - **Visual Patterns (Noosphere Nexus)**:

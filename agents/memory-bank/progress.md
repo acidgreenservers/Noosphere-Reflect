@@ -13,7 +13,8 @@
 - ✅ **Rich Parsing Engine**: Basic, AI-powered, and platform-specific parsers
 - ✅ **Export System**: HTML (themed), Markdown, and JSON formats
 - ✅ **Memory Archive**: Dedicated system for storing AI insights and learnings
-- ✅ **Local-First Storage**: IndexedDB with full data sovereignty
+- ✅ **Prompt Archive**: New searchable library for saving and organizing reusable prompts by category
+- ✅ **Local-First Storage**: IndexedDB (v6) with full data sovereignty
 
 ### Security & Reliability (Phase 3)
 - ✅ **Comprehensive XSS Prevention**: Input validation, HTML sanitization, URL blocking
@@ -158,6 +159,38 @@
 **Next Major Release:** v0.6.0 - Advanced Search & Analytics (Q1 2026)
 ---
 
+## Recent Updates (January 13, 2026)
+
+### Artifact UI Sync & Preview Fixes ✅
+- ✅ **Preview Downloads**: Artifacts in "Reader Mode" previews are now clickable and downloadable.
+- ✅ **UI Hydration**: Implemented robust "Hydration Logic" that auto-syncs message attachment badges from global metadata on session load.
+- ✅ **State Sync**: Instant HTML preview regeneration and storage persistence on all artifact operations (upload/link/unlink).
+- ✅ **Legacy Support**: Fixes missing attachment indicators for older sessions by backfilling data from metadata.
+
+### Prompt Archive Feature Launch ✅
+- ✅ **New Data Model**: Added `Prompt` and `PromptMetadata` interfaces to type system
+- ✅ **IndexedDB v6 Migration**: Extended storage with `prompts` object store, indexes on `createdAt` and `tags`
+- ✅ **Full CRUD Dashboard**: PromptArchive page with search, filtering, category selection, batch export/delete
+- ✅ **Component Reusability**: Extended Memory components with `isPromptArchive` flag (no code duplication)
+- ✅ **Color Cohesion**: Three-tier visual system: Archives (green) → Memories (purple) → Prompts (blue)
+- ✅ **Landing Page Update**: 2-column to 3-column grid with new Prompt Archive card featuring blue/cyan gradient
+- ✅ **Hub Navigation**: Added Prompt Archive button next to Memory Archive with blue shimmer effect
+- ✅ **Category System**: Fixed category dropdown (General, Coding, Writing, Analysis, Research, Creative, Other)
+- ✅ **Error Handling**: Robust try/catch blocks with user-facing alerts in storage operations
+- ✅ **Routing**: `/prompt-archive` route integrated into application navigation
+- ✅ **Production Build**: Clean compilation, 664KB JS bundle (4.64s build time)
+
+### Visual Design Updates ✅
+- ✅ **Landing Page Cards**: All three cards (Archives, Memories, Prompts) feature shimmer effects on hover
+- ✅ **Archive Hub Buttons**: Memory Archive button color updated from green to purple for visual cohesion
+- ✅ **Dynamic Coloring**: MemoryCard component intelligently switches accent colors based on type
+- ✅ **UI Consistency**: All interactive elements (shadows, borders, glows) use context-aware color schemes
+
+### Build Quality
+- **Build Status**: ✅ 153 modules transformed, 0 errors (4.64s)
+- **Code Quality**: ✅ No lint errors, clean TypeScript compilation
+- **Performance**: ✅ Optimized bundle size (664KB, optimized chunk handling)
+
 ## Recent Updates (January 12, 2026)
 
 ### Search Enhancement Fixes ✅
@@ -174,8 +207,3 @@
 - ✅ **Single-File Downloads**: Replaced directory picker with simple blob downloads for BasicConverter
 - ✅ **Naming Consistency**: Matched ArchiveHub's naming convention across all export methods
 - ✅ **Settings Integration**: Exports respect user's configured filename casing preferences
-
-### Build Quality
-- **Build Status**: ✅ 148 modules transformed, 0 errors (4.79s)
-- **Code Quality**: ✅ No lint errors, clean TypeScript compilation
-- **Performance**: ✅ Optimized bundle size (628KB, 181KB gzipped)

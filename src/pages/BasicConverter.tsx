@@ -136,9 +136,39 @@ const BasicConverter: React.FC = () => {
         }
 
         if (session.chatData) {
-            setChatData(session.chatData);
+            let loadedChatData = session.chatData;
+
+            // HYDRATION: Ensure messages have artifacts if metadata says so (Critical for UI badges)
+            if (session.metadata?.artifacts && session.metadata.artifacts.length > 0) {
+                const hydratedMessages = [...loadedChatData.messages];
+                let changed = false;
+
+                session.metadata.artifacts.forEach(artifact => {
+                    // Only hydrate if it has an index and that message exists
+                    if (artifact.insertedAfterMessageIndex !== undefined && hydratedMessages[artifact.insertedAfterMessageIndex]) {
+                        const msg = hydratedMessages[artifact.insertedAfterMessageIndex];
+                        const existing = msg.artifacts || [];
+
+                        // Check if artifact is already attached (by ID)
+                        if (!existing.some(a => a.id === artifact.id)) {
+                            hydratedMessages[artifact.insertedAfterMessageIndex] = {
+                                ...msg,
+                                artifacts: [...existing, artifact]
+                            };
+                            changed = true;
+                        }
+                    }
+                });
+
+                if (changed) {
+                    console.log('💧 Hydrated message artifacts from metadata');
+                    loadedChatData = { ...loadedChatData, messages: hydratedMessages };
+                }
+            }
+
+            setChatData(loadedChatData);
             const html = generateHtml(
-                session.chatData,
+                loadedChatData,
                 session.chatTitle,
                 session.selectedTheme,
                 session.userName,
@@ -341,6 +371,29 @@ const BasicConverter: React.FC = () => {
                 if (data.metadata.tags) setMetadata(prev => ({ ...prev, tags: data.metadata!.tags }));
                 if (data.metadata.author) setMetadata(prev => ({ ...prev, author: data.metadata!.author }));
                 if (data.metadata.sourceUrl) setMetadata(prev => ({ ...prev, sourceUrl: data.metadata!.sourceUrl }));
+
+                // HYDRATION: If imported JSON has artifacts in metadata, sync them to messages
+                if (data.metadata.artifacts && data.metadata.artifacts.length > 0) {
+                    const hydratedMessages = [...data.messages];
+                    let changed = false;
+                    data.metadata.artifacts.forEach(artifact => {
+                        if (artifact.insertedAfterMessageIndex !== undefined && hydratedMessages[artifact.insertedAfterMessageIndex]) {
+                            const msg = hydratedMessages[artifact.insertedAfterMessageIndex];
+                            const existing = msg.artifacts || [];
+                            if (!existing.some(a => a.id === artifact.id)) {
+                                hydratedMessages[artifact.insertedAfterMessageIndex] = {
+                                    ...msg,
+                                    artifacts: [...existing, artifact]
+                                };
+                                changed = true;
+                            }
+                        }
+                    });
+                    if (changed) {
+                        data.messages = hydratedMessages; // Update local ref before setChatData
+                        setChatData({ ...data, messages: hydratedMessages });
+                    }
+                }
             } else {
                 // Auto-populate metadata if not already set (or if converting fresh)
                 setMetadata(prev => ({
@@ -605,7 +658,43 @@ const BasicConverter: React.FC = () => {
 
             // Update state
             setArtifacts(result.updatedArtifacts);
-            setChatData({ ...chatData, messages: result.updatedMessages });
+            const updatedChatData = { ...chatData, messages: result.updatedMessages };
+            setChatData(updatedChatData);
+
+            // Re-generate HTML Preview immediately
+            const html = generateHtml(
+                updatedChatData,
+                chatTitle,
+                selectedTheme,
+                userName,
+                aiName,
+                parserMode,
+                { ...metadata, title: chatTitle, artifacts: result.updatedArtifacts },
+                false
+            );
+            setGeneratedHtml(html);
+
+            // Persist to storage if session is loaded
+            if (loadedSessionId) {
+                const updatedSession: SavedChatSession = {
+                    id: loadedSessionId,
+                    name: chatTitle,
+                    date: metadata.date,
+                    inputContent,
+                    chatTitle,
+                    userName,
+                    aiName,
+                    selectedTheme,
+                    parserMode,
+                    chatData: updatedChatData,
+                    metadata: {
+                        ...metadata,
+                        title: chatTitle,
+                        artifacts: result.updatedArtifacts
+                    }
+                };
+                await storageService.saveSession(updatedSession);
+            }
 
             // Show success feedback
             if (result.matchCount > 0) {
@@ -1244,15 +1333,69 @@ const BasicConverter: React.FC = () => {
                                 }}
                                 messages={chatData?.messages || []}
                                 manualMode={!loadedSessionId}
-                                onArtifactsChange={(newArtifacts) => {
+                                onArtifactsChange={async (newArtifacts) => {
                                     setArtifacts(newArtifacts);
                                     if (loadedSessionId) {
-                                        setMetadata(prev => ({ ...prev, artifacts: newArtifacts }));
+                                        const newMetadata = { ...metadata, artifacts: newArtifacts };
+                                        setMetadata(newMetadata);
+
+                                        // Also need to save this to storage to persist the artifacts pool update
+                                        // (Messages update is handled separately in onMessagesChange)
+                                        const updatedSession: SavedChatSession = {
+                                            id: loadedSessionId,
+                                            name: chatTitle,
+                                            date: metadata.date,
+                                            inputContent,
+                                            chatTitle,
+                                            userName,
+                                            aiName,
+                                            selectedTheme,
+                                            parserMode,
+                                            chatData: chatData || { messages: [] },
+                                            metadata: { ...newMetadata, title: chatTitle }
+                                        };
+                                        await storageService.saveSession(updatedSession);
                                     }
                                 }}
-                                onMessagesChange={(newMessages) => {
+                                onMessagesChange={async (newMessages) => {
                                     if (chatData) {
-                                        setChatData({ ...chatData, messages: newMessages });
+                                        const updatedChatData = { ...chatData, messages: newMessages };
+                                        setChatData(updatedChatData);
+
+                                        // Regenerate HTML with new links
+                                        const html = generateHtml(
+                                            updatedChatData,
+                                            chatTitle,
+                                            selectedTheme,
+                                            userName,
+                                            aiName,
+                                            parserMode,
+                                            { ...metadata, title: chatTitle, artifacts },
+                                            false
+                                        );
+                                        setGeneratedHtml(html);
+
+                                        // Persist if session exists
+                                        if (loadedSessionId) {
+                                            const updatedSession: SavedChatSession = {
+                                                id: loadedSessionId,
+                                                name: chatTitle,
+                                                date: metadata.date,
+                                                inputContent,
+                                                chatTitle,
+                                                userName,
+                                                aiName,
+                                                selectedTheme,
+                                                parserMode,
+                                                chatData: updatedChatData,
+                                                metadata: {
+                                                    ...metadata,
+                                                    title: chatTitle,
+                                                    artifacts: artifacts
+                                                }
+                                            };
+                                            await storageService.saveSession(updatedSession);
+                                        }
                                     }
                                 }}
                             />

@@ -1,30 +1,35 @@
 ================================================================================
-                    v0.5.5 RELEASE DOCUMENTATION - COMPLETE
+                    v0.5.5 RELEASE DOCUMENTATION - EXPANDED
 ================================================================================
 
-Release Date: January 12, 2026
-Version: v0.5.5 (Minor: UI Overhaul & Functional Enhancements)
+Release Date: January 12-13, 2026
+Version: v0.5.5 (Minor: UI Overhaul, Functional Enhancements, & Prompt Archive)
 Status: COMPLETE AND VERIFIED
 
 ================================================================================
                           SUMMARY OF WORK
 ================================================================================
 
-DOCUMENTATION UPDATED: 4 files
-- README.md (v0.5.5 features added)
-- CHANGELOG.md (v0.5.5 section added)
+DOCUMENTATION UPDATED: 5 files
+- README.md (v0.5.5 features + Prompt Archive added)
+- CHANGELOG.md (v0.5.5 expanded with Prompt Archive section)
 - src/pages/Changelog.tsx (UI component updated)
-- RELEASE_DOCUMENTATION_v0.5.5.md (This file)
+- RELEASE_DOCUMENTATION_v0.5.5.md (This file, expanded)
+- agents/memory-bank/activeContext.md (Context updated)
+- agents/memory-bank/progress.md (Progress tracked)
+
+CODE FILES MODIFIED: ~12 files
+- Types: src/types.ts (Added Prompt, PromptMetadata)
+- Storage: src/services/storageService.ts (IndexedDB v6 migration, 5 new methods)
+- Pages: src/pages/PromptArchive.tsx (NEW), src/pages/Home.tsx, src/pages/ArchiveHub.tsx
+- Components: MemoryInput.tsx, MemoryList.tsx, MemoryCard.tsx, MemoryPreviewModal.tsx (isPromptArchive support)
+- Router: src/App.tsx (/prompt-archive route added)
 
 EXTENSION UPDATED:
-- Manifest bumped to v0.5.5
-- Package re-bundled as `noosphere-reflect-extension-v0.5.5.tar.gz`
+- Manifest remains at v0.5.5
+- Package bundled as `noosphere-reflect-extension-v0.5.5.tar.gz`
 
-TOTAL FILES MODIFIED: ~20 files
-- Components: ChatPreviewModal, MemoryPreviewModal, ArtifactManager, MemoryCard, SearchInterface
-- Pages: ArchiveHub, MemoryArchive, BasicConverter
-- Utils: markdownUtils, fileUtils, artifactLinking
-- Services: searchService, searchWorker
+TOTAL FILES MODIFIED: ~17 files (code + documentation)
 
 ================================================================================
                           FEATURES DELIVERED
@@ -61,6 +66,13 @@ TOTAL FILES MODIFIED: ~20 files
    - Re-Download Capability
      • Added "Download" button to retrieve artifacts from browser storage
      • Converts stored Base64 data back to Blob for user download
+   - Preview Integration
+     • "Reader Mode" integration allows artifacts to be downloaded directly from the preview
+     • Visual "Attached Files" section in preview messages
+   - UI Hydration Logic
+     • Intelligent state recovery ensures message "Attach (x)" badges appear on session load
+     • Backfills message links from global metadata for legacy/stale sessions
+     • Real-time state synchronization for WYSIWYG consistency
 
 4. ARTIFACT MANAGER 2.0
    - Split-Pane Design
@@ -83,6 +95,30 @@ TOTAL FILES MODIFIED: ~20 files
      • Consistent pill-button styling for secondary actions
      • Polished "Glassmorphism" throughout the Memory Archive
 
+7. PROMPT ARCHIVE SYSTEM (Added Jan 13, 2026)
+   - New Dedicated Page (`/prompt-archive`)
+     • Full-featured CRUD dashboard for organizing reusable prompts
+     • Category-based organization with 7 fixed categories
+     • Rich metadata (word count, character count, timestamps)
+     • Search, filter, and tag-based organization
+   - Component Reusability
+     • Extended MemoryInput, MemoryList, MemoryCard, MemoryPreviewModal
+     • Uses isPromptArchive flag pattern for zero code duplication
+     • Intelligent color switching (blue for Prompts, purple for Memories)
+   - Full Feature Parity
+     • Batch export as HTML, Markdown, JSON
+     • Batch delete with confirmation
+     • Error handling with user alerts
+   - Database
+     • IndexedDB v6 migration with prompts object store
+     • Indexes on createdAt and tags for efficient queries
+     • Safe migration preserving existing data
+   - Visual Cohesion
+     • Three-archive system: Archives (green) → Memories (purple) → Prompts (blue)
+     • Landing page grid: 2-column → 3-column layout
+     • Shimmer effects on hover for all archive cards
+     • Archive Hub: Added Prompt Archive button with blue accent
+
 ================================================================================
                         ABSOLUTE FILE PATHS
 ================================================================================
@@ -100,26 +136,35 @@ UPDATED FILES:
 ================================================================================
 
 PREPARED BY: Claude Code + User
-DATE: January 12, 2026
+DATE: January 12-13, 2026
 VERSION: v0.5.5
-RELEASE TYPE: Minor (UI & Functional Overhaul)
+RELEASE TYPE: Minor (UI & Functional Overhaul + Prompt Archive)
 STATUS: READY FOR PRODUCTION
 
 APPROVAL CHECKLIST:
   [✓] All documentation updated to v0.5.5
-  [✓] Version numbers consistent across 7+ files
+  [✓] Version numbers consistent across all files
   [✓] Preview Modals tested
   [✓] Inline Editing verified
-  [✓] Artifact Linking verified
-  [✓] Build verified
+  [✓] Artifact Linking verified (Auto-match, Dedup, Deletion)
+  [✓] Message Artifact Hydration verified (Badges appear on load)
+  [✓] Preview Download verified
+  [✓] Prompt Archive feature complete (CRUD, search, filter, export, batch ops)
+  [✓] Visual cohesion across three-archive system (green, purple, blue)
+  [✓] Component reusability verified (isPromptArchive flag pattern)
+  [✓] IndexedDB v6 migration safe and tested
+  [✓] Memory bank updated with comprehensive documentation
+  [✓] Build verified (0 errors, 4.64s)
 
 ================================================================================
                             CONCLUSION
 ================================================================================
 
 v0.5.5 is a comprehensive update improving both the "management" and "consumption"
-aspects of the archive. With Reader Mode, Inline Editing, and Intelligent Artifacts,
-Noosphere Reflect is now a full-featured Knowledge Management System (KMS) for AI interactions.
+aspects of the archive. With Reader Mode, Inline Editing, Intelligent Artifacts, and the
+new Prompt Archive system, Noosphere Reflect is now a full-featured Knowledge Management
+System (KMS) for AI interactions with unified archival capabilities for chats, memories,
+and reusable prompts across a cohesive three-archive ecosystem.
 
 RELEASE STATUS: COMPLETE ✓
 QUALITY: PRODUCTION READY ✓

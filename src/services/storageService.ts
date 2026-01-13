@@ -1,14 +1,15 @@
-import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, ParserMode, ChatTheme } from '../types';
+import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 import { validateImportData } from '../utils/importValidator';
 import { validateReflectFile } from '../utils/reflectValidator';
 import { parseChat } from './converterService';
 
 const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const STORE_NAME = 'sessions';
 const SETTINGS_STORE_NAME = 'settings';
 const MEMORY_STORE_NAME = 'memories';
+const PROMPT_STORE_NAME = 'prompts';
 
 class StorageService {
     private db: IDBDatabase | null = null;
@@ -98,6 +99,14 @@ class StorageService {
                     memoryStore.createIndex('createdAt', 'createdAt', { unique: false });
                     memoryStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
                     console.log('✅ Created memories object store with indexes');
+                }
+
+                // v5 → v6: Add prompts object store
+                if (oldVersion < 6 && !db.objectStoreNames.contains('prompts')) {
+                    const promptStore = db.createObjectStore('prompts', { keyPath: 'id' });
+                    promptStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    promptStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+                    console.log('✅ Created prompts object store with indexes');
                 }
             };
 
@@ -784,6 +793,81 @@ class StorageService {
 
         console.log(`📁 Directory import complete: ${results.successful} successful, ${results.failed} failed, ${results.skipped} skipped`);
         return results;
+    }
+
+    // ============= PROMPT ARCHIVE METHODS =============
+
+    /**
+     * Save a new prompt to IndexedDB
+     */
+    async savePrompt(prompt: Prompt): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([PROMPT_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(PROMPT_STORE_NAME);
+            const request = store.put(prompt);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get all prompts from IndexedDB, sorted by creation date (newest first)
+     */
+    async getAllPrompts(): Promise<Prompt[]> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([PROMPT_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(PROMPT_STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const prompts = request.result as Prompt[];
+                // Sort by createdAt descending (newest first)
+                prompts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                resolve(prompts);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get a single prompt by ID
+     */
+    async getPromptById(id: string): Promise<Prompt | undefined> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([PROMPT_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(PROMPT_STORE_NAME);
+            const request = store.get(id);
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Update an existing prompt (sets updatedAt timestamp)
+     */
+    async updatePrompt(prompt: Prompt): Promise<void> {
+        prompt.updatedAt = new Date().toISOString();
+        return this.savePrompt(prompt);
+    }
+
+    /**
+     * Delete a prompt by ID
+     */
+    async deletePrompt(id: string): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([PROMPT_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(PROMPT_STORE_NAME);
+            const request = store.delete(id);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
     }
 }
 

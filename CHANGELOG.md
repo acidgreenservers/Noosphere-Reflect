@@ -60,8 +60,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep Navigation**: Click search results to scroll to specific messages with purple highlight.
 - **Model Badges**: Visual confirmation of AI model in search results.
 - **Index Migration**: Automatic re-indexing for schema updates.
+- **Artifact UI Hydration & Preview Integration**:
+  - **Preview Downloads**: artifacts in "Reader Mode" are now clickable and downloadable.
+  - **Hydration Logic**: Auto-syncs message badges from global metadata on session load (fixes legacy sessions).
+  - **State Sync**: Instant persistence and preview regeneration for all artifact operations.
 
-## [v0.5.5] - January 12, 2026
+## [v0.5.5] - January 12-13, 2026
 
 ### Added
 
@@ -77,6 +81,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Advanced Search**: Smart model filtering (category mapping) and deep navigation highlighting.
 - **Unified Exports**: `[AIName] - chatname.ext` naming convention standardized.
 - **Simple Downloads**: Replaced complex directory picker with simple blob downloads for single files.
+
+#### Prompt Archive System (Added Jan 13, 2026)
+- **New Dedicated Page** (`/prompt-archive`): Full-featured CRUD dashboard for organizing reusable prompts.
+- **Data Model**: New `Prompt` and `PromptMetadata` interfaces with category field instead of AI model.
+- **Database**: IndexedDB v6 migration with `prompts` object store, indexes on `createdAt` and `tags`.
+- **Storage Methods**: Five new methods following Memory pattern: `savePrompt()`, `getAllPrompts()`, `getPromptById()`, `updatePrompt()`, `deletePrompt()`.
+- **Category Organization**: 7 fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other).
+- **Rich Metadata**: Word count, character count, creation/update timestamps for each prompt.
+- **Full CRUD Operations**: Create new prompts with auto-generated titles, read/search, update metadata, delete single or batch.
+- **Tag System**: Organize and filter prompts by custom tags.
+- **Batch Operations**: Multi-select prompts to export (HTML/Markdown/JSON) or delete in bulk.
+- **Component Reusability**: Extended MemoryInput, MemoryList, MemoryCard, MemoryPreviewModal with `isPromptArchive` flag pattern (zero code duplication).
+- **Visual Cohesion**: Blue/cyan gradient theme for Prompt Archive card on landing page with shimmer effects.
+- **Three-Archive System**: Unified color scheme: Archives (green) → Memories (purple) → Prompts (blue).
+- **Error Handling**: Robust try/catch blocks in storage operations with user-facing alerts.
+- **Routing**: New `/prompt-archive` route in App.tsx for seamless navigation.
 
 ## [v0.5.4] - January 11, 2026
 

@@ -10,9 +10,10 @@ interface Props {
     onPreview: (memory: Memory) => void; // New prop
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
+    isPromptArchive?: boolean;
 }
 
-export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatusToggle, onPreview, isSelected, onToggleSelect }: Props) {
+export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatusToggle, onPreview, isSelected, onToggleSelect, isPromptArchive = false }: Props) {
     const formattedDate = new Date(memory.createdAt).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
@@ -42,13 +43,20 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
         }
     };
 
+    const accentColor = isPromptArchive ? 'blue' : 'purple';
+    const selectedBg = isPromptArchive ? 'bg-blue-900/20' : 'bg-purple-900/20';
+    const selectedBorder = isPromptArchive ? 'border-blue-500/50' : 'border-purple-500/50';
+    const selectedShadow = isPromptArchive ? 'shadow-blue-900/10 shadow-blue-500/20' : 'shadow-purple-900/10 shadow-purple-500/20';
+    const hoverBorder = isPromptArchive ? 'hover:border-blue-500/30' : 'hover:border-purple-500/30';
+    const hoverShadow = isPromptArchive ? 'hover:shadow-blue-900/10 hover:shadow-blue-500/20' : 'hover:shadow-purple-900/10 hover:shadow-purple-500/20';
+
     return (
-        <div 
+        <div
             onClick={() => onEdit(memory)}
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 cursor-pointer
             ${isSelected
-                ? 'bg-purple-900/20 border-purple-500/50 shadow-purple-900/10 shadow-lg shadow-purple-500/20'
-                : 'bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 hover:border-purple-500/30 hover:shadow-purple-900/10 hover:shadow-lg hover:shadow-purple-500/20'
+                ? `${selectedBg} ${selectedBorder} shadow-lg ${selectedShadow}`
+                : `bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 ${hoverBorder} ${hoverShadow} hover:shadow-lg`
             }`}>
             {/* Selection Checkbox & Preview - Hub Style */}
             <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
@@ -58,8 +66,12 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
                         e.stopPropagation();
                         onPreview(memory);
                     }}
-                    className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500/20 hover:border-purple-500/40 transition-all"
-                    title="Preview memory content"
+                    className={`px-2 py-1 text-[10px] uppercase font-bold tracking-wider ${
+                        isPromptArchive
+                            ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/40'
+                            : 'bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/40'
+                    } rounded transition-all`}
+                    title={`Preview ${isPromptArchive ? 'prompt' : 'memory'} content`}
                 >
                     Preview
                 </button>
@@ -71,8 +83,12 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
                     }}
                     className={`w-6 h-6 rounded border flex items-center justify-center transition-all
                         ${isSelected
-                            ? 'bg-purple-500 border-purple-500 text-white opacity-100'
-                            : 'bg-gray-900/50 border-gray-600 hover:border-purple-400 text-transparent opacity-100'
+                            ? isPromptArchive
+                                ? 'bg-blue-500 border-blue-500 text-white opacity-100'
+                                : 'bg-purple-500 border-purple-500 text-white opacity-100'
+                            : isPromptArchive
+                                ? 'bg-gray-900/50 border-gray-600 hover:border-blue-400 text-transparent opacity-100'
+                                : 'bg-gray-900/50 border-gray-600 hover:border-purple-400 text-transparent opacity-100'
                         }`}
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -87,8 +103,8 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
                         {memory.metadata.title}
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-gray-400 mt-1 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded border ${getModelColor(memory.aiModel)}`}>
-                            {memory.aiModel}
+                        <span className={`px-2 py-0.5 rounded border ${getModelColor((memory as any).aiModel || (memory as any).metadata?.category || 'General')}`}>
+                            {(memory as any).aiModel || (memory as any).metadata?.category || 'General'}
                         </span>
                         <span>•</span>
                         <span title={memory.createdAt}>{formattedDate}</span>

@@ -14,16 +14,25 @@ const Changelog: React.FC = () => {
     const changes: Release[] = [
         {
             version: 'v0.5.5',
-            date: 'Jan 12, 2026',
-            title: 'Reader Mode & Functional Overhaul',
+            date: 'Jan 12-13, 2026',
+            title: 'Reader Mode & Prompt Archive',
             items: [
                 'Reader Mode: Full-screen "Preview" modals for Chats and Memories with rendered Markdown and search.',
                 'Inline Editing: Edit content directly from the preview modal or memory list without context switching.',
                 'Two-Way Artifact Linking: Automatic matching of uploaded files to message references with smart deletion.',
                 'Advanced Search: Smart model filtering with category mapping and deep navigation highlighting.',
+                'Artifact UI Hydration: Intelligent state recovery ensuring "Attach" badges appear on load for all sessions.',
+                'Preview Integration: Artifacts in Reader Mode are now fully clickable and downloadable.',
                 'Artifact Manager 2.0: Split-pane full-screen design with re-download capability.',
+                'State Sync: Instant WYSIWYG synchronization between upload, preview, and export states.',
+                'Prompt Archive: New /prompt-archive page for organizing reusable prompts by category.',
+                'Prompt Categories: 7 fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other).',
+                'Prompt CRUD: Full create/read/update/delete with auto-generated titles and rich metadata.',
+                'Batch Operations: Multi-select prompts to export (HTML/MD/JSON) or delete in bulk.',
+                'Visual Cohesion: Three-archive system with green (Archives) → purple (Memories) → blue (Prompts).',
+                'Component Reusability: Used isPromptArchive flag pattern with Memory components (zero duplication).',
+                'IndexedDB v6: New prompts object store with indexes on createdAt and tags.',
                 'Visual Polish: Unified "Glow" effects and button styling across the entire application.',
-                'Memory Interactions: Simplified "Click-to-Edit" workflow for memories.',
             ]
         },
         {

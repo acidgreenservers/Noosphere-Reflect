@@ -5,12 +5,13 @@ interface Props {
     onSave: (content: string, aiModel: string, tags: string[], title?: string) => Promise<void>;
     editingMemory?: Memory | null;
     onCancelEdit?: () => void;
+    isPromptArchive?: boolean;
 }
 
-export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Props) {
+export default function MemoryInput({ onSave, editingMemory, onCancelEdit, isPromptArchive = false }: Props) {
     const [content, setContent] = useState('');
     const [title, setTitle] = useState('');
-    const [aiModel, setAiModel] = useState('Claude');
+    const [aiModel, setAiModel] = useState(isPromptArchive ? 'General' : 'Claude');
     const [tags, setTags] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -19,7 +20,7 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
         if (editingMemory) {
             setContent(editingMemory.content);
             setTitle(editingMemory.metadata.title);
-            setAiModel(editingMemory.aiModel);
+            setAiModel((editingMemory as any).aiModel || editingMemory.metadata.category || (isPromptArchive ? 'General' : 'Claude'));
             setTags(editingMemory.tags.join(', '));
         } else {
             // Reset if editingMemory becomes null (cancelled)
@@ -28,7 +29,7 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
             setTags('');
             // setAiModel('Claude'); // Optionally keep last selection
         }
-    }, [editingMemory]);
+    }, [editingMemory, isPromptArchive]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,31 +63,42 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
         setTags('');
     };
 
+    const accentColor = isPromptArchive ? 'blue' : 'purple';
+    const accentBg = isPromptArchive ? 'bg-blue-900/20' : 'bg-purple-900/20';
+    const accentBorder = isPromptArchive ? 'border-blue-500/50 shadow-blue-900/20' : 'border-purple-500/50 shadow-purple-900/20';
+    const accentText = isPromptArchive ? 'text-blue-300' : 'text-purple-300';
+    const accentRing = isPromptArchive ? 'focus:ring-blue-500' : 'focus:ring-purple-500';
+    const accentGradient = isPromptArchive
+        ? 'from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500'
+        : 'from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500';
+
     return (
         <div className={`border rounded-xl p-6 shadow-xl backdrop-blur-sm transition-colors duration-300 ${
-            editingMemory 
-                ? 'bg-purple-900/20 border-purple-500/50 shadow-purple-900/20' 
+            editingMemory
+                ? `${accentBg} ${accentBorder}`
                 : 'bg-gray-800/50 border-gray-700'
         }`}>
             <h2 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${
-                editingMemory ? 'text-purple-300' : 'text-gray-200'
+                editingMemory ? accentText : 'text-gray-200'
             }`}>
-                <span>{editingMemory ? '✏️' : '📥'}</span> 
-                {editingMemory ? 'Edit Memory' : 'New Memory'}
+                <span>{editingMemory ? '✏️' : isPromptArchive ? '💡' : '📥'}</span>
+                {editingMemory ? (isPromptArchive ? 'Edit Prompt' : 'Edit Memory') : (isPromptArchive ? 'New Prompt' : 'New Memory')}
             </h2>
             
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">Memory Title (Optional)</label>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">
+                        {isPromptArchive ? 'Prompt Title (Optional)' : 'Memory Title (Optional)'}
+                    </label>
                     <input
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Give this memory a name..."
+                        placeholder={isPromptArchive ? 'Give this prompt a name...' : 'Give this memory a name...'}
                         className={`w-full bg-gray-900/50 border rounded-lg px-4 py-2 text-gray-200 focus:ring-2 outline-none transition-all placeholder-gray-600 ${
-                            editingMemory 
-                                ? 'border-purple-500/30 focus:ring-purple-500' 
-                                : 'border-gray-600 focus:ring-purple-500'
+                            editingMemory
+                                ? `border-${accentColor}-500/30 focus:ring-${accentColor}-500`
+                                : `border-gray-600 focus:ring-${accentColor}-500`
                         }`}
                     />
                 </div>
@@ -94,30 +106,46 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="Paste memory content here..."
+                    placeholder={isPromptArchive ? 'Paste prompt content here...' : 'Paste memory content here...'}
                     className={`w-full h-32 bg-gray-900/50 border rounded-lg p-4 text-gray-300 font-mono text-sm focus:ring-2 outline-none transition-all resize-y ${
-                        editingMemory 
-                            ? 'border-purple-500/30 focus:ring-purple-500 focus:border-transparent' 
-                            : 'border-gray-600 focus:ring-purple-500 focus:border-transparent'
+                        editingMemory
+                            ? `border-${accentColor}-500/30 focus:ring-${accentColor}-500 focus:border-transparent`
+                            : `border-gray-600 focus:ring-${accentColor}-500 focus:border-transparent`
                     }`}
                     required
                 />
 
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-400 mb-1">AI Model</label>
+                        <label className="block text-xs font-medium text-gray-400 mb-1">
+                            {isPromptArchive ? 'Category' : 'AI Model'}
+                        </label>
                         <select
                             value={aiModel}
                             onChange={(e) => setAiModel(e.target.value)}
-                            className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                            className={`w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-gray-300 focus:ring-2 focus:ring-${accentColor}-500 outline-none`}
                         >
-                            <option value="Claude">Claude</option>
-                            <option value="Gemini">Gemini</option>
-                            <option value="ChatGPT">ChatGPT</option>
-                            <option value="LeChat">LeChat</option>
-                            <option value="Llama">Llama</option>
-                            <option value="Grok">Grok</option>
-                            <option value="Other">Other</option>
+                            {isPromptArchive ? (
+                                <>
+                                    <option value="General">General</option>
+                                    <option value="Coding">Coding</option>
+                                    <option value="Writing">Writing</option>
+                                    <option value="Analysis">Analysis</option>
+                                    <option value="Research">Research</option>
+                                    <option value="Creative">Creative</option>
+                                    <option value="Other">Other</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="Claude">Claude</option>
+                                    <option value="Gemini">Gemini</option>
+                                    <option value="ChatGPT">ChatGPT</option>
+                                    <option value="LeChat">LeChat</option>
+                                    <option value="Llama">Llama</option>
+                                    <option value="Grok">Grok</option>
+                                    <option value="Other">Other</option>
+                                </>
+                            )}
                         </select>
                     </div>
 
@@ -127,8 +155,8 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
                             type="text"
                             value={tags}
                             onChange={(e) => setTags(e.target.value)}
-                            placeholder="coding, typescript, architecture..."
-                            className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                            placeholder={isPromptArchive ? 'system, llm, api...' : 'coding, typescript, architecture...'}
+                            className={`w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-gray-300 focus:ring-2 focus:ring-${accentColor}-500 outline-none`}
                         />
                     </div>
 
@@ -148,11 +176,11 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
                             className={`px-6 py-2 rounded-lg font-bold text-white shadow-lg transition-all flex items-center gap-2 ${isSaving || !content.trim()
                                 ? 'bg-gray-600 cursor-not-allowed opacity-50'
                                 : editingMemory
-                                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'
-                                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500'
+                                    ? `bg-gradient-to-r ${accentGradient}`
+                                    : `bg-gradient-to-r ${accentGradient}`
                                 }`}
                         >
-                            {isSaving ? 'Saving...' : editingMemory ? '💾 Update' : '💾 Save Memory'}
+                            {isSaving ? 'Saving...' : editingMemory ? '💾 Update' : isPromptArchive ? '💾 Save Prompt' : '💾 Save Memory'}
                         </button>
                     </div>
                 </div>

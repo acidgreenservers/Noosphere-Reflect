@@ -35,6 +35,32 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         }
     };
 
+    const handleDownloadArtifact = (artifact: any) => {
+        try {
+            // Convert base64 to blob
+            const byteCharacters = atob(artifact.fileData);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: artifact.mimeType });
+
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = artifact.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to download artifact:', error);
+            alert('Failed to download file. Please try again.');
+        }
+    };
+
     const handleSaveMessage = async (newContent: string) => {
         if (editingMessageIndex === null || !session.chatData) return;
 
@@ -102,11 +128,11 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
-                            
+
                             <button
                                 onClick={() => setIsEditing(!isEditing)}
-                                className={`p-2 rounded-lg border transition-all ${isEditing 
-                                    ? 'bg-purple-600 text-white border-purple-500' 
+                                className={`p-2 rounded-lg border transition-all ${isEditing
+                                    ? 'bg-purple-600 text-white border-purple-500'
                                     : 'bg-gray-800 text-purple-400 border-gray-700 hover:bg-gray-700'}`}
                                 title={isEditing ? "Exit Edit Mode" : "Enable Edit Mode"}
                             >
@@ -160,28 +186,25 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                             {messages.map((msg, idx) => {
                                 const isUser = msg.type === 'prompt';
                                 const isHighlighted = filteredMessageIndices.includes(idx) && searchTerm.length > 0;
-                                
+
                                 return (
-                                    <div 
-                                        key={idx} 
+                                    <div
+                                        key={idx}
                                         id={`preview-message-${idx}`}
-                                        className={`group relative pl-4 lg:pl-0 transition-opacity duration-500 ${
-                                            searchTerm && !isHighlighted ? 'opacity-30' : 'opacity-100'
-                                        }`}
+                                        className={`group relative pl-4 lg:pl-0 transition-opacity duration-500 ${searchTerm && !isHighlighted ? 'opacity-30' : 'opacity-100'
+                                            }`}
                                     >
                                         {/* Avatar/Header */}
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-lg ${
-                                                    isUser 
-                                                        ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white' 
-                                                        : 'bg-gradient-to-br from-green-500 to-emerald-700 text-white'
-                                                }`}>
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-lg ${isUser
+                                                    ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white'
+                                                    : 'bg-gradient-to-br from-green-500 to-emerald-700 text-white'
+                                                    }`}>
                                                     {isUser ? 'U' : 'AI'}
                                                 </div>
-                                                <span className={`text-sm font-bold tracking-wide ${
-                                                    isUser ? 'text-blue-400' : 'text-green-400'
-                                                }`}>
+                                                <span className={`text-sm font-bold tracking-wide ${isUser ? 'text-blue-400' : 'text-green-400'
+                                                    }`}>
                                                     {isUser ? session.userName || 'User' : session.aiName || 'AI'}
                                                 </span>
                                                 <span className="text-xs text-gray-600 font-mono">#{idx + 1}</span>
@@ -203,28 +226,35 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                         </div>
 
                                         {/* Content Bubble */}
-                                        <div className={`prose prose-invert max-w-none rounded-2xl p-6 border shadow-lg ${
-                                            isUser 
-                                                ? 'bg-gray-800/50 border-gray-700/50' 
-                                                : 'bg-gray-950/50 border-gray-800/50'
-                                        }`}>
-                                            <div 
-                                                dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(msg.content) }} 
+                                        <div className={`prose prose-invert max-w-none rounded-2xl p-6 border shadow-lg ${isUser
+                                            ? 'bg-gray-800/50 border-gray-700/50'
+                                            : 'bg-gray-950/50 border-gray-800/50'
+                                            }`}>
+                                            <div
+                                                dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(msg.content) }}
                                                 className="leading-relaxed text-gray-300"
                                             />
-                                            
+
                                             {/* Artifacts Display */}
                                             {msg.artifacts && msg.artifacts.length > 0 && (
                                                 <div className="mt-6 pt-4 border-t border-gray-700/50">
                                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                                                        Attached Artifacts
+                                                        📎 Attached Files
                                                     </p>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                         {msg.artifacts.map(art => (
-                                                            <div key={art.id} className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-colors">
+                                                            <button
+                                                                key={art.id}
+                                                                onClick={() => handleDownloadArtifact(art)}
+                                                                className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500 hover:bg-purple-900/20 transition-all group cursor-pointer text-left"
+                                                                title={`Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
+                                                            >
                                                                 <span className="text-lg">📄</span>
-                                                                <span className="text-sm text-gray-300 truncate flex-1">{art.fileName}</span>
-                                                            </div>
+                                                                <span className="text-sm text-gray-300 truncate flex-1 group-hover:text-purple-300">{art.fileName}</span>
+                                                                <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                </svg>
+                                                            </button>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -233,7 +263,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                     </div>
                                 );
                             })}
-                            
+
                             {/* End of Chat */}
                             <div className="py-12 text-center">
                                 <div className="w-2 h-2 bg-gray-700 rounded-full mx-auto mb-2"></div>

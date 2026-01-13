@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import ArchiveHub from './pages/ArchiveHub';
 import BasicConverter from './pages/BasicConverter';
 import MemoryArchive from './pages/MemoryArchive';
+import PromptArchive from './pages/PromptArchive';
 import Changelog from './pages/Changelog';
 import Features from './pages/Features';
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/hub" element={<ArchiveHub />} />
         <Route path="/memory-archive" element={<MemoryArchive />} />
+        <Route path="/prompt-archive" element={<PromptArchive />} />
         <Route path="/converter" element={<BasicConverter />} />
         <Route path="/basic" element={<BasicConverter />} />
         <Route path="/changelog" element={<Changelog />} />

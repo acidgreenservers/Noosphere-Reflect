@@ -1,41 +1,40 @@
-# Security Audit Walkthrough: UI Enhancements & Preview Modals
+# Security Audit Walkthrough: Native Console Scrapers
 
 ## Summary
 **Overall security posture: ✅ Safe**
 
-The new "Reader Mode" features, Download utilities, and Editing workflows have been audited. The core "Markdown Firewall" pattern is correctly implemented in the new `renderMarkdownToHtml` utility, ensuring that even though `dangerouslySetInnerHTML` is used for previews, the content is strictly sanitized first.
+The new suite of "Native Scrapers" (`scripts/noosphere-scrapers/`) provides a secure, client-side-only method for users to extract their data without installing browser extensions. The scripts operate within the user's browser console context and strictly perform DOM reading and Clipboard writing operations. No network requests are made. The generated JSON format is fully compatible with the Noosphere Reflect import pipeline.
 
 ## Audit Findings
 
-### `src/utils/markdownUtils.ts`
-#### 1. Vulnerability Check: XSS via Preview Render
+### `scripts/noosphere-scrapers/universal-native-scraper.js`
+#### 1. Vulnerability Check: Data Exfiltration
 - **Status**: ✅ **Safe**
-- **Analysis**: The `renderMarkdownToHtml` function follows the "Escape-First" pattern. It globally replaces `&`, `<`, and `>` with HTML entities *before* applying any Markdown formatting regex. This neutralizes any injected `<script>` tags or malicious HTML attributes before they can be rendered.
+- **Analysis**: The script contains no `fetch`, `XMLHttpRequest`, `WebSocket`, or external resource loading mechanisms. All data flows from DOM -> Javascript Object -> `navigator.clipboard`. Data never leaves the user's local environment.
 - **Remediation**: N/A
 
-### `src/utils/fileUtils.ts`
-#### 2. Vulnerability Check: Download Path Traversal
+#### 2. Vulnerability Check: DOM Injection / XSS
 - **Status**: ✅ **Safe**
-- **Analysis**: The `downloadArtifact` function uses the HTML5 `download` attribute. Modern browsers sandbox this attribute to the user's Downloads folder and treat it as a filename suggestion, stripping directory traversal characters (`../`). Furthermore, filenames are sanitized at upload time.
+- **Analysis**: The script injects a UI menu using `document.createElement` and direct style property manipulation. It avoids dangerous `innerHTML` sinks that could be exploited if the host page contained malicious content. The script runs with the same privileges as the user in the console.
 - **Remediation**: N/A
 
-### `src/components/MemoryCard.tsx`
-#### 3. Vulnerability Check: Logic/Crash Regression
-- **Status**: ✅ **Fixed**
-- **Analysis**: A previous potential runtime crash (`ReferenceError: formattedDate is not defined`) was identified during development and explicitly fixed by restoring the date formatting logic before the render cycle.
-- **Remediation**: N/A
+#### 3. Vulnerability Check: CSP Compliance
+- **Status**: ⚠️ **Warning** (Usability)
+- **Analysis**: Some strict Content Security Policies (CSP) on platforms *might* block the inline styles or button injection, though Console execution usually overrides this. If `style-src 'unsafe-inline'` is blocked, the buttons might look unstyled, but functionality remains.
+- **Remediation**: The script uses standard DOM API which is generally allowed.
 
-### `src/pages/MemoryArchive.tsx`
-#### 4. Vulnerability Check: Update Integrity
-- **Status**: ✅ **Safe**
-- **Analysis**: The `handleSaveOrUpdateMemory` function correctly distinguishes between creating new records (generating new UUIDs) and updating existing ones (preserving UUIDs). This prevents data duplication or accidental overwrites of the wrong record.
+### `scripts/noosphere-scrapers/*-native-scraper.js`
+#### 4. Vulnerability Check: Selector Robustness
+- **Status**: ✅ **Verified**
+- **Analysis**: The platform-specific scripts use robust selectors (e.g., `data-testid`, `aria-label`) that match the `reference-html-dom` patterns. The "Cleanup" logic in `extractMessageText` specifically removes UI artifacts like "Copy" and "Regenerate" text to ensure clean data export.
 
 ## Verification
-- **Build Status**: Codebase passes type checks.
+- **Build Status**: Scripts are standalone JS, no build required.
 - **Manual Verification**:
-    - **Preview XSS**: Input `<script>alert(1)</script>` into a memory. Verified it renders as text in Preview Modal.
-    - **Edit Flow**: Verified clicking a memory populates the input form and scrolls up.
-    - **Download**: Verified artifact download preserves MIME type and content.
+    - **Extraction**: Verified `extractMessageText` correctly isolates message content from button labels.
+    - **Format**: Verified JSON output matches `ChatData` interface in `types.ts`.
+    - **Interception**: Verified `capture` phase event listener correctly logs clicks without breaking native site functionality.
 
 ## Security Notes
-- **Performance**: The `MemoryInput` textarea allows unlimited text. While IndexedDB handles this, rendering extremely large markdown files (1MB+) might cause temporary UI freeze. This is a known acceptance criteria for local-first tools.
+- **User Education**: Users should be warned (via documentation) to verify they are pasting the correct script. Malicious console scripts are a common attack vector ("Self-XSS").
+- **Recommendation**: Add a comment header to every script explicitly stating "Noosphere Reflect - Official Scraper" to help users verify source. (Already implemented).

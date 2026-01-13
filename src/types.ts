@@ -136,6 +136,24 @@ export interface Memory {
   metadata: MemoryMetadata;
 }
 
+// Prompt Archive Types
+export interface PromptMetadata {
+  title: string;                 // User-defined prompt title
+  category?: string;             // Category/purpose (e.g., "Coding", "Writing", "Analysis")
+  wordCount: number;             // Calculated from content
+  characterCount: number;
+  exportStatus?: 'exported' | 'not_exported'; // Export tracking
+}
+
+export interface Prompt {
+  id: string;                    // UUID
+  content: string;               // Raw prompt text
+  tags: string[];                // User-defined tags
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp (for edits)
+  metadata: PromptMetadata;
+}
+
 // Search Filters
 export interface SearchFilters {
   messageTypes?: ('prompt' | 'response' | 'thought')[];

@@ -134,13 +134,15 @@ const Home: React.FC = () => {
 
             {/* Quick Access Cards */}
             <section className="py-24 px-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-7xl mx-auto">
                     {/* Archives Card */}
                     <div className="group relative w-full">
                         <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
                         <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-3xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-green-500/50 hover:shadow-xl hover:shadow-green-500/20 transition-all duration-300 hover:scale-105">
-                            <div className="w-16 h-16 bg-green-900/50 rounded-3xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
-                                📦
+                            <div className="relative w-16 h-16 bg-green-900/50 rounded-3xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
+                                {/* Green shimmer effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-green-500/30 via-emerald-500/30 to-green-500/30 rounded-3xl animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <span className="relative z-10">📦</span>
                             </div>
                             <h2 className="text-3xl font-bold text-white mb-3">Archives</h2>
                             <p className="text-gray-400 mb-6 flex-grow">
@@ -160,20 +162,45 @@ const Home: React.FC = () => {
 
                     {/* Memory Archive Card */}
                     <div className="group relative w-full">
-                        <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
-                        <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-3xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-green-500/50 hover:shadow-xl hover:shadow-green-500/20 transition-all duration-300 hover:scale-105">
-                            <div className="relative w-16 h-16 bg-green-900/50 rounded-3xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
+                        <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-3xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 hover:scale-105">
+                            <div className="relative w-16 h-16 bg-purple-900/50 rounded-3xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
                                 {/* Purple shimmer effect */}
                                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-purple-500/30 rounded-3xl animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                 <span className="relative z-10">🧠</span>
                             </div>
                             <h2 className="text-3xl font-bold text-white mb-3">Memories</h2>
                             <p className="text-gray-400 mb-6 flex-grow">
-                                Store and organize your AI memories, prompts, and snippets in a dedicated searchable archive.
+                                Store and organize your AI memories and snippets in a dedicated searchable archive.
                             </p>
                             <Link
                                 to="/memory-archive"
-                                className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-full font-bold transition-all shadow-lg shadow-green-500/50 hover:shadow-green-500/70 flex items-center gap-2 group/btn hover:scale-105"
+                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-full font-bold transition-all shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 flex items-center gap-2 group/btn hover:scale-105"
+                            >
+                                Open Archive
+                                <svg className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Prompt Archive Card */}
+                    <div className="group relative w-full">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-3xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
+                        <div className="relative h-full bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-3xl p-8 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 hover:scale-105">
+                            <div className="relative w-16 h-16 bg-blue-900/50 rounded-3xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform duration-300">
+                                {/* Blue shimmer effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-3xl animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <span className="relative z-10">💡</span>
+                            </div>
+                            <h2 className="text-3xl font-bold text-white mb-3">Prompts</h2>
+                            <p className="text-gray-400 mb-6 flex-grow">
+                                Create and organize your best prompts by category for quick reference and reuse.
+                            </p>
+                            <Link
+                                to="/prompt-archive"
+                                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-full font-bold transition-all shadow-lg shadow-blue-500/50 hover:shadow-blue-500/70 flex items-center gap-2 group/btn hover:scale-105"
                             >
                                 Open Archive
                                 <svg className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">

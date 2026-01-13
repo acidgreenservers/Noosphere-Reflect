@@ -6,9 +6,10 @@ interface MemoryPreviewModalProps {
     memory: Memory;
     onClose: () => void;
     onSave: (updatedMemory: Memory) => Promise<void>;
+    isPromptArchive?: boolean;
 }
 
-export const MemoryPreviewModal: React.FC<MemoryPreviewModalProps> = ({ memory, onClose, onSave }) => {
+export const MemoryPreviewModal: React.FC<MemoryPreviewModalProps> = ({ memory, onClose, onSave, isPromptArchive = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(memory.content);
