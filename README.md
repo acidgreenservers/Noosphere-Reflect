@@ -1,4 +1,4 @@
-# Noosphere Reflect - AI Chat Archival System
+# Noosphere Reflect - AI Chat Archival System 🗃️
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Version](https://img.shields.io/badge/version-0.5.5-green.svg)
