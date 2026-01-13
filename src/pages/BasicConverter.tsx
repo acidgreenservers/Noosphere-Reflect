@@ -26,6 +26,7 @@ import {
     neutralizeDangerousExtension
 } from '../utils/securityUtils';
 import { processArtifactUpload, processGlobalArtifactRemoval, processMessageArtifactUnlink } from '../utils/artifactLinking';
+import { downloadArtifact } from '../utils/fileUtils';
 import { MessageEditorModal } from '../components/MessageEditorModal';
 
 // Theme definitions (reused to ensure consistency within component state usage)
@@ -704,20 +705,20 @@ const BasicConverter: React.FC = () => {
                         <div className="space-y-6">
 
                             <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg">
-                                <h2 className="text-xl font-bold mb-4 text-green-300">1. Configuration</h2>
+                                <h2 className="text-xl font-bold mb-4 text-green-400">1. Configuration</h2>
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-400 mb-1">Page Title</label>
-                                        <input type="text" value={chatTitle} onChange={(e) => setChatTitle(e.target.value)} maxLength={INPUT_LIMITS.TITLE_MAX_LENGTH} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" />
+                                        <input type="text" value={chatTitle} onChange={(e) => setChatTitle(e.target.value)} maxLength={INPUT_LIMITS.TITLE_MAX_LENGTH} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none transition-all shadow-lg shadow-green-500/5" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-400 mb-1">User Name</label>
-                                            <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" />
+                                            <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none transition-all shadow-lg shadow-green-500/5" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-400 mb-1">AI Name</label>
-                                            <input type="text" value={aiName} onChange={(e) => setAiName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" />
+                                            <input type="text" value={aiName} onChange={(e) => setAiName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none transition-all shadow-lg shadow-green-500/5" />
                                         </div>
                                     </div>
                                     <div>
@@ -931,12 +932,21 @@ const BasicConverter: React.FC = () => {
                                                             <span className="text-sm text-gray-300 truncate">{artifact.fileName}</span>
                                                             <span className="text-xs text-gray-500">({(artifact.fileSize / 1024).toFixed(1)} KB)</span>
                                                         </div>
-                                                        <button
-                                                            onClick={() => handleRemoveArtifact(artifact.id)}
-                                                            className="text-red-400 hover:text-red-300 text-sm ml-2 flex-shrink-0"
-                                                        >
-                                                            ✕
-                                                        </button>
+                                                        <div className="flex items-center gap-1">
+                                                            <button
+                                                                onClick={() => downloadArtifact(artifact)}
+                                                                className="text-blue-400 hover:text-blue-300 text-sm p-1 flex-shrink-0"
+                                                                title="Download file"
+                                                            >
+                                                                ⬇
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleRemoveArtifact(artifact.id)}
+                                                                className="text-red-400 hover:text-red-300 text-sm ml-1 flex-shrink-0"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1009,13 +1019,22 @@ const BasicConverter: React.FC = () => {
                                                                             <span className="text-xs text-gray-300 truncate">{artifact.fileName}</span>
                                                                             <span className="text-xs text-gray-500">({(artifact.fileSize / 1024).toFixed(1)} KB)</span>
                                                                         </div>
-                                                                        <button
-                                                                            onClick={() => handleRemoveMessageArtifact(idx, artifact.id)}
-                                                                            className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded transition-colors"
-                                                                            title="Remove artifact"
-                                                                        >
-                                                                            ✕
-                                                                        </button>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <button
+                                                                                onClick={() => downloadArtifact(artifact)}
+                                                                                className="text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-2 py-1 rounded transition-colors"
+                                                                                title="Download artifact"
+                                                                            >
+                                                                                ⬇
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleRemoveMessageArtifact(idx, artifact.id)}
+                                                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded transition-colors"
+                                                                                title="Remove artifact"
+                                                                            >
+                                                                                ✕
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1189,13 +1208,18 @@ const BasicConverter: React.FC = () => {
 
             {/* Artifact Manager Modal */}
             {showArtifactManager && chatData && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border border-gray-700 my-8">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-purple-300">📎 Manage Artifacts</h2>
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
+                    <div className="bg-gray-800 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-center p-6 border-b border-gray-700 shrink-0">
+                            <h2 className="text-2xl font-bold text-purple-300 flex items-center gap-3">
+                                📎 Manage Artifacts
+                                <span className="text-sm font-normal text-gray-400 bg-gray-900/50 px-3 py-1 rounded-full border border-gray-700">
+                                    {chatTitle}
+                                </span>
+                            </h2>
                             <button
                                 onClick={() => setShowArtifactManager(false)}
-                                className="text-gray-400 hover:text-gray-200 transition-colors"
+                                className="text-gray-400 hover:text-white transition-colors bg-gray-700/50 hover:bg-gray-700 p-2 rounded-lg"
                             >
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1203,46 +1227,41 @@ const BasicConverter: React.FC = () => {
                             </button>
                         </div>
 
-                        <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-                            <p className="text-sm text-gray-300">
-                                <strong>Chat:</strong> {chatTitle}
-                            </p>
+                        <div className="flex-1 overflow-hidden p-6 flex flex-col">
+                            <ArtifactManager
+                                session={{
+                                    id: loadedSessionId || Date.now().toString(),
+                                    name: chatTitle,
+                                    chatTitle,
+                                    date: metadata.date,
+                                    inputContent,
+                                    userName,
+                                    aiName,
+                                    selectedTheme,
+                                    parserMode,
+                                    chatData,
+                                    metadata: { ...metadata, artifacts }
+                                }}
+                                messages={chatData?.messages || []}
+                                manualMode={!loadedSessionId}
+                                onArtifactsChange={(newArtifacts) => {
+                                    setArtifacts(newArtifacts);
+                                    if (loadedSessionId) {
+                                        setMetadata(prev => ({ ...prev, artifacts: newArtifacts }));
+                                    }
+                                }}
+                                onMessagesChange={(newMessages) => {
+                                    if (chatData) {
+                                        setChatData({ ...chatData, messages: newMessages });
+                                    }
+                                }}
+                            />
                         </div>
 
-                        <ArtifactManager
-                            session={{
-                                id: loadedSessionId || Date.now().toString(),
-                                name: chatTitle,
-                                chatTitle,
-                                date: metadata.date,
-                                inputContent,
-                                userName,
-                                aiName,
-                                selectedTheme,
-                                parserMode,
-                                chatData,
-                                metadata: { ...metadata, artifacts }
-                            }}
-                            messages={chatData?.messages || []}
-                            manualMode={!loadedSessionId}
-                            onArtifactsChange={(newArtifacts) => {
-                                setArtifacts(newArtifacts);
-                                // If in database mode, also update metadata to stay in sync
-                                if (loadedSessionId) {
-                                    setMetadata(prev => ({ ...prev, artifacts: newArtifacts }));
-                                }
-                            }}
-                            onMessagesChange={(newMessages) => {
-                                if (chatData) {
-                                    setChatData({ ...chatData, messages: newMessages });
-                                }
-                            }}
-                        />
-
-                        <div className="flex justify-end mt-6">
+                        <div className="p-6 border-t border-gray-700 bg-gray-900/30 shrink-0 flex justify-end">
                             <button
                                 onClick={() => setShowArtifactManager(false)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-purple-500/20"
                             >
                                 Done
                             </button>

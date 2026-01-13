@@ -28,10 +28,11 @@
 - ✅ **Context Menu Cleanup**: Removed redundant right-click options
 
 ### Intelligence Features (Phase 5+)
-- ✅ **Artifact Auto-Matching**: Intelligent text parsing and fuzzy matching
-- ✅ **Neutralized Extension Support**: Handles security-transformed filenames
-- ✅ **Smart Link Insertion**: Automatic linking without manual intervention
-- ✅ **Enhanced UX**: Clear feedback and success indicators
+- **Two-Way Artifact Linking (v0.5.5)**:
+  - ✅ **Shared Logic**: Unified `artifactLinking.ts` utility
+  - ✅ **Smart Deletion**: Synchronized pool removal / safe message unlinking
+  - ✅ **Auto-Matching**: O(M+A) optimized matching on upload
+  - ✅ **Deduplication**: Robust duplicate prevention
 
 ### Brand & User Experience (v0.5.4)
 - ✅ **Vortex Brand Identity**: Premium purple/green logo with blend effects

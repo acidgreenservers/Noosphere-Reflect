@@ -7,6 +7,7 @@ import { storageService } from '../services/storageService';
 import SettingsModal from '../components/SettingsModal';
 import { ArtifactManager } from '../components/ArtifactManager';
 import { ExportModal } from '../components/ExportModal';
+import { ChatPreviewModal } from '../components/ChatPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
 import { SearchInterface } from '../components/SearchInterface';
 import { searchService } from '../services/searchService';
@@ -24,6 +25,7 @@ const ArchiveHub: React.FC = () => {
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedSessionForArtifacts, setSelectedSessionForArtifacts] = useState<SavedChatSession | null>(null);
+    const [previewSession, setPreviewSession] = useState<SavedChatSession | null>(null);
     const [showArtifactManager, setShowArtifactManager] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
     const location = useLocation();
@@ -422,7 +424,7 @@ const ArchiveHub: React.FC = () => {
                         exportDate: new Date().toISOString(),
                         exportedBy: {
                             tool: 'Noosphere Reflect',
-                            version: '0.5.3'
+                            version: '0.5.5'
                         },
                         chats: [{
                             filename: baseFilename,
@@ -801,7 +803,18 @@ const ArchiveHub: React.FC = () => {
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setPreviewSession(session);
+                                            }}
+                                            className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500/20 hover:border-purple-500/40 transition-all"
+                                            title="Preview conversation content"
+                                        >
+                                            Preview
+                                        </button>
                                         <button
                                             onClick={(e) => toggleSelection(session.id, e)}
                                             className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110
@@ -907,13 +920,18 @@ const ArchiveHub: React.FC = () => {
 
             {/* Artifact Manager Modal */}
             {showArtifactManager && selectedSessionForArtifacts && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border border-gray-700 my-8">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-purple-300">Manage Artifacts</h2>
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
+                    <div className="bg-gray-800 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-center p-6 border-b border-gray-700 shrink-0">
+                            <h2 className="text-2xl font-bold text-purple-300 flex items-center gap-3">
+                                📎 Manage Artifacts
+                                <span className="text-sm font-normal text-gray-400 bg-gray-900/50 px-3 py-1 rounded-full border border-gray-700">
+                                    {selectedSessionForArtifacts.metadata?.title || selectedSessionForArtifacts.chatTitle}
+                                </span>
+                            </h2>
                             <button
                                 onClick={() => setShowArtifactManager(false)}
-                                className="text-gray-400 hover:text-gray-200 transition-colors"
+                                className="text-gray-400 hover:text-white transition-colors bg-gray-700/50 hover:bg-gray-700 p-2 rounded-lg"
                             >
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -921,30 +939,39 @@ const ArchiveHub: React.FC = () => {
                             </button>
                         </div>
 
-                        <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-                            <p className="text-sm text-gray-300">
-                                <strong>Chat:</strong> {selectedSessionForArtifacts.metadata?.title || selectedSessionForArtifacts.chatTitle}
-                            </p>
+                        <div className="flex-1 overflow-hidden p-6 flex flex-col">
+                            <ArtifactManager
+                                session={selectedSessionForArtifacts}
+                                messages={selectedSessionForArtifacts.chatData?.messages || []}
+                                onArtifactsChange={(_newArtifacts) => {
+                                    loadSessions();
+                                }}
+                            />
                         </div>
 
-                        <ArtifactManager
-                            session={selectedSessionForArtifacts}
-                            messages={selectedSessionForArtifacts.chatData?.messages || []}
-                            onArtifactsChange={(_newArtifacts) => {
-                                loadSessions();
-                            }}
-                        />
-
-                        <div className="flex justify-end mt-6">
+                        <div className="p-6 border-t border-gray-700 bg-gray-900/30 shrink-0 flex justify-end">
                             <button
                                 onClick={() => setShowArtifactManager(false)}
-                                className="bg-gray-700 hover:bg-gray-600 text-gray-200 px-6 py-2 rounded-lg font-medium transition-colors"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-emerald-500/20"
                             >
                                 Done
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Chat Preview Modal */}
+            {previewSession && (
+                <ChatPreviewModal
+                    session={previewSession}
+                    onClose={() => setPreviewSession(null)}
+                    onSave={async (updatedSession) => {
+                        await storageService.saveSession(updatedSession);
+                        await loadSessions();
+                        setPreviewSession(updatedSession);
+                    }}
+                />
             )}
 
             {/* Search Interface */}

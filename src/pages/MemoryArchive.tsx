@@ -12,14 +12,15 @@ import {
 } from '../services/converterService';
 import MemoryInput from '../components/MemoryInput';
 import MemoryList from '../components/MemoryList';
-import MemoryEditor from '../components/MemoryEditor';
 import { ExportModal } from '../components/ExportModal';
+import { MemoryPreviewModal } from '../components/MemoryPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
 
 export default function MemoryArchive() {
     const navigate = useNavigate();
     const [memories, setMemories] = useState<Memory[]>([]);
     const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
+    const [previewMemory, setPreviewMemory] = useState<Memory | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [isExporting, setIsExporting] = useState(false);
     const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
@@ -44,27 +45,52 @@ export default function MemoryArchive() {
     };
 
     const handleSaveMemory = async (content: string, aiModel: string, tags: string[], userTitle?: string) => {
-        const firstLine = content.split('\n')[0].trim();
-        const autoTitle = firstLine.substring(0, 50) + (firstLine.length > 50 ? '...' : '');
-        const finalTitle = userTitle || autoTitle || 'Untitled Memory';
+        if (editingMemory) {
+            // Update existing
+            const updated: Memory = {
+                ...editingMemory,
+                content,
+                aiModel,
+                tags,
+                updatedAt: new Date().toISOString(),
+                metadata: {
+                    ...editingMemory.metadata,
+                    title: userTitle || editingMemory.metadata.title,
+                    wordCount: content.split(/\s+/).length,
+                    characterCount: content.length,
+                    exportStatus: 'not_exported'
+                }
+            };
+            await storageService.updateMemory(updated);
+            setEditingMemory(null);
+        } else {
+            // Create new
+            const firstLine = content.split('\n')[0].trim();
+            const autoTitle = firstLine.substring(0, 50) + (firstLine.length > 50 ? '...' : '');
+            const finalTitle = userTitle || autoTitle || 'Untitled Memory';
 
-        const memory: Memory = {
-            id: crypto.randomUUID(),
-            content,
-            aiModel,
-            tags,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            metadata: {
-                title: finalTitle,
-                wordCount: content.split(/\s+/).length,
-                characterCount: content.length,
-                exportStatus: 'not_exported'
-            }
-        };
-
-        await storageService.saveMemory(memory);
+            const memory: Memory = {
+                id: crypto.randomUUID(),
+                content,
+                aiModel,
+                tags,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                metadata: {
+                    title: finalTitle,
+                    wordCount: content.split(/\s+/).length,
+                    characterCount: content.length,
+                    exportStatus: 'not_exported'
+                }
+            };
+            await storageService.saveMemory(memory);
+        }
         await loadMemories();
+    };
+
+    const handleEditStart = (memory: Memory) => {
+        setEditingMemory(memory);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleDeleteMemory = async (id: string) => {
@@ -253,7 +279,11 @@ export default function MemoryArchive() {
                     </button>
                 </div>
 
-                <MemoryInput onSave={handleSaveMemory} />
+                <MemoryInput 
+                    onSave={handleSaveMemory} 
+                    editingMemory={editingMemory}
+                    onCancelEdit={() => setEditingMemory(null)}
+                />
 
                 <div className="mt-12">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -294,24 +324,26 @@ export default function MemoryArchive() {
 
                     <MemoryList
                         memories={filteredMemories}
-                        onEdit={setEditingMemory}
+                        onEdit={handleEditStart}
                         onDelete={handleDeleteMemory}
                         onExport={handleExport}
                         onStatusToggle={handleStatusToggle}
+                        onPreview={setPreviewMemory}
                         selectedMemories={selectedMemories}
                         onToggleSelect={handleToggleSelect}
                     />
                 </div>
 
-                {editingMemory && (
-                    <MemoryEditor
-                        memory={editingMemory}
+                {/* Preview Modal */}
+                {previewMemory && (
+                    <MemoryPreviewModal
+                        memory={previewMemory}
+                        onClose={() => setPreviewMemory(null)}
                         onSave={async (updated) => {
                             await storageService.updateMemory(updated);
                             await loadMemories();
-                            setEditingMemory(null);
+                            setPreviewMemory(updated); // Update the preview with saved data
                         }}
-                        onCancel={() => setEditingMemory(null)}
                     />
                 )}
 

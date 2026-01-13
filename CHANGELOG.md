@@ -16,9 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.5] - January 12, 2026
+
 ### Added
 
-#### Configurable Export Filename Casing
+#### Two-Way Artifact Linking (Added Jan 12, 2026)
+- **Auto-Matching System**: Uploaded files automatically scan messages for filename references and link contextually.
+- **Smart Deletion Policy**:
+  - Global Delete: Removes from pool + all messages (Complete Cleanup).
+  - Message Delete: Unlinks from specific message only (Safety First).
+- **Deduplication**: Robust checking prevents duplicate uploads (Filename + Size).
+- **Shared Utility**: `artifactLinking.ts` standardizes logic across entire application.
+
+---
+
+## [v0.5.4] - January 11, 2026
 - **User Settings System**: New persistent settings in IndexedDB (via `SettingsModal`).
 - **6 Casing Options**: `kebab-case`, `Kebab-Case`, `snake_case`, `Snake_Case`, `PascalCase`, `camelCase`.
 - **Visual UI**:
@@ -43,19 +55,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-
 #### Advanced Search Enhancements (Added Jan 12, 2026)
 - **Smart Model Filtering**: Category mapping (ChatGPT→gpt/openai, Gemini→gemini/google, etc.) with "Other" category.
 - **Deep Navigation**: Click search results to scroll to specific messages with purple highlight.
 - **Model Badges**: Visual confirmation of AI model in search results.
 - **Index Migration**: Automatic re-indexing for schema updates.
 
-#### Export System Refinements (Added Jan 12, 2026)
-- **Unified Naming**: BasicConverter exports use `[AIName] - chatname.ext` format.
-- **Simple Downloads**: Single-file blob downloads (no directory picker).
-- **Bug Fixes**: Button nesting, event bubbling, and type system improvements.
+## [v0.5.5] - January 12, 2026
 
-## [v0.5.3] - January 10, 2026
+### Added
+
+#### Reader Mode & Edit Overhaul
+- **Preview Modals**: Full-screen "Reader Mode" for Chats and Memories with dark theme and markdown rendering.
+- **Inline Editing**: Toggle "Edit Mode" directly from the preview to fix typos or update content without context switching.
+- **Artifact Manager 2.0**: Redesigned as a full-screen, split-pane modal for better usability. Added "Re-Download" capability.
+- **Memory Card Interaction**: Click cards to auto-scroll and populate the edit form. Removed cluttered action buttons.
+- **Visual Polish**: Unified "Glow" effects and button styling across the entire application.
+
+#### Functional Enhancements (Artifacts & Search)
+- **Two-Way Artifact Linking**: Auto-matching of files to message text and synchronized deletion.
+- **Advanced Search**: Smart model filtering (category mapping) and deep navigation highlighting.
+- **Unified Exports**: `[AIName] - chatname.ext` naming convention standardized.
+- **Simple Downloads**: Replaced complex directory picker with simple blob downloads for single files.
+
+## [v0.5.4] - January 11, 2026
 
 ### Added
 

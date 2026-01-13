@@ -54,12 +54,21 @@
   - **Platform Specifics**: Tailored CSS injection for Gemini, Claude, ChatGPT, AI Studio, Grok, LeChat, and Llamacoder.
   - **Context Menu Cleanup**: Removed redundant right-click "Copy as Markdown/JSON" menus since export buttons provide this functionality.
 
-- **Artifact Auto-Matching System**:
-  - **Intelligent Text Parsing**: Extracts artifact names from chat messages using regex patterns for multiple AI platforms.
-  - **Smart Matching Algorithm**: 4-tier fallback system (exact → extension → fuzzy → neutralized extension).
-  - **Neutralized Extension Support**: Handles security-transformed filenames (e.g., document.html → document.html.txt).
-  - **Auto-Linking**: Automatically inserts links to matched artifacts without manual intervention.
-  - **User Feedback**: Clear success messages showing auto-matched files and their target messages.
+- **Artifact Auto-Matching System (COMPLETED)**:
+  - **Shared linking Utility**: `artifactLinking.ts` standardizes matching logic across all UI points.
+  - **Performance Optimization**: O(M+A) complexity using Map-based lookups to prevent UI freeze.
+  - **Two-Way Linking**:
+    - **Synchronized Deletion**: Deleting from pool removes from all messages (clean slate).
+    - **Safe Unlinking**: Deleting from message only removes the link (safety first).
+  - **Deduplication**: Prevents duplicate uploads via filename + size checks.
+  - **User Feedback**: Toast notifications for successful auto-matches.
+
+- **UI Overhaul & Feature Expansion (COMPLETED)**:
+  - **Reader Mode**: Implemented "Preview" modal for Chats and Memories with dark-themed, rendered Markdown view.
+  - **Inline Editing**: Added robust "Edit Mode" to previews and Memory Archive cards, allowing seamless content updates without context switching.
+  - **Artifact Manager 2.0**: Completely redesigned as a full-screen, split-pane modal for better usability on large datasets.
+  - **Re-Download**: Added capability to download artifacts back from the browser storage (Base64 -> Blob).
+  - **Visual Consistency**: Unified "Glow" effects (Green/Purple) across all inputs and forms.
 
 - **Implementation Protocol Updates**: Added comprehensive documentation for the Artifact Auto-Matching System to the technical handbook.
 
@@ -84,4 +93,4 @@
 1. **User Testing**: Validate artifact auto-matching with real Claude/Gemini conversations
 2. **Documentation Updates**: Continue expanding Implementation Protocol with new patterns
 3. **Performance Monitoring**: Add metrics for parsing speed and memory usage
-4. **Feature Requests**: Evaluate user feedback for prioritization
+4. **Feature Requests**: evaluate user feedback for prioritization (e.g., Toast notifications for duplicate errors).

@@ -12,13 +12,18 @@
 - **Modular Sovereignty**: Specific concerns (Design, Data, Security) are managed by dedicated agent files in `.agents/`.
 - **"Escape First" Strategy**: Security baseline where HTML entities are escaped *before* markdown formatting is applied.
 - **Dual Artifact Storage**: Support for session-level and message-level artifacts with unified export handling.
+- **Two-Way Delete Pattern**: 
+  - *Global Delete* = Cleanup (Remove from Pool + All Messages). 
+  - *Message Delete* = Unlink (Remove form Message ONLY).
 - **Atomic Persistence**: Database writes wrapped in transactions with unique index collision handling.
 - **Export Schema**: Naming convention `[Service] - [Title]` and `export-metadata.json` manifest at chat and batch levels.
 
-### Visual Patterns (Noosphere Nexus)
+- **Visual Patterns (Noosphere Nexus)**:
 - **Glassmorphism**: `backdrop-blur-md` with semi-transparent overlays (`bg-gray-800/50`).
 - **Brand Theming**: Consistent color tokens for AI services (e.g., Claude Orange, Gemini Blue).
 - **Motion**: Standardized transitions (`duration-300`) and hover scales (`scale-105`).
+- **Reader Mode**: Full-screen, dark-themed modals for content consumption with "Jump to Message" navigation.
+- **Inline Editing**: "Click-to-Edit" or "Toggle-Edit" patterns that swap read-only views for form inputs in-place.
 
 ## Specialist Agent Roles
 1.  **Claude Code (Builder)**: Implementer and Debugger.

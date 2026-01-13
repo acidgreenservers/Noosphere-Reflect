@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.4-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.5-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
@@ -208,13 +208,33 @@ npm run dev
 - **Smart Capitalization**: Toggle capitalization for relevant formats.
 - **Universal Application**: Applies to all chat and memory exports automatically.
 
+### Reader Mode & Inline Editing (New!)
+- **Reader Mode**: Distraction-free, dark-themed preview modals for both Chats and Memories with "Jump to Message" navigation.
+- **Inline Editing**: Seamlessly toggle between reading and editing modes without leaving the context.
+- **Artifact Manager 2.0**: Completely redesigned full-screen modal with split-pane layout for managing large file collections.
+- **Re-Download**: Download uploaded artifacts back to your device with one click.
+
+### Advanced Search & Artifacts (Added Jan 12)
+- **Two-Way Artifact Linking**: Automatic matching of uploaded files to message references.
+- **Smart Model Filtering**: Category mapping for AI models (ChatGPT matches gpt/openai, etc.).
+- **Deep Navigation**: Click search results to scroll directly to specific messages with highlight.
+- **Unified Exports**: Standardized naming across the app.
+
 ### Memory Archive Enhancements
 - **Batch Operations**: Select multiple memories to export or delete at once.
 - **Export Status**: Visual "✓ Exported" badges help you track what you've already archived.
 - **Visual Overhaul**: Updated UI to match the premium Archive Hub design (Purple Glassmorphism).
 - **Floating Action Bar**: Modern, convenient controls for batch actions.
 
-### Advanced Search (Added Jan 12, 2026)
+### Enhanced Two-Way Artifact Linking (v0.5.5 - Added Jan 12, 2026)
+- **Auto-Matching**: Uploaded files automatically attach to messages referencing the filename.
+- **Smart Deletion**: 
+  - Delete from Pool: Removes artifacts everywhere (Cleanup).
+  - Delete from Message: Unlinks only, keeping the file in the pool (Safety).
+- **Deduplication**: Prevents duplicate file uploads via optimized content matching.
+- **Performance**: O(M+A) matching algorithm ensures speed even with thousands of messages.
+
+### Advanced Search (v0.5.4)
 - **Smart Model Filtering**: Category mapping for AI models with intelligent "Other" category.
 - **Deep Navigation**: Click search results to scroll directly to specific messages with purple highlight.
 - **Model Badges**: Visual confirmation of which AI model generated each result.

@@ -13,6 +13,20 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.5',
+            date: 'Jan 12, 2026',
+            title: 'Reader Mode & Functional Overhaul',
+            items: [
+                'Reader Mode: Full-screen "Preview" modals for Chats and Memories with rendered Markdown and search.',
+                'Inline Editing: Edit content directly from the preview modal or memory list without context switching.',
+                'Two-Way Artifact Linking: Automatic matching of uploaded files to message references with smart deletion.',
+                'Advanced Search: Smart model filtering with category mapping and deep navigation highlighting.',
+                'Artifact Manager 2.0: Split-pane full-screen design with re-download capability.',
+                'Visual Polish: Unified "Glow" effects and button styling across the entire application.',
+                'Memory Interactions: Simplified "Click-to-Edit" workflow for memories.',
+            ]
+        },
+        {
             version: 'v0.5.4',
             date: 'Jan 11, 2026',
             title: 'Configurable Exports & Memory Batch Ops',
@@ -31,8 +45,6 @@ const Changelog: React.FC = () => {
             date: 'Jan 10, 2026',
             title: 'Governance Framework & Parser Hardening',
             items: [
-                'Multi-Agent System: Established 5 specialist agents (Builder, Auditor, Consolidator, Data Architect, Design Agent).',
-                '7 Core Protocols: AI Collaboration, Coding Standards, Design System, Extension Bridge, Memory Bank, QA Testing, Release.',
                 'Governance Documentation: 5 new docs (GOVERNANCE_QUICK_START, REFERENCE, INDEX, SUMMARY, AGENT_ROSTER).',
                 'Planning Templates: 4 templates for implementation plans, task tracking, walkthroughs, and methodology.',
                 'AI Studio Platform: Added support for aistudio.google.com with full parser integration (7+ platforms total).',

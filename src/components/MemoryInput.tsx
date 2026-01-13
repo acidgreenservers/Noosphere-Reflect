@@ -1,16 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Memory } from '../types';
 
 interface Props {
     onSave: (content: string, aiModel: string, tags: string[], title?: string) => Promise<void>;
-    onExport?: (format: 'html' | 'markdown' | 'json') => void;
+    editingMemory?: Memory | null;
+    onCancelEdit?: () => void;
 }
 
-export default function MemoryInput({ onSave }: Props) {
+export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Props) {
     const [content, setContent] = useState('');
     const [title, setTitle] = useState('');
     const [aiModel, setAiModel] = useState('Claude');
     const [tags, setTags] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    // Populate form when editingMemory changes
+    useEffect(() => {
+        if (editingMemory) {
+            setContent(editingMemory.content);
+            setTitle(editingMemory.metadata.title);
+            setAiModel(editingMemory.aiModel);
+            setTags(editingMemory.tags.join(', '));
+        } else {
+            // Reset if editingMemory becomes null (cancelled)
+            setContent('');
+            setTitle('');
+            setTags('');
+            // setAiModel('Claude'); // Optionally keep last selection
+        }
+    }, [editingMemory]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,10 +38,13 @@ export default function MemoryInput({ onSave }: Props) {
         try {
             const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
             await onSave(content, aiModel, tagList, title.trim());
-            setContent('');
-            setTitle('');
-            setTags('');
-            // Keep AI model selection
+            
+            // Only clear if NOT editing (editing logic should handle clearing/resetting via parent)
+            if (!editingMemory) {
+                setContent('');
+                setTitle('');
+                setTags('');
+            }
         } catch (error) {
             console.error('Failed to save memory:', error);
             alert('Failed to save memory. Please try again.');
@@ -32,11 +53,28 @@ export default function MemoryInput({ onSave }: Props) {
         }
     };
 
+    const handleCancel = () => {
+        if (onCancelEdit) {
+            onCancelEdit();
+        }
+        setContent('');
+        setTitle('');
+        setTags('');
+    };
+
     return (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 shadow-xl backdrop-blur-sm">
-            <h2 className="text-xl font-semibold mb-4 text-gray-200 flex items-center gap-2">
-                <span>📥</span> New Memory
+        <div className={`border rounded-xl p-6 shadow-xl backdrop-blur-sm transition-colors duration-300 ${
+            editingMemory 
+                ? 'bg-purple-900/20 border-purple-500/50 shadow-purple-900/20' 
+                : 'bg-gray-800/50 border-gray-700'
+        }`}>
+            <h2 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${
+                editingMemory ? 'text-purple-300' : 'text-gray-200'
+            }`}>
+                <span>{editingMemory ? '✏️' : '📥'}</span> 
+                {editingMemory ? 'Edit Memory' : 'New Memory'}
             </h2>
+            
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">Memory Title (Optional)</label>
@@ -45,7 +83,11 @@ export default function MemoryInput({ onSave }: Props) {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Give this memory a name..."
-                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder-gray-600"
+                        className={`w-full bg-gray-900/50 border rounded-lg px-4 py-2 text-gray-200 focus:ring-2 outline-none transition-all placeholder-gray-600 ${
+                            editingMemory 
+                                ? 'border-purple-500/30 focus:ring-purple-500' 
+                                : 'border-gray-600 focus:ring-purple-500'
+                        }`}
                     />
                 </div>
 
@@ -53,7 +95,11 @@ export default function MemoryInput({ onSave }: Props) {
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="Paste memory content here..."
-                    className="w-full h-32 bg-gray-900/50 border border-gray-600 rounded-lg p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-y"
+                    className={`w-full h-32 bg-gray-900/50 border rounded-lg p-4 text-gray-300 font-mono text-sm focus:ring-2 outline-none transition-all resize-y ${
+                        editingMemory 
+                            ? 'border-purple-500/30 focus:ring-purple-500 focus:border-transparent' 
+                            : 'border-gray-600 focus:ring-purple-500 focus:border-transparent'
+                    }`}
                     required
                 />
 
@@ -86,16 +132,27 @@ export default function MemoryInput({ onSave }: Props) {
                         />
                     </div>
 
-                    <div className="flex items-end">
+                    <div className="flex items-end gap-2">
+                        {editingMemory && (
+                            <button
+                                type="button"
+                                onClick={handleCancel}
+                                className="px-4 py-2 rounded-lg font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        )}
                         <button
                             type="submit"
                             disabled={isSaving || !content.trim()}
                             className={`px-6 py-2 rounded-lg font-bold text-white shadow-lg transition-all flex items-center gap-2 ${isSaving || !content.trim()
                                 ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 hover:shadow-purple-500/25 active:scale-95'
+                                : editingMemory
+                                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'
+                                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500'
                                 }`}
                         >
-                            {isSaving ? 'Saving...' : '💾 Save Memory'}
+                            {isSaving ? 'Saving...' : editingMemory ? '💾 Update' : '💾 Save Memory'}
                         </button>
                     </div>
                 </div>
