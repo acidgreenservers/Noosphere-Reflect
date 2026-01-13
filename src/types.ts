@@ -79,7 +79,6 @@ export interface ThemeClasses {
 
 export enum ParserMode {
   Basic = 'basic',
-  AI = 'ai',
   LlamacoderHtml = 'llamacoder-html',
   ClaudeHtml = 'claude-html',
   LeChatHtml = 'lechat-html',

@@ -17,59 +17,6 @@ export const isJson = (text: string): boolean => {
   }
 };
 
-/**
- * Parses chat content using Gemini AI for intelligent structure detection.
- */
-const parseChatWithAI = async (input: string, apiKey: string): Promise<ChatData> => {
-  if (!apiKey) {
-    throw new Error('Gemini API Key is required for AI Mode. Please check your .env file or configuration.');
-  }
-
-  const prompt = `
-    You are an expert chat log parser. Your task is to analyze the following unstructured or semi-structured text and convert it into a strictly valid JSON object.
-    
-    The JSON object MUST have a single property "messages" which is an array of objects.
-    Each message object MUST have:
-    - "type": either "prompt" (for user) or "response" (for AI).
-    - "content": the raw strings content of the turn.
-    
-    CRITICAL INSTRUCTIONS:
-    1. Identify the speakers distinctively. User turns usually start with "## Prompt:", "User:", or simple text questions. AI turns usually start with "## Response:", "Model:", or "AI:".
-    2. PRESERVE ALL CONTENT, including code blocks, markdown tables, and specifically "Thought process" blocks (often wrapped in \`\`\`plaintext or <thought> tags).
-    3. Do NOT summarize. Copy the content exactly as it appears for each turn.
-    4. If the text is already JSON, just validate and return it.
-    
-    Input Text:
-    ${input.substring(0, 30000)} // Truncate to avoid context window limits if massive
-    `;
-
-  try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json" }
-      })
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Gemini API Error: ${response.status} - ${err}`);
-    }
-
-    const data = await response.json();
-    const jsonString = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!jsonString) throw new Error('No content returned from AI');
-
-    const parsed = JSON.parse(jsonString);
-    return parsed as ChatData;
-
-  } catch (error: any) {
-    throw new Error(`AI Parsing Failed: ${error.message}`);
-  }
-};
 
 /**
  * Parse JSON that was exported from this app.
@@ -180,10 +127,6 @@ const parseGrokHtml = (input: string): ChatData => {
  * @throws Error if parsing fails or input format is invalid.
  */
 export const parseChat = async (input: string, fileType: 'markdown' | 'json' | 'auto', mode: ParserMode, apiKey?: string): Promise<ChatData> => {
-  if (mode === ParserMode.AI) {
-    return parseChatWithAI(input, apiKey || '');
-  }
-
   if (mode === ParserMode.LlamacoderHtml) {
     return parseLlamacoderHtml(input);
   }
@@ -1402,7 +1345,7 @@ export const generateHtml = (
     codeText,
   } = selectedThemeClasses;
 
-  const enableThoughts = [ParserMode.AI, ParserMode.ClaudeHtml, ParserMode.LeChatHtml, ParserMode.LlamacoderHtml, ParserMode.ChatGptHtml, ParserMode.GeminiHtml].includes(parserMode);
+  const enableThoughts = [ParserMode.ClaudeHtml, ParserMode.LeChatHtml, ParserMode.LlamacoderHtml, ParserMode.ChatGptHtml, ParserMode.GeminiHtml].includes(parserMode);
 
   const chatMessagesHtml = chatData.messages
     .map((message, index) => {
