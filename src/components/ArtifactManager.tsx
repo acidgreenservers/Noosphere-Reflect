@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { ConversationArtifact, ChatMessage, SavedChatSession } from '../types';
 import { validateFileSize, INPUT_LIMITS, sanitizeFilename, neutralizeDangerousExtension } from '../utils/securityUtils';
-import { extractArtifactNamesFromChat, matchFileName } from '../utils/textNormalization';
+import { processArtifactUpload, processGlobalArtifactRemoval } from '../utils/artifactLinking';
 import { storageService } from '../services/storageService';
 
 interface ArtifactManagerProps {
   session: SavedChatSession;
   messages: ChatMessage[];
   onArtifactsChange: (artifacts: ConversationArtifact[]) => void; // Pass updated list back
+  onMessagesChange?: (messages: ChatMessage[]) => void; // Pass updated messages back for auto-linking
   manualMode?: boolean; // If true, don't call storageService
 }
 
@@ -15,6 +16,7 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
   session,
   messages,
   onArtifactsChange,
+  onMessagesChange,
   manualMode = false
 }) => {
   // Collect ALL artifacts from both sources
@@ -40,10 +42,9 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
     setSuccess(null);
 
     try {
-      // Extract artifact names from chat for auto-matching
-      const extractedNames = extractArtifactNamesFromChat(messages);
-      const autoMatches: string[] = [];
+      const newArtifacts: ConversationArtifact[] = [];
 
+      // Process all files first
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
@@ -80,46 +81,34 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
           uploadedAt: new Date().toISOString()
         };
 
-        // Auto-match against extracted names
-        if (extractedNames.length > 0) {
-          for (let msgIndex = 0; msgIndex < messages.length; msgIndex++) {
-            const message = messages[msgIndex];
-            // Check if this message contains artifact references
-            for (const extractedName of extractedNames) {
-              if (matchFileName(safeName, extractedName) &&
-                  message.content.toLowerCase().includes(extractedName.toLowerCase())) {
-                // Auto-link the artifact to this message
-                artifact.insertedAfterMessageIndex = msgIndex;
-                autoMatches.push(`${safeName} → Message #${msgIndex + 1}`);
-                break;
-              }
-            }
-            if (artifact.insertedAfterMessageIndex !== undefined) break;
-          }
-        }
+        newArtifacts.push(artifact);
+      }
 
-        // Save to IndexedDB if not in manual mode
-        if (!manualMode) {
+      // Use shared utility for auto-matching and deduplication
+      const result = processArtifactUpload(newArtifacts, artifacts, messages);
+
+      // Save to IndexedDB if not in manual mode
+      if (!manualMode) {
+        for (const artifact of result.updatedArtifacts.filter(a =>
+          !artifacts.some(existing => existing.id === a.id)
+        )) {
           await storageService.attachArtifact(session.id, artifact);
-          // If auto-matched, update the link
-          if (artifact.insertedAfterMessageIndex !== undefined) {
-            await storageService.updateArtifact(session.id, artifact.id, {
-              insertedAfterMessageIndex: artifact.insertedAfterMessageIndex
-            });
-          }
         }
+      }
 
-        const newArtifacts = [...artifacts, artifact];
-        setArtifacts(newArtifacts);
-        onArtifactsChange(newArtifacts);
+      // Update local state
+      setArtifacts(result.updatedArtifacts);
+      onArtifactsChange(result.updatedArtifacts);
+
+      // Notify parent of message updates if callback exists
+      if (onMessagesChange && result.matchCount > 0) {
+        onMessagesChange(result.updatedMessages);
       }
 
       // Build success message with auto-match info
-      let successMessage = `✅ ${files.length} file(s) uploaded successfully`;
-      if (autoMatches.length > 0) {
-        successMessage += `\n🎯 Auto-matched: ${autoMatches.join(', ')}`;
-      } else if (extractedNames.length > 0) {
-        successMessage += `\n💡 Found ${extractedNames.length} potential artifact references in chat - upload matching files for auto-linking`;
+      let successMessage = `✅ ${newArtifacts.length} file(s) uploaded successfully`;
+      if (result.matchCount > 0) {
+        successMessage += `\n🎯 Auto-matched: ${result.matches.join(', ')}`;
       }
 
       setSuccess(successMessage);
@@ -147,19 +136,32 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
 
   const handleRemove = async (artifactId: string, messageIndex?: number) => {
     try {
-      if (!manualMode) {
-        if (messageIndex !== undefined) {
-          // Remove from message-level artifacts
+      if (messageIndex !== undefined) {
+        // Message-level removal: unlink only (handled by storageService)
+        if (!manualMode) {
           await storageService.removeMessageArtifact(session.id, messageIndex, artifactId);
-        } else {
-          // Remove from session-level artifacts
+        }
+        // Note: We don't update local artifacts state for message-level removal
+        // as the artifact stays in the pool
+        setSuccess('✅ Artifact unlinked from message');
+      } else {
+        // Session-level removal: use utility for synchronized removal
+        const result = processGlobalArtifactRemoval(artifactId, artifacts, messages);
+
+        if (!manualMode) {
           await storageService.removeArtifact(session.id, artifactId);
         }
+
+        setArtifacts(result.updatedArtifacts);
+        onArtifactsChange(result.updatedArtifacts);
+
+        // Notify parent of message updates if callback exists
+        if (onMessagesChange) {
+          onMessagesChange(result.updatedMessages);
+        }
+
+        setSuccess('✅ Artifact removed from all locations');
       }
-      const newArtifacts = artifacts.filter(a => a.id !== artifactId);
-      setArtifacts(newArtifacts);
-      setSuccess('✅ Artifact removed');
-      onArtifactsChange(newArtifacts);
     } catch (err) {
       setError('Failed to remove artifact: ' + (err as Error).message);
     }

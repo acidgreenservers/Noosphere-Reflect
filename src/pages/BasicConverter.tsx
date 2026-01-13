@@ -18,7 +18,14 @@ import {
     ChatMessage,
 } from '../types';
 import { storageService } from '../services/storageService';
-import { validateFileSize, validateBatchImport, INPUT_LIMITS } from '../utils/securityUtils';
+import {
+    validateFileSize,
+    validateBatchImport,
+    INPUT_LIMITS,
+    sanitizeFilename,
+    neutralizeDangerousExtension
+} from '../utils/securityUtils';
+import { processArtifactUpload, processGlobalArtifactRemoval, processMessageArtifactUnlink } from '../utils/artifactLinking';
 import { MessageEditorModal } from '../components/MessageEditorModal';
 
 // Theme definitions (reused to ensure consistency within component state usage)
@@ -507,9 +514,10 @@ const BasicConverter: React.FC = () => {
                     });
 
                     // Create artifact
+                    const safeName = neutralizeDangerousExtension(sanitizeFilename(file.name));
                     const artifact: ConversationArtifact = {
                         id: crypto.randomUUID(),
-                        fileName: file.name,
+                        fileName: safeName,
                         fileSize: file.size,
                         mimeType: file.type || 'application/octet-stream',
                         fileData: fileData,
@@ -541,20 +549,18 @@ const BasicConverter: React.FC = () => {
     const handleRemoveMessageArtifact = (messageIndex: number, artifactId: string) => {
         if (!chatData) return;
 
-        const updatedMessages = [...chatData.messages];
-        const message = updatedMessages[messageIndex];
-
-        if (message.artifacts) {
-            message.artifacts = message.artifacts.filter(a => a.id !== artifactId);
-        }
-
+        // Use utility for safe unlinking (does NOT remove from global pool)
+        const updatedMessages = processMessageArtifactUnlink(artifactId, messageIndex, chatData.messages);
         setChatData({ ...chatData, messages: updatedMessages });
     };
 
     const handleArtifactUpload = async (files: FileList | null) => {
-        if (!files) return;
+        if (!files || !chatData) return;
 
         try {
+            const newArtifacts: ConversationArtifact[] = [];
+
+            // Process all files first
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
 
@@ -577,17 +583,33 @@ const BasicConverter: React.FC = () => {
                     reader.readAsDataURL(file);
                 });
 
+                // Sanitize filename (SECURITY: Already implemented)
+                const safeName = neutralizeDangerousExtension(sanitizeFilename(file.name));
+
                 // Create artifact
                 const artifact: ConversationArtifact = {
                     id: crypto.randomUUID(),
-                    fileName: file.name,
+                    fileName: safeName,
                     fileSize: file.size,
                     mimeType: file.type || 'application/octet-stream',
                     fileData: fileData,
                     uploadedAt: new Date().toISOString()
                 };
 
-                setArtifacts(prev => [...prev, artifact]);
+                newArtifacts.push(artifact);
+            }
+
+            // Use shared utility for auto-matching and deduplication
+            const result = processArtifactUpload(newArtifacts, artifacts, chatData.messages);
+
+            // Update state
+            setArtifacts(result.updatedArtifacts);
+            setChatData({ ...chatData, messages: result.updatedMessages });
+
+            // Show success feedback
+            if (result.matchCount > 0) {
+                console.log(`✅ Auto-matched ${result.matchCount} artifact(s):`);
+                result.matches.forEach(match => console.log(`  🎯 ${match}`));
             }
 
             // Clear file input
@@ -600,7 +622,16 @@ const BasicConverter: React.FC = () => {
     };
 
     const handleRemoveArtifact = (artifactId: string) => {
-        setArtifacts(prev => prev.filter(a => a.id !== artifactId));
+        if (!chatData) {
+            // If no chat data, just remove from pool
+            setArtifacts(prev => prev.filter(a => a.id !== artifactId));
+            return;
+        }
+
+        // Use utility for synchronized removal (removes from pool AND all messages)
+        const result = processGlobalArtifactRemoval(artifactId, artifacts, chatData.messages);
+        setArtifacts(result.updatedArtifacts);
+        setChatData({ ...chatData, messages: result.updatedMessages });
     };
 
     return (
@@ -1199,6 +1230,11 @@ const BasicConverter: React.FC = () => {
                                 // If in database mode, also update metadata to stay in sync
                                 if (loadedSessionId) {
                                     setMetadata(prev => ({ ...prev, artifacts: newArtifacts }));
+                                }
+                            }}
+                            onMessagesChange={(newMessages) => {
+                                if (chatData) {
+                                    setChatData({ ...chatData, messages: newMessages });
                                 }
                             }}
                         />
