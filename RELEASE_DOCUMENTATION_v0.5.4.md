@@ -251,14 +251,5 @@ DOCUMENTATION: COMPREHENSIVE ✓
      • Added `Thought = 'thought'` to ChatMessageType enum
      • Fixed missing appSettings in ExportDropdown
 
-FILES MODIFIED (Jan 12 additions):
-- src/types.ts (ChatMessageType enum)
-- src/services/searchWorker.ts (model field, smart filtering)
-- src/services/searchService.ts (model in SearchResult)
-- src/components/SearchInterface.tsx (UI fixes)
-- src/pages/BasicConverter.tsx (message IDs)
-- src/components/ExportDropdown.tsx (blob downloads, naming)
-- src/services/converterService.ts (naming convention)
-
 BUILD STATUS (Jan 12): ✅ 148 modules, 0 errors, 4.79s
 
