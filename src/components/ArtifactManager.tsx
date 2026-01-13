@@ -351,7 +351,7 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-2 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-col gap-2 shrink-0">
                         <button
                           onClick={() => downloadArtifact(artifact)}
                           className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors"
@@ -411,7 +411,7 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
                         </p>
                       </div>
 
-                      <div className="flex flex-col gap-2 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-col gap-2 shrink-0">
                          <button
                           onClick={() => downloadArtifact(artifact)}
                           className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors"
