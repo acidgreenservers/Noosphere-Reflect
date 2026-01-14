@@ -1,12 +1,22 @@
 # Active Context
 
 ## Current Focus
-- **Prompt Archive Feature**: New dedicated page for saving, organizing, and exporting prompts by category (Coding, Writing, Analysis, Research, Creative, General).
-- **Visual Cohesion**: Unified color scheme across Archives Hub (green), Memory Archive (purple), and Prompt Archive (blue).
-- **Component Reusability**: Leveraging Memory components with `isPromptArchive` flag pattern to minimize code duplication.
-- **User Workflow Enhancement**: Expanding archival capabilities beyond chat logs to include reusable prompt library.
+- **Stabilization & Security**: Validating recent Basic Converter and Artifact security upgrades via adversarial audit.
+- **Documentation**: Finalizing protocol updates for the new "Blob Script" download pattern.
+- **User Experience**: Monitoring feedback on the new "Vortex" aesthetic and import workflows.
 
 ## Recent Changes
+- **January 14, 2026 - Basic Converter UX Overhaul**:
+  - **Layout Redesign**: Transformed BasicConverter from a cramped side-by-side view to a spacious, step-based single-column workflow with full-width preview.
+  - **Import Guide**: Added "Import Method Guide" to educate users on Extension vs Console vs File methods.
+  - **Parser Mode Selector**: Replaced button grid with rich, responsive grid cards featuring icons, descriptions, and "TLDR" tips.
+  - **Artifact System**: Fixed artifact linking in HTML/Preview by prioritizing message-level artifacts over metadata matching.
+  - **Context-Aware Links**: Implemented conditional link behavior: Script-based Blob downloads for Preview (bypassing sandbox limits), navigable relative paths for Export.
+  - **Metadata Handling**: Fixed "link bleeding" where old metadata would persist into new chats by enforcing clean state on conversion.
+  - **Preview Security**: Updated iframe sandbox policy to allow external links (`allow-popups`) and downloads (`allow-downloads`, `allow-scripts`) while maintaining safety.
+  - **Metadata Auto-Enrichment**: Implemented `enrichMetadata` utility to auto-detect title, model, and tags from parsed content.
+  - **In-App Documentation**: Created `DocsModal` to render markdown scraper docs directly within the UI.
+  - **Visual Polish**: Aligned styling with the app's premium glassmorphism aesthetic (gradients, glows, backdrop-blur).
 - **January 13, 2026 - Artifact UI Sync & Preview Fixes**:
   - **Preview Modal**: Made artifacts in preview modals clickable and downloadable (Base64 -> Blob conversion).
   - **UI Hydration Logic**: Implemented "Message Artifact Hydration" in `loadSession` and `handleConvert`.
@@ -122,7 +132,7 @@
 - **Cross-Platform Compatibility**: Testing needed on different browser environments
 
 ## Next Steps
-1. **User Testing**: Validate artifact auto-matching with real Claude/Gemini conversations
-2. **Documentation Updates**: Continue expanding Implementation Protocol with new patterns
-3. **Performance Monitoring**: Add metrics for parsing speed and memory usage
-4. **Feature Requests**: evaluate user feedback for prioritization (e.g., Toast notifications for duplicate errors).
+1. **Security Audit**: Run `/security-adversary` to validate the new Sandboxed Preview security posture.
+2. **Handbook Updates**: Document the "Blob Script" sandbox bypass pattern in the Implementation Protocol.
+3. **Performance Monitoring**: Add metrics for parsing speed and memory usage.
+4. **Feature Requests**: Evaluate user feedback for prioritization.

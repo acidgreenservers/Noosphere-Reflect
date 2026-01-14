@@ -13,6 +13,18 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.6',
+            date: 'Jan 14, 2026',
+            title: 'Security Hardening & Preview Downloads',
+            items: [
+                'Context-Aware Artifact Links: Smart switching between "Blob Downloads" for previews and "Relative Paths" for exports.',
+                'Sandboxed Preview Upgrade: Enhanced security policy allowing downloads via injected scripts while blocking risky navigation.',
+                'Blob Script Bypass: Innovative solution to enable artifact downloads inside sandboxed iframes without compromising security.',
+                'Basic Converter Layout: Complete redesign with step-by-step workflow and improved user guidance.',
+                'Documentation Integration: Console scraper docs now accessible directly within the Basic Converter.',
+            ]
+        },
+        {
             version: 'v0.5.5',
             date: 'Jan 12-13, 2026',
             title: 'Reader Mode & Prompt Archive',

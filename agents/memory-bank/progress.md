@@ -159,6 +159,21 @@
 **Next Major Release:** v0.6.0 - Advanced Search & Analytics (Q1 2026)
 ---
 
+## Recent Updates (January 14, 2026)
+
+- **January 14, 2026 - Basic Converter UX Overhaul ✅**:
+  - ✅ **Layout Redesign**: Complete transformation to a preview-first, 8-step single-column workflow.
+  - ✅ **New Components**: `ImportMethodGuide`, `ParserModeSelector` (Responsive Grid), `DocsModal` added.
+  - ✅ **Auto-Enrichment**: Intelligent extraction of titles, models, and tags from chat content.
+  - ✅ **Documentation Integration**: Console scraper docs now accessible directly inside the converter via modal.
+  - ✅ **Visual Alignment**: Applied "Vortex" glassmorphism aesthetic (gradients, rounded cards, glows) to match Home/Hub.
+  - ✅ **Workflow Guidance**: Clear step numbering (1-7) guides users through the conversion process.
+
+- **January 14, 2026 - Artifact Security & UX Hardening ✅**:
+  - ✅ **Context-Aware Links**: Implemented dual-mode linking strategy (Blob/Script for Preview, Relative Path for Export).
+  - ✅ **Sandbox Bypass**: Solved iframe security restrictions for downloads using injected `click` handlers and `URL.createObjectURL`.
+  - ✅ **Security Polish**: Updated sandbox policies to strictly define allowed capabilities (`allow-downloads`, `allow-scripts`, `allow-same-origin`) while blocking frame-busting navigation.
+
 ## Recent Updates (January 13, 2026)
 
 ### Artifact UI Sync & Preview Fixes ✅

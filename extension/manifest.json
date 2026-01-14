@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Noosphere Reflect Bridge",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Capture AI conversations from Claude, ChatGPT, LeChat, Llamacoder, Gemini, Kimi, and Grok directly to Noosphere Reflect archive",
   "permissions": [
     "storage",

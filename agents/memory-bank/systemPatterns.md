@@ -19,6 +19,12 @@
 - **Integration Pattern (Hydration)**: `loadSession` logic auto-syncs `chatData.messages[].artifacts` from `metadata.artifacts` to ensure UI consistency (Badges/Links) regardless of save state.
 - **Export Schema**: Naming convention `[Service] - [Title]` and `export-metadata.json` manifest at chat and batch levels.
 
+- **Security & Rendering Patterns**:
+  - **Sandboxed Previewer**: Use of strict `iframe` sandboxing (`allow-scripts`, `allow-downloads`) coupled with dynamic script injection to enable functionality (like downloads) that is normally blocked by sandbox navigation policies.
+  - **Context-Aware Artifact Linking**: 
+    - *Preview*: Injects `onclick` handlers + Base64 Blobs.
+    - *Export*: Generates standard relative filesystem links.
+
 - **Visual Patterns (Noosphere Nexus)**:
 - **Glassmorphism**: `backdrop-blur-md` with semi-transparent overlays (`bg-gray-800/50`).
 - **Brand Theming**: Consistent color tokens for AI services (e.g., Claude Orange, Gemini Blue).

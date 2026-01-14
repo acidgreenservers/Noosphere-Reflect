@@ -1329,7 +1329,8 @@ export const generateHtml = (
   aiName: string = 'AI',
   parserMode: ParserMode = ParserMode.Basic,
   metadata?: ChatMetadata,
-  includeFooter: boolean = true
+  includeFooter: boolean = true,
+  isPreview: boolean = false
 ): string => {
   const selectedThemeClasses = themeMap[theme];
   const {
@@ -1346,6 +1347,44 @@ export const generateHtml = (
   } = selectedThemeClasses;
 
   const enableThoughts = [ParserMode.ClaudeHtml, ParserMode.LeChatHtml, ParserMode.LlamacoderHtml, ParserMode.ChatGptHtml, ParserMode.GeminiHtml].includes(parserMode);
+
+  const previewScript = isPreview ? `
+    <script>
+      function downloadArtifact(e) {
+        e.preventDefault();
+        const link = e.currentTarget;
+        const b64 = link.getAttribute('data-b64');
+        const mime = link.getAttribute('data-mime');
+        const filename = link.getAttribute('download');
+        
+        try {
+            const byteCharacters = atob(b64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], {type: mime});
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        } catch (err) {
+            console.error('Download failed', err);
+            alert('Download failed: ' + err.message);
+        }
+      }
+    </script>
+  ` : '';
 
   const chatMessagesHtml = chatData.messages
     .map((message, index) => {
@@ -1397,7 +1436,8 @@ export const generateHtml = (
         .replace(/<div class="markdown-thought-content/g, `<div class="markdown-thought-content bg-gray-700 text-gray-100 border-gray-600`); // Content div
 
       // Check for artifacts linked to this message
-      const linkedArtifacts = metadata?.artifacts?.filter(
+      // Prefer direct message artifacts, fall back to metadata index matching (legacy)
+      const linkedArtifacts = message.artifacts || metadata?.artifacts?.filter(
         artifact => artifact.insertedAfterMessageIndex === index
       ) || [];
 
@@ -1407,21 +1447,34 @@ export const generateHtml = (
           <p class="text-xs text-gray-400 mb-2">📎 Attached Files:</p>
           ${linkedArtifacts.map(artifact => {
         const isImage = artifact.mimeType.startsWith('image/');
-        const artifactPath = `artifacts/${escapeHtml(artifact.fileName)}`;
+
+        // Context-aware linking:
+        // Preview: Use Data URI + download attribute (Force download)
+        // Export: Use relative path (Navigate)
+        const href = isPreview
+          ? `javascript:void(0)`
+          : `artifacts/${escapeHtml(artifact.fileName)}`;
+
+        const downloadAttr = isPreview ? `download="${escapeHtml(artifact.fileName)}"` : '';
+        const targetAttr = isPreview ? '' : 'target="_blank"';
+
+        // In preview, we use a script (onclick) to handle the download via Blob URL
+        // because direct navigation to Data URIs or even target="_blank" is often blocked by sandbox/browser security.
+        const dataAttrs = isPreview ? `data-b64="${artifact.fileData}" data-mime="${artifact.mimeType}" onclick="downloadArtifact(event)"` : '';
 
         if (isImage) {
           return `
                 <div class="mb-2">
-                  <a href="${artifactPath}" target="_blank" class="text-blue-400 hover:underline text-sm">
+                  <a href="${href}" ${downloadAttr} ${targetAttr} ${dataAttrs} class="text-blue-400 hover:underline text-sm">
                     ${escapeHtml(artifact.fileName)}
                   </a>
-                  <img src="${artifactPath}" alt="${escapeHtml(artifact.fileName)}" class="mt-2 max-w-full rounded border border-gray-600" style="max-height: 300px;" />
+                  <img src="${isPreview ? `data:${artifact.mimeType};base64,${artifact.fileData}` : `artifacts/${escapeHtml(artifact.fileName)}`}" alt="${escapeHtml(artifact.fileName)}" class="mt-2 max-w-full rounded border border-gray-600" style="max-height: 300px;" />
                 </div>
               `;
         } else {
           return `
                 <div class="mb-1">
-                  <a href="${artifactPath}" target="_blank" class="text-blue-400 hover:underline text-sm flex items-center gap-2">
+                  <a href="${href}" ${downloadAttr} ${targetAttr} ${dataAttrs} class="text-blue-400 hover:underline text-sm flex items-center gap-2">
                     <span>📄</span>
                     <span>${escapeHtml(artifact.fileName)}</span>
                     <span class="text-xs text-gray-500">(${(artifact.fileSize / 1024).toFixed(1)} KB)</span>
@@ -1618,6 +1671,8 @@ export const generateHtml = (
         </div>
         ` : ''}
     </div>
+
+    ${previewScript}
 </body>
 </html>`;
 };
@@ -1668,7 +1723,8 @@ export const generateMarkdown = (
     lines.push(content);
 
     // Check for artifacts linked to this message
-    const linkedArtifacts = metadata?.artifacts?.filter(
+    // Prefer direct message artifacts, fall back to metadata index matching (legacy)
+    const linkedArtifacts = message.artifacts || metadata?.artifacts?.filter(
       artifact => artifact.insertedAfterMessageIndex === index
     ) || [];
 
@@ -2352,7 +2408,8 @@ const generateExportMetadata = (sessions: SavedChatSession[]) => {
     exportDate: new Date().toISOString(),
     exportedBy: {
       tool: 'Noosphere Reflect',
-                                  version: '0.5.5'    },
+      version: '0.5.6'
+    },
     chats: chatMetadata,
     summary: {
       totalChats: sessions.length,
@@ -2472,14 +2529,14 @@ export const generateDirectoryExportWithPicker = async (
     const userName = session.userName || 'User';
     const aiName = session.aiName || 'AI';
     const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
-    
+
     // Get app settings for filename casing
     const appSettings = await storageService.getSettings();
-    
+
     // Generate folder name with AI name prefix: [AIName] - title (matching ArchiveHub convention)
     const sanitizedTitle = sanitizeFilename(
-        session.metadata?.title || session.chatTitle,
-        appSettings.fileNamingCase
+      session.metadata?.title || session.chatTitle,
+      appSettings.fileNamingCase
     );
     const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 

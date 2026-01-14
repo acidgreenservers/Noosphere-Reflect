@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.6] - January 14, 2026
+
+### Added
+
+#### Security Hardening & Preview Downloads
+- **Context-Aware Artifact Links**: Smart switching between "Blob Downloads" for previews and "Relative Paths" for exports.
+- **Sandboxed Preview Upgrade**: Enhanced security policy allowing downloads via injected scripts while blocking risky navigation.
+- **Blob Script Bypass**: Innovative solution to enable artifact downloads inside sandboxed iframes without compromising security.
+
+#### Basic Converter UX Overhaul
+- **Layout Redesign**: Complete redesign with step-by-step workflow and improved user guidance.
+- **Documentation Integration**: Console scraper docs now accessible directly within the Basic Converter.
+- **Auto-Enrichment**: Intelligent extraction of titles, models, and tags from chat content.
+
+---
+
 ## [v0.5.5] - January 12, 2026
 
 ### Added

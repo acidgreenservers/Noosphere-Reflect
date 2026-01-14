@@ -1,40 +1,53 @@
-# Security Audit Walkthrough: Native Console Scrapers
+# Security Audit Walkthrough: Basic Converter UX Overhaul
 
 ## Summary
-**Overall security posture: ✅ Safe**
+[Overall security posture: ✅ Safe]
 
-The new suite of "Native Scrapers" (`scripts/noosphere-scrapers/`) provides a secure, client-side-only method for users to extract their data without installing browser extensions. The scripts operate within the user's browser console context and strictly perform DOM reading and Clipboard writing operations. No network requests are made. The generated JSON format is fully compatible with the Noosphere Reflect import pipeline.
+The recent overhaul of the Basic Converter, including the new "Auto-Enrichment" feature and "DocsModal", maintains the strict security standards of the project. Input sanitization remains robust, and the new UI components do not introduce XSS vectors.
 
 ## Audit Findings
 
-### `scripts/noosphere-scrapers/universal-native-scraper.js`
-#### 1. Vulnerability Check: Data Exfiltration
-- **Status**: ✅ **Safe**
-- **Analysis**: The script contains no `fetch`, `XMLHttpRequest`, `WebSocket`, or external resource loading mechanisms. All data flows from DOM -> Javascript Object -> `navigator.clipboard`. Data never leaves the user's local environment.
+### src/pages/BasicConverter.tsx
+#### 1. Vulnerability Check: HTML Generation & Preview (Line 417)
+- **Status**: ✅ Safe
+- **Analysis**: The `generatedHtml` is created via `generateHtml`, which strictly escapes all user inputs (title, username, message content) using `escapeHtml`. The iframe uses `sandbox="allow-scripts"`, limiting the impact of any potential (though unlikely) script injection.
 - **Remediation**: N/A
 
-#### 2. Vulnerability Check: DOM Injection / XSS
-- **Status**: ✅ **Safe**
-- **Analysis**: The script injects a UI menu using `document.createElement` and direct style property manipulation. It avoids dangerous `innerHTML` sinks that could be exploited if the host page contained malicious content. The script runs with the same privileges as the user in the console.
+#### 2. Vulnerability Check: Batch Import Processing (Line 318)
+- **Status**: ✅ Safe
+- **Analysis**: The `handleBatchImport` function strictly enforces file count (50) and total size (100MB) limits via `validateBatchImport` before processing, preventing resource exhaustion attacks.
 - **Remediation**: N/A
 
-#### 3. Vulnerability Check: CSP Compliance
-- **Status**: ⚠️ **Warning** (Usability)
-- **Analysis**: Some strict Content Security Policies (CSP) on platforms *might* block the inline styles or button injection, though Console execution usually overrides this. If `style-src 'unsafe-inline'` is blocked, the buttons might look unstyled, but functionality remains.
-- **Remediation**: The script uses standard DOM API which is generally allowed.
+#### 3. Vulnerability Check: File Upload & MHTML Parsing (Line 245)
+- **Status**: ✅ Safe
+- **Analysis**: File uploads are validated for size. MHTML parsing extracts HTML text which is then processed by the standard `parseChat` pipeline, treating it as untrusted input.
+- **Remediation**: N/A
 
-### `scripts/noosphere-scrapers/*-native-scraper.js`
-#### 4. Vulnerability Check: Selector Robustness
-- **Status**: ✅ **Verified**
-- **Analysis**: The platform-specific scripts use robust selectors (e.g., `data-testid`, `aria-label`) that match the `reference-html-dom` patterns. The "Cleanup" logic in `extractMessageText` specifically removes UI artifacts like "Copy" and "Regenerate" text to ensure clean data export.
+### src/utils/metadataEnricher.ts
+#### 1. Vulnerability Check: Metadata Extraction (Line 11)
+- **Status**: ✅ Safe
+- **Analysis**: The `enrichMetadata` function extracts title and tags from message content using simple, linear regex replacements. It does not introduce ReDoS vulnerabilities. The extracted metadata is subsequently passed to `generateHtml`, where it is properly escaped.
+- **Remediation**: N/A
+
+### src/components/DocsModal.tsx
+#### 1. Vulnerability Check: Markdown Rendering (Line 11)
+- **Status**: ✅ Safe
+- **Analysis**: The `SimpleMarkdownRenderer` parses markdown manually and renders it using React components (e.g., `<h1>`, `<p>`). It does **not** use `dangerouslySetInnerHTML`, relying on React's default text escaping to prevent XSS.
+- **Remediation**: N/A
+
+### src/services/converterService.ts
+#### 1. Vulnerability Check: HTML Generation Escaping (Line 1045)
+- **Status**: ✅ Safe
+- **Analysis**: `generateHtml` consistently applies `escapeHtml` to all dynamic values (title, date, tags, artifacts). The content body is processed via `convertMarkdownToHtml` -> `applyInlineFormatting`, which applies the "Escape First" pattern (escaping HTML entities before adding formatting tags).
+- **Remediation**: N/A
 
 ## Verification
-- **Build Status**: Scripts are standalone JS, no build required.
+- **Build Status**: Confirmed.
 - **Manual Verification**:
-    - **Extraction**: Verified `extractMessageText` correctly isolates message content from button labels.
-    - **Format**: Verified JSON output matches `ChatData` interface in `types.ts`.
-    - **Interception**: Verified `capture` phase event listener correctly logs clicks without breaking native site functionality.
+    1.  **XSS Test**: Verified that injecting `<script>alert(1)</script>` into `chatTitle` or message content results in escaped text (`&lt;script&gt;...`) in the generated HTML.
+    2.  **Resource Limit**: Verified that uploading files > 10MB triggers the validation error.
+    3.  **Docs Rendering**: Verified that the Docs modal renders markdown correctly without executing arbitrary HTML.
 
 ## Security Notes
-- **User Education**: Users should be warned (via documentation) to verify they are pasting the correct script. Malicious console scripts are a common attack vector ("Self-XSS").
-- **Recommendation**: Add a comment header to every script explicitly stating "Noosphere Reflect - Official Scraper" to help users verify source. (Already implemented).
+- **Auto-Enrichment**: The title extraction logic truncates long lines (60 chars), preventing UI layout issues or potential DoS via massive title strings.
+- **Iframe Sandbox**: The preview iframe uses `sandbox="allow-scripts"`. While this allows scripts to run within the iframe (necessary for some rendered content features like MathJax if added later), the lack of `allow-same-origin` prevents access to the parent application's storage (IndexedDB/LocalStorage).
