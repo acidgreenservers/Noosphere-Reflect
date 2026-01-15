@@ -89,14 +89,21 @@ const parseGrokHtml = (input: string): ChatData => {
         const encodedThought = thoughtMatch[1].trim();
         const thoughtContent = decodeHtmlEntities(encodedThought);
         content += `\n---\n<thought>\n${thoughtContent}\n</thought>\n---\n\n`;
+
+        // REMOVE the thought block from the container before general extraction 
+        // to avoid double-processing/wrapping
+        container.querySelectorAll('span, p, div').forEach(el => {
+          if (el.innerHTML.includes('&lt;thought&gt;')) {
+            el.innerHTML = el.innerHTML.replace(/&lt;thought&gt;[\s\S]*?&lt;\/thought&gt;/, '');
+          }
+        });
       }
     }
 
     // Use extractMarkdownFromHtml to get all content comprehensively
-    // This handles headings, lists, paragraphs, code blocks, tables, images, etc.
     const markdownContent = extractMarkdownFromHtml(container as HTMLElement);
 
-    // Append the extracted markdown (thought block is already added above if present)
+    // Append the extracted markdown
     if (markdownContent.trim()) {
       content += markdownContent;
     }
@@ -1034,11 +1041,13 @@ const parseTableBlock = (lines: string[], startIndex: number): TableParseResult 
  * @returns The HTML string.
  */
 const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): string => {
-  // Pre-process: Ensure thought tags are on their own lines for detection
+  // Pre-process: Ensure thought and collapsible tags are on their own lines for detection
   if (enableThoughts) {
     markdown = markdown
       .replace(/<thought>/g, '\n<thought>\n')
-      .replace(/<\/thought>/g, '\n</thought>\n');
+      .replace(/<\/thought>/g, '\n</thought>\n')
+      .replace(/<collapsible>/g, '\n<collapsible>\n')
+      .replace(/<\/collapsible>/g, '\n</collapsible>\n');
   }
 
   const lines = markdown.split('\n');
@@ -1049,12 +1058,17 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
     const line = lines[i];
     const trimmedLine = line.trim();
 
-    // 0. Collapsible "Thought process" blocks (four backticks OR <thought> tags) - Highest precedence
-    if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thought>')) {
+    // 0. Collapsible blocks (four backticks, <thought>, or <collapsible> tags) - Highest precedence
+    if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thought>') || trimmedLine.startsWith('<collapsible>')) {
       let blockContent = '';
       let j = i + 1;
-      const isTag = trimmedLine.startsWith('<thought>');
-      const endMarker = isTag ? '</thought>' : '````';
+      const isThought = trimmedLine.startsWith('<thought>');
+      const isCollapsible = trimmedLine.startsWith('<collapsible>');
+
+      const endMarker = isThought ? '</thought>' : (isCollapsible ? '</collapsible>' : '````');
+      const blockTitle = isCollapsible ? 'Collapsible Section' : 'Thought process';
+      const blockClass = isCollapsible ? 'markdown-collapsible-block' : 'markdown-thought-block';
+      const summaryClass = isCollapsible ? 'markdown-collapsible-summary' : 'markdown-thought-summary';
 
       while (j < lines.length && !lines[j].trim().startsWith(endMarker)) {
         blockContent += lines[j] + '\n';
@@ -1067,10 +1081,6 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
         const markerIndex = closingLine.indexOf(endMarker);
         const tailContent = closingLine.substring(markerIndex + endMarker.length).trim();
         if (tailContent) {
-          // Push tail content to the next lines or handle it
-          // For simplicity, we'll replace the closing line in the array if it has tail content
-          // but we are already past it in terms of j.
-          // Actually, we'll just prepend it to the next line if it exists, or push a new line.
           if (j + 1 < lines.length) {
             lines[j + 1] = tailContent + '\n' + lines[j + 1];
           } else {
@@ -1080,18 +1090,18 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
         j++;
       }
 
-      // Split content by double newlines for paragraphs within the block
-      const thoughtParagraphs = blockContent.trim().split(/\n\s*\n/).map(p => {
+      // Split content by paragraphs
+      const innerHtml = blockContent.trim().split(/\n\s*\n/).map(p => {
         return `<p>${applyInlineFormatting(p).replace(/\n/g, '<br/>')}</p>`;
       }).join('');
 
       htmlOutput.push(`
-            <details class="markdown-thought-block my-4">
-              <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
-                Thought process: <span class="text-xs ml-2 opacity-70">(Click to expand/collapse)</span>
+            <details class="${blockClass} my-4">
+              <summary class="${summaryClass} cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
+                ${blockTitle}: <span class="text-xs ml-2 opacity-70">(Click to expand/collapse)</span>
               </summary>
               <div class="markdown-thought-content p-3 border rounded-b-md">
-                ${thoughtParagraphs}
+                ${innerHtml}
               </div>
             </details>
         `);
@@ -2406,11 +2416,10 @@ const generateExportMetadata = (sessions: SavedChatSession[]) => {
 
   return {
     exportDate: new Date().toISOString(),
-    exportedBy: {
-      tool: 'Noosphere Reflect',
-      version: '0.5.6'
-    },
-    chats: chatMetadata,
+                            exportedBy: {
+                                tool: 'Noosphere Reflect',
+                                version: '0.5.7'
+                            },    chats: chatMetadata,
     summary: {
       totalChats: sessions.length,
       totalMessages: chatMetadata.reduce((sum, chat) => sum + chat.messageCount, 0),

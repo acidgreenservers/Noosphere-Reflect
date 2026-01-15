@@ -1,5 +1,41 @@
 # Noosphere Reflect - AI Chat Archival System
 
+---
+
+## 🔒 GOVERNANCE RULES - HIGH PRIORITY (Read First)
+
+**These rules override all other sections and take precedence in every decision.**
+
+### 1. MANDATORY USER APPROVAL FOR GIT COMMITS
+- **NEVER execute `git commit` without explicit user approval.**
+- **ALWAYS ask the user before committing**, even if changes are staged.
+- Pattern: Always propose the commit message and file list, wait for "yes" or explicit approval before executing.
+- Exception: Only after user says "yes" or "go ahead" can you run the commit.
+- **Memory Bank Update**: Log the commit decision (approved/denied) in `activeContext.md` before stopping.
+
+### 2. MEMORY BANK UPDATES ON EVERY CHANGE
+- **Update `agents/memory-bank/activeContext.md` after EVERY change:**
+  - Success: Document what was changed, why, and current state
+  - Failure: Document what was attempted, why it failed, blockers, and next steps
+  - Creates a learning path with no gaps - future sessions understand the journey
+- **Update frequency**: After each feature addition, bug fix, security audit, or failed attempt
+- **Format**: Add timestamped entry under "Recent Changes" or create new subsection
+
+### 3. CHALLENGE & QUESTION USER ASSUMPTIONS
+- **Do NOT blindly accept user input.** If you see a security flaw, better implementation, or architectural issue, raise it.
+- **Engage in thoughtful friction**: Propose alternatives with clear trade-offs
+- **Educate through synthesis**: Build developer understanding by explaining inherent constraints and limitations
+- **Pattern**: "I see what you're asking for. However, I notice [security/efficiency/design issue]. Here are alternatives..."
+- **Goal**: Strengthen codebase through collaborative problem-solving, not just task completion
+
+### 4. SINGLE, CONSISTENT GOVERNANCE RULES SECTION
+- These rules appear at the top of every agent file (CLAUDE.md, GEMINI.md, CLINE.md, BLACKBOX.md)
+- No scattered governance statements throughout the file
+- All agents follow identical high-priority rules
+- Users immediately see the rules that matter most
+
+---
+
 **Project Overview:**
 Noosphere Reflect is a comprehensive AI chat archival system designed to preserve and manage conversations from major AI platforms like Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi. It features a Chrome Extension for one-click capture, a centralized Archive Hub for managing chats, and robust export capabilities in HTML, Markdown, and JSON formats. The system emphasizes security, privacy, and offline functionality, making it ideal for users who want to retain control over their AI-generated content.
 

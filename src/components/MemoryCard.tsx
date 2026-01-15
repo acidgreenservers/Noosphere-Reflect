@@ -52,28 +52,27 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
 
     return (
         <div
-            onClick={() => onEdit(memory)}
+            onClick={() => onPreview(memory)}
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 cursor-pointer
             ${isSelected
-                ? `${selectedBg} ${selectedBorder} shadow-lg ${selectedShadow}`
-                : `bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 ${hoverBorder} ${hoverShadow} hover:shadow-lg`
-            }`}>
-            {/* Selection Checkbox & Preview - Hub Style */}
+                    ? `${selectedBg} ${selectedBorder} shadow-lg ${selectedShadow}`
+                    : `bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 ${hoverBorder} ${hoverShadow} hover:shadow-lg`
+                }`}>
+            {/* Selection Checkbox & Edit Button - Hub Style */}
             <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
                 <button
                     onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        onPreview(memory);
+                        onEdit(memory);
                     }}
-                    className={`px-2 py-1 text-[10px] uppercase font-bold tracking-wider ${
-                        isPromptArchive
+                    className={`px-2 py-1 text-[10px] uppercase font-bold tracking-wider ${isPromptArchive
                             ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/40'
                             : 'bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/40'
-                    } rounded transition-all`}
-                    title={`Preview ${isPromptArchive ? 'prompt' : 'memory'} content`}
+                        } rounded transition-all`}
+                    title={`Edit ${isPromptArchive ? 'prompt' : 'memory'} content`}
                 >
-                    Preview
+                    Edit
                 </button>
                 <button
                     onClick={(e) => {

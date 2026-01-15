@@ -13,7 +13,7 @@ AI chat logs are ephemeral, scattered across platforms (Claude, ChatGPT, etc.), 
 5.  **Git Incompatibility**: Standardizes formats (Markdown/JSON) to allow for clear version history and diff tracking in repositories.
 
 ## User Experience Goals
-- **Effortless Ingestion**: Surgical HTML parsing and a future Chrome extension "bridge."
+- **Effortless Ingestion**: Surgical HTML parsing, a robust Chrome extension bridge, and a high-fidelity "manual studio" for raw text refinement.
 - **Full Creative Control**: Inline editing of messages and metadata to "perfect" the archive before final export.
 - **Visual Excellence**: A premium, "studio-like" dashboard for managing the library.
 - **Reader Mode**: Distraction-free, optimized reading experience for archived chats.

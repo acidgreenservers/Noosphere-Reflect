@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
-import { SavedChatSession, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
+import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
 import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateBatchZipExport } from '../services/converterService';
 import { storageService } from '../services/storageService';
 import SettingsModal from '../components/SettingsModal';
@@ -13,7 +13,7 @@ import { SearchInterface } from '../components/SearchInterface';
 import { searchService } from '../services/searchService';
 
 const ArchiveHub: React.FC = () => {
-    const [sessions, setSessions] = useState<SavedChatSession[]>([]);
+    const [sessions, setSessions] = useState<SavedChatSessionMetadata[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +90,7 @@ const ArchiveHub: React.FC = () => {
 
     const loadSessions = async () => {
         try {
-            const allSessions = await storageService.getAllSessions();
+            const allSessions = await storageService.getAllSessionsMetadata();
             setSessions(allSessions.sort((a, b) =>
                 new Date(b.metadata?.date || b.date).getTime() -
                 new Date(a.metadata?.date || a.date).getTime()
@@ -100,14 +100,24 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    // Initialize search service and index sessions
     useEffect(() => {
         const initSearch = async () => {
             try {
                 await searchService.init();
-                // Index all sessions
-                for (const session of sessions) {
-                    await searchService.indexSession(session);
+                // Index all sessions - Streamed to avoid OOM
+                // We fetch full sessions one by one so the GC can clean them up
+                for (const sessionMeta of sessions) {
+                    try {
+                        // Check if we need to index? For now, we index everything but safely
+                        const fullSession = await storageService.getSessionById(sessionMeta.id);
+                        if (fullSession) {
+                            await searchService.indexSession(fullSession);
+                        }
+                        // Small delay to yield to main thread and allow GC
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                    } catch (err) {
+                        console.warn(`Failed to index session ${sessionMeta.id}`, err);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to initialize search:', error);
@@ -234,7 +244,7 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleStatusToggle = async (session: SavedChatSession, e: React.MouseEvent) => {
+    const handleStatusToggle = async (session: SavedChatSessionMetadata, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation(); // Prevent card click
 
@@ -244,7 +254,7 @@ const ArchiveHub: React.FC = () => {
         await storageService.updateExportStatus(session.id, next);
 
         // Optimistic update
-        setSessions((prev: SavedChatSession[]) => prev.map(s =>
+        setSessions((prev: SavedChatSessionMetadata[]) => prev.map(s =>
             s.id === session.id ? {
                 ...s,
                 exportStatus: next,
@@ -262,12 +272,19 @@ const ArchiveHub: React.FC = () => {
     };
 
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json') => {
-        const selectedSessions = sessions.filter(s => selectedIds.has(s.id));
-        if (selectedSessions.length === 0) return;
+        const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
+        if (selectedMetas.length === 0) return;
 
         try {
+            // Fetch FULL sessions for export
+            const fullSessions: SavedChatSession[] = [];
+            for (const meta of selectedMetas) {
+                const full = await storageService.getSessionById(meta.id);
+                if (full) fullSessions.push(full);
+            }
+
             // Batch export always uses ZIP
-            const zipBlob = await generateBatchZipExport(selectedSessions, format);
+            const zipBlob = await generateBatchZipExport(fullSessions, format);
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
@@ -280,10 +297,10 @@ const ArchiveHub: React.FC = () => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            alert(`✅ Exported ${selectedSessions.length} conversation(s) as ZIP archive`);
+            alert(`✅ Exported ${selectedMetas.length} conversation(s) as ZIP archive`);
 
             // Mark all as exported
-            for (const s of selectedSessions) {
+            for (const s of selectedMetas) {
                 await storageService.updateExportStatus(s.id, 'exported');
             }
 
@@ -298,8 +315,15 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleSingleExport = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
+    const handleSingleExport = async (sessionMeta: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
         try {
+            // Fetch FULL session
+            const session = await storageService.getSessionById(sessionMeta.id);
+            if (!session) {
+                alert('Failed to load session data');
+                return;
+            }
+
             // Count artifacts from BOTH sources (session-level + message-level)
             const sessionArtifacts = session.metadata?.artifacts?.length || 0;
             const messageArtifacts = session.chatData?.messages.reduce((count, msg) =>
@@ -424,7 +448,7 @@ const ArchiveHub: React.FC = () => {
                         exportDate: new Date().toISOString(),
                         exportedBy: {
                             tool: 'Noosphere Reflect',
-                            version: '0.5.6'
+                            version: '0.5.7'
                         },
                         chats: [{
                             filename: baseFilename,
@@ -478,7 +502,8 @@ const ArchiveHub: React.FC = () => {
         }
 
         const sessionId = Array.from(selectedIds)[0];
-        const session = sessions.find(s => s.id === sessionId);
+        // Fetch FULL session
+        const session = await storageService.getSessionById(sessionId);
 
         if (!session || !session.chatData) return;
 
@@ -705,10 +730,18 @@ const ArchiveHub: React.FC = () => {
                         </div>
                     ) : filteredSessions.length > 0 ? (
                         filteredSessions.map(session => (
-                            <Link
+                            <div
                                 key={session.id}
-                                to={`/converter?load=${session.id}`}
-                                className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 block
+                                onClick={async () => {
+                                    // Fetch full session for preview
+                                    try {
+                                        const full = await storageService.getSessionById(session.id);
+                                        if (full) setPreviewSession(full);
+                                    } catch (e) {
+                                        console.error('Failed to load session regarding', e);
+                                    }
+                                }}
+                                className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 block cursor-pointer
                                     ${selectedIds.has(session.id)
                                         ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20'
                                         : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-green-500/30 hover:shadow-green-900/10 hover:shadow-lg hover:shadow-green-500/20'
@@ -741,39 +774,50 @@ const ArchiveHub: React.FC = () => {
                                         >
                                             {session.exportStatus === 'exported' ? '📤' : '📥'}
                                         </button>
-                                        {((session.metadata?.artifacts && session.metadata.artifacts.length > 0) ||
-                                            (session.chatData?.messages.some(msg => msg.artifacts && msg.artifacts.length > 0))) && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        setSelectedSessionForArtifacts(session);
-                                                        setShowArtifactManager(true);
-                                                    }}
-                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-colors hover:scale-105 shadow-lg shadow-emerald-500/50"
-                                                    title="Manage artifacts for this chat"
-                                                >
-                                                    <span>📎</span>
-                                                    <span>{
-                                                        (session.metadata?.artifacts?.length || 0) +
-                                                        (session.chatData?.messages.reduce((count, msg) =>
-                                                            count + (msg.artifacts?.length || 0), 0) || 0)
-                                                    }</span>
-                                                </button>
-                                            )}
-                                        {(!session.metadata?.artifacts || session.metadata.artifacts.length === 0) &&
-                                            (!session.chatData?.messages.some(msg => msg.artifacts && msg.artifacts.length > 0)) && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        setSelectedSessionForArtifacts(session);
-                                                        setShowArtifactManager(true);
-                                                    }}
-                                                    className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-colors font-medium hover:scale-105"
-                                                    title="Add artifacts to this chat"
-                                                >
-                                                    + Add Artifacts
-                                                </button>
-                                            )}
+                                        {/* Simplified artifact check: only check session-level artifacts to avoid loading full chatData */}
+                                        {(session.metadata?.artifacts && session.metadata.artifacts.length > 0) && (
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    try {
+                                                        const full = await storageService.getSessionById(session.id);
+                                                        if (full) {
+                                                            setSelectedSessionForArtifacts(full);
+                                                            setShowArtifactManager(true);
+                                                        }
+                                                    } catch (err) {
+                                                        console.error('Failed to load session for artifacts', err);
+                                                    }
+                                                }}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-colors hover:scale-105 shadow-lg shadow-emerald-500/50"
+                                                title="Manage artifacts for this chat"
+                                            >
+                                                <span>📎</span>
+                                                <span>{session.metadata.artifacts.length}</span>
+                                            </button>
+                                        )}
+                                        {(!session.metadata?.artifacts || session.metadata.artifacts.length === 0) && (
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    try {
+                                                        const full = await storageService.getSessionById(session.id);
+                                                        if (full) {
+                                                            setSelectedSessionForArtifacts(full);
+                                                            setShowArtifactManager(true);
+                                                        }
+                                                    } catch (err) {
+                                                        console.error('Failed to load session for artifacts', err);
+                                                    }
+                                                }}
+                                                className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-colors font-medium hover:scale-105"
+                                                title="Add artifacts to this chat"
+                                            >
+                                                + Add Artifacts
+                                            </button>
+                                        )}
                                         <button
                                             onClick={(e) => handleDelete(session.id, e)}
                                             className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
@@ -819,12 +863,12 @@ const ArchiveHub: React.FC = () => {
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                setPreviewSession(session);
+                                                navigate(`/converter?load=${session.id}`);
                                             }}
                                             className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500/20 hover:border-purple-500/40 transition-all"
-                                            title="Preview conversation content"
+                                            title="Edit conversation content"
                                         >
-                                            Preview
+                                            Edit Chat
                                         </button>
                                         <button
                                             onClick={(e) => toggleSelection(session.id, e)}
@@ -841,7 +885,7 @@ const ArchiveHub: React.FC = () => {
                                         </button>
                                     </div>
                                 </div>
-                            </Link>
+                            </div>
                         ))
                     ) : (
                         <div className="col-span-full py-20 text-center text-gray-500">

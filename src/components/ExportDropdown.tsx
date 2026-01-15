@@ -117,7 +117,7 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
   };
 
   return (
-    <div ref={dropdownRef} className="relative inline-block">
+    <div ref={dropdownRef} className="relative w-full">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={buttonClassName}

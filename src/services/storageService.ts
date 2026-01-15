@@ -1,4 +1,4 @@
-import { SavedChatSession, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme } from '../types';
+import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 import { validateImportData } from '../utils/importValidator';
 import { validateReflectFile } from '../utils/reflectValidator';
@@ -133,6 +133,43 @@ class StorageService {
         });
     }
 
+    async getAllSessionsMetadata(): Promise<SavedChatSessionMetadata[]> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const sessions: SavedChatSessionMetadata[] = [];
+            const request = store.openCursor();
+
+            request.onsuccess = (event) => {
+                const cursor = (event.target as IDBRequest).result;
+                if (cursor) {
+                    const session = cursor.value;
+                    // Construct lightweight metadata object
+                    // Explicitly excluding inputContent and chatData
+                    const metadata: SavedChatSessionMetadata = {
+                        id: session.id,
+                        name: session.name,
+                        date: session.date,
+                        chatTitle: session.chatTitle,
+                        userName: session.userName,
+                        aiName: session.aiName,
+                        selectedTheme: session.selectedTheme,
+                        parserMode: session.parserMode,
+                        metadata: session.metadata,
+                        normalizedTitle: session.normalizedTitle,
+                        exportStatus: session.exportStatus
+                    };
+                    sessions.push(metadata);
+                    cursor.continue();
+                } else {
+                    resolve(sessions);
+                }
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
     async getSessionById(id: string): Promise<SavedChatSession | undefined> {
         const db = await this.getDB();
         return new Promise((resolve, reject) => {
@@ -212,10 +249,29 @@ class StorageService {
                         const existingSession = await this.getSessionByNormalizedTitle(session.normalizedTitle!);
 
                         if (existingSession) {
-                            // Create unique copy title with timestamp for the OLD session
-                            const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+                            // Create unique copy title with "Old Copy" suffix for the OLD session
+                            // Strategy:
+                            // 1. Try "[Title] (Old Copy)"
+                            // 2. If that exists, try "[Title] (Old Copy - 1)", "(Old Copy - 2)", etc.
+
                             const oldTitle = existingSession.metadata?.title || existingSession.chatTitle || existingSession.name;
-                            const renamedTitle = `${oldTitle} (Copy ${timestamp})`;
+                            let renamedTitle = `${oldTitle} (Old Copy)`;
+
+                            // Check if the renamed title ALREADY exists
+                            let counter = 1;
+                            let collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
+
+                            while (collisionCheck) {
+                                if (counter > 100) {
+                                    throw new Error(`Failed to save session: too many naming collisions for "${oldTitle}". Please rename existing copies manually.`);
+                                }
+                                renamedTitle = `${oldTitle} (Old Copy - ${counter})`;
+                                collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
+                                counter++;
+                            }
+
+                            // Update the OLD session's title to the new unique name
+                            // ... (rest of the code updating existingSession)
 
                             // Update the OLD session's title
                             if (existingSession.metadata) {

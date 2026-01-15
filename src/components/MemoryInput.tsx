@@ -20,7 +20,7 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit, isPro
         if (editingMemory) {
             setContent(editingMemory.content);
             setTitle(editingMemory.metadata.title);
-            setAiModel((editingMemory as any).aiModel || editingMemory.metadata.category || (isPromptArchive ? 'General' : 'Claude'));
+            setAiModel((editingMemory as any).aiModel || (editingMemory as any).metadata?.category || (isPromptArchive ? 'General' : 'Claude'));
             setTags(editingMemory.tags.join(', '));
         } else {
             // Reset if editingMemory becomes null (cancelled)

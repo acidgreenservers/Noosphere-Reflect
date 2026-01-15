@@ -1,8 +1,8 @@
 # Project Progress
 
-## Current Status: v0.5.4 - Brand Refresh & Import System ✅
+## Current Status: v0.5.6 - Auto-Save & Collapsible Standard ✅
 
-**Release Date:** January 11, 2026
+**Release Date:** January 15, 2026
 **Status:** Production Ready
 
 ## Completed Features ✅
@@ -160,6 +160,17 @@
 ---
 
 ## Recent Updates (January 14, 2026)
+
+- **January 15, 2026 - Auto-Save & Collapsible Standard ✅**:
+  - ✅ **Auto-Save Persistence**: Forms in Basic Converter now auto-persist all changes to IndexedDB (debounced).
+  - ✅ **Collapsible Tagging**: Implemented `<collapsible>` tag support across the app for custom toggle sections.
+  - ✅ **Unified Persistence**: Integrated saving into message editing and artifact workflows.
+  - ✅ **Layout Reordering**: Repositioned content blocks for a more intuitive conversion flow.
+
+- **January 14, 2026 - UX Refinements & Wrap Thought ✅**:
+  - ✅ **Action Bar Relocation**: Moved import buttons to sticky header for better ux.
+  - ✅ **Wrap Thought**: Added manual tool to wrapping text in `<thought>` tags.
+  - ✅ **Layout Polish**: Cleaned up Basic Converter content area justification.
 
 - **January 14, 2026 - Basic Converter UX Overhaul ✅**:
   - ✅ **Layout Redesign**: Complete transformation to a preview-first, 8-step single-column workflow.

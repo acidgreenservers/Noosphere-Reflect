@@ -50,8 +50,9 @@ TOTAL FILES MODIFIED: ~17 files (code + documentation)
      • Toggle between "Read" and "Edit" modes directly in the preview
      • Context-aware editing:
        - Memory Archive: Switches content view to textarea in-place
-       - Chat Archive: Adds per-message edit buttons in the stream
-     • "Click-to-Edit" pattern on Memory Cards (removed cluttered buttons)
+       - Wrap Thought Feature (Basic Mode): Tool to manually wrap selected text in `<thought>` tags, preserving AI reasoning chains during manual imports.
+- Documentation Integration: Console scraper docs accessible directly via modal within the tool.
+- Auto-Enrichment: Logic to auto-extract titles, models, and tags from imported content (Basic Mode).
    - Data Integrity
      • Smart save handlers that update the database and refresh the view
      • Cancel/Reset capabilities

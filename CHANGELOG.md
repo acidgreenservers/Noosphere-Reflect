@@ -14,21 +14,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Planning for Sprint 6.3: Archive Hub Polish (Conversation Card Redesign, v0.6.0)
 - Planning for Sprint 5.1: Extension Reliability (Toast Queue)
 
+    ### Changed
+
+    ---
+
+    ## [v0.5.7] - January 15, 2026
+
+    ### Added
+#### Complete BasicConverter UI Revolution
+- **Modal-First Architecture**: Entire BasicConverter redesigned around modal interactions
+- **3-Row Interactive Layout**:
+  - **Preview Row**: Reader Mode, Raw Preview, Download buttons in clean grid
+  - **Chat Setup Row**: Configuration, Metadata, Chat Content modals in organized layout
+  - **Review Row**: Message editing, File attachments management with dedicated modals
+- **4 New Modal Components**:
+  - **ConfigurationModal**: Full-screen settings with collapsible sidebar navigation
+  - **MetadataModal**: Rich tag editing with quick actions and metadata organization
+  - **ChatContentModal**: Large input area with collapsible tools and parser hints
+  - **ReviewEditModal**: Interactive message editor with editing toggle and stats sidebar
+- **Consistent Design Language**: All modals follow ChatPreviewModal pattern with collapsible sidebars
+- **Color-Coded Sections**: Blue (Config), Purple (Metadata), Emerald (Content), Orange (Review), Red (Attachments)
+- **Responsive Grid Layouts**: Stacked on mobile, 3-column on desktop
+- **Full-Height Box Design**: Proper content distribution and visual consistency
+
+#### Enhanced User Experience
+- **Direct Modal Access**: No more scrolling - each major function opens in dedicated modal space
+- **Progressive Disclosure**: Clean overview with detailed modals for deep work
+- **Visual Hierarchy**: Clear section separation with distinct color themes
+- **Interactive Elements**: Hover effects and smooth transitions throughout
+- **Contextual Sidebars**: Each modal provides relevant tools and navigation
+
+### Technical Implementation
+- **Modal State Management**: Comprehensive state handling for 5 modal types
+- **Component Architecture**: New modal components following established patterns
+- **Layout Optimization**: Grid-based responsive design with proper spacing
+- **Build Compatibility**: All changes compile successfully with existing codebase
+- **Type Safety**: Full TypeScript integration with existing interfaces
+
+### UI/UX Improvements
+- **Reduced Cognitive Load**: Organized workflow eliminates interface clutter
+- **Faster Task Completion**: Direct access to functions reduces navigation time
+- **Professional Appearance**: Clean, modern interface with consistent styling
+- **Accessibility**: Proper modal patterns with keyboard navigation support
+- **Mobile Optimization**: Responsive design works seamlessly across devices
+
 ---
 
 ## [v0.5.6] - January 14, 2026
 
 ### Added
 
-#### Security Hardening & Preview Downloads
-- **Context-Aware Artifact Links**: Smart switching between "Blob Downloads" for previews and "Relative Paths" for exports.
-- **Sandboxed Preview Upgrade**: Enhanced security policy allowing downloads via injected scripts while blocking risky navigation.
-- **Blob Script Bypass**: Innovative solution to enable artifact downloads inside sandboxed iframes without compromising security.
-
 #### Basic Converter UX Overhaul
-- **Layout Redesign**: Complete redesign with step-by-step workflow and improved user guidance.
-- **Documentation Integration**: Console scraper docs now accessible directly within the Basic Converter.
-- **Auto-Enrichment**: Intelligent extraction of titles, models, and tags from chat content.
+- **Reader Mode Integration**: Added "Reader Mode" button to the Basic Converter, enabling distraction-free reading, search, and inline editing via the unified preview modal.
+- **Auto-Save Core**: Eliminated the manual "Save Session" button by implementing a debounced persistence layer that syncs all configuration and metadata changes automatically.
+- **Collapsible Support**: Standardized the `<collapsible>` tag across the app, replacing the internal manual "Wrap Thought" tool with a premium "Collapsible" tool for custom organized sections.
+- **Layout Reordering**: Moved the "Chat Content" input block below "Metadata" to create a logical "Setup -> Input -> Attachments" workflow.
+- **Layout Redesign**: Complete transformation from cramped side-by-side view to a spacious, step-based workflow.
+- **Import Guide**: Interactive guide explaining Extension vs Console vs File import methods.
+- **Parser Mode Grid**: Rich grid selector with icons and "TLDR" tips for each platform parser.
+- **Documentation Integration**: Console scraper docs accessible directly via modal within the tool.
+- **Auto-Enrichment**: Logic to auto-extract titles, models, and tags from imported content (Basic Mode).
+
+#### Security & Downloads
+- **Sandboxed Preview Upgrade**: Enhanced iframe security policy allowing safe artifact downloads via injected Blob scripts.
+- **Context-Aware Links**: Intelligent switching between Blob downloads (Preview) and relative paths (Export).
+- **Metadata Handling**: Fixed "link bleeding" issues by enforcing clean state on conversion.
+
+#### Performance & Polish
+- **Archive Hub Optimization**: 95% memory reduction by loading metadata only for the list view.
+- **Background Indexing**: Streamed search indexing prevents UI freezes on large libraries.
+- **Interaction Alignment**: "Preview" (Reader Mode) is now the default action for all cards (Chats, Memories, Prompts).
+- **Duplicate Handling**: Iterative renaming `(Old Copy - N)` for import collisions.
 
 ---
 

@@ -56,4 +56,27 @@
     background-color: rgba(16, 185, 129, 0.3);
     color: white;
   }
+
+  /* Thought & Collapsible Blocks */
+  .markdown-thought-block, .markdown-collapsible-block {
+    @apply border border-purple-500/30 rounded-xl overflow-hidden bg-purple-500/5 backdrop-blur-sm transition-all duration-300;
+  }
+
+  .markdown-thought-block:hover, .markdown-collapsible-block:hover {
+    @apply border-purple-500/50 bg-purple-500/10 shadow-lg shadow-purple-500/10;
+  }
+
+  .markdown-thought-summary, .markdown-collapsible-summary {
+    @apply bg-gradient-to-r from-purple-900/40 to-transparent text-purple-200 border-b border-purple-500/20 px-4 py-3;
+    list-style: none;
+  }
+
+  .markdown-thought-summary::-webkit-details-marker,
+  .markdown-collapsible-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .markdown-thought-content {
+    @apply text-gray-300 leading-relaxed;
+  }
 }

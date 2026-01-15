@@ -14,6 +14,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     const [activeMessageId, setActiveMessageId] = useState<number | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     const messages = session.chatData?.messages || [];
 
@@ -111,9 +112,20 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+                <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
+                    {/* Sidebar Toggle Button (Floating) */}
+                    <button
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gray-800 border border-gray-700 p-1.5 rounded-r-lg text-gray-400 hover:text-white shadow-xl transition-all duration-300 hidden lg:block ${isSidebarCollapsed ? 'translate-x-0' : 'translate-x-80'}`}
+                        title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        <svg className={`w-4 h-4 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+
                     {/* Left Sidebar: Navigation & Tools */}
-                    <div className="w-full lg:w-80 bg-gray-950 border-r border-gray-800 flex flex-col shrink-0 z-10">
+                    <div className={`w-full lg:w-80 bg-gray-950 border-r border-gray-800 flex flex-col shrink-0 z-10 transition-all duration-300 ${isSidebarCollapsed ? 'lg:-ml-80 opacity-0 pointer-events-none' : 'opacity-100'}`}>
                         {/* Search & Edit Bar */}
                         <div className="p-4 border-b border-gray-800 flex gap-2">
                             <div className="relative flex-1">

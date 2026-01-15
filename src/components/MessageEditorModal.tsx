@@ -42,7 +42,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         }
     };
 
-    const handleWrapInThought = () => {
+    const handleInsertCollapsible = () => {
         if (!textareaRef.current) return;
         const textarea = textareaRef.current;
         const start = textarea.selectionStart;
@@ -52,13 +52,13 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         const before = text.substring(0, start);
         const after = text.substring(end);
 
-        const newContent = `${before}<thought>\n${selectedText}\n</thought>${after}`;
+        const newContent = `${before}<collapsible>\n${selectedText}\n</collapsible>${after}`;
         setEditedContent(newContent);
 
         // Focus back on textarea after update
         setTimeout(() => {
             textarea.focus();
-            const newPos = start + 9 + (selectedText ? selectedText.length + 1 : 0) + 1;
+            const newPos = start + 13 + (selectedText ? selectedText.length + 1 : 0) + 1;
             textarea.setSelectionRange(newPos, newPos);
         }, 0);
     };
@@ -73,13 +73,13 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         }
         if ((e.ctrlKey || e.metaKey) && (e.key === "t" || e.key === "T")) {
             e.preventDefault();
-            handleWrapInThought();
+            handleInsertCollapsible();
         }
     };
 
     // Simple markdown-to-HTML preview (basic formatting)
     const renderPreview = (text: string) => {
-        return text
+        let html = text
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
@@ -89,6 +89,36 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
             .replace(/`([^`]+)`/g, '<code class="bg-gray-800 px-1 rounded text-green-400">$1</code>')
             .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-lg my-2"/>')
             .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>');
+
+        // Process thoughts
+        html = html.replace(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/g, (match, content) => {
+            return `
+                <details class="markdown-thought-block my-2 border border-purple-500/30 rounded-lg overflow-hidden bg-purple-500/5">
+                    <summary class="markdown-thought-summary cursor-pointer p-2 bg-purple-900/20 text-purple-200 text-xs font-bold uppercase tracking-wider">
+                        Thought process
+                    </summary>
+                    <div class="p-3 text-gray-300 text-xs">
+                        ${content.trim()}
+                    </div>
+                </details>
+            `;
+        });
+
+        // Process collapsible
+        html = html.replace(/&lt;collapsible&gt;([\s\S]*?)&lt;\/collapsible&gt;/g, (match, content) => {
+            return `
+                <details class="markdown-collapsible-block my-2 border border-purple-500/30 rounded-lg overflow-hidden bg-purple-500/5">
+                    <summary class="markdown-collapsible-summary cursor-pointer p-2 bg-purple-900/20 text-purple-200 text-xs font-bold uppercase tracking-wider">
+                        Collapsible Section
+                    </summary>
+                    <div class="p-3 text-gray-300 text-xs">
+                        ${content.trim()}
+                    </div>
+                </details>
+            `;
+        });
+
+        return html;
     };
 
     if (!isOpen) return null;
@@ -168,15 +198,15 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                     Close
                                 </button>
 
-                                {/* Thought Wrapper Button */}
+                                {/* Collapsible Button */}
                                 <button
-                                    onClick={handleWrapInThought}
-                                    title="Wrap selection in <thought> tags (Ctrl+T)"
-                                    className="flex items-center gap-1 px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                    onClick={handleInsertCollapsible}
+                                    title="Insert or wrap selection in <collapsible> tags (Ctrl+T)"
+                                    className="flex items-center gap-1 px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/30 rounded text-[10px] uppercase font-bold transition-all"
                                     disabled={isSaving}
                                 >
-                                    <kbd className="bg-blue-900/40 px-1 rounded border border-blue-500/30">Ctrl+T</kbd>
-                                    Wrap Thought
+                                    <kbd className="bg-purple-900/40 px-1 rounded border border-purple-500/30">Ctrl+T</kbd>
+                                    Collapsible
                                 </button>
                             </div>
 

@@ -31,6 +31,12 @@ import { MessageEditorModal } from '../components/MessageEditorModal';
 import { ImportMethodGuide } from '../components/ImportMethodGuide';
 import { ParserModeSelector } from '../components/ParserModeSelector';
 import { DocsModal } from '../components/DocsModal';
+import { ChatPreviewModal } from '../components/ChatPreviewModal';
+import { RawPreviewModal } from '../components/RawPreviewModal';
+import { ConfigurationModal } from '../components/ConfigurationModal';
+import { MetadataModal } from '../components/MetadataModal';
+import { ChatContentModal } from '../components/ChatContentModal';
+import { ReviewEditModal } from '../components/ReviewEditModal';
 import { enrichMetadata } from '../utils/metadataEnricher';
 // @ts-ignore
 import readmeContent from '../assets/docs/README.md?raw';
@@ -114,10 +120,17 @@ const BasicConverter: React.FC = () => {
     const [artifacts, setArtifacts] = useState<ConversationArtifact[]>([]);
     const [loadedSessionId, setLoadedSessionId] = useState<string | null>(null);
     const artifactFileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // UX State
     const [importMethod, setImportMethod] = useState<'extension' | 'console' | 'file' | null>(null);
     const [showDocs, setShowDocs] = useState<boolean>(false);
+    const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+    const [showRawPreviewModal, setShowRawPreviewModal] = useState<boolean>(false);
+    const [showConfigurationModal, setShowConfigurationModal] = useState<boolean>(false);
+    const [showMetadataModal, setShowMetadataModal] = useState<boolean>(false);
+    const [showChatContentModal, setShowChatContentModal] = useState<boolean>(false);
+    const [showReviewEditModal, setShowReviewEditModal] = useState<boolean>(false);
     // Move loadSession before useEffect to avoid TDZ
     const loadSession = useCallback((session: SavedChatSession) => {
         setLoadedSessionId(session.id); // Track loaded session for database mode
@@ -413,16 +426,22 @@ const BasicConverter: React.FC = () => {
 
             const html = generateHtml(
                 data,
-                chatTitle,
+                enrichedMetadata.title, // Use title from enrichment
                 selectedTheme,
                 userName,
                 aiName,
                 parserMode,
-                metadata,
+                enrichedMetadata, // Use metadata from enrichment
                 false,
                 true // isPreview
             );
             setGeneratedHtml(html);
+
+            // AUTO-SAVE on first conversion
+            setTimeout(async () => {
+                await handleSaveChat(enrichedMetadata.title, true, data, enrichedMetadata); // Pass overrides for safety
+            }, 100);
+
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -430,34 +449,90 @@ const BasicConverter: React.FC = () => {
         }
     }, [inputContent, fileType, chatTitle, selectedTheme, userName, aiName, parserMode]);
 
-    const handleSaveChat = useCallback(async (sessionName: string) => {
-        if (!generatedHtml) return;
+    const handleSaveChat = useCallback(async (sessionName?: string, silent: boolean = false, overrideData?: ChatData, overrideMetadata?: ChatMetadata) => {
+        const currentData = overrideData || chatData;
+        const currentMetadata = overrideMetadata || metadata;
+
+        if (!currentData) return;
+
+        const effectiveTitle = sessionName || chatTitle || 'Untitled Chat';
 
         const newSession: SavedChatSession = {
             id: loadedSessionId || Date.now().toString(), // Preserve existing ID if editing
-            name: sessionName,
-            date: metadata.date,
+            name: effectiveTitle,
+            date: currentMetadata.date,
             inputContent,
-            chatTitle,
+            chatTitle: effectiveTitle,
             userName,
             aiName,
             selectedTheme,
             parserMode,
-            chatData: chatData || undefined,
+            chatData: currentData,
             metadata: {
-                ...metadata,
-                title: chatTitle, // Ensure title stays synced
+                ...currentMetadata,
+                title: effectiveTitle, // Ensure title stays synced
                 artifacts: artifacts // Include uploaded artifacts
             }
         };
 
-        await storageService.saveSession(newSession);
-        const updatedSessions = await storageService.getAllSessions();
-        setSavedSessions(updatedSessions);
+        try {
+            await storageService.saveSession(newSession);
 
-        // Notify ArchiveHub to reload sessions
-        window.dispatchEvent(new CustomEvent('sessionImported', { detail: { sessionId: newSession.id } }));
-    }, [generatedHtml, inputContent, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, chatData, artifacts, loadedSessionId]);
+            // Critical: If this was a new session, capture the ID so subsequent changes auto-save to it
+            if (!loadedSessionId) {
+                setLoadedSessionId(newSession.id);
+            }
+
+            const updatedSessions = await storageService.getAllSessions();
+            setSavedSessions(updatedSessions);
+
+            if (!silent) {
+                console.log('✅ Session auto-saved');
+            }
+
+            // Notify ArchiveHub to reload sessions
+            window.dispatchEvent(new CustomEvent('sessionImported', { detail: { sessionId: newSession.id } }));
+        } catch (err: any) {
+            console.error('Failed to auto-save session:', err);
+            if (!silent) setError('Failed to auto-save: ' + err.message);
+        }
+    }, [chatData, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, artifacts, loadedSessionId, inputContent]);
+
+    // AUTO-SAVE EFFECT: Persist form changes automatically
+    useEffect(() => {
+        if (!loadedSessionId || !chatData) return;
+
+        const timer = setTimeout(() => {
+            handleSaveChat(chatTitle, true);
+        }, 1500); // 1.5s debounce for form changes
+
+        return () => clearTimeout(timer);
+    }, [chatTitle, userName, aiName, selectedTheme, metadata, artifacts, loadedSessionId, chatData, handleSaveChat]);
+
+    const handlePreviewSave = async (updatedSession: SavedChatSession) => {
+        // Update local state from the preview edit
+        if (updatedSession.chatData) {
+            setChatData(updatedSession.chatData);
+
+            // Regenerate HTML
+            const html = generateHtml(
+                updatedSession.chatData,
+                updatedSession.chatTitle,
+                updatedSession.selectedTheme,
+                updatedSession.userName,
+                updatedSession.aiName,
+                updatedSession.parserMode || ParserMode.Basic,
+                updatedSession.metadata,
+                false,
+                true // isPreview
+            );
+            setGeneratedHtml(html);
+
+            // Persist
+            await storageService.saveSession(updatedSession);
+            setSavedSessions(await storageService.getAllSessions());
+        }
+    };
 
     const deleteSession = async (id: string) => {
         await storageService.deleteSession(id);
@@ -520,24 +595,7 @@ const BasicConverter: React.FC = () => {
 
         // If this is a loaded session, persist the change
         if (loadedSessionId) {
-            const updatedSession: SavedChatSession = {
-                id: loadedSessionId,
-                name: chatTitle,
-                date: metadata.date,
-                inputContent,
-                chatTitle,
-                userName,
-                aiName,
-                selectedTheme,
-                parserMode,
-                chatData: newData,
-                metadata: {
-                    ...metadata,
-                    title: chatTitle,
-                    artifacts: artifacts
-                }
-            };
-            await storageService.saveSession(updatedSession);
+            handleSaveChat(chatTitle, true, newData);
         }
     };
 
@@ -686,24 +744,11 @@ const BasicConverter: React.FC = () => {
 
             // Persist to storage if session is loaded
             if (loadedSessionId) {
-                const updatedSession: SavedChatSession = {
-                    id: loadedSessionId,
-                    name: chatTitle,
-                    date: metadata.date,
-                    inputContent,
-                    chatTitle,
-                    userName,
-                    aiName,
-                    selectedTheme,
-                    parserMode,
-                    chatData: updatedChatData,
-                    metadata: {
-                        ...metadata,
-                        title: chatTitle,
-                        artifacts: result.updatedArtifacts
-                    }
-                };
-                await storageService.saveSession(updatedSession);
+                handleSaveChat(chatTitle, true, updatedChatData, {
+                    ...metadata,
+                    title: chatTitle,
+                    artifacts: result.updatedArtifacts
+                });
             }
 
             // Show success feedback
@@ -734,6 +779,36 @@ const BasicConverter: React.FC = () => {
         setChatData({ ...chatData, messages: result.updatedMessages });
     };
 
+    const handleInsertCollapsible = () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+
+        if (start === end) {
+            // No selection: just insert tags
+            const newText = text.substring(0, start) + "<collapsible></collapsible>" + text.substring(end);
+            setInputContent(newText);
+            // Move cursor inside tags
+            setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(start + 13, start + 13);
+            }, 0);
+        } else {
+            // Wrap selection
+            const selectedText = text.substring(start, end);
+            const newText = text.substring(0, start) + `<collapsible>${selectedText}</collapsible>` + text.substring(end);
+            setInputContent(newText);
+            // Keep selection around text inside tags
+            setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(start + 13, end + 13);
+            }, 0);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30">
 
@@ -756,12 +831,36 @@ const BasicConverter: React.FC = () => {
                         </h1>
                     </div>
 
-                    <button
-                        onClick={() => setShowSavedSessions(!showSavedSessions)}
-                        className="text-sm px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
-                    >
-                        {showSavedSessions ? 'Hide Saved' : 'Saved Sessions'}
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="flex gap-2">
+                            <label className="cursor-pointer px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium text-gray-300 border border-gray-700 transition-all shadow-sm hover:shadow flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                Upload File
+                                <input type="file" className="hidden" accept=".txt,.md,.json,.mhtml,.mht,.html,.htm" onChange={handleFileUpload} />
+                            </label>
+                            <label className="cursor-pointer px-3 py-1.5 bg-blue-900/30 hover:bg-blue-800/40 hover:border-blue-500/50 rounded-lg text-xs font-medium text-blue-300 border border-blue-800/50 transition-all shadow-sm hover:shadow flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                Import JSON
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept=".json"
+                                    multiple
+                                    onChange={handleBatchImport}
+                                    id="batch-import-input"
+                                />
+                            </label>
+                        </div>
+
+                        <div className="w-px h-6 bg-gray-700"></div>
+
+                        <button
+                            onClick={() => setShowSavedSessions(!showSavedSessions)}
+                            className="text-sm px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+                        >
+                            {showSavedSessions ? 'Hide Saved' : 'Saved Sessions'}
+                        </button>
+                    </div>
                 </div>
             </nav>
 
@@ -812,20 +911,69 @@ const BasicConverter: React.FC = () => {
                     {/* 0. PREVIEW HERO (Only visible when generated) */}
                     {generatedHtml && (
                         <div className="animate-fade-in-up">
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600 flex items-center gap-3">
-                                    <span className="text-3xl">✨</span> Ready for Export
+                                    <span className="text-3xl">✨</span> Chat Preview
                                 </h2>
-                                <div className="flex gap-3">
+                            </div>
+
+                            {/* 3-Box Grid Layout */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Box 1: Reader Mode */}
+                                <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-purple-500/10 transition-all group">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-10 h-10 bg-purple-600/20 border border-purple-500/50 rounded-lg flex items-center justify-center">
+                                            <span className="text-xl">📖</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-purple-300">Reader Mode</h3>
+                                            <p className="text-sm text-gray-400">Interactive chat reader</p>
+                                        </div>
+                                    </div>
                                     <button
-                                        onClick={() => {
-                                            const name = prompt('Enter a name for this session:', chatTitle);
-                                            if (name) handleSaveChat(name);
-                                        }}
-                                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg border border-gray-600 text-sm font-medium transition-colors"
+                                        onClick={() => setShowPreviewModal(true)}
+                                        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg border border-purple-500 shadow-lg shadow-purple-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-purple-500/30"
                                     >
-                                        💾 Save Session
+                                        <span>Open Reader</span>
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
                                     </button>
+                                </div>
+
+                                {/* Box 2: Raw Preview Modal */}
+                                <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-cyan-500/10 transition-all group">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-10 h-10 bg-cyan-600/20 border border-cyan-500/50 rounded-lg flex items-center justify-center">
+                                            <span className="text-xl">🔍</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-cyan-300">Raw Preview</h3>
+                                            <p className="text-sm text-gray-400">Full-screen HTML view</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowRawPreviewModal(true)}
+                                        className="w-full px-4 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg border border-cyan-500 shadow-lg shadow-cyan-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-cyan-500/30"
+                                    >
+                                        <span>View Raw HTML</span>
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                {/* Box 3: Download Single Chat File */}
+                                <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-green-500/10 transition-all group">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-10 h-10 bg-green-600/20 border border-green-500/50 rounded-lg flex items-center justify-center">
+                                            <span className="text-xl">📥</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-green-300">Download File</h3>
+                                            <p className="text-sm text-gray-400">Export single chat</p>
+                                        </div>
+                                    </div>
                                     {chatData && (
                                         <ExportDropdown
                                             chatData={chatData}
@@ -835,8 +983,8 @@ const BasicConverter: React.FC = () => {
                                             selectedTheme={selectedTheme}
                                             parserMode={parserMode}
                                             metadata={{ ...metadata, artifacts }}
-                                            buttonText="Download Artifacts"
-                                            buttonClassName="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center gap-2"
+                                            buttonText="Download Chat"
+                                            buttonClassName="w-full px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center justify-center gap-2 group-hover:shadow-green-500/30"
                                             session={{
                                                 id: loadedSessionId || Date.now().toString(),
                                                 name: chatTitle,
@@ -854,23 +1002,6 @@ const BasicConverter: React.FC = () => {
                                     )}
                                 </div>
                             </div>
-
-                            <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden ring-4 ring-green-500/10">
-                                <div className="bg-gray-900/50 p-3 border-b border-gray-700 flex justify-between items-center">
-                                    <div className="flex gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
-                                        <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
-                                        <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
-                                    </div>
-                                    <span className="text-xs font-mono text-gray-500">preview.html</span>
-                                </div>
-                                <iframe
-                                    title="Preview"
-                                    srcDoc={generatedHtml}
-                                    className="w-full h-[600px] bg-white text-black"
-                                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads allow-same-origin"
-                                />
-                            </div>
                         </div>
                     )}
 
@@ -887,465 +1018,340 @@ const BasicConverter: React.FC = () => {
                         currentMethod={importMethod}
                     />
 
-                    {/* 3. CHAT CONTENT */}
-                    <div className="space-y-4">
+                    {/* 3. MAIN CONTENT - 3-Box Layout */}
+                    <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-gray-200 flex items-center gap-2">
-                                <span className="bg-gray-800 text-gray-400 w-8 h-8 rounded flex items-center justify-center text-sm border border-gray-700">3</span>
-                                Chat Content
+                            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600 flex items-center gap-3">
+                                <span className="text-3xl">📝</span> Chat Setup
                             </h2>
-                            <button
-                                onClick={() => setShowDocs(true)}
-                                className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
-                            >
-                                <span className="text-lg">📚</span> View Documentation
-                            </button>
                         </div>
 
-                        <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                                <svg className="w-32 h-32 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" /></svg>
-                            </div>
-
-                            <div className="flex flex-wrap items-center justify-between mb-4 gap-4 relative z-10">
-                                <div className="flex gap-2">
-                                    <label className="cursor-pointer px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium text-gray-200 border border-gray-600 transition-all shadow-sm hover:shadow active:scale-95 flex items-center gap-2">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                        Upload File
-                                        <input type="file" className="hidden" accept=".txt,.md,.json,.mhtml,.mht,.html,.htm" onChange={handleFileUpload} />
-                                    </label>
-                                    <label className="cursor-pointer px-4 py-2 bg-blue-900/50 hover:bg-blue-800/50 hover:border-blue-500 rounded-lg text-sm font-medium text-blue-200 border border-blue-800 transition-all shadow-sm hover:shadow active:scale-95 flex items-center gap-2">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                        Batch Import JSON
-                                        <input
-                                            type="file"
-                                            className="hidden"
-                                            accept=".json"
-                                            multiple
-                                            onChange={handleBatchImport}
-                                            id="batch-import-input"
-                                        />
-                                    </label>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Box 1: Configuration */}
+                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-blue-500/10 transition-all group flex flex-col min-h-[300px]">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-blue-600/20 border border-blue-500/50 rounded-lg flex items-center justify-center">
+                                        <span className="text-xl">⚙️</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-blue-300">Configuration</h3>
+                                        <p className="text-sm text-gray-400">Chat settings & themes</p>
+                                    </div>
                                 </div>
-                                <button onClick={clearForm} className="text-gray-500 hover:text-red-400 text-sm font-medium transition-colors flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    Clear Form
+                                <button
+                                    onClick={() => setShowConfigurationModal(true)}
+                                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-500 shadow-lg shadow-blue-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-blue-500/30 mt-auto"
+                                >
+                                    <span>Configure Chat</span>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
                                 </button>
                             </div>
 
-                            <textarea
-                                value={inputContent}
-                                onChange={(e) => setInputContent(e.target.value)}
-                                placeholder={parserMode === ParserMode.LlamacoderHtml
-                                    ? "Paste raw HTML source from Llamacoder here..."
-                                    : parserMode === ParserMode.ClaudeHtml
-                                        ? "Paste full HTML source from Claude chat here..."
-                                        : parserMode === ParserMode.LeChatHtml
-                                            ? "Paste full HTML source from LeChat (Mistral) known as 'le-chat-layout'..."
-                                            : parserMode === ParserMode.ChatGptHtml
-                                                ? "Paste full HTML source from ChatGPT here..."
-                                                : parserMode === ParserMode.GeminiHtml
-                                                    ? "Paste full HTML source from Google Gemini here..."
-                                                    : parserMode === ParserMode.AiStudioHtml
-                                                        ? "Paste full HTML source from Google AI Studio here..."
-                                                        : parserMode === ParserMode.KimiHtml
-                                                            ? "Paste full HTML source from Kimi AI here..."
-                                                            : "Paste your chat here (Markdown or JSON)..."}
-                                className="w-full bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-gray-300 font-mono text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all resize-none min-h-[300px] relative z-10"
-                            />
+                            {/* Box 2: Metadata */}
+                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-purple-500/10 transition-all group flex flex-col min-h-[300px]">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-purple-600/20 border border-purple-500/50 rounded-lg flex items-center justify-center">
+                                        <span className="text-xl">🏷️</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-purple-300">Metadata</h3>
+                                        <p className="text-sm text-gray-400">Tags, model info & details</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowMetadataModal(true)}
+                                    className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg border border-purple-500 shadow-lg shadow-purple-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-purple-500/30 mt-auto"
+                                >
+                                    <span>Edit Metadata</span>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </button>
+                            </div>
 
-                            <button
-                                onClick={handleConvert}
-                                disabled={isConversing}
-                                className={`mt-6 w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 relative z-10 ${isConversing
-                                    ? 'bg-gray-600 cursor-not-allowed opacity-75'
-                                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 shadow-green-500/25'
-                                    }`}
-                            >
-                                {isConversing ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            {/* Box 3: Chat Content */}
+                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-emerald-500/10 transition-all group flex flex-col min-h-[300px]">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-emerald-600/20 border border-emerald-500/50 rounded-lg flex items-center justify-center">
+                                        <span className="text-xl">💬</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-emerald-300">Chat Content</h3>
+                                        <p className="text-sm text-gray-400">Input & processing</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowChatContentModal(true)}
+                                    className="w-full px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg border border-emerald-500 shadow-lg shadow-emerald-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-emerald-500/30 mt-auto"
+                                >
+                                    <span>Add Chat Content</span>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 4. REVIEW & ATTACHMENTS - 2-Box Layout */}
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600 flex items-center gap-3">
+                                <span className="text-3xl">🔧</span> Review & Manage
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Box 1: Review & Edit */}
+                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-orange-500/10 transition-all group flex flex-col min-h-[300px]">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-orange-600/20 border border-orange-500/50 rounded-lg flex items-center justify-center">
+                                        <span className="text-xl">✏️</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-orange-300">Review & Edit</h3>
+                                        <p className="text-sm text-gray-400">Edit messages & content</p>
+                                    </div>
+                                </div>
+                                {chatData ? (
+                                    <button
+                                        onClick={() => setShowReviewEditModal(true)}
+                                        className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg border border-orange-500 shadow-lg shadow-orange-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-orange-500/30 mt-auto"
+                                    >
+                                        <span>Review Messages ({chatData.messages.length})</span>
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                         </svg>
-                                        Processing...
-                                    </span>
+                                    </button>
                                 ) : (
-                                    <span className="flex items-center justify-center gap-2 text-lg">
-                                        ⚡ Convert to HTML
-                                    </span>
+                                    <button
+                                        disabled
+                                        className="w-full px-4 py-3 bg-gray-600 text-gray-400 rounded-lg text-sm font-bold flex items-center justify-center gap-2 opacity-50 cursor-not-allowed mt-auto"
+                                    >
+                                        Convert chat first
+                                    </button>
                                 )}
-                            </button>
-                        </div>
-                    </div>
+                            </div>
 
-                    {/* 4. CONFIGURATION & METADATA */}
-                    <div className="grid lg:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                            <h2 className="text-xl font-bold text-gray-200 flex items-center gap-2">
-                                <span className="bg-gray-800 text-gray-400 w-8 h-8 rounded flex items-center justify-center text-sm border border-gray-700">4</span>
-                                Configuration
-                            </h2>
-                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg h-full">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Page Title</label>
-                                        <input type="text" value={chatTitle} onChange={(e) => setChatTitle(e.target.value)} maxLength={INPUT_LIMITS.TITLE_MAX_LENGTH} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none transition-all shadow-lg shadow-green-500/5 placeholder-gray-600" placeholder="e.g. Project Brainstorming" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-400 mb-1">User Name</label>
-                                            <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none transition-all shadow-lg shadow-green-500/5 placeholder-gray-600" placeholder="You" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-400 mb-1">AI Name</label>
-                                            <input type="text" value={aiName} onChange={(e) => setAiName(e.target.value)} className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none transition-all shadow-lg shadow-green-500/5 placeholder-gray-600" placeholder="AI" />
-                                        </div>
+                            {/* Box 2: Attachments */}
+                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-red-500/10 transition-all group flex flex-col min-h-[300px]">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-red-600/20 border border-red-500/50 rounded-lg flex items-center justify-center">
+                                        <span className="text-xl">📎</span>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">Theme</label>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {Object.values(ChatTheme).map((theme) => (
-                                                <button
-                                                    key={theme}
-                                                    onClick={() => setSelectedTheme(theme)}
-                                                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${selectedTheme === theme
-                                                        ? 'bg-green-600 border-green-500 text-white shadow-lg shadow-green-500/20'
-                                                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
-                                                        }`}
-                                                >
-                                                    {theme.replace('dark-', '').replace('light-', '').replace('default', 'Gray')}
-                                                </button>
-                                            ))}
-                                        </div>
+                                        <h3 className="text-lg font-bold text-red-300">Attachments</h3>
+                                        <p className="text-sm text-gray-400">Files & artifacts</p>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={() => setShowArtifactManager(true)}
+                                    className="w-full px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg border border-red-500 shadow-lg shadow-red-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-red-500/30 mt-auto"
+                                >
+                                    <span>Manage Files ({artifacts.length})</span>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </button>
                             </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h2 className="text-xl font-bold text-gray-200 flex items-center gap-2">
-                                <span className="bg-gray-800 text-gray-400 w-8 h-8 rounded flex items-center justify-center text-sm border border-gray-700">5</span>
-                                Metadata
-                            </h2>
-                            <MetadataEditor
-                                metadata={metadata}
-                                onChange={setMetadata}
-                            />
                         </div>
                     </div>
-
-                    {/* 6. ARTIFACTS - Full Width */}
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-bold text-gray-200 flex items-center gap-2">
-                            <span className="bg-gray-800 text-gray-400 w-8 h-8 rounded flex items-center justify-center text-sm border border-gray-700">6</span>
-                            Attachments
-                        </h2>
-
-                        <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg space-y-6">
-                            {/* Upload Area */}
-                            <div
-                                className="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-500/5 transition-all group"
-                                onClick={() => artifactFileInputRef.current?.click()}
-                                onDragOver={(e) => {
-                                    e.preventDefault();
-                                    e.currentTarget.classList.add('border-purple-500');
-                                }}
-                                onDragLeave={(e) => {
-                                    e.currentTarget.classList.remove('border-purple-500');
-                                }}
-                                onDrop={(e) => {
-                                    e.preventDefault();
-                                    e.currentTarget.classList.remove('border-purple-500');
-                                    handleArtifactUpload(e.dataTransfer.files);
-                                }}
-                            >
-                                <input
-                                    ref={artifactFileInputRef}
-                                    type="file"
-                                    multiple
-                                    className="hidden"
-                                    onChange={(e) => handleArtifactUpload(e.target.files)}
-                                />
-                                <div className="mb-4 text-purple-400/50 group-hover:text-purple-400 transition-colors">
-                                    <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                                </div>
-                                <h3 className="text-lg font-medium text-purple-300">Click to upload or drag and drop</h3>
-                                <p className="text-gray-500 mt-2 text-sm">Attach images, PDFs, or code files to specific messages later.</p>
-                                <p className="text-xs text-gray-600 mt-1">Max {INPUT_LIMITS.FILE_MAX_SIZE_MB}MB per file</p>
-                            </div>
-
-                            {/* Artifacts List */}
-                            {artifacts.length > 0 && (
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center text-sm text-gray-400 px-1">
-                                        <span>File Pool ({artifacts.length})</span>
-                                        <span>{(artifacts.reduce((sum, a) => sum + a.fileSize, 0) / 1024 / 1024).toFixed(2)} MB total</span>
-                                    </div>
-                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {artifacts.map(artifact => (
-                                            <div key={artifact.id} className="flex items-center justify-between gap-3 bg-gray-900/50 p-3 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-colors group">
-                                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                    <span className="text-2xl bg-gray-800 w-10 h-10 flex items-center justify-center rounded-lg">
-                                                        {artifact.mimeType.startsWith('image/') ? '🖼️' :
-                                                            artifact.mimeType.includes('pdf') ? '📕' :
-                                                                artifact.mimeType.includes('text') ? '📄' :
-                                                                    '📎'}
-                                                    </span>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-medium text-gray-200 truncate">{artifact.fileName}</p>
-                                                        <p className="text-xs text-gray-500">{(artifact.fileSize / 1024).toFixed(1)} KB</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => downloadArtifact(artifact)}
-                                                        className="text-blue-400 hover:text-blue-300 p-1 hover:bg-blue-400/10 rounded"
-                                                        title="Download"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleRemoveArtifact(artifact.id)}
-                                                        className="text-red-400 hover:text-red-300 p-1 hover:bg-red-400/10 rounded"
-                                                        title="Remove"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-
-                    {/* 7. EDIT MESSAGES */}
-                    {chatData && (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-gray-200 flex items-center gap-2">
-                                    <span className="bg-gray-800 text-gray-400 w-8 h-8 rounded flex items-center justify-center text-sm border border-gray-700">7</span>
-                                    Review & Edit
-                                </h2>
-                                <span className="text-xs font-normal text-gray-500 bg-gray-900/50 px-3 py-1 rounded-full border border-gray-700">
-                                    {chatData.messages.length} turns
-                                </span>
-                            </div>
-
-                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg">
-                                <div className="space-y-4 max-h-[800px] overflow-y-auto pr-3 custom-scrollbar">
-                                    {chatData.messages.map((msg, idx) => (
-                                        <div
-                                            key={idx}
-                                            id={`message-${idx}`}
-                                            className={`p-6 rounded-2xl border transition-all ${msg.type === ChatMessageType.Prompt
-                                                ? 'bg-gray-900/60 border-gray-700/50 hover:border-green-500/30'
-                                                : 'bg-gray-800/60 border-gray-700/50 hover:border-cyan-500/30'
-                                                }`}
-                                        >
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${msg.type === ChatMessageType.Prompt ? 'bg-blue-900/50 text-blue-400' : 'bg-cyan-900/50 text-cyan-400'}`}>
-                                                        {msg.type === ChatMessageType.Prompt ? 'U' : 'AI'}
-                                                    </div>
-                                                    <div>
-                                                        <span className={`text-sm font-bold block ${msg.type === ChatMessageType.Prompt ? 'text-green-400' : 'text-cyan-400'}`}>
-                                                            {msg.type === ChatMessageType.Prompt ? userName : aiName}
-                                                        </span>
-                                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">
-                                                            Turn #{idx + 1}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex gap-2">
-                                                    {/* Attach button */}
-                                                    <button
-                                                        onClick={() => handleAttachToMessage(idx)}
-                                                        className="text-xs font-medium text-purple-300 hover:text-white transition-colors bg-purple-600/10 hover:bg-purple-600 px-3 py-1.5 rounded-lg border border-purple-500/20 flex items-center gap-2"
-                                                    >
-                                                        <span>📎</span>
-                                                        {msg.artifacts && msg.artifacts.length > 0 ? `Manage (${msg.artifacts.length})` : 'Attach'}
-                                                    </button>
-
-                                                    {/* Edit button */}
-                                                    <button
-                                                        onClick={() => handleEditMessage(idx)}
-                                                        className="text-xs font-medium text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700"
-                                                    >
-                                                        Edit Text
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div className="text-gray-300 text-sm overflow-hidden whitespace-pre-wrap leading-relaxed font-normal opacity-90 pl-11">
-                                                {msg.content.length > 500 ? msg.content.substring(0, 500) + '...' : msg.content}
-                                                {msg.isEdited && <span className="ml-2 text-yellow-500/50 text-xs italic">(Edited)</span>}
-                                            </div>
-
-                                            {/* Display attached artifacts */}
-                                            {msg.artifacts && msg.artifacts.length > 0 && (
-                                                <div className="mt-4 pt-4 border-t border-gray-700/30 pl-11">
-                                                    <p className="text-xs text-purple-400 font-bold uppercase tracking-wider mb-2">Attached Files</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {msg.artifacts.map(artifact => (
-                                                            <div key={artifact.id} className="flex items-center gap-2 bg-gray-900 p-2 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-colors group/artifact">
-                                                                <span className="text-lg">📄</span>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs text-gray-300 font-medium truncate max-w-[150px]">{artifact.fileName}</span>
-                                                                    <span className="text-[10px] text-gray-600">{(artifact.fileSize / 1024).toFixed(1)} KB</span>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => handleRemoveMessageArtifact(idx, artifact.id)}
-                                                                    className="text-gray-600 hover:text-red-400 p-1 opacity-0 group-hover/artifact:opacity-100 transition-opacity"
-                                                                >
-                                                                    ✕
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                 </div>
             </div>
 
             {/* Artifact Manager Modal */}
-            {showArtifactManager && chatData && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
-                    <div className="bg-gray-800 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
-                        <div className="flex justify-between items-center p-6 border-b border-gray-700 shrink-0">
-                            <h2 className="text-2xl font-bold text-purple-300 flex items-center gap-3">
-                                📎 Manage Artifacts
-                                <span className="text-sm font-normal text-gray-400 bg-gray-900/50 px-3 py-1 rounded-full border border-gray-700">
-                                    {chatTitle}
-                                </span>
-                            </h2>
-                            <button
-                                onClick={() => setShowArtifactManager(false)}
-                                className="text-gray-400 hover:text-white transition-colors bg-gray-700/50 hover:bg-gray-700 p-2 rounded-lg"
-                            >
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
+            {
+                showArtifactManager && chatData && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
+                        <div className="bg-gray-800 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
+                            <div className="flex justify-between items-center p-6 border-b border-gray-700 shrink-0">
+                                <h2 className="text-2xl font-bold text-purple-300 flex items-center gap-3">
+                                    📎 Manage Artifacts
+                                    <span className="text-sm font-normal text-gray-400 bg-gray-900/50 px-3 py-1 rounded-full border border-gray-700">
+                                        {chatTitle}
+                                    </span>
+                                </h2>
+                                <button
+                                    onClick={() => setShowArtifactManager(false)}
+                                    className="text-gray-400 hover:text-white transition-colors bg-gray-700/50 hover:bg-gray-700 p-2 rounded-lg"
+                                >
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
 
-                        <div className="flex-1 overflow-hidden p-6 flex flex-col">
-                            <ArtifactManager
-                                session={{
-                                    id: loadedSessionId || Date.now().toString(),
-                                    name: chatTitle,
-                                    chatTitle,
-                                    date: metadata.date,
-                                    inputContent,
-                                    userName,
-                                    aiName,
-                                    selectedTheme,
-                                    parserMode,
-                                    chatData,
-                                    metadata: { ...metadata, artifacts }
-                                }}
-                                messages={chatData?.messages || []}
-                                manualMode={!loadedSessionId}
-                                onArtifactsChange={async (newArtifacts) => {
-                                    setArtifacts(newArtifacts);
-                                    if (loadedSessionId) {
-                                        const newMetadata = { ...metadata, artifacts: newArtifacts };
-                                        setMetadata(newMetadata);
-
-                                        // Also need to save this to storage to persist the artifacts pool update
-                                        // (Messages update is handled separately in onMessagesChange)
-                                        const updatedSession: SavedChatSession = {
-                                            id: loadedSessionId,
-                                            name: chatTitle,
-                                            date: metadata.date,
-                                            inputContent,
-                                            chatTitle,
-                                            userName,
-                                            aiName,
-                                            selectedTheme,
-                                            parserMode,
-                                            chatData: chatData || { messages: [] },
-                                            metadata: { ...newMetadata, title: chatTitle }
-                                        };
-                                        await storageService.saveSession(updatedSession);
-                                    }
-                                }}
-                                onMessagesChange={async (newMessages) => {
-                                    if (chatData) {
-                                        const updatedChatData = { ...chatData, messages: newMessages };
-                                        setChatData(updatedChatData);
-
-                                        // Regenerate HTML with new links
-                                        const html = generateHtml(
-                                            updatedChatData,
-                                            chatTitle,
-                                            selectedTheme,
-                                            userName,
-                                            aiName,
-                                            parserMode,
-                                            { ...metadata, title: chatTitle, artifacts },
-                                            false,
-                                            true // isPreview
-                                        );
-                                        setGeneratedHtml(html);
-
-                                        // Persist if session exists
+                            <div className="flex-1 overflow-hidden p-6 flex flex-col">
+                                <ArtifactManager
+                                    session={{
+                                        id: loadedSessionId || Date.now().toString(),
+                                        name: chatTitle,
+                                        chatTitle,
+                                        date: metadata.date,
+                                        inputContent,
+                                        userName,
+                                        aiName,
+                                        selectedTheme,
+                                        parserMode,
+                                        chatData,
+                                        metadata: { ...metadata, artifacts }
+                                    }}
+                                    messages={chatData?.messages || []}
+                                    manualMode={!loadedSessionId}
+                                    onArtifactsChange={async (newArtifacts) => {
+                                        setArtifacts(newArtifacts);
                                         if (loadedSessionId) {
-                                            const updatedSession: SavedChatSession = {
-                                                id: loadedSessionId,
-                                                name: chatTitle,
-                                                date: metadata.date,
-                                                inputContent,
+                                            const newMetadata = { ...metadata, artifacts: newArtifacts };
+                                            setMetadata(newMetadata);
+
+                                            // Use unified handleSaveChat
+                                            handleSaveChat(chatTitle, true, chatData || undefined, newMetadata);
+                                        }
+                                    }}
+                                    onMessagesChange={async (newMessages) => {
+                                        if (chatData) {
+                                            const updatedChatData = { ...chatData, messages: newMessages };
+                                            setChatData(updatedChatData);
+
+                                            // Regenerate HTML with new links
+                                            const html = generateHtml(
+                                                updatedChatData,
                                                 chatTitle,
+                                                selectedTheme,
                                                 userName,
                                                 aiName,
-                                                selectedTheme,
                                                 parserMode,
-                                                chatData: updatedChatData,
-                                                metadata: {
-                                                    ...metadata,
-                                                    title: chatTitle,
-                                                    artifacts: artifacts
-                                                }
-                                            };
-                                            await storageService.saveSession(updatedSession);
-                                        }
-                                    }
-                                }}
-                            />
-                        </div>
+                                                { ...metadata, title: chatTitle, artifacts },
+                                                false,
+                                                true // isPreview
+                                            );
+                                            setGeneratedHtml(html);
 
-                        <div className="p-6 border-t border-gray-700 bg-gray-900/30 shrink-0 flex justify-end">
-                            <button
-                                onClick={() => setShowArtifactManager(false)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-purple-500/20"
-                            >
-                                Done
-                            </button>
+                                            // Persist if session exists
+                                            if (loadedSessionId) {
+                                                handleSaveChat(chatTitle, true, updatedChatData);
+                                            }
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            <div className="p-6 border-t border-gray-700 bg-gray-900/30 shrink-0 flex justify-end">
+                                <button
+                                    onClick={() => setShowArtifactManager(false)}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-purple-500/20"
+                                >
+                                    Done
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Message Editor Modal */}
-            {chatData && editingMessageIndex !== null && (
-                <MessageEditorModal
-                    message={chatData.messages[editingMessageIndex]}
-                    messageIndex={editingMessageIndex}
-                    isOpen={editingMessageIndex !== null}
-                    onClose={() => setEditingMessageIndex(null)}
-                    onSave={handleSaveMessage}
+            {
+                chatData && editingMessageIndex !== null && (
+                    <MessageEditorModal
+                        message={chatData.messages[editingMessageIndex]}
+                        messageIndex={editingMessageIndex}
+                        isOpen={editingMessageIndex !== null}
+                        onClose={() => setEditingMessageIndex(null)}
+                        onSave={handleSaveMessage}
+                    />
+                )
+            }
+
+            {/* Reader Mode (Chat Preview) Modal */}
+            {showPreviewModal && chatData && (
+                <ChatPreviewModal
+                    session={{
+                        id: loadedSessionId || Date.now().toString(),
+                        name: chatTitle,
+                        chatTitle,
+                        date: metadata.date,
+                        inputContent,
+                        userName,
+                        aiName,
+                        selectedTheme,
+                        parserMode,
+                        chatData,
+                        metadata: { ...metadata, artifacts }
+                    }}
+                    onClose={() => setShowPreviewModal(false)}
+                    onSave={handlePreviewSave}
+                />
+            )}
+
+            {/* Raw Preview Modal */}
+            {showRawPreviewModal && chatData && (
+                <RawPreviewModal
+                    session={{
+                        id: loadedSessionId || Date.now().toString(),
+                        name: chatTitle,
+                        chatTitle,
+                        date: metadata.date,
+                        inputContent,
+                        userName,
+                        aiName,
+                        selectedTheme,
+                        parserMode,
+                        chatData,
+                        metadata: { ...metadata, artifacts }
+                    }}
+                    onClose={() => setShowRawPreviewModal(false)}
+                />
+            )}
+
+            {/* Configuration Modal */}
+            {showConfigurationModal && (
+                <ConfigurationModal
+                    chatTitle={chatTitle}
+                    userName={userName}
+                    aiName={aiName}
+                    selectedTheme={selectedTheme}
+                    onChatTitleChange={setChatTitle}
+                    onUserNameChange={setUserName}
+                    onAiNameChange={setAiName}
+                    onThemeChange={setSelectedTheme}
+                    onClose={() => setShowConfigurationModal(false)}
+                />
+            )}
+
+            {/* Metadata Modal */}
+            {showMetadataModal && (
+                <MetadataModal
+                    metadata={metadata}
+                    onChange={setMetadata}
+                    onClose={() => setShowMetadataModal(false)}
+                />
+            )}
+
+            {/* Chat Content Modal */}
+            {showChatContentModal && (
+                <ChatContentModal
+                    inputContent={inputContent}
+                    parserMode={parserMode}
+                    onInputContentChange={setInputContent}
+                    onConvert={handleConvert}
+                    isConverting={isConversing}
+                    onClose={() => setShowChatContentModal(false)}
+                />
+            )}
+
+            {/* Review & Edit Modal */}
+            {showReviewEditModal && (
+                <ReviewEditModal
+                    chatData={chatData}
+                    onEditMessage={handleEditMessage}
+                    onSaveMessage={handleSaveMessage}
+                    editingMessageIndex={editingMessageIndex}
+                    onAttachToMessage={handleAttachToMessage}
+                    onRemoveMessageArtifact={handleRemoveMessageArtifact}
+                    onClose={() => setShowReviewEditModal(false)}
                 />
             )}
         </div >

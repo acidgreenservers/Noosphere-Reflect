@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System 🗃️
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.6-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.7-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
@@ -119,14 +119,28 @@ New reusable prompt library for organizing and managing your best prompts:
 - **Full CRUD**: Create, read, update, delete with persistent storage
 
 ### Basic Converter (`/basic`)
-For clean, structured chat exports:
-1. Paste or import your chat text
-2. Optionally edit title, model, and username
-3. **Attach Files**: Upload session-level artifacts or attach to specific messages
-4. Preview the formatting
-5. Export as HTML, Markdown, or JSON (artifacts auto-included)
+Modern modal-based interface for clean, structured chat exports:
 
-**Best for**: Claude exports, ChatGPT logs, manually formatted conversations
+**🎨 Interactive Modal Layout:**
+- **Preview Row**: Reader Mode, Raw Preview, Download options
+- **Chat Setup Row**: Configuration, Metadata, Chat Content input
+- **Review Row**: Message editing, File attachments management
+
+**✨ Modal-Based Workflow:**
+1. **Configure Chat**: Title, usernames, theme selection in dedicated modal
+2. **Edit Metadata**: Tags, model info, and additional details
+3. **Input Content**: Large textarea with collapsible tools and parser hints
+4. **Review & Edit**: Interactive message editor with inline editing
+5. **Manage Files**: Full-screen artifact manager for uploads and organization
+
+**🚀 Features:**
+- **Full-Screen Modals**: Each section opens in a distraction-free modal with collapsible sidebars
+- **Live Preview**: Reader Mode and Raw HTML preview modals
+- **Advanced Editing**: Message-level editing with artifact attachment
+- **Auto-Save**: All changes persist automatically in the background
+- **Export Options**: HTML, Markdown, JSON with artifact inclusion
+
+**Best for**: Claude exports, ChatGPT logs, manually formatted conversations, and detailed chat management
 
 ### AI Studio (Integration)
 Via the Chrome Extension, intelligently parse unstructured chat logs:
@@ -211,7 +225,20 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.5 (Expanded)
+## 🆕 What's New in v0.5.6 (Current)
+
+### Auto-Save & Workflow Optimization
+- **Auto-Save Core**: Eliminated the manual "Save Session" button. All changes to metadata, config, and content are now background-saved automatically with a smart debounce.
+- **Collapsible Tag Standard**: Introduced the `<collapsible>` tag as a universal tool for custom toggle sections, replacing "Wrap Thought" with a more robust implementation.
+- **UI Reordering**: Moved "Chat Content" below "Metadata" for a more logical conversion flow: Setup → Input → Attachments.
+- **Centralized Persistence**: Message edits and artifact uploads now trigger silent auto-saves, ensuring your work is always safe.
+
+### Performance & Security
+- **Archive Hub Optimization**: 95% memory reduction by only loading metadata for the main list view.
+- **Background Search Indexing**: Streamed indexing allows for smooth searching without UI lag, even in massive libraries.
+- **Sandboxed Downloads**: Enhanced iframe security policy allowing artifact downloads via script-injection bypass.
+
+## 🆕 What's New in v0.5.5 (Added Jan 12-13)
 
 ### Configurable Export Filename Casing
 - **6 Casing Options**: Choose from `kebab-case`, `Kebab-Case`, `snake_case`, `Snake_Case`, `PascalCase`, and `camelCase`.
@@ -241,8 +268,9 @@ npm run dev
 - **Auto-Matching**: Uploaded files automatically attach to messages referencing the filename.
 - **Smart Deletion**: Synchronized removal from pool and/or messages based on intent.
 - **Re-Download**: artifacts can be downloaded back from browser storage (Base64 -> Blob).
-- **Preview Integration**: Artifacts fully clickable and downloadable within Reader Mode.
-- **UI Hydration**: Intelligent state recovery ensuring message badges appear even for legacy sessions.
+- **Wrap Thought Feature** (Basic Mode): Tool to manually wrap selected text in `<thought>` tags, preserving AI reasoning chains during manual imports.
+- **Documentation Integration**: Console scraper docs accessible directly via modal within the tool.
+- **Auto-Enrichment**: Logic to auto-extract titles, models, and tags from imported content (Basic Mode).ges appear even for legacy sessions.
 - **Performance**: Instant WYSIWYG synchronization between upload, preview, and export states.
 
 ### Prompt Archive (v0.5.5 - Added Jan 13, 2026)
@@ -328,6 +356,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 0.5.5
-**Last Updated**: January 13, 2026
-**Status**: Stable Release with Artifact UI Hydration & Prompt Archive ✅
+**Version**: 0.5.6
+**Last Updated**: January 15, 2026
+**Status**: Stable Release with Auto-Save & Collapsible Standard ✅

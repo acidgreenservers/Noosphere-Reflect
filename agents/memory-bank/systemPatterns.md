@@ -22,14 +22,20 @@
 - **Security & Rendering Patterns**:
   - **Sandboxed Previewer**: Use of strict `iframe` sandboxing (`allow-scripts`, `allow-downloads`) coupled with dynamic script injection to enable functionality (like downloads) that is normally blocked by sandbox navigation policies.
   - **Context-Aware Artifact Linking**: 
-    - *Preview*: Injects `onclick` handlers + Base64 Blobs.
-    - *Export*: Generates standard relative filesystem links.
+  - *Preview*: Injects `onclick` handlers + Base64 Blobs.
+  - *Export*: Generates standard relative filesystem links.
+
+### The Automation Layer (Silent UX)
+- **Auto-Save Persistence**: Forms in converter views follow a "Silent Persistence" pattern. Changes to core metadata (Title, Theme, Names) trigger a debounced background save (1.5s) to ensure zero data loss without requiring manual "Save" button clicks.
+- **ID-First Archiving**: The first conversion/parse automatically creates a database entry and captures the resulting ID. This ID is then used for all subsequent auto-saves in the same editing session, preventing row duplication.
+- **Collapsible Tagging Standard**: The `<collapsible>` tag is the application standard for user-defined toggle sections. It is treated as a first-class citizen alongside `<thought>` tags in all rendering engines.
 
 - **Visual Patterns (Noosphere Nexus)**:
 - **Glassmorphism**: `backdrop-blur-md` with semi-transparent overlays (`bg-gray-800/50`).
 - **Brand Theming**: Consistent color tokens for AI services (e.g., Claude Orange, Gemini Blue).
 - **Motion**: Standardized transitions (`duration-300`) and hover scales (`scale-105`).
 - **Reader Mode**: Full-screen, dark-themed modals for content consumption with "Jump to Message" navigation.
+- **Sticky Header Actions**: Primary actions (Upload, Import) relocated to sticky page headers for persistent accessibility.
 - **Inline Editing**: "Click-to-Edit" or "Toggle-Edit" patterns that swap read-only views for form inputs in-place.
 
 ## Specialist Agent Roles

@@ -38,6 +38,8 @@
 - **Sandboxed Previews**:
     - User content is rendered in `iframe` with strict `sandbox` attributes.
     - **Artifact Protection**: Downloads in previews bypass sandbox navigation restrictions via dynamic `Blob` URL injection and script-based `click` handling (`allow-scripts` + `allow-downloads`).
+    - **Auto-Save Flow**: Uses `useEffect` with `setTimeout` (1.5s debounce) to call the centralized `handleSaveChat` function in `BasicConverter.tsx`.
+    - **Collapsible Tags**: Parsed as `details/summary` blocks with a distinct "Collapsible Section" label to differentiate from thoughts.
     - **Navigation Blocking**: External links in previews are blocked/sanitized or forced to `_blank` (depending on mode) to prevent frame-busting.
 - **Context-Aware Rendering**:
     - **Preview Mode**: `data:` URIs and Blob scripts for offline interactivity.

@@ -106,6 +106,8 @@ export interface SavedChatSession {
   exportStatus?: 'exported' | 'not_exported'; // Mirror of metadata.exportStatus
 }
 
+export type SavedChatSessionMetadata = Omit<SavedChatSession, 'inputContent' | 'chatData'>;
+
 export interface AppSettings {
   defaultUserName: string;
   fileNamingCase: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase';

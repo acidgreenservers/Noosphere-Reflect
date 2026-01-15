@@ -13,15 +13,40 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.7',
+            date: 'Jan 15, 2026',
+            title: 'Modal-Based Interface Revolution',
+            items: [
+                'Complete BasicConverter UI overhaul with modal-first architecture and 3-row interactive layout.',
+                'Preview Row: Reader Mode, Raw Preview, Download buttons in clean responsive grid.',
+                'Chat Setup Row: Configuration, Metadata, Chat Content modals with collapsible sidebars.',
+                'Review Row: Message editing, File attachments management with dedicated modal spaces.',
+                '4 New Modal Components: ConfigurationModal, MetadataModal, ChatContentModal, ReviewEditModal.',
+                'Consistent Design Language: All modals follow ChatPreviewModal pattern with collapsible sidebars.',
+                'Color-Coded Sections: Blue (Config), Purple (Metadata), Emerald (Content), Orange (Review), Red (Attachments).',
+                'Responsive Grid Layouts: Stacked on mobile, 3-column on desktop with full-height boxes.',
+                'Enhanced User Experience: Direct modal access, progressive disclosure, visual hierarchy improvements.',
+                'Technical Implementation: Full TypeScript integration, proper modal state management, build compatibility.',
+            ]
+        },
+        {
             version: 'v0.5.6',
             date: 'Jan 14, 2026',
-            title: 'Security Hardening & Preview Downloads',
+            title: 'Performance, Security & Preview Downloads',
             items: [
+                'Auto-Save Feature: Eliminated the manual "Save Session" button in favor of a debounced background persistence layer.',
+                'Collapsible Support: Standardized the <collapsible> tag across the app for custom toggle sections.',
+                'UI Reordering: Optimized the Basic Converter workflow by moving the "Chat Content" block below "Metadata".',
                 'Context-Aware Artifact Links: Smart switching between "Blob Downloads" for previews and "Relative Paths" for exports.',
                 'Sandboxed Preview Upgrade: Enhanced security policy allowing downloads via injected scripts while blocking risky navigation.',
                 'Blob Script Bypass: Innovative solution to enable artifact downloads inside sandboxed iframes without compromising security.',
                 'Basic Converter Layout: Complete redesign with step-by-step workflow and improved user guidance.',
                 'Documentation Integration: Console scraper docs now accessible directly within the Basic Converter.',
+                'Duplicate Handling: Iterative renaming "Old Copy - N" for multiple re-imports.',
+                'Archive Hub Performance: Metadata-only loading reduced memory usage by ~95%.',
+                'On-Demand Fetching: Full content only loaded for Preview/Export/Edit.',
+                'Optimized Search: Background stream indexing prevents UI freezes.',
+                'Interaction Alignment: Memory & Prompt cards now open Reader Mode on click.',
             ]
         },
         {

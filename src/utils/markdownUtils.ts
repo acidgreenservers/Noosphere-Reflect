@@ -38,7 +38,36 @@ export function renderMarkdownToHtml(text: string): string {
         .replace(/^\s*\d+\.\s+(.*$)/gm, '<li class="ml-4 list-decimal text-gray-300">$1</li>') // Numbered list
         .replace(/\n/g, '<br/>'); // Line breaks
 
-    // 5. Restore code blocks
+    // 5. Thought & Collapsible Support (Handling the escaped tags &lt;thought&gt; and &lt;collapsible&gt;)
+    // Process thoughts
+    html = html.replace(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/g, (match, content) => {
+        return `
+            <details class="markdown-thought-block my-4">
+                <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
+                    Thought process: <span class="text-xs ml-2 opacity-70">(Click to expand)</span>
+                </summary>
+                <div class="markdown-thought-content p-3 border rounded-b-md">
+                    ${content.trim()}
+                </div>
+            </details>
+        `;
+    });
+
+    // Process collapsible
+    html = html.replace(/&lt;collapsible&gt;([\s\S]*?)&lt;\/collapsible&gt;/g, (match, content) => {
+        return `
+            <details class="markdown-collapsible-block my-4">
+                <summary class="markdown-collapsible-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
+                    Collapsible Section: <span class="text-xs ml-2 opacity-70">(Click to expand)</span>
+                </summary>
+                <div class="markdown-thought-content p-3 border rounded-b-md">
+                    ${content.trim()}
+                </div>
+            </details>
+        `;
+    });
+
+    // 6. Restore code blocks
     html = html.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => codeBlocks[parseInt(index)]);
     html = html.replace(/__INLINE_CODE_(\d+)__/g, (match, index) => inlineCode[parseInt(index)]);
 

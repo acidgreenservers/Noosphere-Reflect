@@ -1,11 +1,41 @@
 # Active Context
 
 ## Current Focus
-- **Stabilization & Security**: Validating recent Basic Converter and Artifact security upgrades via adversarial audit.
-- **Documentation**: Finalizing protocol updates for the new "Blob Script" download pattern.
-- **User Experience**: Monitoring feedback on the new "Vortex" aesthetic and import workflows.
+- **Governance Enhancement**: Added high-priority GOVERNANCE RULES section to all main agent files
+- **Memory Bank Integration**: Established mandatory Memory Bank updates on all changes (success & failure)
+- **Quality Assurance**: Implemented user approval requirement for all git commits
+- **Developer Engagement**: Enabled proactive challenge of user assumptions for better architecture
+- **Stabilization & UX**: Refining the new "Collapsible" tagging system and verifying the Auto-Save persistence layer.
 
 ## Recent Changes
+
+- **January 15, 2026 - GOVERNANCE RULES HARDENING** ⏳ PENDING COMMIT APPROVAL
+  - **Status**: CODE CHANGES COMPLETE ✅ | GIT COMMIT PENDING USER APPROVAL ⏳
+  - **Files Modified**:
+    1. `CLAUDE.md` - Added 🔒 GOVERNANCE RULES section
+    2. `GEMINI.md` - Added 🔒 GOVERNANCE RULES section
+    3. `CLINE.md` - Added 🔒 GOVERNANCE RULES section
+    4. `BLACKBOX.md` - Added 🔒 GOVERNANCE RULES section
+    5. `agents/memory-bank/activeContext.md` - Updated with governance entry
+  - **Changes Made**:
+    - Rule 1: **Mandatory User Approval for Git Commits** - No commits without explicit "yes" approval
+    - Rule 2: **Memory Bank Updates on Every Change** - Success and failure entries documented
+    - Rule 3: **Challenge & Question Assumptions** - Agents empowered to propose better implementations
+    - Rule 4: **Single Governance Section** - High-priority rules at top of every agent file
+  - **Commit Status**:
+    - Files staged: 5 files ready
+    - Commit message drafted and proposed to user
+    - User responded "not yet" - commit held pending further approval
+    - All changes preserved in git staging area
+  - **Rationale**: Creates transparency, prevents accidental commits, builds learning path through failures, enables proactive problem-solving
+  - **Next Steps**: Awaiting user approval to execute commit, or modifications to commit message
+
+- **January 15, 2026 - Basic Converter Auto-Save & Layout Optimization**:
+  - **Auto-Save Core**: Eliminated the manual "Save Session" button by implementing a debounced persistence layer that syncs all configuration and metadata changes automatically.
+  - **Collapsible Support**: Standardized the `<collapsible>` tag across the app, replacing the internal manual "Wrap Thought" tool with a premium "Collapsible" tool for custom organized sections.
+  - **Layout Reordering**: Moved the "Chat Content" input block below "Metadata" to create a logical "Setup -> Input -> Attachments" workflow.
+  - **Centralized Persistence**: Unified save logic in `BasicConverter.tsx` (message edits, artifact attachments, form changes) into a single, reliable `handleSaveChat` function.
+  - **ID Capture**: Implemented automatic capturing of the database ID after the first conversion/archive to prevent duplicate session spam during the same session.
 - **January 14, 2026 - Basic Converter UX Overhaul**:
   - **Layout Redesign**: Transformed BasicConverter from a cramped side-by-side view to a spacious, step-based single-column workflow with full-width preview.
   - **Import Guide**: Added "Import Method Guide" to educate users on Extension vs Console vs File methods.
@@ -17,6 +47,22 @@
   - **Metadata Auto-Enrichment**: Implemented `enrichMetadata` utility to auto-detect title, model, and tags from parsed content.
   - **In-App Documentation**: Created `DocsModal` to render markdown scraper docs directly within the UI.
   - **Visual Polish**: Aligned styling with the app's premium glassmorphism aesthetic (gradients, glows, backdrop-blur).
+- **January 14, 2026 - Archive Hub UX Tweak**:
+  - **Interaction Swap**: Changed Chat Card click to open Preview modal (Reader Mode) by default.
+  - **Edit Access**: Retasked the mini-button to "Edit Chat" for full converter access.
+  - **Edit Access**: Retasked the mini-button to "Edit Chat" for full converter access.
+  - **Duplicate Logic**: Updated import collision strategy to iteratively rename old sessions (`Old Copy`, `Old Copy - 1`, etc.).
+- **January 14, 2026 - Basic Converter Enhancement**:
+  - **Action Bar Relocation**: Moved "Upload File" and "Batch Import" to the sticky header for better accessibility.
+  - **Thought Preservation**: New "Wrap Thought" tool for manual imports to preserve reasoning chains.
+  - **UX Refinement**: "Justify-Between" layout for toolbar tools vs clear form actions.
+- **January 14, 2026 - Performance Optimization**:
+  - **Lightweight Loading**: `ArchiveHub` now loads metadata only (Omit `inputContent`/`chatData`), reducing memory usage by ~95%.
+  - **On-Demand Fetching**: Full session data is fetched DB-side only when previewing, exporting, or editing.
+  - **Streamed Indexing**: Search indexer processes sessions sequentially with main-thread yielding to prevent UI freezes.
+- **Interaction Alignment**:
+  - **Memory & Prompt Archives**: Updated card click to open Preview modal (Reader Mode).
+  - **Edit Button**: Retasked mini-button to "Edit" for opening the editor.
 - **January 13, 2026 - Artifact UI Sync & Preview Fixes**:
   - **Preview Modal**: Made artifacts in preview modals clickable and downloadable (Base64 -> Blob conversion).
   - **UI Hydration Logic**: Implemented "Message Artifact Hydration" in `loadSession` and `handleConvert`.
