@@ -1,7 +1,7 @@
 {
   "name": "noosphere-reflect",
   "private": true,
-  "version": "0.5.7",
+  "version": "0.5.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.4",
     "idb": "^8.0.3",
     "jszip": "^3.10.1",
     "minisearch": "^7.2.0",

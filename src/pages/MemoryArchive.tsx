@@ -13,8 +13,11 @@ import {
 import MemoryInput from '../components/MemoryInput';
 import MemoryList from '../components/MemoryList';
 import { ExportModal } from '../components/ExportModal';
+import { ExportDestinationModal } from '../components/ExportDestinationModal';
 import { MemoryPreviewModal } from '../components/MemoryPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
+import { useGoogleAuth } from '../contexts/GoogleAuthContext';
+import { googleDriveService } from '../services/googleDriveService';
 
 export default function MemoryArchive() {
     const navigate = useNavigate();
@@ -25,9 +28,14 @@ export default function MemoryArchive() {
     const [isExporting, setIsExporting] = useState(false);
     const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
     const [showExportModal, setShowExportModal] = useState(false);
+    const [showExportDestination, setShowExportDestination] = useState(false);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
-    const [exportPackage, setExportPackage] = useState<'directory' | 'zip'>('zip');
+    const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+    const [isSendingToDrive, setIsSendingToDrive] = useState(false);
+    const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
 
     useEffect(() => {
         loadMemories();
@@ -250,6 +258,136 @@ export default function MemoryArchive() {
         }
     };
 
+    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+        if (!isLoggedIn || !accessToken || !driveFolderId) {
+            alert('Please connect Google Drive in Settings first.');
+            return;
+        }
+
+        const selectedMetas = memories.filter(m => selectedMemories.has(m.id));
+        if (selectedMetas.length === 0) return;
+
+        setIsSendingToDrive(true);
+        try {
+            for (const memory of selectedMetas) {
+                const filename = sanitizeFilename(memory.title, 'kebab');
+
+                // Create memory-like structure for export
+                const memoryAsChat: ChatData = {
+                    messages: [{
+                        type: 'response' as const,
+                        content: memory.content,
+                        isEdited: false
+                    }],
+                    metadata: {
+                        title: memory.title,
+                        model: 'Memory',
+                        date: memory.createdAt,
+                        tags: memory.tags || []
+                    }
+                };
+
+                let content: string;
+                let mimeType: string;
+                let uploadFilename: string;
+
+                if (format === 'html') {
+                    content = generateHtml(
+                        memoryAsChat,
+                        memory.title,
+                        ChatTheme.DarkDefault,
+                        'User',
+                        'Memory',
+                        'claude-html',
+                        memoryAsChat.metadata
+                    );
+                    mimeType = 'text/html';
+                    uploadFilename = `${filename}.html`;
+                } else if (format === 'markdown') {
+                    content = generateMarkdown(
+                        memoryAsChat,
+                        memory.title,
+                        'User',
+                        'Memory',
+                        memoryAsChat.metadata
+                    );
+                    mimeType = 'text/markdown';
+                    uploadFilename = `${filename}.md`;
+                } else {
+                    content = generateJson(memoryAsChat, memoryAsChat.metadata);
+                    mimeType = 'application/json';
+                    uploadFilename = `${filename}.json`;
+                }
+
+                await googleDriveService.uploadFile(
+                    accessToken,
+                    content,
+                    uploadFilename,
+                    mimeType,
+                    driveFolderId
+                );
+            }
+
+            alert(`✅ Exported ${selectedMetas.length} memory(ies) to Google Drive`);
+            setExportModalOpen(false);
+        } catch (error) {
+            console.error('Google Drive export failed:', error);
+            alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSendingToDrive(false);
+        }
+    };
+
+    const handleExportToDrive = async () => {
+        if (!isLoggedIn || !accessToken || !driveFolderId) {
+            alert('Please connect Google Drive in Settings first.');
+            return;
+        }
+
+        const selected = memories.filter(m => selectedMemories.has(m.id));
+        if (selected.length === 0) return;
+
+        setIsSendingToDrive(true);
+        try {
+            // Upload each memory to Google Drive
+            for (const memory of selected) {
+                const filename = sanitizeFilename(memory.metadata.title, appSettings.fileNamingCase);
+
+                // Generate HTML content for upload
+                const content = generateMemoryHtml(memory);
+
+                // Upload to Google Drive
+                await googleDriveService.uploadFile(
+                    accessToken,
+                    content,
+                    `${filename}.html`,
+                    'text/html',
+                    driveFolderId
+                );
+
+                // Mark as exported
+                const updated = {
+                    ...memory,
+                    metadata: {
+                        ...memory.metadata,
+                        exportStatus: 'exported' as const
+                    }
+                };
+                await storageService.updateMemory(updated);
+            }
+
+            await loadMemories();
+            alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'memory' : 'memories'} to Google Drive`);
+            setShowExportDestination(false);
+            setSelectedMemories(new Set());
+        } catch (error) {
+            console.error('Google Drive export failed:', error);
+            alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSendingToDrive(false);
+        }
+    };
+
     const filteredMemories = memories.filter(m =>
         m.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.metadata.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -356,7 +494,7 @@ export default function MemoryArchive() {
 
                         <div className="relative">
                             <button
-                                onClick={() => setShowExportModal(true)}
+                                onClick={() => setShowExportDestination(true)}
                                 className="flex items-center gap-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors"
                                 title="Export selected memories"
                             >
@@ -391,10 +529,23 @@ export default function MemoryArchive() {
                     </div>
                 )}
 
+                {/* Export Destination Modal */}
+                <ExportDestinationModal
+                    isOpen={showExportDestination}
+                    onClose={() => setShowExportDestination(false)}
+                    onDestinationSelected={(destination) => {
+                        setExportDestination(destination);
+                        setShowExportDestination(false);
+                        setExportModalOpen(true);
+                    }}
+                    isExporting={isSendingToDrive}
+                    accentColor="purple"
+                />
+
                 {/* Export Modal */}
                 <ExportModal
-                    isOpen={showExportModal}
-                    onClose={() => setShowExportModal(false)}
+                    isOpen={exportModalOpen}
+                    onClose={() => setExportModalOpen(false)}
                     onExport={(format, packageType) => handleBatchExport(format, packageType)}
                     selectedCount={selectedMemories.size}
                     hasArtifacts={false}
@@ -403,6 +554,11 @@ export default function MemoryArchive() {
                     exportPackage={exportPackage}
                     setExportPackage={setExportPackage}
                     accentColor="purple"
+                    exportDestination={exportDestination}
+                    onExportDrive={async (format, packageType) => {
+                        await handleBatchExportToDrive(format, packageType);
+                    }}
+                    isExportingToDrive={isSendingToDrive}
                 />
             </div>
         </div>

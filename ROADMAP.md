@@ -128,7 +128,21 @@ This roadmap is organized into three tiers:
 
 ## 🚧 PLANNED PHASES (Active Work)
 
-### Sprint 6.3: Archive Hub Polish (v0.6.0)
+## Phase 6.2.5 Syncing And Organization Enhancement (v0.5.8.2)
+**GitHub Integration for sync**
+** Add New Folder System**
+** Add New Tag System**
+** Add New Search System**
+** Add New Filter System**
+** Add New Sort System**
+** Add New Group System**
+** Add New Star System**
+** Add New Pin System**
+** Add New Archive System**
+** Add New Trash System**
+** Add New Trash System**
+
+### Sprint 6.3: Archive Hub Polish (v0.5.8.3)
 **Goal:** Enhance Archive Hub with denser, more information-rich conversation cards.
 
 **Status**: 🚧 Next Up
@@ -149,14 +163,15 @@ This roadmap is organized into three tiers:
 
 ---
 
-### Sprint 5.1: Extension Reliability (v0.5.x)
+### Sprint 6.4: Extension Reliability (v0.5.3)
 **Goal:** Fix toast notification overlaps and improve extension UX.
+                      ^ Completed
 
 **Status**: 🚧 Planned
 
-#### Sprint 5.1 Tasks
-- [ ] Implement toast notification queue (prevent overlaps)
-- [ ] Fix toast stacking (side-by-side instead of on top)
+#### Sprint 6.4 Tasks
+- [x] Implement toast notification queue (prevent overlaps)
+- [x] Fix toast stacking (side-by-side instead of on top)
 - [ ] Improve error handling and user feedback
 - [ ] Extension settings optimization
 - [ ] Performance improvements for large captures
@@ -190,11 +205,11 @@ The following are potential future directions pending strategic decisions:
 
 ### Possible Future Phases
 - **PDF/DOCX/EPUB Export**: Enhanced export formats
-- **Cloud Synchronization**: Optional end-to-end encrypted backup
+- **Cloud Synchronization**: Optional end-to-end encrypted backup - Added Google Drive Sync (January 16, 2026)
 - **Cross-Platform Intelligence**: Semantic linking of conversations
 - **Additional AI Platforms**: Perplexity, HuggingChat, custom interfaces
 - **Artifact Auto-Capture**: Extension auto-detection during capture (foundation: v0.3.2)
-- **Collaboration Features**: Share, comment, annotate conversations
+- **Collaboration Features**: Share, comment, annotate conversations <<< MOVE UP LIST TO SPRINT 6.3
 
 ---
 

@@ -166,6 +166,7 @@
   - ✅ **Collapsible Tagging**: Implemented `<collapsible>` tag support across the app for custom toggle sections.
   - ✅ **Unified Persistence**: Integrated saving into message editing and artifact workflows.
   - ✅ **Layout Reordering**: Repositioned content blocks for a more intuitive conversion flow.
+  - ✅ **Editor Refinement**: Split "Add Message" into dual AI/User buttons and simplified the main Converter UI to a single dynamic action button.
 
 - **January 14, 2026 - UX Refinements & Wrap Thought ✅**:
   - ✅ **Action Bar Relocation**: Moved import buttons to sticky header for better ux.

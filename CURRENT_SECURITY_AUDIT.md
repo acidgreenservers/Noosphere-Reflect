@@ -1,40 +1,42 @@
-# Security Audit Walkthrough: Modal UX & Auto-Save
+# Security Audit Walkthrough: Google Drive Integration & v0.5.8 Features
 
 ## Summary
 [Overall security posture: ✅ Safe]
 
-The complete overhaul of the Basic Converter interface, including the introduction of "Reader Mode", "Auto-Save", and the new `<collapsible>` tag standard, has been implemented with robust security controls. The "Markdown Firewall" remains effective across all new rendering paths.
+The implementation of Google Drive integration follows best practices for client-side OAuth, utilizing the "Least Privilege" `drive.file` scope. The associated Content Security Policy (CSP) updates are necessary and correctly scoped.
 
 ## Audit Findings
 
-### `src/pages/BasicConverter.tsx` & `src/components/ChatPreviewModal.tsx`
-#### 1. Vulnerability Check: Reader Mode Rendering
-- **Status**: ✅ Safe
-- **Analysis**: The new "Reader Mode" (`ChatPreviewModal`) renders content using `dangerouslySetInnerHTML`. However, the input is passed through `renderMarkdownToHtml` (in `src/utils/markdownUtils.ts`), which strictly applies the **"Escape First"** pattern: `text.replace(/&/g, '&amp;')...` runs before any formatting logic. This neutralizes XSS vectors.
-- **Verification**: Verified `src/utils/markdownUtils.ts` line 7-10.
+### `src/services/googleDriveService.ts`
+#### 1. GQL Injection Risk (Line 22)
+- **Status**: ✅ Safe (Context-dependent)
+- **Analysis**: The `searchFolder` method constructs a query string using string interpolation: `name='${folderName}'`. If `folderName` contained single quotes, it could break the query syntax.
+- **Context**: Currently, this method is only called with the hardcoded string `'Noosphere-Reflect'`, making it exploit-proof in the current implementation.
+- **Remediation**: If this service is exposed to user input in the future, `folderName` must be sanitized by escaping single quotes (`folderName.replace(/'/g, "\'")`).
 
-#### 2. Vulnerability Check: Auto-Save State Integrity
-- **Status**: ✅ Safe
-- **Analysis**: The auto-save logic in `BasicConverter` uses a debounced `useEffect` (1.5s). Crucially, it captures the `loadedSessionId` after the first save. This prevents a race condition where rapid edits could spawn multiple duplicate sessions in IndexedDB.
-- **Remediation**: N/A
+### `src/contexts/GoogleAuthContext.tsx`
+#### 1. Token Storage (Line 40)
+- **Status**: ⚠️ Warning (Accepted Risk)
+- **Analysis**: Google Access Tokens are stored in `localStorage`. This is standard for client-side-only applications ("Local-First") but exposes the token to any XSS vulnerability in the application.
+- **Mitigation**: The OAuth scope is strictly limited to `https://www.googleapis.com/auth/drive.file`, meaning a stolen token can only access files *created by this application*, not the user's entire Google Drive. This drastically reduces the blast radius.
 
-### `src/services/storageService.ts`
-#### 3. Vulnerability Check: Duplicate Renaming Denial of Service
+### `index.html`
+#### 1. Content Security Policy Relaxation (Line 8)
 - **Status**: ✅ Safe
-- **Analysis**: The iterative renaming logic (`Old Copy - 1`, `Old Copy - 2`...) now includes a hard limit. If the counter exceeds 100 collisions, it throws an error instead of looping indefinitely. This prevents a potential main-thread freeze (DoS) if a user somehow has thousands of identical session titles.
-- **Verification**: Verified `src/services/storageService.ts` lines 270-272.
+- **Analysis**: Added `https://accounts.google.com` and `https://www.googleapis.com` to `script-src` and `connect-src`. This is required for the Google Identity Services SDK and Drive API usage. The policy remains strict otherwise.
 
-### `src/services/converterService.ts`
-#### 4. Vulnerability Check: Collapsible Tag Injection
+### `src/pages/ArchiveHub.tsx`
+#### 1. Session Merging Logic (Lines 160-200)
 - **Status**: ✅ Safe
-- **Analysis**: The new `<collapsible>` tags are processed alongside `<thought>` tags. The regex logic ensures that the *content* inside these tags is processed by `applyInlineFormatting`, which handles HTML escaping. Malicious scripts wrapped in collapsible tags will be rendered as harmless text.
+- **Analysis**: The new logic handles merging of imported sessions (`importType === 'merge'`). It correctly deduplicates artifacts by ID and appends messages.
+- **Note**: The logic relies on `normalizedTitle` for matching. Users should be aware that merging is destructive to the *structure* of the target session (appending content), though no existing messages are deleted.
 
 ## Verification
-- **Build Status**: ✅ Succeeded (implied).
+- **Build Status**: ✅ Succeeded (Exit Code 0).
 - **Manual Verification**:
-    1.  **XSS Test**: Input `<collapsible><script>alert(1)</script></collapsible>`.
-    2.  **Expectation**: "Reader Mode" and "Raw Preview" both render the script tags literally (`&lt;script&gt;`), preventing execution.
-    3.  **Auto-Save**: Verified that typing in the description triggers a save (console log) without creating a new session ID.
+    1.  Verified `VITE_GOOGLE_CLIENT_ID` validation logic in UI.
+    2.  Confirmed CSP allows Google scripts but blocks unknown sources.
+    3.  Confirmed "Connect Drive" button is reachable (Z-Index fix).
 
 ## Security Notes
-- **Sandboxing**: The `iframe` sandbox in `BasicConverter` (Step 0) retains `allow-scripts` to support the Blob download workaround. This is a calculated risk acceptance necessary for the feature, mitigated by the strict input sanitization pipeline.
+- **Future Recommendation**: If the app backend evolves, consider moving the OAuth flow to a backend-for-frontend (BFF) pattern to keep tokens `HttpOnly`. For now, the current implementation is appropriate for a Local-First architecture.

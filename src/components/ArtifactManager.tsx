@@ -294,20 +294,20 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
             </div>
           )}
 
-          {/* Session-Level Artifacts */}
-          {artifacts.length > 0 && (
+          {/* Session-Level Artifacts - Only Unattached */}
+          {artifacts.filter(a => a.insertedAfterMessageIndex === undefined).length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
                   Global Files
                 </h4>
                 <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-xs font-bold">
-                  {artifacts.length}
+                  {artifacts.filter(a => a.insertedAfterMessageIndex === undefined).length}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-1 gap-3">
-                {artifacts.map(artifact => (
+                {artifacts.filter(a => a.insertedAfterMessageIndex === undefined).map(artifact => (
                   <div
                     key={artifact.id}
                     className="group border border-gray-200 rounded-lg p-3 bg-white hover:border-purple-300 hover:shadow-md transition-all duration-200"
@@ -328,26 +328,19 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
                         </div>
                         
                         <div className="mt-2">
-                          {artifact.insertedAfterMessageIndex !== undefined ? (
-                            <div className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-flex items-center gap-1 border border-emerald-100">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              Linked after Message #{artifact.insertedAfterMessageIndex + 1}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <label className="text-xs text-gray-500">Link to:</label>
-                              <select
-                                className="bg-gray-50 border border-gray-300 rounded text-xs px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500 w-full max-w-[200px]"
-                                onChange={(e) => handleInsertLink(artifact.id, parseInt(e.target.value))}
-                                defaultValue=""
-                              >
-                                <option value="" disabled>Select message...</option>
-                                {messages.map((msg, idx) => (
-                                  <option key={idx} value={idx}>#{idx + 1} ({msg.type})</option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500">Link to:</label>
+                            <select
+                              className="bg-gray-50 border border-gray-300 rounded text-xs px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500 w-full max-w-[200px]"
+                              onChange={(e) => handleInsertLink(artifact.id, parseInt(e.target.value))}
+                              defaultValue=""
+                            >
+                              <option value="" disabled>Select message...</option>
+                              {messages.map((msg, idx) => (
+                                <option key={idx} value={idx}>#{idx + 1} ({msg.type})</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
 
@@ -374,20 +367,20 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
             </div>
           )}
 
-          {/* Message-Level Artifacts */}
-          {messageArtifacts.length > 0 && (
+          {/* Message-Level Artifacts - Only Attached */}
+          {artifacts.filter(a => a.insertedAfterMessageIndex !== undefined).length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3 mt-6">
                 <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
                   Message Attachments
                 </h4>
                 <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                  {messageArtifacts.length}
+                  {artifacts.filter(a => a.insertedAfterMessageIndex !== undefined).length}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-1 gap-3">
-                {messageArtifacts.map((artifact: any) => (
+                {artifacts.filter(a => a.insertedAfterMessageIndex !== undefined).map((artifact) => (
                   <div
                     key={artifact.id}
                     className="group border border-purple-100 rounded-lg p-3 bg-purple-50/30 hover:border-purple-300 hover:shadow-md transition-all duration-200"
@@ -407,7 +400,7 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
                           </span>
                         </div>
                         <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
-                          💬 Attached to Message #{artifact._messageIndex + 1}
+                          💬 Attached to Message #{artifact.insertedAfterMessageIndex + 1}
                         </p>
                       </div>
 
@@ -420,7 +413,7 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = ({
                           ⬇
                         </button>
                         <button
-                          onClick={() => handleRemove(artifact.id, artifact._messageIndex)}
+                          onClick={() => handleRemove(artifact.id, artifact.insertedAfterMessageIndex)}
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
                           title="Unlink"
                         >

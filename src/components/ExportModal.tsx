@@ -8,9 +8,12 @@ interface ExportModalProps {
     hasArtifacts?: boolean;
     exportFormat: 'html' | 'markdown' | 'json';
     setExportFormat: (format: 'html' | 'markdown' | 'json') => void;
-    exportPackage: 'directory' | 'zip';
-    setExportPackage: (packageType: 'directory' | 'zip') => void;
+    exportPackage: 'directory' | 'zip' | 'single';
+    setExportPackage: (packageType: 'directory' | 'zip' | 'single') => void;
     accentColor?: string; // e.g., 'green' for chats, 'purple' for memories
+    exportDestination?: 'local' | 'drive'; // Track where export is going
+    onExportDrive?: (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => Promise<void>;
+    isExportingToDrive?: boolean;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -23,11 +26,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     setExportFormat,
     exportPackage,
     setExportPackage,
-    accentColor = 'green'
+    accentColor = 'green',
+    exportDestination = 'local',
+    onExportDrive,
+    isExportingToDrive = false
 }) => {
     if (!isOpen) return null;
 
     const accentColorClass = accentColor === 'purple' ? 'text-purple-300' : 'text-green-300';
+
+    const handleExportClick = async () => {
+        if (exportDestination === 'drive' && onExportDrive) {
+            await onExportDrive(exportFormat, exportPackage as 'directory' | 'zip' | 'single');
+        } else {
+            onExport(exportFormat, exportPackage as 'directory' | 'zip');
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
@@ -55,12 +69,23 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Package Selection (only for single export) */}
+                    {/* Package Selection */}
                     {selectedCount === 1 && (
                         <div>
                             <label className="block text-sm font-semibold text-gray-300 mb-3">Package:</label>
-                            <div className="flex gap-3">
-                                <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                            <div className="flex gap-2 flex-wrap">
+                                <label className="flex items-center gap-2 flex-1 min-w-max cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="package"
+                                        value="single"
+                                        checked={exportPackage === 'single'}
+                                        onChange={(e) => setExportPackage(e.target.value as any)}
+                                        className="w-4 h-4"
+                                    />
+                                    <span className="text-sm text-gray-200">Single File</span>
+                                </label>
+                                <label className="flex items-center gap-2 flex-1 min-w-max cursor-pointer">
                                     <input
                                         type="radio"
                                         name="package"
@@ -71,7 +96,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                                     />
                                     <span className="text-sm text-gray-200">Directory</span>
                                 </label>
-                                <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                                <label className="flex items-center gap-2 flex-1 min-w-max cursor-pointer">
                                     <input
                                         type="radio"
                                         name="package"
@@ -94,19 +119,30 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                             </p>
                         </div>
                     )}
+
+                    {/* Export Destination */}
+                    {exportDestination === 'drive' && (
+                        <div className="bg-green-900/20 border border-green-600/50 rounded-lg p-3">
+                            <p className="text-sm text-green-200">
+                                ☁️ Export will be uploaded to Google Drive
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-3 mt-8">
                     <button
-                        onClick={() => onExport(exportFormat, exportPackage)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                        onClick={handleExportClick}
+                        disabled={isExportingToDrive}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
-                        Export
+                        {isExportingToDrive ? 'Uploading...' : 'Export'}
                     </button>
                     <button
                         onClick={onClose}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors"
+                        disabled={isExportingToDrive}
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors"
                     >
                         Cancel
                     </button>

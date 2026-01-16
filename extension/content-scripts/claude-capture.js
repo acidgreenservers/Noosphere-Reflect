@@ -6,13 +6,24 @@
 
 // Listen for capture trigger from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'CAPTURE_CHAT') {
-    captureClaudeChat()
+  if (request.action === 'CAPTURE_CHAT' || request.action === 'CAPTURE_CHAT_COPY') {
+    const importType = request.action === 'CAPTURE_CHAT_COPY' ? 'copy' : 'merge';
+    captureClaudeChat(importType)
       .then(result => {
         sendResponse({ success: true, title: result.title });
         chrome.runtime.sendMessage({ action: 'CAPTURE_SUCCESS', title: result.title });
       })
       .catch(error => handleError(error, sendResponse));
+    return true;
+  }
+
+  if (request.action === 'COPY_MARKDOWN') {
+    handleCopyAction('markdown', sendResponse);
+    return true;
+  }
+
+  if (request.action === 'COPY_JSON') {
+    handleCopyAction('json', sendResponse);
     return true;
   }
 });
@@ -23,12 +34,34 @@ function handleError(error, sendResponse) {
   window.ToastManager.show(`Error: ${error.message}`, 'error');
 }
 
-async function extractSessionData() {
+async function handleCopyAction(format, sendResponse) {
+  try {
+    const session = await extractSessionData();
+    let content = '';
+
+    if (format === 'markdown') {
+      content = serializeAsMarkdown(session.chatData, session.metadata);
+    } else {
+      content = serializeAsJson(session.chatData);
+    }
+
+    await navigator.clipboard.writeText(content);
+    window.ToastManager.show(`✅ Copied as ${format.toUpperCase()}!`);
+    sendResponse({ success: true });
+  } catch (error) {
+    handleError(error, sendResponse);
+  }
+}
+
+async function extractSessionData(importType = 'merge') {
   const htmlContent = document.documentElement.outerHTML;
   const chatData = parseClaudeHtml(htmlContent);
   const title = extractPageTitle() || 'Claude Conversation';
   const timestamp = new Date().toISOString();
   const userName = await getUsernameFromWebApp();
+
+  const metadata = new ChatMetadata(title, 'Claude', timestamp, [], '', window.location.href);
+  metadata.importType = importType; // Set import strategy
 
   return new SavedChatSession({
     id: generateSessionId(),
@@ -41,12 +74,12 @@ async function extractSessionData() {
     selectedTheme: ChatTheme.DarkDefault,
     parserMode: ParserMode.ClaudeHtml,
     chatData: chatData,
-    metadata: new ChatMetadata(title, 'Claude', timestamp, [], '', window.location.href)
+    metadata: metadata
   });
 }
 
-async function captureClaudeChat() {
-  const session = await extractSessionData();
+async function captureClaudeChat(importType = 'merge') {
+  const session = await extractSessionData(importType);
   const title = session.name;
 
   if (await isStorageQuotaWarning()) {

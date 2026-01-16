@@ -37,6 +37,7 @@
 - **Reader Mode**: Full-screen, dark-themed modals for content consumption with "Jump to Message" navigation.
 - **Sticky Header Actions**: Primary actions (Upload, Import) relocated to sticky page headers for persistent accessibility.
 - **Inline Editing**: "Click-to-Edit" or "Toggle-Edit" patterns that swap read-only views for form inputs in-place.
+- **Guided Ingestion**: Replacement of raw text inputs with multi-step Wizards (Method -> Input -> Verify) to validate data before it enters application state.
 
 ## Specialist Agent Roles
 1.  **Claude Code (Builder)**: Implementer and Debugger.

@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
-import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS } from '../types';
+import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact } from '../types';
 import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateBatchZipExport } from '../services/converterService';
 import { storageService } from '../services/storageService';
 import SettingsModal from '../components/SettingsModal';
 import { ArtifactManager } from '../components/ArtifactManager';
 import { ExportModal } from '../components/ExportModal';
+import { ExportDestinationModal } from '../components/ExportDestinationModal';
 import { ChatPreviewModal } from '../components/ChatPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
 import { SearchInterface } from '../components/SearchInterface';
 import { searchService } from '../services/searchService';
+import { useGoogleAuth } from '../contexts/GoogleAuthContext';
+import { googleDriveService } from '../services/googleDriveService';
 
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSessionMetadata[]>([]);
@@ -20,7 +23,8 @@ const ArchiveHub: React.FC = () => {
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
     const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
-    const [exportPackage, setExportPackage] = useState<'directory' | 'zip'>('directory');
+    const [showExportDestination, setShowExportDestination] = useState(false);
+    const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('directory');
     const [settingsModalOpen, setSettingsModalOpen] = useState(false);
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -28,8 +32,11 @@ const ArchiveHub: React.FC = () => {
     const [previewSession, setPreviewSession] = useState<SavedChatSession | null>(null);
     const [showArtifactManager, setShowArtifactManager] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
+    const [isSendingToDrive, setIsSendingToDrive] = useState(false);
+    const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const location = useLocation();
     const navigate = useNavigate();
+    const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
 
     useEffect(() => {
         let cancelled = false;
@@ -154,10 +161,68 @@ const ArchiveHub: React.FC = () => {
                             let importedCount = 0;
                             for (const session of sessions) {
                                 try {
-                                    await storageService.saveSession(session);
+                                    const importType = session.metadata?.importType; // 'merge' | 'copy' (undefined = merge default)
+
+                                    if (importType === 'copy') {
+                                        // Case 1: Force New / Copy
+                                        // Just save it. Storage service creates "Old Copy" if title exists.
+                                        await storageService.saveSession(session);
+                                        console.log(`✨ Imported as valid copy: ${session.metadata?.title}`);
+                                    } else {
+                                        // Case 2: Merge (Default)
+                                        // Check if session exists
+                                        const normalizedTitle = session.normalizedTitle || session.metadata?.title ? (await import('../utils/textNormalization')).normalizeTitle(session.metadata?.title || '') : '';
+
+                                        let existingSession = null;
+                                        if (normalizedTitle) {
+                                            existingSession = await storageService.getSessionByNormalizedTitle(normalizedTitle);
+                                        }
+
+                                        if (existingSession) {
+                                            console.log(`🔄 Merging content into existing session: ${existingSession.name}`);
+
+                                            // Merge Messages
+                                            const existingMessages = existingSession.chatData?.messages || [];
+                                            const newMessages = session.chatData?.messages || [];
+                                            const updatedMessages = [...existingMessages, ...newMessages];
+
+                                            // Merge Artifacts
+                                            const distinctArtifacts = [...(existingSession.metadata?.artifacts || [])];
+                                            const newArtifacts = session.metadata?.artifacts || [];
+                                            newArtifacts.forEach((art: ConversationArtifact) => {
+                                                if (!distinctArtifacts.some(existing => existing.id === art.id)) {
+                                                    distinctArtifacts.push(art);
+                                                }
+                                            });
+
+                                            // Create Merged Session Object
+                                            const mergedSession: SavedChatSession = {
+                                                ...existingSession,
+                                                date: new Date().toISOString(), // Update modified date
+                                                chatData: {
+                                                    messages: updatedMessages,
+                                                    metadata: existingSession.chatData?.metadata
+                                                },
+                                                metadata: {
+                                                    title: existingSession.metadata?.title || existingSession.name, // Ensure title exists
+                                                    model: existingSession.metadata?.model || 'Unknown',
+                                                    date: existingSession.metadata?.date || new Date().toISOString(),
+                                                    tags: existingSession.metadata?.tags || [],
+                                                    ...existingSession.metadata,
+                                                    artifacts: distinctArtifacts,
+                                                },
+                                                // Append content for record
+                                                inputContent: existingSession.inputContent + '\n\n' + session.inputContent
+                                            };
+
+                                            await storageService.saveSession(mergedSession);
+                                        } else {
+                                            // New Session (despite 'merge' intent, nothing to merge with)
+                                            await storageService.saveSession(session);
+                                        }
+                                    }
+
                                     importedCount++;
-                                    console.log(`✅ Imported session ${importedCount}/${sessions.length}:`,
-                                        session.metadata?.title || session.chatTitle);
                                 } catch (error) {
                                     console.error('Failed to import session:', error);
                                 }
@@ -268,7 +333,8 @@ const ArchiveHub: React.FC = () => {
             alert('Please select at least one chat to export.');
             return;
         }
-        setExportModalOpen(true);
+        // Show destination modal first instead of format modal
+        setShowExportDestination(true);
     };
 
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json') => {
@@ -448,7 +514,7 @@ const ArchiveHub: React.FC = () => {
                         exportDate: new Date().toISOString(),
                         exportedBy: {
                             tool: 'Noosphere Reflect',
-                            version: '0.5.7'
+                            version: '0.5.8'
                         },
                         chats: [{
                             filename: baseFilename,
@@ -533,6 +599,234 @@ const ArchiveHub: React.FC = () => {
         } catch (err) {
             console.error('Failed to copy to clipboard:', err);
             alert('Failed to copy to clipboard.');
+        }
+    };
+
+    const handleExportToDriveWithFormat = async (sessionMeta: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+        if (!isLoggedIn || !accessToken || !driveFolderId) {
+            alert('Please connect Google Drive in Settings first.');
+            return;
+        }
+
+        try {
+            // Fetch FULL session
+            const session = await storageService.getSessionById(sessionMeta.id);
+            if (!session) {
+                alert('Failed to load session data');
+                return;
+            }
+
+            const theme = session.selectedTheme || ChatTheme.DarkDefault;
+            const userName = session.userName || 'User';
+            const aiName = session.aiName || 'AI';
+            const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+            const filename = sanitizeFilename(
+                session.metadata?.title || session.chatTitle,
+                appSettings.fileNamingCase
+            );
+
+            // Generate content based on format
+            let content: string;
+            let mimeType: string;
+            let uploadFilename: string;
+
+            if (format === 'html') {
+                content = generateHtml(
+                    session.chatData!,
+                    title,
+                    theme,
+                    userName,
+                    aiName,
+                    session.parserMode,
+                    session.metadata
+                );
+                mimeType = 'text/html';
+                uploadFilename = `${filename}.html`;
+            } else if (format === 'markdown') {
+                content = generateMarkdown(
+                    session.chatData!,
+                    title,
+                    userName,
+                    aiName,
+                    session.metadata
+                );
+                mimeType = 'text/markdown';
+                uploadFilename = `${filename}.md`;
+            } else {
+                content = generateJson(session.chatData!, session.metadata);
+                mimeType = 'application/json';
+                uploadFilename = `${filename}.json`;
+            }
+
+            // Upload single file to Google Drive
+            await googleDriveService.uploadFile(
+                accessToken,
+                content,
+                uploadFilename,
+                mimeType,
+                driveFolderId
+            );
+
+            // Mark as exported
+            await storageService.updateExportStatus(session.id, 'exported');
+            await loadSessions();
+            alert(`✅ Uploaded to Google Drive: ${uploadFilename}`);
+            setExportModalOpen(false);
+        } catch (error) {
+            console.error('Google Drive export failed:', error);
+            alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSendingToDrive(false);
+        }
+    };
+
+    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+        if (!isLoggedIn || !accessToken || !driveFolderId) {
+            alert('Please connect Google Drive in Settings first.');
+            return;
+        }
+
+        const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
+        if (selectedMetas.length === 0) return;
+
+        setIsSendingToDrive(true);
+        try {
+            // Fetch FULL sessions for export
+            const fullSessions: SavedChatSession[] = [];
+            for (const meta of selectedMetas) {
+                const full = await storageService.getSessionById(meta.id);
+                if (full) fullSessions.push(full);
+            }
+
+            // Upload each session to Google Drive
+            for (const session of fullSessions) {
+                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const userName = session.userName || 'User';
+                const aiName = session.aiName || 'AI';
+                const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+                const filename = sanitizeFilename(
+                    session.metadata?.title || session.chatTitle,
+                    appSettings.fileNamingCase
+                );
+
+                let content: string;
+                let mimeType: string;
+                let uploadFilename: string;
+
+                if (format === 'html') {
+                    content = generateHtml(
+                        session.chatData!,
+                        title,
+                        theme,
+                        userName,
+                        aiName,
+                        session.parserMode,
+                        session.metadata
+                    );
+                    mimeType = 'text/html';
+                    uploadFilename = `${filename}.html`;
+                } else if (format === 'markdown') {
+                    content = generateMarkdown(
+                        session.chatData!,
+                        title,
+                        userName,
+                        aiName,
+                        session.metadata
+                    );
+                    mimeType = 'text/markdown';
+                    uploadFilename = `${filename}.md`;
+                } else {
+                    content = generateJson(session.chatData!, session.metadata);
+                    mimeType = 'application/json';
+                    uploadFilename = `${filename}.json`;
+                }
+
+                // Upload to Google Drive
+                await googleDriveService.uploadFile(
+                    accessToken,
+                    content,
+                    uploadFilename,
+                    mimeType,
+                    driveFolderId
+                );
+
+                // Mark as exported
+                await storageService.updateExportStatus(session.id, 'exported');
+            }
+
+            await loadSessions();
+            alert(`✅ Exported ${selectedMetas.length} conversation(s) to Google Drive`);
+            setExportModalOpen(false);
+        } catch (error) {
+            console.error('Google Drive export failed:', error);
+            alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSendingToDrive(false);
+        }
+    };
+
+    const handleExportToDrive = async () => {
+        if (!isLoggedIn || !accessToken || !driveFolderId) {
+            alert('Please connect Google Drive in Settings first.');
+            return;
+        }
+
+        const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
+        if (selectedMetas.length === 0) return;
+
+        setIsSendingToDrive(true);
+        try {
+            // Fetch FULL sessions for export
+            const fullSessions: SavedChatSession[] = [];
+            for (const meta of selectedMetas) {
+                const full = await storageService.getSessionById(meta.id);
+                if (full) fullSessions.push(full);
+            }
+
+            // Upload each session to Google Drive
+            for (const session of fullSessions) {
+                const filename = sanitizeFilename(
+                    session.metadata?.title || session.chatTitle,
+                    appSettings.fileNamingCase
+                );
+
+                // Generate HTML content for upload
+                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const userName = session.userName || 'User';
+                const aiName = session.aiName || 'AI';
+                const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
+
+                const content = generateHtml(
+                    session.chatData!,
+                    title,
+                    theme,
+                    userName,
+                    aiName,
+                    session.parserMode,
+                    session.metadata
+                );
+
+                // Upload to Google Drive
+                await googleDriveService.uploadFile(
+                    accessToken,
+                    content,
+                    `${filename}.html`,
+                    'text/html',
+                    driveFolderId
+                );
+
+                // Mark as exported
+                await storageService.updateExportStatus(session.id, 'exported');
+            }
+
+            await loadSessions();
+            alert(`✅ Exported ${selectedMetas.length} conversation(s) to Google Drive`);
+            setShowExportDestination(false);
+        } catch (error) {
+            console.error('Google Drive export failed:', error);
+            alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSendingToDrive(false);
         }
     };
 
@@ -949,6 +1243,19 @@ const ArchiveHub: React.FC = () => {
                 </div>
             )}
 
+            {/* Export Destination Modal */}
+            <ExportDestinationModal
+                isOpen={showExportDestination}
+                onClose={() => setShowExportDestination(false)}
+                onDestinationSelected={(destination) => {
+                    setExportDestination(destination);
+                    setShowExportDestination(false);
+                    setExportModalOpen(true);
+                }}
+                isExporting={isSendingToDrive}
+                accentColor="green"
+            />
+
             {/* Export Modal */}
             <ExportModal
                 isOpen={exportModalOpen}
@@ -971,6 +1278,19 @@ const ArchiveHub: React.FC = () => {
                 exportPackage={exportPackage}
                 setExportPackage={setExportPackage}
                 accentColor="green"
+                exportDestination={exportDestination}
+                onExportDrive={async (format, packageType) => {
+                    if (selectedIds.size === 1) {
+                        const sessionId = Array.from(selectedIds)[0];
+                        const session = sessions.find(s => s.id === sessionId);
+                        if (session) {
+                            await handleExportToDriveWithFormat(session, format, packageType);
+                        }
+                    } else {
+                        await handleBatchExportToDrive(format, packageType);
+                    }
+                }}
+                isExportingToDrive={isSendingToDrive}
             />
 
             {/* Artifact Manager Modal */}

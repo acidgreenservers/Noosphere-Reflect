@@ -13,8 +13,11 @@ import {
 import MemoryInput from '../components/MemoryInput';
 import MemoryList from '../components/MemoryList';
 import { ExportModal } from '../components/ExportModal';
+import { ExportDestinationModal } from '../components/ExportDestinationModal';
 import { MemoryPreviewModal } from '../components/MemoryPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
+import { useGoogleAuth } from '../contexts/GoogleAuthContext';
+import { googleDriveService } from '../services/googleDriveService';
 
 // For now, adapt Memory components to work with Prompts
 // We'll treat a Prompt like a Memory where aiModel becomes category
@@ -28,9 +31,14 @@ export default function PromptArchive() {
     const [isExporting, setIsExporting] = useState(false);
     const [selectedPrompts, setSelectedPrompts] = useState<Set<string>>(new Set());
     const [showExportModal, setShowExportModal] = useState(false);
+    const [showExportDestination, setShowExportDestination] = useState(false);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
-    const [exportPackage, setExportPackage] = useState<'directory' | 'zip'>('zip');
+    const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+    const [isSendingToDrive, setIsSendingToDrive] = useState(false);
+    const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
 
     useEffect(() => {
         console.log('🔄 PromptArchive: Initializing...');
@@ -294,6 +302,152 @@ export default function PromptArchive() {
         }
     };
 
+    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+        if (!isLoggedIn || !accessToken || !driveFolderId) {
+            alert('Please connect Google Drive in Settings first.');
+            return;
+        }
+
+        const selectedMetas = prompts.filter(p => selectedPrompts.has(p.id));
+        if (selectedMetas.length === 0) return;
+
+        setIsSendingToDrive(true);
+        try {
+            for (const prompt of selectedMetas) {
+                const filename = sanitizeFilename(prompt.title, 'kebab');
+
+                // Create prompt-like structure for export
+                const promptAsChat: ChatData = {
+                    messages: [{
+                        type: 'response' as const,
+                        content: prompt.content,
+                        isEdited: false
+                    }],
+                    metadata: {
+                        title: prompt.title,
+                        model: 'Prompt',
+                        date: prompt.createdAt,
+                        tags: prompt.tags || []
+                    }
+                };
+
+                let content: string;
+                let mimeType: string;
+                let uploadFilename: string;
+
+                if (format === 'html') {
+                    content = generateHtml(
+                        promptAsChat,
+                        prompt.title,
+                        ChatTheme.DarkDefault,
+                        'User',
+                        'Prompt',
+                        'claude-html',
+                        promptAsChat.metadata
+                    );
+                    mimeType = 'text/html';
+                    uploadFilename = `${filename}.html`;
+                } else if (format === 'markdown') {
+                    content = generateMarkdown(
+                        promptAsChat,
+                        prompt.title,
+                        'User',
+                        'Prompt',
+                        promptAsChat.metadata
+                    );
+                    mimeType = 'text/markdown';
+                    uploadFilename = `${filename}.md`;
+                } else {
+                    content = generateJson(promptAsChat, promptAsChat.metadata);
+                    mimeType = 'application/json';
+                    uploadFilename = `${filename}.json`;
+                }
+
+                await googleDriveService.uploadFile(
+                    accessToken,
+                    content,
+                    uploadFilename,
+                    mimeType,
+                    driveFolderId
+                );
+            }
+
+            alert(`✅ Exported ${selectedMetas.length} prompt(s) to Google Drive`);
+            setExportModalOpen(false);
+        } catch (error) {
+            console.error('Google Drive export failed:', error);
+            alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSendingToDrive(false);
+        }
+    };
+
+    const handleExportToDrive = async () => {
+        if (!isLoggedIn || !accessToken || !driveFolderId) {
+            alert('Please connect Google Drive in Settings first.');
+            return;
+        }
+
+        const selected = prompts.filter(p => selectedPrompts.has(p.id));
+        if (selected.length === 0) return;
+
+        setIsSendingToDrive(true);
+        try {
+            // Upload each prompt to Google Drive
+            for (const prompt of selected) {
+                const filename = sanitizeFilename(prompt.metadata.title, appSettings.fileNamingCase);
+
+                // Convert prompt to memory-like structure for HTML generation
+                const memoryLike = {
+                    id: prompt.id,
+                    content: prompt.content,
+                    aiModel: prompt.metadata.category || 'General',
+                    tags: prompt.tags,
+                    createdAt: prompt.createdAt,
+                    updatedAt: prompt.updatedAt,
+                    metadata: {
+                        title: prompt.metadata.title,
+                        wordCount: prompt.metadata.wordCount,
+                        characterCount: prompt.metadata.characterCount,
+                        exportStatus: prompt.metadata.exportStatus || 'not_exported'
+                    }
+                } as any;
+
+                // Generate HTML content for upload
+                const content = generateMemoryHtml(memoryLike);
+
+                // Upload to Google Drive
+                await googleDriveService.uploadFile(
+                    accessToken,
+                    content,
+                    `${filename}.html`,
+                    'text/html',
+                    driveFolderId
+                );
+
+                // Mark as exported
+                const updated = {
+                    ...prompt,
+                    metadata: {
+                        ...prompt.metadata,
+                        exportStatus: 'exported' as const
+                    }
+                };
+                await storageService.updatePrompt(updated);
+            }
+
+            await loadPrompts();
+            alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'prompt' : 'prompts'} to Google Drive`);
+            setShowExportDestination(false);
+            setSelectedPrompts(new Set());
+        } catch (error) {
+            console.error('Google Drive export failed:', error);
+            alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSendingToDrive(false);
+        }
+    };
+
     const filteredPrompts = prompts.filter(p =>
         p.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.metadata.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -402,7 +556,7 @@ export default function PromptArchive() {
 
                         <div className="relative">
                             <button
-                                onClick={() => setShowExportModal(true)}
+                                onClick={() => setShowExportDestination(true)}
                                 className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
                                 title="Export selected prompts"
                             >
@@ -437,10 +591,23 @@ export default function PromptArchive() {
                     </div>
                 )}
 
+                {/* Export Destination Modal */}
+                <ExportDestinationModal
+                    isOpen={showExportDestination}
+                    onClose={() => setShowExportDestination(false)}
+                    onDestinationSelected={(destination) => {
+                        setExportDestination(destination);
+                        setShowExportDestination(false);
+                        setExportModalOpen(true);
+                    }}
+                    isExporting={isSendingToDrive}
+                    accentColor="blue"
+                />
+
                 {/* Export Modal */}
                 <ExportModal
-                    isOpen={showExportModal}
-                    onClose={() => setShowExportModal(false)}
+                    isOpen={exportModalOpen}
+                    onClose={() => setExportModalOpen(false)}
                     onExport={(format, packageType) => handleBatchExport(format, packageType)}
                     selectedCount={selectedPrompts.size}
                     hasArtifacts={false}
@@ -449,6 +616,11 @@ export default function PromptArchive() {
                     exportPackage={exportPackage}
                     setExportPackage={setExportPackage}
                     accentColor="blue"
+                    exportDestination={exportDestination}
+                    onExportDrive={async (format, packageType) => {
+                        await handleBatchExportToDrive(format, packageType);
+                    }}
+                    isExportingToDrive={isSendingToDrive}
                 />
             </div>
         </div>

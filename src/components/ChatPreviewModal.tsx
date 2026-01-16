@@ -15,6 +15,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     const [isEditing, setIsEditing] = useState(false);
     const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [viewingArtifact, setViewingArtifact] = useState<any>(null);
 
     const messages = session.chatData?.messages || [];
 
@@ -33,6 +34,20 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             setActiveMessageId(index);
+        }
+    };
+
+    const isMarkdownFile = (fileName: string): boolean => {
+        return fileName.toLowerCase().endsWith('.md') || fileName.toLowerCase().endsWith('.markdown');
+    };
+
+    const handleArtifactAction = (artifact: any) => {
+        if (isMarkdownFile(artifact.fileName)) {
+            // View markdown in modal
+            setViewingArtifact(artifact);
+        } else {
+            // Download other files
+            handleDownloadArtifact(artifact);
         }
     };
 
@@ -167,6 +182,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                 filteredMessageIndices.map((idx) => {
                                     const msg = messages[idx];
                                     const isUser = msg.type === 'prompt';
+                                    const hasArtifacts = msg.artifacts && msg.artifacts.length > 0;
                                     return (
                                         <button
                                             key={idx}
@@ -181,6 +197,11 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                 <span className={`text-xs font-bold ${isUser ? 'text-blue-400' : 'text-green-400'}`}>
                                                     #{idx + 1} {isUser ? 'User' : 'AI'}
                                                 </span>
+                                                {hasArtifacts && (
+                                                    <span className="ml-auto text-sm" title={`${msg.artifacts.length} artifact(s)`}>
+                                                        📎
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="truncate opacity-70 text-xs">
                                                 {msg.content.slice(0, 50)}...
@@ -254,20 +275,42 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                         📎 Attached Files
                                                     </p>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                        {msg.artifacts.map(art => (
-                                                            <button
-                                                                key={art.id}
-                                                                onClick={() => handleDownloadArtifact(art)}
-                                                                className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500 hover:bg-purple-900/20 transition-all group cursor-pointer text-left"
-                                                                title={`Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
-                                                            >
-                                                                <span className="text-lg">📄</span>
-                                                                <span className="text-sm text-gray-300 truncate flex-1 group-hover:text-purple-300">{art.fileName}</span>
-                                                                <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                                </svg>
-                                                            </button>
-                                                        ))}
+                                                        {msg.artifacts.map(art => {
+                                                            const isMarkdown = isMarkdownFile(art.fileName);
+                                                            return (
+                                                                <div key={art.id} className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleArtifactAction(art)}
+                                                                        className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500 hover:bg-purple-900/20 transition-all group cursor-pointer text-left flex-1"
+                                                                        title={isMarkdown ? `View ${art.fileName}` : `Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
+                                                                    >
+                                                                        <span className="text-lg">{isMarkdown ? '📝' : '📄'}</span>
+                                                                        <span className="text-sm text-gray-300 truncate flex-1 group-hover:text-purple-300">{art.fileName}</span>
+                                                                        <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            {isMarkdown ? (
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                            ) : (
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                            )}
+                                                                        </svg>
+                                                                    </button>
+                                                                    {isMarkdown && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleDownloadArtifact(art);
+                                                                            }}
+                                                                            className="p-2 bg-gray-900/80 border border-gray-700 hover:border-green-500 hover:bg-green-900/20 rounded-lg transition-all group cursor-pointer"
+                                                                            title={`Download ${art.fileName}`}
+                                                                        >
+                                                                            <svg className="w-4 h-4 text-gray-600 group-hover:text-green-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}
@@ -296,6 +339,55 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                         onClose={() => setEditingMessageIndex(null)}
                         onSave={handleSaveMessage}
                     />
+                </div>
+            )}
+
+            {/* Markdown Artifact Viewer Modal */}
+            {viewingArtifact && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] backdrop-blur-sm p-4">
+                    <div className="bg-gray-900 rounded-2xl shadow-2xl w-full h-full max-w-4xl border border-gray-700 flex flex-col overflow-hidden">
+                        {/* Modal Header */}
+                        <div className="flex justify-between items-center p-6 border-b border-gray-800 shrink-0">
+                            <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
+                                <span>📝</span>
+                                {viewingArtifact.fileName}
+                            </h3>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => handleDownloadArtifact(viewingArtifact)}
+                                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                                    title="Download this file"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Download
+                                </button>
+                                <button
+                                    onClick={() => setViewingArtifact(null)}
+                                    className="text-gray-500 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg"
+                                >
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto bg-gray-950 p-6 custom-scrollbar">
+                            <div className="prose prose-invert max-w-none">
+                                <div
+                                    dangerouslySetInnerHTML={{
+                                        __html: renderMarkdownToHtml(
+                                            atob(viewingArtifact.fileData)
+                                        )
+                                    }}
+                                    className="text-gray-300 leading-relaxed"
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

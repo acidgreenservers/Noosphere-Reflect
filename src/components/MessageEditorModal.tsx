@@ -63,6 +63,23 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         }, 0);
     };
 
+    const handleInsertArtifactTag = (artifactId: string) => {
+        if (!textareaRef.current) return;
+        const textarea = textareaRef.current;
+        const start = textarea.selectionStart;
+        const text = textarea.value;
+        const tag = `\n{{artifact:${artifactId}}}\n`;
+
+        const newContent = text.substring(0, start) + tag + text.substring(start);
+        setEditedContent(newContent);
+
+        setTimeout(() => {
+            textarea.focus();
+            const newPos = start + tag.length;
+            textarea.setSelectionRange(newPos, newPos);
+        }, 0);
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
@@ -126,7 +143,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
     const hasChanges = editedContent !== message.content;
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
             <div className={`bg-gray-900 border border-gray-700 rounded-xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl`}>
                 {/* Modal Header */}
                 <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800/50 rounded-t-xl">
@@ -174,49 +191,69 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                             disabled={isSaving}
                             autoFocus
                         />
-                        <div className="mt-3 flex justify-between items-center gap-2">
-                            <div className="flex gap-2 items-center">
-                                {/* Save Button */}
+                        <div className="mt-3 flex flex-col gap-2">
+                            <div className="flex justify-between items-center gap-2 flex-wrap">
+                                <div className="flex gap-2 items-center flex-wrap">
+                                    {/* Save Button */}
+                                    <button
+                                        onClick={handleSave}
+                                        title="Save changes (Ctrl+Enter)"
+                                        className="flex items-center gap-1 px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                        disabled={isSaving || !hasChanges}
+                                    >
+                                        <kbd className="bg-green-900/40 px-1 rounded border border-green-500/30">Ctrl+Enter</kbd>
+                                        Save
+                                    </button>
+
+                                    {/* Cancel Button */}
+                                    <button
+                                        onClick={onClose}
+                                        title="Cancel editing (Esc)"
+                                        className="flex items-center gap-1 px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                        disabled={isSaving}
+                                    >
+                                        <kbd className="bg-red-900/40 px-1 rounded border border-red-500/30">Esc</kbd>
+                                        Close
+                                    </button>
+
+                                    {/* Collapsible Button */}
+                                    <button
+                                        onClick={handleInsertCollapsible}
+                                        title="Insert or wrap selection in <collapsible> tags (Ctrl+T)"
+                                        className="flex items-center gap-1 px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                        disabled={isSaving}
+                                    >
+                                        <kbd className="bg-purple-900/40 px-1 rounded border border-purple-500/30">Ctrl+T</kbd>
+                                        Collapsible
+                                    </button>
+                                </div>
+
                                 <button
-                                    onClick={handleSave}
-                                    title="Save changes (Ctrl+Enter)"
-                                    className="flex items-center gap-1 px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                    onClick={() => setEditedContent(message.content)}
+                                    className="text-[10px] uppercase font-bold text-gray-500 hover:text-gray-300 transition-colors"
                                     disabled={isSaving || !hasChanges}
                                 >
-                                    <kbd className="bg-green-900/40 px-1 rounded border border-green-500/30">Ctrl+Enter</kbd>
-                                    Save
-                                </button>
-
-                                {/* Cancel Button */}
-                                <button
-                                    onClick={onClose}
-                                    title="Cancel editing (Esc)"
-                                    className="flex items-center gap-1 px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 rounded text-[10px] uppercase font-bold transition-all"
-                                    disabled={isSaving}
-                                >
-                                    <kbd className="bg-red-900/40 px-1 rounded border border-red-500/30">Esc</kbd>
-                                    Close
-                                </button>
-
-                                {/* Collapsible Button */}
-                                <button
-                                    onClick={handleInsertCollapsible}
-                                    title="Insert or wrap selection in <collapsible> tags (Ctrl+T)"
-                                    className="flex items-center gap-1 px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/30 rounded text-[10px] uppercase font-bold transition-all"
-                                    disabled={isSaving}
-                                >
-                                    <kbd className="bg-purple-900/40 px-1 rounded border border-purple-500/30">Ctrl+T</kbd>
-                                    Collapsible
+                                    Reset Changes
                                 </button>
                             </div>
 
-                            <button
-                                onClick={() => setEditedContent(message.content)}
-                                className="text-[10px] uppercase font-bold text-gray-500 hover:text-gray-300 transition-colors"
-                                disabled={isSaving || !hasChanges}
-                            >
-                                Reset Changes
-                            </button>
+                            {/* Artifact Insertion Toolbar */}
+                            {message.artifacts && message.artifacts.length > 0 && (
+                                <div className="pt-2 border-t border-gray-700 flex flex-wrap gap-2 items-center">
+                                    <span className="text-[10px] uppercase font-bold text-gray-500">Insert Artifact:</span>
+                                    {message.artifacts.map(art => (
+                                        <button
+                                            key={art.id}
+                                            onClick={() => handleInsertArtifactTag(art.id)}
+                                            className="text-[10px] px-2 py-1 bg-gray-700 hover:bg-purple-900/40 text-gray-300 hover:text-purple-300 border border-gray-600 rounded flex items-center gap-1 transition-colors group"
+                                            title="Insert artifact reference tag"
+                                        >
+                                            <span className="group-hover:text-purple-400">📄</span>
+                                            <span className="truncate max-w-[100px]">{art.fileName}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 

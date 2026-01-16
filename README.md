@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System 🗃️
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.7-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.8-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
@@ -18,14 +18,16 @@
 * **📦 Batch Operations**: Multi-select chats to export, delete, or organize them in bulk
 * **⚙️ Global Settings**: Set default username and **filename casing** (kebab-case, PascalCase, etc.)
 * **🌩️ Data Sovereignty**: Full database export (backup) functionality to keep your data safe and portable
+* **☁️ Google Drive Export**: Export chats, memories, and prompts directly to Google Drive with format selection (HTML, Markdown, JSON)
 
 ### Parsing & Export
 * **⚡ Dual Parsing Workflows**:
   * **Basic Mode**: Instant regex-based parsing with platform-specific selectors and "thought" block detection
   * **AI Studio**: Intelligent parsing for unstructured logs via Google Gemini 2.0 Flash
 * **📝 Multiple Export Formats**: HTML, Markdown, JSON — all with Noosphere Reflect branding
+* **🌐 Google Drive Integration**: Choose export destination (Local or Drive) with unified format selection for all archives
 * **🔒 Offline Ready**: Generated files are self-contained, work completely offline
-* **📦 Artifact Management**: Upload files, attach to messages, auto-include in exports with deduplication
+* **📦 Artifact Management**: Upload files, attach to messages, preview markdown inline, auto-include in exports with deduplication
 
 ### Design & Security
 * **🎨 Platform Theming**: Official brand colors for Claude (Orange), ChatGPT (Green), Gemini (Blue), etc.
@@ -225,7 +227,15 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.6 (Current)
+## 🆕 What's New in v0.5.7 (Current)
+
+### Content Import Wizard & Studio Interface
+- **Guided Import Wizard**: A new 3-step wizard (Method -> Input -> Verify) makes importing chat logs foolproof. Supports Paste, Upload, and Extension capture methods.
+- **Modal-First Studio**: The Basic Converter has been reimagined as a professional studio with dedicated full-screen modals for Configuration, Metadata, Content, and Review.
+- **Dual Editor Tools**: The Message Editor now features split **"Add AI"** / **"Add User"** buttons for rapid conversation building, plus precise message injection.
+- **Smart Content Manager**: A single, context-aware action button guides you through the workflow ("Start Import" -> "Merge Messages").
+
+## 🆕 What's New in v0.5.6
 
 ### Auto-Save & Workflow Optimization
 - **Auto-Save Core**: Eliminated the manual "Save Session" button. All changes to metadata, config, and content are now background-saved automatically with a smart debounce.
@@ -356,6 +366,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 0.5.6
+**Version**: 0.5.7
 **Last Updated**: January 15, 2026
-**Status**: Stable Release with Auto-Save & Collapsible Standard ✅
+**Status**: Stable Release with Wizard & Studio Interface ✅

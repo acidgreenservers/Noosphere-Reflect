@@ -584,6 +584,7 @@
     // Map action to message type
     const messageActions = {
       'import': 'CAPTURE_CHAT',
+      'import-copy': 'CAPTURE_CHAT_COPY',
       'json': 'COPY_JSON',
       'markdown': 'COPY_MARKDOWN'
     };
@@ -710,7 +711,10 @@
         <div class="nr-menu-section">
           <div class="nr-menu-label">Export</div>
           <div class="nr-menu-item" data-action="import">
-            📥 Import to App
+            📥 Import to App (Merge)
+          </div>
+          <div class="nr-menu-item" data-action="import-copy">
+            ✨ Import as New (Copy)
           </div>
           <div class="nr-menu-item" data-action="markdown">
             📋 Copy as Markdown

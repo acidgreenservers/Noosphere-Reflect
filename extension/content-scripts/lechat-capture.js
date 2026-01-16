@@ -6,8 +6,9 @@
 
 // Listen for capture trigger from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'CAPTURE_CHAT') {
-    captureLeChatChat()
+  if (request.action === 'CAPTURE_CHAT' || request.action === 'CAPTURE_CHAT_COPY') {
+    const importType = request.action === 'CAPTURE_CHAT_COPY' ? 'copy' : 'merge';
+    captureLeChatChat(importType)
       .then(result => {
         sendResponse({ success: true, title: result.title });
         chrome.runtime.sendMessage({ action: 'CAPTURE_SUCCESS', title: result.title });
@@ -52,12 +53,15 @@ async function handleCopyAction(format, sendResponse) {
   }
 }
 
-async function extractSessionData() {
+async function extractSessionData(importType = 'merge') {
   const htmlContent = document.documentElement.outerHTML;
   const chatData = parseLeChatHtml(htmlContent);
   const title = extractPageTitle() || 'LeChat Conversation';
   const timestamp = new Date().toISOString();
   const userName = await getUsernameFromWebApp();
+
+  const metadata = new ChatMetadata(title, 'Mistral LeChat', timestamp, [], '', window.location.href);
+  metadata.importType = importType;
 
   return new SavedChatSession({
     id: generateSessionId(),
@@ -70,12 +74,12 @@ async function extractSessionData() {
     selectedTheme: ChatTheme.DarkDefault,
     parserMode: ParserMode.LeChatHtml,
     chatData: chatData,
-    metadata: new ChatMetadata(title, 'Mistral LeChat', timestamp, [], '', window.location.href)
+    metadata: metadata
   });
 }
 
-async function captureLeChatChat() {
-  const session = await extractSessionData();
+async function captureLeChatChat(importType = 'merge') {
+  const session = await extractSessionData(importType);
   const title = session.name;
 
   if (await isStorageQuotaWarning()) {

@@ -1,184 +1,230 @@
 # Active Context
 
-## Current Focus
-- **Governance Enhancement**: Added high-priority GOVERNANCE RULES section to all main agent files
-- **Memory Bank Integration**: Established mandatory Memory Bank updates on all changes (success & failure)
-- **Quality Assurance**: Implemented user approval requirement for all git commits
-- **Developer Engagement**: Enabled proactive challenge of user assumptions for better architecture
-- **Stabilization & UX**: Refining the new "Collapsible" tagging system and verifying the Auto-Save persistence layer.
+## 📅 Current Session
+- **Date**: 2026-01-16
+- **Goal**: Implement simple Google Drive export feature as stopgap for Sprint 6.5 hybrid storage architecture.
 
-## Recent Changes
+## ✅ FULLY FIXED: Google Drive OAuth Integration (January 15, 2026)
 
-- **January 15, 2026 - GOVERNANCE RULES HARDENING** ⏳ PENDING COMMIT APPROVAL
-  - **Status**: CODE CHANGES COMPLETE ✅ | GIT COMMIT PENDING USER APPROVAL ⏳
-  - **Files Modified**:
-    1. `CLAUDE.md` - Added 🔒 GOVERNANCE RULES section
-    2. `GEMINI.md` - Added 🔒 GOVERNANCE RULES section
-    3. `CLINE.md` - Added 🔒 GOVERNANCE RULES section
-    4. `BLACKBOX.md` - Added 🔒 GOVERNANCE RULES section
-    5. `agents/memory-bank/activeContext.md` - Updated with governance entry
-  - **Changes Made**:
-    - Rule 1: **Mandatory User Approval for Git Commits** - No commits without explicit "yes" approval
-    - Rule 2: **Memory Bank Updates on Every Change** - Success and failure entries documented
-    - Rule 3: **Challenge & Question Assumptions** - Agents empowered to propose better implementations
-    - Rule 4: **Single Governance Section** - High-priority rules at top of every agent file
-  - **Commit Status**:
-    - Files staged: 5 files ready
-    - Commit message drafted and proposed to user
-    - User responded "not yet" - commit held pending further approval
-    - All changes preserved in git staging area
-  - **Rationale**: Creates transparency, prevents accidental commits, builds learning path through failures, enables proactive problem-solving
-  - **Next Steps**: Awaiting user approval to execute commit, or modifications to commit message
+### Problem #1: Z-Index Stacking Bug (SOLVED)
+**Root Cause**: Modal backdrop and modal container both had `z-index: 50`
+**Fix**: Changed modal container to `z-[60]` in `src/components/SettingsModal.tsx`
+**Result**: Button became clickable and received pointer events
 
-- **January 15, 2026 - Basic Converter Auto-Save & Layout Optimization**:
-  - **Auto-Save Core**: Eliminated the manual "Save Session" button by implementing a debounced persistence layer that syncs all configuration and metadata changes automatically.
-  - **Collapsible Support**: Standardized the `<collapsible>` tag across the app, replacing the internal manual "Wrap Thought" tool with a premium "Collapsible" tool for custom organized sections.
-  - **Layout Reordering**: Moved the "Chat Content" input block below "Metadata" to create a logical "Setup -> Input -> Attachments" workflow.
-  - **Centralized Persistence**: Unified save logic in `BasicConverter.tsx` (message edits, artifact attachments, form changes) into a single, reliable `handleSaveChat` function.
-  - **ID Capture**: Implemented automatic capturing of the database ID after the first conversion/archive to prevent duplicate session spam during the same session.
-- **January 14, 2026 - Basic Converter UX Overhaul**:
-  - **Layout Redesign**: Transformed BasicConverter from a cramped side-by-side view to a spacious, step-based single-column workflow with full-width preview.
-  - **Import Guide**: Added "Import Method Guide" to educate users on Extension vs Console vs File methods.
-  - **Parser Mode Selector**: Replaced button grid with rich, responsive grid cards featuring icons, descriptions, and "TLDR" tips.
-  - **Artifact System**: Fixed artifact linking in HTML/Preview by prioritizing message-level artifacts over metadata matching.
-  - **Context-Aware Links**: Implemented conditional link behavior: Script-based Blob downloads for Preview (bypassing sandbox limits), navigable relative paths for Export.
-  - **Metadata Handling**: Fixed "link bleeding" where old metadata would persist into new chats by enforcing clean state on conversion.
-  - **Preview Security**: Updated iframe sandbox policy to allow external links (`allow-popups`) and downloads (`allow-downloads`, `allow-scripts`) while maintaining safety.
-  - **Metadata Auto-Enrichment**: Implemented `enrichMetadata` utility to auto-detect title, model, and tags from parsed content.
-  - **In-App Documentation**: Created `DocsModal` to render markdown scraper docs directly within the UI.
-  - **Visual Polish**: Aligned styling with the app's premium glassmorphism aesthetic (gradients, glows, backdrop-blur).
-- **January 14, 2026 - Archive Hub UX Tweak**:
-  - **Interaction Swap**: Changed Chat Card click to open Preview modal (Reader Mode) by default.
-  - **Edit Access**: Retasked the mini-button to "Edit Chat" for full converter access.
-  - **Edit Access**: Retasked the mini-button to "Edit Chat" for full converter access.
-  - **Duplicate Logic**: Updated import collision strategy to iteratively rename old sessions (`Old Copy`, `Old Copy - 1`, etc.).
-- **January 14, 2026 - Basic Converter Enhancement**:
-  - **Action Bar Relocation**: Moved "Upload File" and "Batch Import" to the sticky header for better accessibility.
-  - **Thought Preservation**: New "Wrap Thought" tool for manual imports to preserve reasoning chains.
-  - **UX Refinement**: "Justify-Between" layout for toolbar tools vs clear form actions.
-- **January 14, 2026 - Performance Optimization**:
-  - **Lightweight Loading**: `ArchiveHub` now loads metadata only (Omit `inputContent`/`chatData`), reducing memory usage by ~95%.
-  - **On-Demand Fetching**: Full session data is fetched DB-side only when previewing, exporting, or editing.
-  - **Streamed Indexing**: Search indexer processes sessions sequentially with main-thread yielding to prevent UI freezes.
-- **Interaction Alignment**:
-  - **Memory & Prompt Archives**: Updated card click to open Preview modal (Reader Mode).
-  - **Edit Button**: Retasked mini-button to "Edit" for opening the editor.
-- **January 13, 2026 - Artifact UI Sync & Preview Fixes**:
-  - **Preview Modal**: Made artifacts in preview modals clickable and downloadable (Base64 -> Blob conversion).
-  - **UI Hydration Logic**: Implemented "Message Artifact Hydration" in `loadSession` and `handleConvert`.
-    - **Problem**: Sessions saved with global metadata links but missing message-level links (legacy/stale data) showed no UI badges.
-    - **Fix**: On load, system automatically backfills message `artifacts` arrays from `metadata.artifacts` using `insertedAfterMessageIndex`.
-  - **State Synchronization**: Updated `BasicConverter` to immediately regenerate HTML previews and persist to storage upon artifact uploads or link changes, ensuring WYSIWYG consistency.
+### Problem #2: Content-Security-Policy Blocking OAuth Script (SOLVED) 🎯
+**Root Cause**: CSP blocked `https://accounts.google.com`
+**Fix**: Updated `index.html` CSP meta tag to allow Google domains.
 
-- **January 13, 2026 - Prompt Archive Feature Implementation**:
-  - **New Data Model**: Added `Prompt` interface and `PromptMetadata` to `types.ts` with category field instead of AI model.
-  - **IndexedDB v6 Migration**: Extended storage service with new `prompts` object store, indexes on `createdAt` and `tags`.
-  - **Storage Methods**: Implemented `savePrompt()`, `getAllPrompts()`, `getPromptById()`, `updatePrompt()`, `deletePrompt()` following exact pattern as Memory methods.
-  - **PromptArchive Page**: Full-featured CRUD dashboard (`src/pages/PromptArchive.tsx`) with search, filtering, category selection, tags, batch export/delete.
-  - **Component Reusability Pattern**: Extended MemoryInput, MemoryList, MemoryCard, MemoryPreviewModal with `isPromptArchive` boolean flag to support both Memory and Prompt types without code duplication.
-  - **Visual Cohesion - Landing Page (`Home.tsx`)**:
-    - Updated grid from 2-column to 3-column layout for three archive cards
-    - Archives card: Green gradient with green shimmer effect on hover
-    - Memory Archive card: Purple gradient with purple shimmer effect on hover (changed from green)
-    - Prompt Archive card: Blue/cyan gradient with blue shimmer effect on hover
-    - All cards maintain consistent styling: rounded-3xl, glassmorphism, scale-105 on hover
-  - **Visual Cohesion - Archive Hub (`ArchiveHub.tsx`)**:
-    - Memory Archive button changed from green-400 to purple-400 with purple-900/50 icon background
-    - Added new Prompt Archive button with blue-400 text and blue shimmer effect on icon
-    - Both buttons positioned between main archive navigation and settings
-  - **Dynamic Component Coloring**:
-    - MemoryCard: Uses `accentColor` variable (blue for Prompts, purple for Memories)
-    - Applied to: selected state backgrounds, borders, shadows, checkbox states, preview button colors
-    - Fallback pattern for mixed types: `(memory as any).aiModel || (memory as any).metadata?.category || 'General'`
-  - **Category Dropdown**: Prompt input supports fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other) instead of dynamic AI Model dropdown.
-  - **Error Handling**: Added try/catch blocks in `loadPrompts()` and `handleSavePrompt()` with user-facing alerts for storage failures.
-  - **Routing**: Added `/prompt-archive` route in `App.tsx` mapped to PromptArchive component.
-  - **Production Build**: All changes compile cleanly with successful build (4.64s, 664 KB JS bundle).
+### Problem #3: User Configuration Confusion (SOLVED)
+**Root Cause**: User confused API Key with Client ID.
+**Fix**: Added strict validation in `SettingsModal` to check for `.apps.googleusercontent.com` suffix.
 
-- **January 12, 2026 - Search Enhancement Fixes**:
-  - **Advanced Search Improvements**:
-    - Implemented smart model filtering with category mapping (ChatGPT→gpt/openai, Gemini→gemini/google, Claude→claude/anthropic, LeChat→lechat/mistral)
-    - Added "Other" category for non-mainstream AI models
-    - Fixed deep navigation by adding `id="message-${idx}"` to message containers in BasicConverter
-    - Added model badges to search results for visual confirmation
-    - Fixed button nesting error and filter toggle event bubbling in SearchInterface
-    - Added `Thought = 'thought'` to ChatMessageType enum for proper type support
-  - **Search Index Migration**:
-    - Implemented forced re-indexing for sessions indexed before model field support
-    - Added automatic schema migration on first load after update
-    - Sessions indexed before Jan 11, 2026 21:00 UTC are automatically re-indexed
-  - **Export System Refinement**:
-    - Updated BasicConverter exports to use `[AIName] - chatname.ext` naming format
-    - Replaced directory picker API with simple blob downloads for single-file exports
-    - Matched ArchiveHub's naming convention across all export methods
-    - Integrated user's configured filename casing preferences (kebab-case, snake_case, etc.)
+## 🛡️ Security Audit (v0.5.8)
+- **Status**: ✅ Passed
+- **Report**: See `CURRENT_SECURITY_AUDIT.md`
+- **Key Findings**:
+  - `drive.file` scope correctly limits exposure.
+  - CSP updates are minimal and necessary.
+  - Input validation for import wizard is robust.
 
-- **v0.5.4 Release (In Progress)**:
-  - **Vortex Brand Overhaul**: 
-    - Replaced legacy brain/memory logo with premium "Vortex" abstract icon (emerald green & deep electric purple)
-    - Applied `mix-blend-screen` CSS effect for seamless logo blending into dark backgrounds
-    - Updated all page headers with purple-infused gradients (green → purple → emerald)
-    - Consistent branding across Home, Archive Hub, Basic Converter, Memory Archive, and Changelog
-  - **TypeScript Environment Setup**:
-    - Created `tsconfig.json` and `tsconfig.node.json` for proper React + Vite configuration
-    - Added `vite-env.d.ts` for image asset type declarations
-    - Installed `@types/react` and `@types/react-dom` packages
-    - Resolved 400+ TypeScript lint errors related to JSX and React.FC
-  - **Features Page**:
-    - Created comprehensive `/features` route showcasing all archival capabilities
-    - Interactive visual mockups for Archive System, Artifact Management, Memory Archive, and Multi-Format Export
-    - Premium design with glassmorphism effects and hover animations
-    - Updated home page "Explore Features" button to link to new page
-  - **Database Import/Export Enhancement**:
-    - Added `importDatabase()` method to storage service for complete data restoration
-    - Reorganized Settings modal header with Export (green) and Import (purple) buttons
-    - Both buttons positioned in right corner of modal header for intuitive access
-    - Import triggers automatic page reload to reflect imported data
-    - Removed redundant Export button from modal footer
+## ✅ COMPLETE SESSION SUMMARY: v0.5.8 Release (January 16, 2026)
 
-- **v0.5.3 Release**:
-  - **Full Database Export**: Added a "Export Database" button in Settings that dumps all sessions, memories, and settings to a JSON file.
-  - **Extension UI Hardening**: Fixed export button locations with precise pixel positioning and Z-index overrides for all 7 platforms.
-  - **Platform Specifics**: Tailored CSS injection for Gemini, Claude, ChatGPT, AI Studio, Grok, LeChat, and Llamacoder.
-  - **Context Menu Cleanup**: Removed redundant right-click "Copy as Markdown/JSON" menus since export buttons provide this functionality.
+### Overview
+This session completed the v0.5.8 release with three major feature additions:
+1. **Google Drive Export**: Simple stopgap before Sprint 6.5 hybrid storage
+2. **Artifact Viewer Enhancements**: Markdown preview in ChatPreviewModal
+3. **ArtifactManager Separation**: Clean UI split between global and attached artifacts
 
-- **Artifact Auto-Matching System (COMPLETED)**:
-  - **Shared linking Utility**: `artifactLinking.ts` standardizes matching logic across all UI points.
-  - **Performance Optimization**: O(M+A) complexity using Map-based lookups to prevent UI freeze.
-  - **Two-Way Linking**:
-    - **Synchronized Deletion**: Deleting from pool removes from all messages (clean slate).
-    - **Safe Unlinking**: Deleting from message only removes the link (safety first).
-  - **Deduplication**: Prevents duplicate uploads via filename + size checks.
-  - **User Feedback**: Toast notifications for successful auto-matches.
+---
 
-- **UI Overhaul & Feature Expansion (COMPLETED)**:
-  - **Reader Mode**: Implemented "Preview" modal for Chats and Memories with dark-themed, rendered Markdown view.
-  - **Inline Editing**: Added robust "Edit Mode" to previews and Memory Archive cards, allowing seamless content updates without context switching.
-  - **Artifact Manager 2.0**: Completely redesigned as a full-screen, split-pane modal for better usability on large datasets.
-  - **Re-Download**: Added capability to download artifacts back from the browser storage (Base64 -> Blob).
-  - **Visual Consistency**: Unified "Glow" effects (Green/Purple) across all inputs and forms.
+## ✅ 1. GOOGLE DRIVE EXPORT FEATURE (With Format Options)
 
-- **Implementation Protocol Updates**: Added comprehensive documentation for the Artifact Auto-Matching System to the technical handbook.
+### Summary
+Implemented comprehensive export-to-Drive option for three archive types (Chat, Memory, Prompt) with full format and package type selection, as a stopgap before the larger Sprint 6.5 hybrid storage architecture.
 
-## Active Decisions
-- **Agent-Based Execution**: All significant changes must now be performed by the appropriate specialist agent according to their protocol.
-- **Security-First Approach**: All new features must maintain existing XSS prevention and input validation standards.
-- **User Experience Priority**: Features should enhance workflows without adding complexity or confusion.
-- **Documentation Standards**: All major features must be documented in the Implementation Protocol handbook.
+### Architecture: Two-Modal Export Flow
+**New unified flow for both Local and Google Drive:**
+1. **ExportDestinationModal** → Choose destination (Local or Google Drive)
+2. **ExportModal** → Choose format & package type
+3. **Execute** → Either download locally or upload to Drive
 
-## Technical Priorities
-1. **Extension Reliability**: Ensure consistent button injection across platform updates
-2. **Performance Optimization**: Monitor and optimize parsing and storage operations
-3. **User Feedback Integration**: Improve success/error messaging throughout the application
-4. **Testing Coverage**: Expand automated testing for critical user workflows
+### Updated Components
+**`src/components/ExportDestinationModal.tsx`** (Refactored)
+- Changed from direct upload to destination selection
+- New callback: `onDestinationSelected('local' | 'drive')`
+- Simpler, cleaner interface focused on destination choice
+- Auth check with prompt to Settings if needed
 
-## Known Issues & Blockers
-- **Extension Position Updates**: May need adjustments as AI platforms update their UIs
-- **Storage Quota Management**: Large conversations with many artifacts may approach browser limits
-- **Cross-Platform Compatibility**: Testing needed on different browser environments
+**`src/components/ExportModal.tsx`** (Enhanced)
+- Added support for **3 package types**: Single File, Directory, ZIP
+- New props: `exportDestination`, `onExportDrive`, `isExportingToDrive`
+- Shows visual indicator: "☁️ Export will be uploaded to Google Drive"
+- Routes to appropriate handler (local download or Drive upload)
 
-## Next Steps
-1. **Security Audit**: Run `/security-adversary` to validate the new Sandboxed Preview security posture.
-2. **Handbook Updates**: Document the "Blob Script" sandbox bypass pattern in the Implementation Protocol.
-3. **Performance Monitoring**: Add metrics for parsing speed and memory usage.
-4. **Feature Requests**: Evaluate user feedback for prioritization.
+### Modified Files for Export
+1. **ArchiveHub.tsx** (Chats)
+   - New handler: `handleExportToDriveWithFormat()` for single session with format options
+   - New handler: `handleBatchExportToDrive()` for batch with format options
+   - State: `exportDestination` to track user's choice
+   - Full flow: Export → Destination → Format → Package → Execute
+
+2. **MemoryArchive.tsx** (Memories)
+   - Same pattern as ArchiveHub
+   - Accent color: purple for memory aesthetic
+   - Exports memories as HTML/Markdown/JSON with proper structure
+
+3. **PromptArchive.tsx** (Prompts)
+   - Same pattern as ArchiveHub
+   - Accent color: blue for prompt aesthetic
+   - Converts prompts to memory-like structure before export
+
+### Export Format Options (Now Available for Drive)
+- **Formats**: HTML, Markdown, JSON
+- **Package Types** (single only): Single File, Directory, ZIP
+- **Batch Support**: All three archives support both single and batch exports
+
+### Export Behavior
+- Each item uploads with format extension (`.html`, `.md`, `.json`)
+- Files uploaded to configured Google Drive folder (Noosphere-Reflect)
+- Session/Memory/Prompt marked as exported after successful upload
+- Success alert confirms count: "✅ Exported 5 conversation(s) to Google Drive"
+
+### Testing Status
+- ✅ Build compiles successfully (zero errors)
+- ✅ Feature fully implemented and tested
+- ✅ All three archives support new format options
+
+---
+
+## ✅ 2. ARTIFACT VIEWER ENHANCEMENTS
+
+### Problem Solved
+Artifacts weren't viewable in ChatPreviewModal. Implementation added markdown-specific viewer with download capabilities.
+
+### Modified: `src/components/ChatPreviewModal.tsx`
+**New Functions:**
+- `isMarkdownFile(fileName)` - Detects .md/.markdown files
+- `handleArtifactAction(artifact)` - Routes markdown files to viewer, others to download
+
+**New State:**
+- `viewingArtifact` - Tracks markdown artifact being viewed in modal
+
+**New Markdown Viewer Modal:**
+- Full-screen presentation of markdown content
+- Download button for saving markdown files
+- Proper z-index stacking (z-[70] above edit modal)
+- Beautiful rendering with syntax highlighting
+
+**Sidebar Artifact Indicators:**
+- Added 📎 emoji to message list items with artifacts
+- Compact display: only shows for messages where `msg.artifacts.length > 0`
+- Matches existing sidebar styling
+
+**Artifact Action Buttons:**
+- Quick download button next to artifact view button for markdown files
+- Visual distinction: 📝 icon for markdown, 📄 for other file types
+- Eye icon (👁️) for markdown view, download arrow (⬇️) for others
+
+---
+
+## ✅ 3. ARTIFACTMANAGER SEPARATION FIX (CRITICAL)
+
+### Problem Identified
+Artifacts showed in BOTH "Global Files" AND "Message Attachments" sections simultaneously - creating confusing duplicates in UI.
+
+### Root Cause
+No filtering applied to `artifacts` array - all artifacts displayed in both sections regardless of attachment status.
+
+### Solution Implemented
+**Modified: `src/components/ArtifactManager.tsx`**
+
+**Dual-Filter Architecture:**
+```
+Global Files: artifacts.filter(a => a.insertedAfterMessageIndex === undefined)
+Message Attachments: artifacts.filter(a => a.insertedAfterMessageIndex !== undefined)
+```
+
+**UI Updates:**
+- Global Files section: Changed to show "Link to:" dropdown (all displayed items guaranteed unattached)
+- Message Attachments section: Shows purple tag "💬 Attached to Message #X"
+- Removed status tag from Global Files (simplified since separation is now complete)
+- Fixed artifact removal logic to use `insertedAfterMessageIndex`
+
+**Result:**
+✅ Clean separation - no more duplicates
+✅ Automatic transitions when users attach/detach artifacts
+✅ Clear visual distinction between global and message-attached files
+
+---
+
+## ✅ 4. CHATPREVIEWMODAL SIDEBAR ENHANCEMENTS
+
+### Modified: `src/components/ChatPreviewModal.tsx`
+
+**Artifact Indicators:**
+- Added 📎 emoji to message list showing messages with artifacts
+- Only displays for messages where `msg.artifacts && msg.artifacts.length > 0`
+- Subtle visual cue without clutter
+
+---
+
+## ✅ 5. REVIEWEDITMODAL SIDEBAR ENHANCEMENTS
+
+### Modified: `src/components/ReviewEditModal.tsx`
+
+**New "Message List" Section:**
+- Displays all messages in compact format: "#1 U" / "#2 AI"
+- Shows 📎 indicator for messages with artifacts
+- Click-to-jump functionality with smooth scroll to message in main view
+- Consistent styling with existing "Message Stats" section above
+
+---
+
+## 📊 FILES MODIFIED/CREATED
+
+### New Files (1)
+- ✅ `src/components/ExportDestinationModal.tsx` (374 lines)
+
+### Modified Files (6)
+- ✅ `src/components/ChatPreviewModal.tsx` - Markdown viewer + artifact indicators + download buttons
+- ✅ `src/components/ReviewEditModal.tsx` - Message list sidebar section
+- ✅ `src/components/ArtifactManager.tsx` - Dual-filter separation fix (CRITICAL)
+- ✅ `src/pages/ArchiveHub.tsx` - Google Drive export + artifact indicators
+- ✅ `src/pages/MemoryArchive.tsx` - Google Drive export
+- ✅ `src/pages/PromptArchive.tsx` - Google Drive export
+
+### Build Status
+- ✅ All changes compile successfully
+- ✅ Zero TypeScript errors
+- ✅ Zero ESLint warnings
+
+---
+
+## 🔒 SECURITY CONSIDERATIONS
+
+### Google Drive Integration
+- Uses `drive.file` scope (minimal necessary permissions)
+- CSP already updated to allow Google OAuth domains
+- Client ID validation requires `.apps.googleusercontent.com` suffix
+- No API keys exposed in frontend code
+
+### Input Validation
+- Artifact upload respects existing file size limits
+- Markdown viewer uses safe rendering (no unsafe innerHTML)
+- No new XSS vectors introduced
+
+---
+
+## 🚀 NEXT STEPS (SPRINT 6.5)
+
+### Planned Hybrid Storage Architecture
+- Drive primary storage + IndexedDB cache (not implemented in v0.5.8)
+- Configurable cache caps: 25/50/75/Unlimited
+- Two-way sync with conflict resolution
+- Advanced: Session merging across devices
+- This v0.5.8 export feature is the foundation for that larger system
+
+### Future Enhancements
+- Performance optimization: Current indexedDB performance degrades with 25+ chats (user observed)
+- Drive sync automation: Periodic background sync to Drive
+- Offline-first caching strategy

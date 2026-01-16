@@ -6,8 +6,9 @@
 
 // Listen for capture trigger from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'CAPTURE_CHAT') {
-        captureGrokChat()
+    if (request.action === 'CAPTURE_CHAT' || request.action === 'CAPTURE_CHAT_COPY') {
+        const importType = request.action === 'CAPTURE_CHAT_COPY' ? 'copy' : 'merge';
+        captureGrokChat(importType)
             .then(result => {
                 sendResponse({ success: true, title: result.title });
                 chrome.runtime.sendMessage({ action: 'CAPTURE_SUCCESS', title: result.title });
@@ -52,7 +53,7 @@ async function handleCopyAction(format, sendResponse) {
     }
 }
 
-async function extractSessionData() {
+async function extractSessionData(importType = 'merge') {
     // 1. Extract full HTML
     const htmlContent = document.documentElement.outerHTML;
 
@@ -67,6 +68,16 @@ async function extractSessionData() {
     const userName = await getUsernameFromWebApp();
 
     // 5. Create session object
+    const metadata = new ChatMetadata(
+        title,
+        'Grok',
+        timestamp,
+        [],
+        '',
+        window.location.href
+    );
+    metadata.importType = importType;
+
     return new SavedChatSession({
         id: generateSessionId(),
         name: title,
@@ -78,19 +89,12 @@ async function extractSessionData() {
         selectedTheme: ChatTheme.DarkDefault,
         parserMode: ParserMode.GrokHtml,
         chatData: chatData,
-        metadata: new ChatMetadata(
-            title,
-            'Grok',
-            timestamp,
-            [],
-            '',
-            window.location.href
-        )
+        metadata: metadata
     });
 }
 
-async function captureGrokChat() {
-    const session = await extractSessionData();
+async function captureGrokChat(importType = 'merge') {
+    const session = await extractSessionData(importType);
     const title = session.name;
 
     // 6. Check storage quota

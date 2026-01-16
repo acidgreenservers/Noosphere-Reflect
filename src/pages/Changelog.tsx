@@ -13,11 +13,32 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8',
+            date: 'Jan 16, 2026',
+            title: 'Google Drive Export with Format Options & Artifact Management',
+            items: [
+                'Google Drive Export with Format Selection: Export chats, memories, and prompts as HTML, Markdown, or JSON to Google Drive.',
+                'Unified Export Flow: Both local downloads and Drive uploads share the same format/package selection interface.',
+                'Smart Package Types: Single File, Directory, or ZIP options for individual items before export.',
+                'Destination Modal: Choose export location (Local or Google Drive) with authentication awareness.',
+                'Enhanced ExportModal: Visual indicator shows when uploading to Google Drive ("☁️ Export will be uploaded").',
+                'Batch Drive Support: All three archives support batch exports to Google Drive in chosen format.',
+                'Markdown Artifact Viewer: Full-screen preview modal with syntax highlighting for markdown attachments.',
+                'Smart File Routing: Markdown files open in viewer, other formats download directly.',
+                'Artifact Indicators: Visual 📎 emoji in message lists for quick identification of attachments.',
+                'Clean Artifact Separation: Global Files and Message Attachments completely separated with dual-filter architecture.',
+                'Review Modal Sidebar: New Message List section with compact format, artifact indicators, and click-to-jump.',
+                'Success Feedback: Clear alerts confirm export count: "✅ Exported 5 chats to Google Drive".',
+            ]
+        },
+        {
             version: 'v0.5.7',
             date: 'Jan 15, 2026',
             title: 'Modal-Based Interface Revolution',
             items: [
                 'Complete BasicConverter UI overhaul with modal-first architecture and 3-row interactive layout.',
+                'Content Import Wizard: New guided 3-step workflow (Select -> Input -> Verify) replacing raw text inputs.',
+                'Editor Refinements: Dual "Add AI"/"Add User" buttons and new toolbar tools for rapid editing.',
                 'Preview Row: Reader Mode, Raw Preview, Download buttons in clean responsive grid.',
                 'Chat Setup Row: Configuration, Metadata, Chat Content modals with collapsible sidebars.',
                 'Review Row: Message editing, File attachments management with dedicated modal spaces.',

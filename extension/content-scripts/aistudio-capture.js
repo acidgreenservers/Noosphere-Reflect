@@ -6,8 +6,9 @@
 
 // Listen for capture trigger from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'CAPTURE_CHAT') {
-    captureAiStudioChat()
+  if (request.action === 'CAPTURE_CHAT' || request.action === 'CAPTURE_CHAT_COPY') {
+    const importType = request.action === 'CAPTURE_CHAT_COPY' ? 'copy' : 'merge';
+    captureAiStudioChat(importType)
       .then(result => {
         sendResponse({ success: true, title: result.title });
         chrome.runtime.sendMessage({ action: 'CAPTURE_SUCCESS', title: result.title });
@@ -70,7 +71,7 @@ async function expandAllThoughts() {
   return new Promise(resolve => setTimeout(resolve, 1000));
 }
 
-async function extractSessionData() {
+async function extractSessionData(importType = 'merge') {
   // 1. Expand all thoughts first
   await expandAllThoughts();
 
@@ -92,6 +93,16 @@ async function extractSessionData() {
   const userName = await getUsernameFromWebApp();
 
   // 5. Create session object
+  const metadata = new ChatMetadata(
+    title,
+    'Google AI Studio',
+    timestamp,
+    ['AI Studio'],
+    '',
+    window.location.href
+  );
+  metadata.importType = importType;
+
   return new SavedChatSession({
     id: generateSessionId(),
     name: title,
@@ -103,19 +114,12 @@ async function extractSessionData() {
     selectedTheme: ChatTheme.DarkDefault,
     parserMode: ParserMode.AiStudioHtml,
     chatData: chatData,
-    metadata: new ChatMetadata(
-      title,
-      'Google AI Studio',
-      timestamp,
-      ['AI Studio'],
-      '',
-      window.location.href
-    )
+    metadata: metadata
   });
 }
 
-async function captureAiStudioChat() {
-  const session = await extractSessionData();
+async function captureAiStudioChat(importType = 'merge') {
+  const session = await extractSessionData(importType);
   const title = session.name;
 
   // 6. Check storage quota

@@ -5,7 +5,6 @@ import { parseChat, generateHtml } from '../services/converterService';
 import MetadataEditor from '../components/MetadataEditor';
 import { ArtifactManager } from '../components/ArtifactManager';
 import ExportDropdown from '../components/ExportDropdown';
-import { parseMhtml, isMhtml } from '../utils/mhtmlParser';
 import {
     ChatTheme,
     SavedChatSession,
@@ -20,11 +19,11 @@ import {
 import { storageService } from '../services/storageService';
 import {
     validateFileSize,
-    validateBatchImport,
     INPUT_LIMITS,
     sanitizeFilename,
     neutralizeDangerousExtension
 } from '../utils/securityUtils';
+import { normalizeTitle } from '../utils/textNormalization';
 import { processArtifactUpload, processGlobalArtifactRemoval, processMessageArtifactUnlink } from '../utils/artifactLinking';
 import { downloadArtifact } from '../utils/fileUtils';
 import { MessageEditorModal } from '../components/MessageEditorModal';
@@ -37,6 +36,7 @@ import { ConfigurationModal } from '../components/ConfigurationModal';
 import { MetadataModal } from '../components/MetadataModal';
 import { ChatContentModal } from '../components/ChatContentModal';
 import { ReviewEditModal } from '../components/ReviewEditModal';
+import { ContentImportWizard } from '../components/ContentImportWizard';
 import { enrichMetadata } from '../utils/metadataEnricher';
 // @ts-ignore
 import readmeContent from '../assets/docs/README.md?raw';
@@ -214,9 +214,23 @@ const BasicConverter: React.FC = () => {
 
     const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
     const [showArtifactManager, setShowArtifactManager] = useState<boolean>(false);
+    const [showImportWizard, setShowImportWizard] = useState<boolean>(false);
+    const [forceNewImport, setForceNewImport] = useState<boolean>(false);
 
     // Load sessions from storage
     const [searchParams] = useSearchParams();
+    // ... (omitted lines to match context if needed, but replacement is clean)
+
+    // ... (lines 430-432 in original view, we need to match carefully)
+    // Actually handleConvert is defined earlier. I need to be careful with line numbers.
+    // Let's use multi_replace for safety as they are far apart.
+
+    // I will use multi_replace for:
+    // 1. handleConvert signature and logic (approx line 432)
+    // 2. handleWizardImport logic (approx line 666)
+    // 3. UI Button (approx line 1402)
+    // 4. State definition (approx line 219)
+
 
     useEffect(() => {
         const init = async () => {
@@ -241,142 +255,68 @@ const BasicConverter: React.FC = () => {
         init();
     }, [searchParams, loadSession]);
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
 
-        // Validate file size
-        const validation = validateFileSize(file.size);
-        if (!validation.valid) {
-            setError(validation.error || 'File too large');
-            return;
+
+    // Unified Merge Logic
+    const mergeChatData = useCallback(async (newChatData: ChatData, newMetadata: ChatMetadata, newContent: string) => {
+        if (!chatData) {
+            // First time load
+            setChatData(newChatData);
+            setMetadata(newMetadata);
+            setInputContent(newContent);
+            return newChatData;
         }
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            if (event.target?.result) {
-                let content = event.target.result as string;
-                const fileName = file.name.toLowerCase();
+        // --- MERGE STRATEGY ---
+        // 1. Append messages
+        // 2. Merge artifacts (dedupe by ID)
+        // 3. Keep existing title/id unless empty
 
-                // Check if it's an MHTML file
-                if (fileName.endsWith('.mhtml') || fileName.endsWith('.mht') || isMhtml(content)) {
-                    try {
-                        // Extract HTML from MHTML
-                        content = parseMhtml(content);
-                        console.log('✓ Extracted HTML from MHTML file');
+        const updatedMessages = [...chatData.messages, ...newChatData.messages];
 
-                        // MHTML files contain full HTML, so we should use an HTML parser mode
-                        // Try to detect which platform based on content
-                        if (content.includes('claude.ai') || content.includes('font-claude-response')) {
-                            setParserMode(ParserMode.ClaudeHtml);
-                        } else if (content.includes('chatgpt.com') || content.includes('chat.openai.com')) {
-                            setParserMode(ParserMode.ChatGptHtml);
-                        } else if (content.includes('gemini.google.com')) {
-                            setParserMode(ParserMode.GeminiHtml);
-                        } else if (content.includes('aistudio.google.com') || content.includes('<ms-chat-turn')) {
-                            setParserMode(ParserMode.AiStudioHtml);
-                        } else if (content.includes('chat.mistral.ai')) {
-                            setParserMode(ParserMode.LeChatHtml);
-                        } else if (content.includes('llamacoder.together.ai')) {
-                            setParserMode(ParserMode.LlamacoderHtml);
-                        } else if (content.includes('kimi.moonshot.cn')) {
-                            setParserMode(ParserMode.KimiHtml);
-                        } else {
-                            // Default to auto-detect
-                            setFileType('auto');
-                        }
-                    } catch (error) {
-                        console.error('Failed to parse MHTML:', error);
-                        setError('Failed to parse MHTML file. The file may be corrupted.');
-                        return;
-                    }
-                } else {
-                    // Auto-detect file type based on extension for non-MHTML files
-                    if (fileName.endsWith('.json')) {
-                        setFileType('json');
-                    } else if (fileName.endsWith('.md') || fileName.endsWith('.txt')) {
-                        setFileType('markdown');
-                    } else {
-                        setFileType('auto');
-                    }
-                }
+        // Merge artifacts: Keep existing, add new ones that don't exist
+        const distinctArtifacts = [...artifacts];
+        const newArtifacts = newChatData.metadata?.artifacts || [];
 
-                setInputContent(content);
-                setError(null);
+        let artifactsAdded = 0;
+        newArtifacts.forEach(art => {
+            if (!distinctArtifacts.some(existing => existing.id === art.id)) {
+                distinctArtifacts.push(art);
+                artifactsAdded++;
             }
+        });
+
+        const mergedData: ChatData = {
+            ...chatData,
+            messages: updatedMessages
         };
-        reader.readAsText(file);
-    };
 
-    const handleBatchImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+        const mergedMetadata: ChatMetadata = {
+            ...metadata,
+            artifacts: distinctArtifacts
+        };
 
-        // Calculate total size
-        let totalSize = 0;
-        for (let i = 0; i < files.length; i++) {
-            totalSize += files[i].size;
-        }
+        setChatData(mergedData);
+        setMetadata(mergedMetadata);
+        setArtifacts(distinctArtifacts);
 
-        // Validate batch
-        const validation = validateBatchImport(files.length, totalSize);
-        if (!validation.valid) {
-            setError(validation.error || 'Batch import validation failed');
-            return;
-        }
+        // Append input content for record keeping
+        const appendedContent = inputContent + '\n\n' + newContent;
+        setInputContent(appendedContent);
 
-        setIsConverting(true);
-        setError(null);
+        // Feedback
+        const msgCount = newChatData.messages.length;
+        console.log(`🔀 Merged ${msgCount} msgs & ${artifactsAdded} artifacts.`);
 
-        let successCount = 0;
-        const failedFiles: string[] = [];
+        return mergedData;
+    }, [chatData, metadata, artifacts, inputContent]);
 
-        for (let i = 0; i < files.length; i++) {
-            try {
-                const content = await files[i].text();
-                const data = await parseChat(content, 'json', ParserMode.Basic);
+    // Updated to accept overrides for Wizard auto-conversion
+    const handleConvert = async (overrideContent?: string, overrideMode?: ParserMode, forceNew: boolean = false) => {
+        const contentToConvert = overrideContent ?? inputContent;
+        const modeToUse = overrideMode ?? parserMode;
 
-                await storageService.saveSession({
-                    id: Date.now().toString() + i,
-                    name: data.metadata?.title || files[i].name,
-                    chatTitle: data.metadata?.title || files[i].name,
-                    date: data.metadata?.date || new Date().toISOString(),
-                    inputContent: content,
-                    userName: userName || 'User',
-                    aiName: aiName || 'AI',
-                    selectedTheme: ChatTheme.DarkDefault,
-                    parserMode: ParserMode.Basic,
-                    chatData: data,
-                    metadata: data.metadata
-                });
-                successCount++;
-            } catch (err: any) {
-                console.error(`Failed to import ${files[i].name}:`, err);
-                failedFiles.push(files[i].name);
-            }
-        }
-
-        setIsConverting(false);
-
-        if (failedFiles.length > 0) {
-            setError(`Imported ${successCount}/${files.length} sessions. Failed: ${failedFiles.join(', ')}`);
-        } else {
-            alert(`✅ Successfully imported ${successCount} session(s)!`);
-        }
-
-        // Reload sessions list
-        const updatedSessions = await storageService.getAllSessions();
-        setSavedSessions(updatedSessions);
-
-        // Reset file input
-        e.target.value = '';
-    }, [userName, aiName]);
-
-    const handleConvert = useCallback(async () => {
-        if (!inputContent.trim()) {
-            setError('Please paste chat content or upload a file.');
-            return;
-        }
+        if (!contentToConvert.trim()) return;
 
         setIsConverting(true);
         setError(null);
@@ -386,68 +326,235 @@ const BasicConverter: React.FC = () => {
         await new Promise(r => setTimeout(r, 300));
 
         try {
-            const data = await parseChat(inputContent, fileType, parserMode);
+            // Determine parsing mode
+            let detectedMode = modeToUse;
 
-            // Smart Metadata Enrichment (Auto-detect title, model, tags)
-            const enrichedMetadata = enrichMetadata(data, parserMode);
+            const data: ChatData = await parseChat(contentToConvert, 'auto', detectedMode);
 
-            setChatData(data); // Set data first
+            // Smart Metadata Enrichment
+            const enrichedMetadata = enrichMetadata(data, detectedMode); // Fix: pass detectedMode
 
-            // Apply enriched metadata
-            setChatTitle(enrichedMetadata.title);
-            setMetadata({
-                ...enrichedMetadata,
-                // Ensure artifacts sync from parsed data if any (though usually empty on fresh parse)
-                artifacts: data.metadata?.artifacts || []
-            });
+            // Merge or Set
+            if (chatData && !forceNew) {
+                // Merge Mode
+                const mergedData = await mergeChatData(data, enrichedMetadata, contentToConvert);
 
-            // HYDRATION: If imported JSON has artifacts in metadata, sync them to messages
-            if (data.metadata?.artifacts && data.metadata.artifacts.length > 0) {
-                const hydratedMessages = [...data.messages];
-                let changed = false;
-                data.metadata.artifacts.forEach(artifact => {
-                    if (artifact.insertedAfterMessageIndex !== undefined && hydratedMessages[artifact.insertedAfterMessageIndex]) {
-                        const msg = hydratedMessages[artifact.insertedAfterMessageIndex];
-                        const existing = msg.artifacts || [];
-                        if (!existing.some(a => a.id === artifact.id)) {
-                            hydratedMessages[artifact.insertedAfterMessageIndex] = {
-                                ...msg,
-                                artifacts: [...existing, artifact]
-                            };
-                            changed = true;
+                // Re-generate HTML with merged data from the source of truth
+                const finalData = mergedData;
+                const finalMetadata = mergedData.metadata!; // Metadata is part of ChatData usually, but here state is separate. 
+                // Wait, mergeChatData updates setChatData(mergedData) and setMetadata(mergedMetadata).
+                // Let's check mergeChatData return type. It returns ChatData.
+                // Does ChatData include metadata? Yes: messages: [], metadata?: { ... }
+                // So mergedData.metadata should be the final metadata.
+
+                const html = generateHtml(
+                    finalData,
+                    chatTitle, // Keep existing title
+                    selectedTheme,
+                    userName,
+                    aiName,
+                    detectedMode,
+                    finalData.metadata || enrichedMetadata, // Fallback
+                    false,
+                    true
+                );
+                setGeneratedHtml(html);
+
+                // AUTO-SAVE merged result
+                setTimeout(async () => {
+                    await handleSaveChat(chatTitle, true, finalData, finalData.metadata || enrichedMetadata);
+                }, 100);
+
+            } else {
+                // New Load Mode OR "Smart Resume" Mode
+
+                // 1. Check if a session with this title already exists to prevent "Copy" duplicates
+                let baseSessionId = null;
+                let baseChatData = null;
+                let baseMetadata = null;
+
+                if (enrichedMetadata.title && !forceNew) {
+                    try {
+                        const existingSession = await storageService.getSessionByNormalizedTitle(normalizeTitle(enrichedMetadata.title));
+                        if (existingSession) {
+                            console.log(`🔄 Found existing session "${existingSession.name}" - Merging instead of creating new.`);
+                            baseSessionId = existingSession.id;
+                            baseChatData = existingSession.chatData;
+                            baseMetadata = existingSession.metadata || { ...enrichedMetadata }; // Fallback
+
+                            // Set the ID so handleSaveChat updates this session
+                            setLoadedSessionId(baseSessionId);
+                        }
+                    } catch (e) {
+                        console.warn('Failed to check for existing session', e);
+                    }
+                }
+
+                if (baseChatData && baseSessionId) {
+                    // --- SMART MERGE LOGIC (Copy of Merge Mode for non-loaded state) ---
+                    // We need to merge the NEW data (data) into the EXISTING DB data (baseChatData)
+
+                    // Note: We can't use mergeChatData() hook directly easily because it depends on state `chatData`.
+                    // But we can replicate the simple logic or temporarily set state. 
+                    // Better to clean merge manually here to be safe.
+
+                    const updatedMessages = [...baseChatData.messages, ...data.messages];
+
+                    // Merge artifacts
+                    const distinctArtifacts = [...(baseMetadata?.artifacts || [])];
+                    const newArtifacts = data.metadata?.artifacts || [];
+                    newArtifacts.forEach(art => {
+                        if (!distinctArtifacts.some(existing => existing.id === art.id)) {
+                            distinctArtifacts.push(art);
+                        }
+                    });
+
+                    const mergedData = {
+                        ...baseChatData,
+                        messages: updatedMessages
+                    };
+                    const mergedMetadata = {
+                        ...enrichedMetadata,
+                        ...(baseMetadata || {}),
+                        // Ensure we keep the title that matched
+                        title: baseMetadata?.title || enrichedMetadata.title,
+                        artifacts: distinctArtifacts
+                    };
+
+                    // Set State
+                    setChatData(mergedData);
+                    setMetadata(mergedMetadata);
+                    setArtifacts(distinctArtifacts);
+                    // Append content to existing
+                    const previousContent = baseSessionId ? (await storageService.getSessionById(baseSessionId))?.inputContent || '' : '';
+                    setInputContent(previousContent + '\n\n' + contentToConvert);
+
+                    // Generate HTML
+                    const html = generateHtml(
+                        mergedData,
+                        mergedMetadata.title || enrichedMetadata.title,
+                        selectedTheme,
+                        userName,
+                        aiName,
+                        detectedMode,
+                        mergedMetadata,
+                        false,
+                        true
+                    );
+                    setGeneratedHtml(html);
+
+                    // Save
+                    setTimeout(async () => {
+                        await handleSaveChat(mergedMetadata.title, true, mergedData, mergedMetadata);
+                    }, 100);
+
+                } else {
+                    // Truly New Session
+                    setChatData(data); // Set data first
+
+                    // Apply enriched metadata
+                    setChatTitle(enrichedMetadata.title);
+                    setMetadata(prev => ({
+                        ...prev, // Keep existing metadata state if any
+                        ...enrichedMetadata,
+                        // Ensure artifacts sync from parsed data if any
+                        artifacts: data.metadata?.artifacts || []
+                    }));
+
+                    // Sync top-level state
+                    if (enrichedMetadata.title && chatTitle === 'AI Chat Export') setChatTitle(enrichedMetadata.title);
+
+                    // HYDRATION: If imported JSON has artifacts in metadata, sync them to messages
+                    if (data.metadata?.artifacts && data.metadata.artifacts.length > 0) {
+                        const hydratedMessages = [...data.messages];
+                        let changed = false;
+                        data.metadata.artifacts.forEach(artifact => {
+                            if (artifact.insertedAfterMessageIndex !== undefined && hydratedMessages[artifact.insertedAfterMessageIndex]) {
+                                const msg = hydratedMessages[artifact.insertedAfterMessageIndex];
+                                const existing = msg.artifacts || [];
+                                if (!existing.some(a => a.id === artifact.id)) {
+                                    hydratedMessages[artifact.insertedAfterMessageIndex] = {
+                                        ...msg,
+                                        artifacts: [...existing, artifact]
+                                    };
+                                    changed = true;
+                                }
+                            }
+                        });
+                        if (changed) {
+                            data.messages = hydratedMessages;
+                            setChatData({ ...data, messages: hydratedMessages });
                         }
                     }
-                });
-                if (changed) {
-                    data.messages = hydratedMessages; // Update local ref before setChatData
-                    setChatData({ ...data, messages: hydratedMessages });
+
+                    const html = generateHtml(
+                        data,
+                        enrichedMetadata.title,
+                        selectedTheme,
+                        userName,
+                        aiName,
+                        detectedMode,
+                        { ...enrichedMetadata, tags: [...new Set([...metadata.tags, ...(enrichedMetadata.tags || [])])] },
+                        false,
+                        true // isPreview
+                    );
+                    setGeneratedHtml(html);
+
+                    // AUTO-SAVE on first conversion
+                    setTimeout(async () => {
+                        await handleSaveChat(enrichedMetadata.title, true, data, enrichedMetadata);
+                    }, 100);
                 }
             }
-
-            const html = generateHtml(
-                data,
-                enrichedMetadata.title, // Use title from enrichment
-                selectedTheme,
-                userName,
-                aiName,
-                parserMode,
-                enrichedMetadata, // Use metadata from enrichment
-                false,
-                true // isPreview
-            );
-            setGeneratedHtml(html);
-
-            // AUTO-SAVE on first conversion
-            setTimeout(async () => {
-                await handleSaveChat(enrichedMetadata.title, true, data, enrichedMetadata); // Pass overrides for safety
-            }, 100);
 
         } catch (err: any) {
             setError(err.message);
         } finally {
             setIsConverting(false);
         }
-    }, [inputContent, fileType, chatTitle, selectedTheme, userName, aiName, parserMode]);
+    };
+
+    // Extension Listener
+    useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            if (event.data.type !== 'IMPORT_CHAT_DATA') return;
+
+            const { content, parser } = event.data.payload;
+            if (!content) return;
+
+            // Map extension modes to parser modes
+            let mode = ParserMode.Basic;
+            switch (parser) {
+                case 'claude': mode = ParserMode.ClaudeHtml; break;
+                case 'chatgpt': mode = ParserMode.ChatGptHtml; break;
+                case 'gemini': mode = ParserMode.GeminiHtml; break;
+                // Add others if needed
+            }
+
+            // Trigger conversion with MERGE if chat exists
+            // We call handleConvert, which now internally handles the merge logic
+            handleConvert(content, mode).then(() => {
+                // Send response back if source is window
+                if ((event.source as Window)?.postMessage) {
+                    (event.source as Window).postMessage({ type: 'IMPORT_SUCCESS' }, '*');
+                }
+            });
+        };
+
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [chatData, handleConvert]); // Depend on chatData for merge decision
+
+
+
+    const handleWizardImport = (content: string, type: 'html' | 'json', mode: ParserMode) => {
+        setInputContent(content);
+        setParserMode(mode);
+        // Trigger immediate conversion
+        handleConvert(content, mode, forceNewImport);
+        setShowImportWizard(false);
+        setForceNewImport(false); // Reset
+    };
 
     const handleSaveChat = useCallback(async (sessionName?: string, silent: boolean = false, overrideData?: ChatData, overrideMetadata?: ChatMetadata) => {
         const currentData = overrideData || chatData;
@@ -779,35 +886,33 @@ const BasicConverter: React.FC = () => {
         setChatData({ ...chatData, messages: result.updatedMessages });
     };
 
-    const handleInsertCollapsible = () => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
+    const handleMessagesUpdate = async (newMessages: ChatMessage[]) => {
+        if (chatData) {
+            const updatedChatData = { ...chatData, messages: newMessages };
+            setChatData(updatedChatData);
 
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = textarea.value;
+            // Regenerate HTML
+            const html = generateHtml(
+                updatedChatData,
+                chatTitle,
+                selectedTheme,
+                userName,
+                aiName,
+                parserMode,
+                { ...metadata, title: chatTitle, artifacts },
+                false,
+                true // isPreview
+            );
+            setGeneratedHtml(html);
 
-        if (start === end) {
-            // No selection: just insert tags
-            const newText = text.substring(0, start) + "<collapsible></collapsible>" + text.substring(end);
-            setInputContent(newText);
-            // Move cursor inside tags
-            setTimeout(() => {
-                textarea.focus();
-                textarea.setSelectionRange(start + 13, start + 13);
-            }, 0);
-        } else {
-            // Wrap selection
-            const selectedText = text.substring(start, end);
-            const newText = text.substring(0, start) + `<collapsible>${selectedText}</collapsible>` + text.substring(end);
-            setInputContent(newText);
-            // Keep selection around text inside tags
-            setTimeout(() => {
-                textarea.focus();
-                textarea.setSelectionRange(start + 13, end + 13);
-            }, 0);
+            // Persist if session exists
+            if (loadedSessionId) {
+                handleSaveChat(chatTitle, true, updatedChatData);
+            }
         }
     };
+
+
 
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30">
@@ -832,28 +937,6 @@ const BasicConverter: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="flex gap-2">
-                            <label className="cursor-pointer px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium text-gray-300 border border-gray-700 transition-all shadow-sm hover:shadow flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                Upload File
-                                <input type="file" className="hidden" accept=".txt,.md,.json,.mhtml,.mht,.html,.htm" onChange={handleFileUpload} />
-                            </label>
-                            <label className="cursor-pointer px-3 py-1.5 bg-blue-900/30 hover:bg-blue-800/40 hover:border-blue-500/50 rounded-lg text-xs font-medium text-blue-300 border border-blue-800/50 transition-all shadow-sm hover:shadow flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                Import JSON
-                                <input
-                                    type="file"
-                                    className="hidden"
-                                    accept=".json"
-                                    multiple
-                                    onChange={handleBatchImport}
-                                    id="batch-import-input"
-                                />
-                            </label>
-                        </div>
-
-                        <div className="w-px h-6 bg-gray-700"></div>
-
                         <button
                             onClick={() => setShowSavedSessions(!showSavedSessions)}
                             className="text-sm px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
@@ -1030,7 +1113,7 @@ const BasicConverter: React.FC = () => {
                             {/* Box 1: Configuration */}
                             <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-blue-500/10 transition-all group flex flex-col min-h-[300px]">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 bg-blue-600/20 border border-blue-500/50 rounded-lg flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-blue-600/20 border border-blue-500/50 rounded-lg flex items-center justify-center shrink-0">
                                         <span className="text-xl">⚙️</span>
                                     </div>
                                     <div>
@@ -1038,6 +1121,25 @@ const BasicConverter: React.FC = () => {
                                         <p className="text-sm text-gray-400">Chat settings & themes</p>
                                     </div>
                                 </div>
+
+                                {/* Inner Box: Configuration Summary */}
+                                <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-4 mb-4 flex-1 flex flex-col justify-center space-y-3">
+                                    <div>
+                                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Page Title</span>
+                                        <p className="text-gray-200 font-medium truncate" title={chatTitle}>{chatTitle || 'Untitled Chat'}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">User Name</span>
+                                            <p className="text-gray-300 truncate" title={userName}>{userName || 'User'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">AI Name</span>
+                                            <p className="text-gray-300 truncate" title={aiName}>{aiName || 'AI'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <button
                                     onClick={() => setShowConfigurationModal(true)}
                                     className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-500 shadow-lg shadow-blue-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-blue-500/30 mt-auto"
@@ -1052,7 +1154,7 @@ const BasicConverter: React.FC = () => {
                             {/* Box 2: Metadata */}
                             <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-purple-500/10 transition-all group flex flex-col min-h-[300px]">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 bg-purple-600/20 border border-purple-500/50 rounded-lg flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-purple-600/20 border border-purple-500/50 rounded-lg flex items-center justify-center shrink-0">
                                         <span className="text-xl">🏷️</span>
                                     </div>
                                     <div>
@@ -1060,6 +1162,48 @@ const BasicConverter: React.FC = () => {
                                         <p className="text-sm text-gray-400">Tags, model info & details</p>
                                     </div>
                                 </div>
+
+                                {/* Inner Box: Metadata Summary */}
+                                <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-4 mb-4 flex-1 flex flex-col justify-center space-y-3">
+                                    <div className="flex gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Model / Source</span>
+                                            {metadata.model ? (
+                                                <span className="inline-block px-2 py-1 rounded bg-purple-500/10 text-purple-300 text-xs border border-purple-500/20 truncate max-w-full">
+                                                    {metadata.model}
+                                                </span>
+                                            ) : (
+                                                <p className="text-gray-500 text-sm italic">Not specified</p>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Date</span>
+                                            <p className="text-gray-300 text-sm truncate">
+                                                {new Date(metadata.date).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Tags</span>
+                                        {metadata.tags && metadata.tags.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1.5 max-h-16 overflow-hidden">
+                                                {metadata.tags.slice(0, 5).map((tag, i) => (
+                                                    <span key={i} className="text-[10px] px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded border border-gray-600">
+                                                        #{tag}
+                                                    </span>
+                                                ))}
+                                                {metadata.tags.length > 5 && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 bg-gray-800 text-gray-500 rounded border border-gray-700">
+                                                        +{metadata.tags.length - 5}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500 text-sm italic">No tags added</p>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <button
                                     onClick={() => setShowMetadataModal(true)}
                                     className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg border border-purple-500 shadow-lg shadow-purple-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-purple-500/30 mt-auto"
@@ -1072,25 +1216,101 @@ const BasicConverter: React.FC = () => {
                             </div>
 
                             {/* Box 3: Chat Content */}
-                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-emerald-500/10 transition-all group flex flex-col min-h-[300px]">
+                            {/* Chat Content Manager (Replaces Raw Input) */}
+                            <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-green-500/10 transition-all group flex flex-col min-h-[300px]">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 bg-emerald-600/20 border border-emerald-500/50 rounded-lg flex items-center justify-center">
+                                    <div className={`w-10 h-10 border rounded-lg flex items-center justify-center transition-colors ${inputContent ? 'bg-green-600/20 border-green-500/50 text-green-400' : 'bg-gray-700/50 border-gray-600 text-gray-500'
+                                        }`}>
                                         <span className="text-xl">💬</span>
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-emerald-300">Chat Content</h3>
-                                        <p className="text-sm text-gray-400">Input & processing</p>
+                                        <h3 className={`text-lg font-bold ${inputContent ? 'text-green-300' : 'text-gray-400'}`}>Chat Content</h3>
+                                        <p className="text-sm text-gray-400">Import and manage messages</p>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setShowChatContentModal(true)}
-                                    className="w-full px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg border border-emerald-500 shadow-lg shadow-emerald-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-emerald-500/30 mt-auto"
-                                >
-                                    <span>Add Chat Content</span>
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                </button>
+
+                                {/* Inner Box: Content Status */}
+                                <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-4 flex-1 flex flex-col justify-center items-center text-center space-y-4 relative overflow-hidden">
+                                    {inputContent ? (
+                                        <>
+                                            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-2">
+                                                <span className="text-2xl">✅</span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-white font-bold text-lg">Content Loaded</h4>
+                                                <p className="text-sm text-gray-400 mt-1">
+                                                    {(inputContent.length / 1024).toFixed(1)} KB Source Data
+                                                </p>
+                                                {chatData && (
+                                                    <p className="text-xs text-green-400 font-mono mt-2 bg-green-500/10 px-2 py-1 rounded inline-block">
+                                                        {chatData.messages.length} Messages Parsed
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
+                                                <span className="text-2xl opacity-50 group-hover:opacity-100">📥</span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-gray-300 font-medium">No Content Yet</h4>
+                                                <p className="text-xs text-gray-500 mt-1 max-w-[200px] mx-auto">
+                                                    Use the wizard to import chat logs from files, clipboard, or extensions.
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="col-span-2 grid grid-cols-2 gap-3">
+                                    {chatData ? (
+                                        <>
+                                            {/* Left Half: Merge */}
+                                            <button
+                                                onClick={() => {
+                                                    setForceNewImport(false);
+                                                    setShowImportWizard(true);
+                                                }}
+                                                className="col-span-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white border border-purple-500 shadow-lg shadow-purple-500/20 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-blue-500/30"
+                                            >
+                                                <span>Merge New Messages</span>
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                </svg>
+                                            </button>
+
+                                            {/* Right Half: Copy */}
+                                            <button
+                                                onClick={() => {
+                                                    setForceNewImport(true);
+                                                    setShowImportWizard(true);
+                                                }}
+                                                className="col-span-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600 hover:border-gray-500 rounded-lg shadow-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                                title="Import content as a completely new chat session (preserves current chat)"
+                                            >
+                                                <span>Make New Copy</span>
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        /* Full Width: Start Import */
+                                        <button
+                                            onClick={() => {
+                                                setForceNewImport(false);
+                                                setShowImportWizard(true);
+                                            }}
+                                            className="col-span-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 shadow-lg shadow-blue-500/20 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-blue-500/30"
+                                        >
+                                            <span>Start Import Wizard</span>
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1107,7 +1327,7 @@ const BasicConverter: React.FC = () => {
                             {/* Box 1: Review & Edit */}
                             <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-orange-500/10 transition-all group flex flex-col min-h-[300px]">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 bg-orange-600/20 border border-orange-500/50 rounded-lg flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-orange-600/20 border border-orange-500/50 rounded-lg flex items-center justify-center shrink-0">
                                         <span className="text-xl">✏️</span>
                                     </div>
                                     <div>
@@ -1115,12 +1335,19 @@ const BasicConverter: React.FC = () => {
                                         <p className="text-sm text-gray-400">Edit messages & content</p>
                                     </div>
                                 </div>
+
+                                <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-4 mb-4 flex-1 flex flex-col justify-center items-center text-center">
+                                    <p className="text-gray-400 text-sm">
+                                        {chatData ? `${chatData.messages.length} messages parsed` : 'No messages parsed yet'}
+                                    </p>
+                                </div>
+
                                 {chatData ? (
                                     <button
                                         onClick={() => setShowReviewEditModal(true)}
                                         className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg border border-orange-500 shadow-lg shadow-orange-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-orange-500/30 mt-auto"
                                     >
-                                        <span>Review Messages ({chatData.messages.length})</span>
+                                        <span>Review Messages</span>
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                         </svg>
@@ -1137,20 +1364,62 @@ const BasicConverter: React.FC = () => {
 
                             {/* Box 2: Attachments */}
                             <div className="bg-gray-800/40 backdrop-blur border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-red-500/10 transition-all group flex flex-col min-h-[300px]">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 bg-red-600/20 border border-red-500/50 rounded-lg flex items-center justify-center">
-                                        <span className="text-xl">📎</span>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-red-600/20 border border-red-500/50 rounded-lg flex items-center justify-center shrink-0">
+                                            <span className="text-xl">📎</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-red-300">Attachments</h3>
+                                            <p className="text-sm text-gray-400">Files & artifacts</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-red-300">Attachments</h3>
-                                        <p className="text-sm text-gray-400">Files & artifacts</p>
+                                    {artifacts.length > 0 && (
+                                        <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-full text-xs font-bold border border-red-500/30">
+                                            {artifacts.length}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Inner Box: Drag & Drop Zone */}
+                                <div
+                                    className="bg-gray-900/50 border-2 border-dashed border-gray-700 hover:border-red-500/50 hover:bg-red-500/5 transition-all rounded-xl p-4 mb-4 flex-1 flex flex-col items-center justify-center text-center cursor-pointer relative"
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.classList.add('border-red-500', 'bg-red-500/10');
+                                    }}
+                                    onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.classList.remove('border-red-500', 'bg-red-500/10');
+                                    }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.classList.remove('border-red-500', 'bg-red-500/10');
+                                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                            handleArtifactUpload(e.dataTransfer.files);
+                                        }
+                                    }}
+                                    onClick={() => artifactFileInputRef.current?.click()}
+                                >
+                                    <input
+                                        type="file"
+                                        ref={artifactFileInputRef}
+                                        className="hidden"
+                                        multiple
+                                        onChange={(e) => handleArtifactUpload(e.target.files)}
+                                    />
+                                    <div className="pointer-events-none">
+                                        <span className="text-2xl mb-2 block opacity-50">📂</span>
+                                        <p className="text-sm text-gray-400 font-medium">Drag files here</p>
+                                        <p className="text-xs text-gray-600 mt-1">or click to browse</p>
                                     </div>
                                 </div>
+
                                 <button
                                     onClick={() => setShowArtifactManager(true)}
                                     className="w-full px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg border border-red-500 shadow-lg shadow-red-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-red-500/30 mt-auto"
                                 >
-                                    <span>Manage Files ({artifacts.length})</span>
+                                    <span>Manage Files</span>
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                     </svg>
@@ -1164,7 +1433,7 @@ const BasicConverter: React.FC = () => {
 
             {/* Artifact Manager Modal */}
             {
-                showArtifactManager && chatData && (
+                showArtifactManager && (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
                         <div className="bg-gray-800 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
                             <div className="flex justify-between items-center p-6 border-b border-gray-700 shrink-0">
@@ -1188,16 +1457,25 @@ const BasicConverter: React.FC = () => {
                                 <ArtifactManager
                                     session={{
                                         id: loadedSessionId || Date.now().toString(),
-                                        name: chatTitle,
-                                        chatTitle,
-                                        date: metadata.date,
-                                        inputContent,
-                                        userName,
-                                        aiName,
-                                        selectedTheme,
-                                        parserMode,
-                                        chatData,
-                                        metadata: { ...metadata, artifacts }
+                                        name: chatTitle || 'New Import',
+                                        chatTitle: chatTitle || 'New Import',
+                                        date: metadata?.date || new Date().toISOString(),
+                                        inputContent: inputContent || '',
+                                        userName: userName || 'User',
+                                        aiName: aiName || 'AI',
+                                        selectedTheme: selectedTheme,
+                                        parserMode: parserMode,
+                                        chatData: chatData || undefined,
+                                        metadata: {
+                                            title: chatTitle || 'New Import',
+                                            model: metadata?.model || 'unknown',
+                                            date: metadata?.date || new Date().toISOString(),
+                                            tags: metadata?.tags || [],
+                                            author: metadata?.author,
+                                            sourceUrl: metadata?.sourceUrl,
+                                            exportStatus: metadata?.exportStatus,
+                                            artifacts: artifacts
+                                        }
                                     }}
                                     messages={chatData?.messages || []}
                                     manualMode={!loadedSessionId}
@@ -1209,31 +1487,6 @@ const BasicConverter: React.FC = () => {
 
                                             // Use unified handleSaveChat
                                             handleSaveChat(chatTitle, true, chatData || undefined, newMetadata);
-                                        }
-                                    }}
-                                    onMessagesChange={async (newMessages) => {
-                                        if (chatData) {
-                                            const updatedChatData = { ...chatData, messages: newMessages };
-                                            setChatData(updatedChatData);
-
-                                            // Regenerate HTML with new links
-                                            const html = generateHtml(
-                                                updatedChatData,
-                                                chatTitle,
-                                                selectedTheme,
-                                                userName,
-                                                aiName,
-                                                parserMode,
-                                                { ...metadata, title: chatTitle, artifacts },
-                                                false,
-                                                true // isPreview
-                                            );
-                                            setGeneratedHtml(html);
-
-                                            // Persist if session exists
-                                            if (loadedSessionId) {
-                                                handleSaveChat(chatTitle, true, updatedChatData);
-                                            }
                                         }
                                     }}
                                 />
@@ -1330,17 +1583,12 @@ const BasicConverter: React.FC = () => {
                 />
             )}
 
-            {/* Chat Content Modal */}
-            {showChatContentModal && (
-                <ChatContentModal
-                    inputContent={inputContent}
-                    parserMode={parserMode}
-                    onInputContentChange={setInputContent}
-                    onConvert={handleConvert}
-                    isConverting={isConversing}
-                    onClose={() => setShowChatContentModal(false)}
-                />
-            )}
+            {/* Content Import Wizard */}
+            <ContentImportWizard
+                isOpen={showImportWizard}
+                onClose={() => setShowImportWizard(false)}
+                onImport={handleWizardImport}
+            />
 
             {/* Review & Edit Modal */}
             {showReviewEditModal && (
@@ -1351,6 +1599,7 @@ const BasicConverter: React.FC = () => {
                     editingMessageIndex={editingMessageIndex}
                     onAttachToMessage={handleAttachToMessage}
                     onRemoveMessageArtifact={handleRemoveMessageArtifact}
+                    onMessagesChange={handleMessagesUpdate}
                     onClose={() => setShowReviewEditModal(false)}
                 />
             )}
