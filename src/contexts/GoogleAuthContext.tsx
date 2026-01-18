@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useGoogleLogin, googleLogout, TokenResponse } from '@react-oauth/google';
+import { useGoogleLogin, googleLogout, TokenResponse, CodeResponse } from '@react-oauth/google';
 import { googleDriveService, setTokenRefreshCallback } from '../services/googleDriveService';
 
 interface UserProfile {
@@ -35,22 +35,48 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
     const [driveFolderId, setDriveFolderId] = useState<string | null>(localStorage.getItem('drive_folder_id'));
 
     const login = useGoogleLogin({
-        onSuccess: async (tokenResponse: TokenResponse) => {
+        flow: 'auth-code',
+        onSuccess: async (codeResponse: CodeResponse) => {
             setIsLoading(true);
             setError(null);
-            setAccessToken(tokenResponse.access_token);
-            localStorage.setItem('google_access_token', tokenResponse.access_token);
 
-            // Store refresh token if available
-            if (tokenResponse.refresh_token) {
-                setRefreshTokenValue(tokenResponse.refresh_token);
-                localStorage.setItem('google_refresh_token', tokenResponse.refresh_token);
-            }
-            
-            // Fetch user info
             try {
+                // Exchange authorization code for tokens
+                const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        client_id: process.env.VITE_GOOGLE_CLIENT_ID || '',
+                        code: codeResponse.code,
+                        grant_type: 'authorization_code',
+                        redirect_uri: window.location.origin,
+                    }),
+                });
+
+                if (!tokenResponse.ok) {
+                    throw new Error('Failed to exchange authorization code for tokens');
+                }
+
+                const tokens = await tokenResponse.json();
+
+                setAccessToken(tokens.access_token);
+                localStorage.setItem('google_access_token', tokens.access_token);
+
+                // Store refresh token if available (authorization code flow provides it)
+                if (tokens.refresh_token) {
+                    setRefreshTokenValue(tokens.refresh_token);
+                    localStorage.setItem('google_refresh_token', tokens.refresh_token);
+                }
+
+                // Store token expiry time (tokens typically last 1 hour)
+                const expiresAt = Date.now() + (tokens.expires_in || 3600) * 1000;
+                localStorage.setItem('google_token_expires_at', expiresAt.toString());
+
+                // Fetch user info
                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
-                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                    headers: { Authorization: `Bearer ${tokens.access_token}` },
                 });
                 const userData = await userInfoResponse.json();
                 const profile: UserProfile = {
@@ -63,16 +89,16 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
                 localStorage.setItem('google_user', JSON.stringify(profile));
 
                 // Initialize Drive Folder immediately after login
-                await initializeFolder(tokenResponse.access_token);
+                await initializeFolder(tokens.access_token);
 
             } catch (error) {
-                console.error('Failed to fetch user info or init drive:', error);
-                setError('Failed to initialize user data');
+                console.error('Failed to complete authentication:', error);
+                setError('Failed to complete authentication');
             } finally {
                 setIsLoading(false);
             }
         },
-        onError: (err) => {
+        onError: (err: any) => {
             console.error('Login Failed:', err);
             setError(err instanceof Error ? err.message : String(err));
         },
@@ -88,6 +114,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         setDriveFolderId(null);
         localStorage.removeItem('google_access_token');
         localStorage.removeItem('google_refresh_token');
+        localStorage.removeItem('google_token_expires_at');
         localStorage.removeItem('google_user');
         localStorage.removeItem('drive_folder_id');
     };
@@ -126,6 +153,11 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
             if (newAccessToken) {
                 setAccessToken(newAccessToken);
                 localStorage.setItem('google_access_token', newAccessToken);
+
+                // Update token expiry time (tokens typically last 1 hour)
+                const expiresAt = Date.now() + (data.expires_in || 3600) * 1000;
+                localStorage.setItem('google_token_expires_at', expiresAt.toString());
+
                 console.log('Token refreshed successfully');
                 return true;
             }
@@ -164,13 +196,44 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         }
     };
 
-    // Set up token refresh callback for googleDriveService
+    // Set up token refresh callback for googleDriveService and handle automatic token refresh on app load
     useEffect(() => {
         setTokenRefreshCallback(refreshToken);
+
+        // Check if we need to refresh token on app load
+        const checkAndRefreshToken = async () => {
+            const storedToken = localStorage.getItem('google_access_token');
+            const storedRefreshToken = localStorage.getItem('google_refresh_token');
+            const tokenExpiresAt = localStorage.getItem('google_token_expires_at');
+
+            if (storedToken && storedRefreshToken && tokenExpiresAt) {
+                const expiresAt = parseInt(tokenExpiresAt);
+                const now = Date.now();
+
+                // If token expires within 5 minutes, refresh it
+                if (expiresAt - now < 5 * 60 * 1000) {
+                    console.log('Token expiring soon, attempting automatic refresh...');
+                    try {
+                        const refreshSuccess = await refreshToken();
+                        if (!refreshSuccess) {
+                            console.log('Automatic token refresh failed, user will need to re-authenticate');
+                        }
+                    } catch (error) {
+                        console.error('Error during automatic token refresh:', error);
+                    }
+                }
+            }
+        };
+
+        // Only run on initial mount, not on every refreshToken change
+        if (refreshTokenValue) {
+            checkAndRefreshToken();
+        }
+
         return () => {
             setTokenRefreshCallback(null);
         };
-    }, [refreshTokenValue]); // Re-run when refresh token changes
+    }, []); // Empty dependency array - only run once on mount
 
     const value = {
         isLoggedIn: !!accessToken,

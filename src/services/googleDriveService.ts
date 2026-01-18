@@ -11,7 +11,7 @@ const UPLOAD_API_BASE = 'https://www.googleapis.com/upload/drive/v3';
 // Global token refresh callback
 let tokenRefreshCallback: (() => Promise<boolean>) | null = null;
 
-export const setTokenRefreshCallback = (callback: () => Promise<boolean>) => {
+export const setTokenRefreshCallback = (callback: (() => Promise<boolean>) | null) => {
     tokenRefreshCallback = callback;
 };
 

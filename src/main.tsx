@@ -15,10 +15,16 @@ const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={googleClientId}>
+    {googleClientId ? (
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <GoogleAuthProvider>
+          <App />
+        </GoogleAuthProvider>
+      </GoogleOAuthProvider>
+    ) : (
       <GoogleAuthProvider>
         <App />
       </GoogleAuthProvider>
-    </GoogleOAuthProvider>
+    )}
   </React.StrictMode>
 );
