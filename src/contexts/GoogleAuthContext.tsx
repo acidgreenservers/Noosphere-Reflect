@@ -48,7 +48,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
                     body: new URLSearchParams({
-                        client_id: process.env.VITE_GOOGLE_CLIENT_ID || '',
+                        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
                         code: codeResponse.code,
                         grant_type: 'authorization_code',
                         redirect_uri: window.location.origin,
@@ -137,7 +137,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: new URLSearchParams({
-                    client_id: process.env.VITE_GOOGLE_CLIENT_ID || '',
+                    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
                     grant_type: 'refresh_token',
                     refresh_token: refreshTokenValue,
                 }),
