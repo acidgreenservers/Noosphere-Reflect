@@ -22,11 +22,19 @@ export const ParserModeSelector: React.FC<ParserModeSelectorProps> = ({ selected
     const allOptions: ParserOption[] = [
         {
             mode: ParserMode.Basic,
-            label: 'Basic / Markdown',
-            description: 'Universal parser for standard chat logs or raw Markdown.',
-            icon: '📝',
+            label: 'Noosphere Standard',
+            description: 'Markdown/JSON',
+            icon: '📄',
+            color: 'from-blue-500 to-indigo-600',
+            tldr: 'Strict Noosphere Standard format'
+        },
+        {
+            mode: ParserMode.ThirdPartyMarkdown,
+            label: '3rd Party Exports',
+            description: 'Markdown/JSON (also accepts 3rd party imports)',
+            icon: '📦',
             color: 'from-gray-600 to-gray-700',
-            tldr: 'Use for generic text or markdown files'
+            tldr: 'Supports legacy headers like ## User:'
         },
         {
             mode: ParserMode.ClaudeHtml,

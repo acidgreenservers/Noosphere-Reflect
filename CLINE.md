@@ -370,6 +370,25 @@ To ensure professional, standardized, and semantic operations, strictly follow t
 - **Release Strategy**: Refer to [`RELEASE_PROTOCOL.md`](./agents/protocols/RELEASE_PROTOCOL.md).
 - **AI Collaboration**: Refer to [`AI_COLLABORATION_PROTOCOL.md`](./agents/protocols/AI_COLLABORATION_PROTOCOL.md).
 
+## 🏗️ Architecture & Refactoring Protocols
+
+For managing architectural decisions, code organization, and systematic refactoring:
+
+- **Compartmentalization Protocol**: Refer to [`COMPARTMENTALIZATION_PROTOCOL.md`](./agents/protocols/COMPARTMENTALIZATION_PROTOCOL.md).
+  - Two-stage decision framework for file extraction and modularization
+  - Collaborative process: AI analysis + human vision + implementation strategy
+  - Essential for making architectural decisions with minimal cascading failures
+
+- **Refactor Scan**: Refer to [`REFACTOR_SCAN.md`](./agents/protocols/REFACTOR_SCAN.md).
+  - Diagnostic tool for identifying monolithic files and refactoring opportunities
+  - Three-lens analysis framework (Size/Complexity, Coupling, State Management)
+  - Risk assessment matrix and metrics dashboard for architectural health
+
+- **Protocols Overview**: Refer to [`agents/protocols/README.md`](./agents/protocols/README.md).
+  - Quick reference guide for all architecture protocols
+  - How protocols work together and integration points
+  - Current refactor status and roadmap phase tracking
+
 ## Memory Bank Protocol
 
 The Memory Bank is the persistent context for the project. For the complete structure and workflow, refer to the protocol file.

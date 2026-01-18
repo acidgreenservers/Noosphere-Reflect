@@ -88,6 +88,8 @@ export enum ParserMode {
   KimiHtml = 'kimi-html',
   KimiShareCopy = 'kimi-share-copy',
   GrokHtml = 'grok-html',
+  ThirdPartyMarkdown = 'third-party-markdown',
+  ThirdPartyJson = 'third-party-json',
 }
 
 export interface SavedChatSession {

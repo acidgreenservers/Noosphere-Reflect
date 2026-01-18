@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useGoogleLogin, googleLogout, TokenResponse } from '@react-oauth/google';
-import { googleDriveService } from '../services/googleDriveService';
+import { googleDriveService, setTokenRefreshCallback } from '../services/googleDriveService';
 
 interface UserProfile {
     id: string;
@@ -19,12 +19,14 @@ interface GoogleAuthContextType {
     error: string | null;
     driveFolderId: string | null;
     initDriveFolder: () => Promise<void>;
+    refreshToken: () => Promise<boolean>;
 }
 
 const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
 
 export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('google_access_token'));
+    const [refreshTokenValue, setRefreshTokenValue] = useState<string | null>(localStorage.getItem('google_refresh_token'));
     const [user, setUser] = useState<UserProfile | null>(
         localStorage.getItem('google_user') ? JSON.parse(localStorage.getItem('google_user')!) : null
     );
@@ -38,6 +40,12 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
             setError(null);
             setAccessToken(tokenResponse.access_token);
             localStorage.setItem('google_access_token', tokenResponse.access_token);
+
+            // Store refresh token if available
+            if (tokenResponse.refresh_token) {
+                setRefreshTokenValue(tokenResponse.refresh_token);
+                localStorage.setItem('google_refresh_token', tokenResponse.refresh_token);
+            }
             
             // Fetch user info
             try {
@@ -68,18 +76,74 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
             console.error('Login Failed:', err);
             setError(err instanceof Error ? err.message : String(err));
         },
-        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+        scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
     });
 
     const logout = () => {
         googleLogout();
         setAccessToken(null);
+        setRefreshTokenValue(null);
         setUser(null);
         setError(null);
         setDriveFolderId(null);
         localStorage.removeItem('google_access_token');
+        localStorage.removeItem('google_refresh_token');
         localStorage.removeItem('google_user');
         localStorage.removeItem('drive_folder_id');
+    };
+
+    // Refresh access token using refresh token
+    const refreshToken = async (): Promise<boolean> => {
+        if (!refreshTokenValue) {
+            console.log('No refresh token available');
+            return false;
+        }
+
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            // Use Google's token endpoint to refresh
+            const response = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    client_id: process.env.VITE_GOOGLE_CLIENT_ID || '',
+                    grant_type: 'refresh_token',
+                    refresh_token: refreshTokenValue,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Token refresh failed');
+            }
+
+            const data = await response.json();
+            const newAccessToken = data.access_token;
+
+            if (newAccessToken) {
+                setAccessToken(newAccessToken);
+                localStorage.setItem('google_access_token', newAccessToken);
+                console.log('Token refreshed successfully');
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Token refresh failed:', error);
+            setError('Failed to refresh authentication. Please reconnect to Google Drive.');
+            // Don't logout - let user retry or manually reconnect
+            // Only clear the access token (not refresh token) so user can retry
+            setAccessToken(null);
+            localStorage.removeItem('google_access_token');
+            setDriveFolderId(null);
+            localStorage.removeItem('drive_folder_id');
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const initializeFolder = async (token: string) => {
@@ -100,6 +164,14 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         }
     };
 
+    // Set up token refresh callback for googleDriveService
+    useEffect(() => {
+        setTokenRefreshCallback(refreshToken);
+        return () => {
+            setTokenRefreshCallback(null);
+        };
+    }, [refreshTokenValue]); // Re-run when refresh token changes
+
     const value = {
         isLoggedIn: !!accessToken,
         accessToken,
@@ -109,7 +181,8 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         isLoading,
         error,
         driveFolderId,
-        initDriveFolder
+        initDriveFolder,
+        refreshToken
     };
 
     return (

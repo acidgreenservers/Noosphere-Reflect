@@ -3,7 +3,7 @@ import React from 'react';
 interface ExportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onExport: (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => void;
+    onExport: (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => void;
     selectedCount: number;
     hasArtifacts?: boolean;
     exportFormat: 'html' | 'markdown' | 'json';
@@ -31,6 +31,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     onExportDrive,
     isExportingToDrive = false
 }) => {
+    // Auto-select Directory when switching to Google Drive and ZIP is selected
+    React.useEffect(() => {
+        if (exportDestination === 'drive' && exportPackage === 'zip') {
+            setExportPackage('directory');
+        }
+    }, [exportDestination, exportPackage, setExportPackage]);
+
     if (!isOpen) return null;
 
     const accentColorClass = accentColor === 'purple' ? 'text-purple-300' : 'text-green-300';
@@ -39,7 +46,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         if (exportDestination === 'drive' && onExportDrive) {
             await onExportDrive(exportFormat, exportPackage as 'directory' | 'zip' | 'single');
         } else {
-            onExport(exportFormat, exportPackage as 'directory' | 'zip');
+            onExport(exportFormat, exportPackage as 'directory' | 'zip' | 'single');
         }
     };
 
@@ -96,17 +103,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                                     />
                                     <span className="text-sm text-gray-200">Directory</span>
                                 </label>
-                                <label className="flex items-center gap-2 flex-1 min-w-max cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="package"
-                                        value="zip"
-                                        checked={exportPackage === 'zip'}
-                                        onChange={(e) => setExportPackage(e.target.value as any)}
-                                        className="w-4 h-4"
-                                    />
-                                    <span className="text-sm text-gray-200">ZIP</span>
-                                </label>
+                                {/* Hide ZIP option when exporting to Google Drive */}
+                                {exportDestination !== 'drive' && (
+                                    <label className="flex items-center gap-2 flex-1 min-w-max cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="package"
+                                            value="zip"
+                                            checked={exportPackage === 'zip'}
+                                            onChange={(e) => setExportPackage(e.target.value as any)}
+                                            className="w-4 h-4"
+                                        />
+                                        <span className="text-sm text-gray-200">ZIP</span>
+                                    </label>
+                                )}
                             </div>
                         </div>
                     )}

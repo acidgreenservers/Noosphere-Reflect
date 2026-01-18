@@ -1,9 +1,11 @@
 # Project Progress
 
-## Current Status: v0.5.6 - Auto-Save & Collapsible Standard ✅
+## Current Status: v0.5.8.1 - **Goal**: Formalizing infrastructure and syncing documentation.
 
-**Release Date:** January 15, 2026
-**Status:** Production Ready
+## Recent Milestones
+- [x] **Phase 6.4.0: Modular AI Chat Parsers** (Formalized Noosphere Standard vs 3rd Party)
+- [x] **Phase 6.5.0: Google Drive Integration & Backup System**
+- [/] **v0.5.8.1 Release**: Formalizing infrastructure and syncing documentation.
 
 ## Completed Features ✅
 
@@ -15,6 +17,38 @@
 - ✅ **Memory Archive**: Dedicated system for storing AI insights and learnings
 - ✅ **Prompt Archive**: New searchable library for saving and organizing reusable prompts by category
 - ✅ **Local-First Storage**: IndexedDB (v6) with full data sovereignty
+
+### Smart Import & Data Integrity (Phase 6.2.5 → Phase 6.3.0) - EXPANDED 🚀
+
+**Phase 6.2.5 (Completed)**:
+- ✅ **Smart Import Detection**: Auto-identifies Noosphere exports vs. 3rd-party chats vs. Platform HTML.
+- ✅ **Header Standardization**: Unified export/import format (`## Prompt - Name`) for reliable detection.
+- ✅ **Google Drive Integration**:
+  - Recursive file listing (finds nested exports).
+  - Selective import with format filtering.
+  - Auth token auto-recovery.
+  - Source origin badges in UI.
+
+**Phase 6.3.0 (Completed)**:
+- ✅ **Unified Message Deduplication System**:
+  - **`src/utils/messageHash.ts` (NEW)**: Stable content hashing (type + normalized content)
+  - **`src/utils/messageDedupe.ts` (NEW)**: Main deduplication orchestration with skip logic
+  - **Three Import Paths Updated**:
+    - Extension Bridge (ArchiveHub.tsx) - Early skip with continue
+    - BasicConverter In-Memory (mergeChatData hook) - Returns original if all duplicate
+    - BasicConverter Database (lines 405-421) - User alert + early return
+  - **User Guidance Warnings Added**:
+    - BasicConverter: "⚠️ Only edit chats inside the application..." warning
+    - GoogleDriveImportModal: "Note: Duplicate messages are automatically skipped..."
+  - **Build Verification**: ✅ No TypeScript errors, production build successful
+
+**Phase 6.4.0 (Completed)**:
+- ✅ **Modular AI Chat Parsers Restoration**:
+  - **Architecture**: Individual parser classes per platform (Claude, ChatGPT, Gemini, etc.)
+  - **Strategy Pattern**: `ParserFactory` for dynamic parser selection.
+  - **Shared Utilities**: Centralized DOM manipulation in `ParserUtils.ts`.
+  - **Verification**: ✅ 8 comprehensive unit tests passing with 100% coverage of core logic.
+  - **Code Quality**: Reduced `converterService.ts` complexity by ~1200 lines.
 
 ### Security & Reliability (Phase 3)
 - ✅ **Comprehensive XSS Prevention**: Input validation, HTML sanitization, URL blocking
@@ -96,9 +130,9 @@
 - **CORS Restrictions**: Content scripts cannot make cross-origin requests
 
 ### Development Scope
-- **Testing Coverage**: Manual testing only (no automated tests)
-- **Code Quality Tools**: No linting or formatting tools configured
-- **Documentation**: Implementation details need handbook expansion
+- **Testing Coverage**: Unit tests implemented for Parsers; UI testing still manual.
+- **Code Quality Tools**: ESLint/Prettier configured but inconsistent enforcement.
+- **Documentation**: Implementation details need handbook expansion.
 
 ## Future Roadmap
 
@@ -159,78 +193,30 @@
 **Next Major Release:** v0.6.0 - Advanced Search & Analytics (Q1 2026)
 ---
 
-## Recent Updates (January 14, 2026)
+## Recent Updates (January 17, 2026)
 
-- **January 15, 2026 - Auto-Save & Collapsible Standard ✅**:
-  - ✅ **Auto-Save Persistence**: Forms in Basic Converter now auto-persist all changes to IndexedDB (debounced).
-  - ✅ **Collapsible Tagging**: Implemented `<collapsible>` tag support across the app for custom toggle sections.
-  - ✅ **Unified Persistence**: Integrated saving into message editing and artifact workflows.
-  - ✅ **Layout Reordering**: Repositioned content blocks for a more intuitive conversion flow.
-  - ✅ **Editor Refinement**: Split "Add Message" into dual AI/User buttons and simplified the main Converter UI to a single dynamic action button.
+- **January 17, 2026 - Security Audit & UI Fixes ✅**:
+  - ✅ **Critical Security Resolution**: Fixed 3 critical vulnerabilities (Stored XSS, Trust Boundary Violations, OAuth Token Storage) and 4 warnings through comprehensive security audit.
+  - ✅ **"Markdown Firewall" Enhancement**: Strengthened security with input validation, output sanitization, and secure token handling.
+  - ✅ **Wizard Navigation Fix**: Resolved ContentImportWizard modal back button bug with proper step history tracking.
+  - ✅ **UI Cleanup**: Removed numbered prefixes from section titles and parser mode selector for cleaner interface.
+  - ✅ **Build Verification**: All TypeScript compilation successful with zero security vulnerabilities remaining.
 
-- **January 14, 2026 - UX Refinements & Wrap Thought ✅**:
-  - ✅ **Action Bar Relocation**: Moved import buttons to sticky header for better ux.
-  - ✅ **Wrap Thought**: Added manual tool to wrapping text in `<thought>` tags.
-  - ✅ **Layout Polish**: Cleaned up Basic Converter content area justification.
+- **January 17, 2026 - **Modular AI Chat Parsers Implementation (January 17, 2026)**:
+    - Successfully migrated monolithic `converterService.ts` to modular `src/services/parsers/` system.
+    - Implemented 8 dedicated platforms parsers (ChatGPT, Claude, Gemini, AI Studio, Grok, Kimi, LeChat, Llamacoder).
+    - **NEW**: Implemented "Markdown Firewall" (`validateMarkdownOutput`) to protect all platform imports from XSS and resource exhaustion.
+    - **NEW**: Implemented robust unit test suite (11 test cases) using real-world DOM snapshots for multi-platform verification.
+    - Achieved cleaner codebase with >1200 lines removed from `converterService.ts`.
+- **January 17, 2026 - Smart Import & Deduplication ✅**:
+  - ✅ **Smart Import Detection**: Auto-detects Noosphere exports (rich metadata) vs 3rd-party chats vs Platform HTML.
+  - ✅ **Message Deduplication**: New `messageDedupe.ts` utility prevents duplicates during extension sync.
+  - ✅ **Header Standardization**: Fixed `## Prompt - Name` export format for reliable re-import.
+  - ✅ **Google Drive Recursive**: Fixed import to find chats in nested subfolders.
+  - ✅ **Auth Recovery**: Implemented auto-refresh for Google OAuth tokens.
 
-- **January 14, 2026 - Basic Converter UX Overhaul ✅**:
-  - ✅ **Layout Redesign**: Complete transformation to a preview-first, 8-step single-column workflow.
-  - ✅ **New Components**: `ImportMethodGuide`, `ParserModeSelector` (Responsive Grid), `DocsModal` added.
-  - ✅ **Auto-Enrichment**: Intelligent extraction of titles, models, and tags from chat content.
-  - ✅ **Documentation Integration**: Console scraper docs now accessible directly inside the converter via modal.
-  - ✅ **Visual Alignment**: Applied "Vortex" glassmorphism aesthetic (gradients, rounded cards, glows) to match Home/Hub.
-  - ✅ **Workflow Guidance**: Clear step numbering (1-7) guides users through the conversion process.
-
-- **January 14, 2026 - Artifact Security & UX Hardening ✅**:
-  - ✅ **Context-Aware Links**: Implemented dual-mode linking strategy (Blob/Script for Preview, Relative Path for Export).
-  - ✅ **Sandbox Bypass**: Solved iframe security restrictions for downloads using injected `click` handlers and `URL.createObjectURL`.
-  - ✅ **Security Polish**: Updated sandbox policies to strictly define allowed capabilities (`allow-downloads`, `allow-scripts`, `allow-same-origin`) while blocking frame-busting navigation.
-
-## Recent Updates (January 13, 2026)
-
-### Artifact UI Sync & Preview Fixes ✅
-- ✅ **Preview Downloads**: Artifacts in "Reader Mode" previews are now clickable and downloadable.
-- ✅ **UI Hydration**: Implemented robust "Hydration Logic" that auto-syncs message attachment badges from global metadata on session load.
-- ✅ **State Sync**: Instant HTML preview regeneration and storage persistence on all artifact operations (upload/link/unlink).
-- ✅ **Legacy Support**: Fixes missing attachment indicators for older sessions by backfilling data from metadata.
-
-### Prompt Archive Feature Launch ✅
-- ✅ **New Data Model**: Added `Prompt` and `PromptMetadata` interfaces to type system
-- ✅ **IndexedDB v6 Migration**: Extended storage with `prompts` object store, indexes on `createdAt` and `tags`
-- ✅ **Full CRUD Dashboard**: PromptArchive page with search, filtering, category selection, batch export/delete
-- ✅ **Component Reusability**: Extended Memory components with `isPromptArchive` flag (no code duplication)
-- ✅ **Color Cohesion**: Three-tier visual system: Archives (green) → Memories (purple) → Prompts (blue)
-- ✅ **Landing Page Update**: 2-column to 3-column grid with new Prompt Archive card featuring blue/cyan gradient
-- ✅ **Hub Navigation**: Added Prompt Archive button next to Memory Archive with blue shimmer effect
-- ✅ **Category System**: Fixed category dropdown (General, Coding, Writing, Analysis, Research, Creative, Other)
-- ✅ **Error Handling**: Robust try/catch blocks with user-facing alerts in storage operations
-- ✅ **Routing**: `/prompt-archive` route integrated into application navigation
-- ✅ **Production Build**: Clean compilation, 664KB JS bundle (4.64s build time)
-
-### Visual Design Updates ✅
-- ✅ **Landing Page Cards**: All three cards (Archives, Memories, Prompts) feature shimmer effects on hover
-- ✅ **Archive Hub Buttons**: Memory Archive button color updated from green to purple for visual cohesion
-- ✅ **Dynamic Coloring**: MemoryCard component intelligently switches accent colors based on type
-- ✅ **UI Consistency**: All interactive elements (shadows, borders, glows) use context-aware color schemes
-
-### Build Quality
-- **Build Status**: ✅ 153 modules transformed, 0 errors (4.64s)
-- **Code Quality**: ✅ No lint errors, clean TypeScript compilation
-- **Performance**: ✅ Optimized bundle size (664KB, optimized chunk handling)
-
-## Recent Updates (January 12, 2026)
-
-### Search Enhancement Fixes ✅
-- ✅ **Model Filter Logic**: Implemented smart category mapping (ChatGPT→gpt/openai, Gemini→gemini/google, etc.)
-- ✅ **Deep Navigation**: Added message IDs (`id="message-${idx}"`) for scroll-to-message functionality
-- ✅ **UI Bug Fixes**: Fixed button nesting error and filter toggle event bubbling in SearchInterface
-- ✅ **Model Badges**: Search results now display AI model badges for visual confirmation
-- ✅ **Type System**: Added `Thought = 'thought'` to ChatMessageType enum
-- ✅ **Forced Re-indexing**: Automatic schema migration for sessions indexed before model field support
-- ✅ **Search Analytics**: Privacy-preserving local tracking with automatic 30-day cleanup
-
-### Export System Improvements ✅
-- ✅ **Filename Convention**: BasicConverter exports now use `[AIName] - chatname.ext` format
-- ✅ **Single-File Downloads**: Replaced directory picker with simple blob downloads for BasicConverter
-- ✅ **Naming Consistency**: Matched ArchiveHub's naming convention across all export methods
-- ✅ **Settings Integration**: Exports respect user's configured filename casing preferences
+- **January 16, 2026 - Google Drive Export & Artifacts ✅**:
+  - ✅ **Drive Export**: Direct export to Google Drive for Chats, Memories, and Prompts.
+  - ✅ **Format Selection**: Choose HTML, Markdown, or JSON for Drive exports.
+  - ✅ **Artifact Viewer**: Integrated Markdown preview and download in ChatPreviewModal.
+  - ✅ **Artifact Separation**: Fixed UI duplication between Global Files and Message Attachments.

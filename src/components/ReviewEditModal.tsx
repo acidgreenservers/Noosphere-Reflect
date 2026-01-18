@@ -198,7 +198,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                 element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                             }}
                                             className={`w-full text-left px-3 py-2 text-sm text-gray-400 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-all border border-transparent hover:border-gray-700 flex items-center justify-between`}
-                                            title={`${isUser ? 'User' : 'AI'} message ${idx + 1}${hasArtifacts ? ` - ${msg.artifacts.length} artifact(s)` : ''}`}
+                                            title={`${isUser ? 'User' : 'AI'} message ${idx + 1}${hasArtifacts ? ` - ${(msg.artifacts?.length || 0)} artifact(s)` : ''}`}
                                         >
                                             <span className="font-mono font-bold">#{idx + 1} <span className="text-xs text-gray-500">{isUser ? 'U' : 'AI'}</span></span>
                                             {hasArtifacts && (

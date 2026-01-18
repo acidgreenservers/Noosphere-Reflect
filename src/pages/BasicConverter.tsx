@@ -17,6 +17,7 @@ import {
     ChatMessage,
 } from '../types';
 import { storageService } from '../services/storageService';
+import { deduplicateMessages } from '../utils/messageDedupe';
 import {
     validateFileSize,
     INPUT_LIMITS,
@@ -268,11 +269,22 @@ const BasicConverter: React.FC = () => {
         }
 
         // --- MERGE STRATEGY ---
-        // 1. Append messages
+        // 1. Deduplicate and append messages
         // 2. Merge artifacts (dedupe by ID)
         // 3. Keep existing title/id unless empty
 
-        const updatedMessages = [...chatData.messages, ...newChatData.messages];
+        const { messages: updatedMessages, skipped, hasNewMessages } = deduplicateMessages(
+            chatData.messages,
+            newChatData.messages
+        );
+
+        // Skip merge if no new messages
+        if (!hasNewMessages && skipped > 0) {
+            console.log(`⏭️ Skipping merge: All ${skipped} messages already exist`);
+            return chatData; // Return original, no changes
+        }
+
+        console.log(`✅ Merged ${newChatData.messages.length - skipped} new messages (${skipped} duplicates skipped)`);
 
         // Merge artifacts: Keep existing, add new ones that don't exist
         const distinctArtifacts = [...artifacts];
@@ -372,10 +384,11 @@ const BasicConverter: React.FC = () => {
                 let baseSessionId = null;
                 let baseChatData = null;
                 let baseMetadata = null;
+                let existingSession = null;
 
                 if (enrichedMetadata.title && !forceNew) {
                     try {
-                        const existingSession = await storageService.getSessionByNormalizedTitle(normalizeTitle(enrichedMetadata.title));
+                        existingSession = await storageService.getSessionByNormalizedTitle(normalizeTitle(enrichedMetadata.title));
                         if (existingSession) {
                             console.log(`🔄 Found existing session "${existingSession.name}" - Merging instead of creating new.`);
                             baseSessionId = existingSession.id;
@@ -394,11 +407,19 @@ const BasicConverter: React.FC = () => {
                     // --- SMART MERGE LOGIC (Copy of Merge Mode for non-loaded state) ---
                     // We need to merge the NEW data (data) into the EXISTING DB data (baseChatData)
 
-                    // Note: We can't use mergeChatData() hook directly easily because it depends on state `chatData`.
-                    // But we can replicate the simple logic or temporarily set state. 
-                    // Better to clean merge manually here to be safe.
+                    const { messages: updatedMessages, skipped, hasNewMessages } = deduplicateMessages(
+                        baseChatData.messages,
+                        data.messages
+                    );
 
-                    const updatedMessages = [...baseChatData.messages, ...data.messages];
+                    // Skip merge if no new messages
+                    if (!hasNewMessages && skipped > 0) {
+                        console.log(`⏭️ Skipping merge: All ${skipped} messages already exist in "${existingSession?.name || 'session'}"`);
+                        alert(`No new messages to merge. All ${skipped} messages already exist in this chat.`);
+                        return; // Don't proceed with merge
+                    }
+
+                    console.log(`✅ Merging into "${existingSession?.name || 'session'}": ${data.messages.length - skipped} new messages, ${skipped} duplicates skipped`);
 
                     // Merge artifacts
                     const distinctArtifacts = [...(baseMetadata?.artifacts || [])];
@@ -547,9 +568,19 @@ const BasicConverter: React.FC = () => {
 
 
 
-    const handleWizardImport = (content: string, type: 'html' | 'json', mode: ParserMode) => {
+    const handleWizardImport = (content: string, type: 'html' | 'json', mode: ParserMode, attachments?: File[]) => {
         setInputContent(content);
         setParserMode(mode);
+        // Handle attachments if provided
+        if (attachments && attachments.length > 0) {
+            // Convert File[] to FileList
+            const fileList = {
+                length: attachments.length,
+                item: (index: number) => attachments[index] || null,
+                [Symbol.iterator]: () => attachments[Symbol.iterator]()
+            } as FileList;
+            handleArtifactUpload(fileList);
+        }
         // Trigger immediate conversion
         handleConvert(content, mode, forceNewImport);
         setShowImportWizard(false);
@@ -1094,12 +1125,7 @@ const BasicConverter: React.FC = () => {
                         onSelectMethod={setImportMethod}
                     />
 
-                    {/* 2. PARSER MODE */}
-                    <ParserModeSelector
-                        selectedMode={parserMode}
-                        onSelectMode={setParserMode}
-                        currentMethod={importMethod}
-                    />
+
 
                     {/* 3. MAIN CONTENT - 3-Box Layout */}
                     <div className="space-y-6">
@@ -1257,6 +1283,9 @@ const BasicConverter: React.FC = () => {
                                                 <h4 className="text-gray-300 font-medium">No Content Yet</h4>
                                                 <p className="text-xs text-gray-500 mt-1 max-w-[200px] mx-auto">
                                                     Use the wizard to import chat logs from files, clipboard, or extensions.
+                                                </p>
+                                                <p className="text-xs text-yellow-500/80 italic mt-3 max-w-[220px] mx-auto bg-yellow-500/10 px-2 py-1 rounded">
+                                                    ⚠️ Only edit chats inside the application. Files edited after export may not import correctly.
                                                 </p>
                                             </div>
                                         </>

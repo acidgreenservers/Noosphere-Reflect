@@ -2,8 +2,13 @@
 
 ## Architecture
 - **Framework**: React 19 (Vite).
-- **Core Engine (`converterService.ts`)**: Surgical extraction logic with specialized strategies for Claude, Gemini, ChatGPT, etc.
-- **Persistence Layer**: `IndexedDB` based storage using `storageService.ts` (v5 schema).
+- **Modular Parser Strategy**: Each platform has a dedicated `BaseParser` implementation, centralized via `ParserFactory`.
+- **Markdown Firewall**: Tiered validation for all Markdown extraction (`ParserUtils`).
+- **Google Drive Sync Partitioning**: Separated Google API logic from storage service to enable atomic backups.
+- **Smart Merge Deduplication**: Message hashing for conflict resolution during multi-source imports.
+- **Core Engine (`converterService.ts`)**: Delegation engine- **Parsing Logic**: Transitioned from monolithic helper functions to platform-specific classes in `src/services/parsers/`.
+- **Security Logic**: Multi-layered "Markdown Firewall" (validation, size limits, input hardening) integrated into the parser utility layer.
+- **Persistence Layer**: `IndexedDB` based storage using `storageService.ts` (v6 schema).
 - **Multi-Agent Governance (NEW)**: A 5-mind system of specialized AI agents enforcing protocols.
 
 ## Key Design Patterns
@@ -11,7 +16,11 @@
 ### The Governance Layer (Protocol-First)
 - **Modular Sovereignty**: Specific concerns (Design, Data, Security) are managed by dedicated agent files in `.agents/`.
 - **"Escape First" Strategy**: Security baseline where HTML entities are escaped *before* markdown formatting is applied.
-- **Dual Artifact Storage**: Support for session-level and message-level artifacts with unified export handling.
+- **Modular Parsing Strategy**: Platform-specific HTML parsing is isolated into dedicated classes (Strategy Pattern) with a `ParserFactory` for orchestration.
+- **"Markdown Firewall" Pattern**: Multi-stage sanitization and validation layer in the parsing utility to prevent XSS and resource exhaustion.
+- **Interface Consistency**: `BaseParser` interface ensures all parsers share a common contract (`parse(html): ChatData`).
+  - **Shared Utility Library**: `ParserUtils.ts` centralizes DOM crawling, markdown extraction, and sanitization logic.
+- **Two-Way Artifact Storage**: Support for session-level and message-level artifacts with unified export handling.
 - **Two-Way Delete Pattern**: 
   - *Global Delete* = Cleanup (Remove from Pool + All Messages). 
   - *Message Delete* = Unlink (Remove form Message ONLY).

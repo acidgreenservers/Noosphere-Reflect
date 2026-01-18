@@ -5,7 +5,8 @@
 - **Tailwind CSS v4**: Utility-first CSS framework (Experimental v4).
 - **Vite**: Build tool and dev server.
 - **IndexedDB**: Client-side storage for managing large chat histories.
-- **Parsing**: `jsdom` for robust server-side/CLI HTML parsing.
+- **Parsing**: `jsdom` for robust HTML parsing, modularized into platform-specific classes.
+- **Testing**: `vitest` for unit testing the parsing engine.
 - **Routing**: `react-router-dom` (to be added).
 - **AI Integration**: Google Gemini API (`gemini-2.0-flash-exp`).
 
@@ -34,7 +35,11 @@
     - **Zero Lock-in**: All data is stored locally and is fully exportable/importable.
     - **Privacy**: No external servers (except AI APIs when explicitly used).
 
-## Security Architecture
+## Security Architecture (NEW: "Markdown Firewall")
+- **Input Validation**: 10MB size limit on HTML payloads; automated stripping of event handlers (`on*` attributes) during extraction.
+- **Output Sanitization**: System-wide use of `validateMarkdownOutput` which blocks restricted tags (`<script>`, `<iframe>`, etc.), malicious protocols, and suspicious entities.
+- **Thought Isolation**: Dedicated `<thought>` tags are permitted but managed separately from the main response to ensure clean isolation and collapsible rendering.
+- **Memory Safety**: Atomic duplicate detection and smart merge logic prevent data corruption during imports.
 - **Sandboxed Previews**:
     - User content is rendered in `iframe` with strict `sandbox` attributes.
     - **Artifact Protection**: Downloads in previews bypass sandbox navigation restrictions via dynamic `Blob` URL injection and script-based `click` handling (`allow-scripts` + `allow-downloads`).

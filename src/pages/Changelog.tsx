@@ -13,6 +13,21 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8.1',
+            date: 'Jan 18, 2026',
+            title: 'Modular Parser Infrastructure & Strict Standards',
+            items: [
+                'Parser Refactor: Complete modularization of all AI chat parsers into dedicated specialist classes.',
+                'Formalized Standards: Intelligent differentiation between "Noosphere Standard" (Strict) and "3rd Party Exports" (Flexible).',
+                'enhanced ThirdPartyParser: Restored and improved detection for legacy and custom chat headers (e.g., ## Name:).',
+                'Markdown Firewall: Multi-layered security validation integrated into all parser modules.',
+                'Import Wizard 2.0: Clean selection interface for distinct parsing modes with helpful descriptive labels.',
+                'Smart Detection: Enhanced importDetector.ts to automatically categorize 3rd-party chats by structure.',
+                'Technical Polish: Centralized parsing utilities (ParserUtils) and comprehensive unit test verification.',
+                'Google Drive Reliability: Refined backup sync logic and partitioned API handling.',
+            ]
+        },
+        {
             version: 'v0.5.8',
             date: 'Jan 16, 2026',
             title: 'Google Drive Export with Format Options & Artifact Management',

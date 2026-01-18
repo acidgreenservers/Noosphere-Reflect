@@ -8,31 +8,138 @@ interface ContentImportWizardProps {
     onImport: (content: string, type: 'html' | 'json', mode: ParserMode, attachments?: File[]) => void;
 }
 
-type WizardStep = 1 | 2 | 3;
+type WizardStep = 1 | 1.5 | 2 | 3;
 type InputMethod = 'paste' | 'upload' | 'extension';
+
+interface PlatformOption {
+    mode: ParserMode;
+    label: string;
+    description: string;
+    icon: string;
+    color: string;
+    category: string;
+}
 
 export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen, onClose, onImport }) => {
     const [step, setStep] = useState<WizardStep>(1);
+    const [stepHistory, setStepHistory] = useState<WizardStep[]>([1]);
     const [inputMethod, setInputMethod] = useState<InputMethod | null>(null);
+    const [selectedPlatform, setSelectedPlatform] = useState<ParserMode | null>(null);
     const [content, setContent] = useState('');
     const [fileName, setFileName] = useState<string | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [verificationData, setVerificationData] = useState<{ count: number; title?: string; model?: string } | null>(null);
-    const [detectedMode, setDetectedMode] = useState<ParserMode>(ParserMode.Basic);
+
     const [error, setError] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]); // New state for attachments
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Platform options grouped by category
+    const platformOptions: PlatformOption[] = [
+        // Text/Markdown/JSON
+        {
+            mode: ParserMode.Basic,
+            label: 'Noosphere Standard',
+            description: 'Strict Noosphere Standard (Markdown/JSON)',
+            icon: '📄',
+            color: 'from-blue-500 to-indigo-600',
+            category: 'Text & Markdown'
+        },
+        {
+            mode: ParserMode.ThirdPartyMarkdown,
+            label: '3rd Party Exports',
+            description: 'Markdown/JSON (also accepts 3rd party imports)',
+            icon: '📦',
+            color: 'from-gray-600 to-gray-700',
+            category: 'Text & Markdown'
+        },
+        // Claude
+        {
+            mode: ParserMode.ClaudeHtml,
+            label: 'Claude',
+            description: 'Anthropic Claude HTML exports with thought processes',
+            icon: '🧠',
+            color: 'from-orange-600 to-red-600',
+            category: 'Claude'
+        },
+        // Gemini
+        {
+            mode: ParserMode.GeminiHtml,
+            label: 'Gemini',
+            description: 'Google Gemini HTML exports with thinking blocks',
+            icon: '✨',
+            color: 'from-blue-600 to-purple-600',
+            category: 'Gemini'
+        },
+        // ChatGPT
+        {
+            mode: ParserMode.ChatGptHtml,
+            label: 'ChatGPT',
+            description: 'OpenAI ChatGPT conversation exports',
+            icon: '🤖',
+            color: 'from-teal-600 to-emerald-600',
+            category: 'ChatGPT'
+        },
+        // LeChat
+        {
+            mode: ParserMode.LeChatHtml,
+            label: 'LeChat',
+            description: 'Mistral AI LeChat HTML exports',
+            icon: '🌊',
+            color: 'from-yellow-600 to-amber-600',
+            category: 'LeChat'
+        },
+        // Grok
+        {
+            mode: ParserMode.GrokHtml,
+            label: 'Grok',
+            description: 'xAI Grok conversation exports',
+            icon: '🚀',
+            color: 'from-gray-700 to-black',
+            category: 'Grok'
+        },
+        // Llamacoder
+        {
+            mode: ParserMode.LlamacoderHtml,
+            label: 'Llamacoder',
+            description: 'Together AI Llamacoder HTML exports',
+            icon: '🦙',
+            color: 'from-blue-500 to-indigo-600',
+            category: 'Llamacoder'
+        },
+        // AI Studio
+        {
+            mode: ParserMode.AiStudioHtml,
+            label: 'AI Studio',
+            description: 'Google AI Studio console exports',
+            icon: '🔬',
+            color: 'from-blue-700 to-blue-900',
+            category: 'AI Studio'
+        },
+        // Kimi
+        {
+            mode: ParserMode.KimiHtml,
+            label: 'Kimi AI',
+            description: 'Moonshot AI Kimi HTML exports',
+            icon: '🌙',
+            color: 'from-indigo-600 to-purple-700',
+            category: 'Kimi'
+        }
+    ];
+
     // Reset state when opening
     useEffect(() => {
         if (isOpen) {
             setStep(1);
+            setStepHistory([1]);
             setInputMethod(null);
+            setSelectedPlatform(null);
             setContent('');
             setFileName(null);
             setVerificationData(null);
             setError(null);
+            setAttachments([]);
         }
     }, [isOpen]);
 
@@ -40,8 +147,21 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
 
     const handleMethodSelect = (method: InputMethod) => {
         setInputMethod(method);
-        setStep(2);
+        let nextStep: WizardStep;
+        if (method === 'extension') {
+            nextStep = 2; // Skip platform selection for extension
+        } else {
+            nextStep = 1.5; // Show platform selection for paste/upload
+        }
+        setStepHistory(prev => [...prev, nextStep]);
+        setStep(nextStep);
         setError(null);
+    };
+
+    const handlePlatformSelect = (platform: ParserMode) => {
+        setSelectedPlatform(platform);
+        setStepHistory(prev => [...prev, 2]);
+        setStep(2);
     };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,31 +179,22 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
         reader.readAsText(file);
     };
 
-    const detectMode = (text: string): ParserMode => {
-        // Gemini Detection (Improved)
-        if (text.includes('model-response') || text.includes('user-query') || text.includes('gemini.google.com')) return ParserMode.GeminiHtml;
 
-        if (text.includes('bg-basic-gray-alpha-4') || text.includes('data-message-author-role')) return ParserMode.LeChatHtml;
-        if (text.includes('font-claude-response')) return ParserMode.ClaudeHtml;
-        if (text.includes('messages') && isJson(text)) return ParserMode.Basic; // JSON export
-        return ParserMode.Basic;
-    };
 
     const handleVerify = async () => {
         setIsParsing(true);
         setError(null);
 
         try {
-            const mode = detectMode(content);
-            setDetectedMode(mode);
-            // Dry run parse
-            const data: ChatData = await parseChat(content, 'auto', mode);
+            // Use the selected platform parser only
+            const data: ChatData = await parseChat(content, 'auto', selectedPlatform!);
 
             setVerificationData({
                 count: data.messages.length,
                 title: data.metadata?.title,
                 model: data.metadata?.model
             });
+            setStepHistory(prev => [...prev, 3]);
             setStep(3);
         } catch (err: any) {
             setError(`Parsing failed: ${err.message}`);
@@ -93,7 +204,7 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
     };
 
     const handleFinalImport = () => {
-        onImport(content, isJson(content) ? 'json' : 'html', detectedMode, attachments);
+        onImport(content, isJson(content) ? 'json' : 'html', selectedPlatform!, attachments);
         onClose();
     };
 
@@ -138,6 +249,63 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
         </div>
     );
 
+    const renderStep1_5 = () => (
+        <div className="space-y-6">
+            <div className="text-center">
+                <h3 className="text-xl font-bold text-green-400 mb-2">Select Platform</h3>
+                <p className="text-gray-400 text-sm">Choose the AI platform this content is from</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {platformOptions.map((option) => (
+                    <button
+                        key={option.mode}
+                        onClick={() => handlePlatformSelect(option.mode)}
+                        className={`p-4 rounded-xl border text-left transition-all duration-300 flex flex-col gap-2 relative overflow-hidden group h-full hover:-translate-y-1 ${selectedPlatform === option.mode
+                            ? 'bg-gray-800 border-green-500 shadow-lg shadow-green-500/10 scale-[1.02]'
+                            : 'bg-gray-800/40 border-gray-700 hover:border-gray-500 hover:bg-gray-800/80'
+                            }`}
+                    >
+                        {/* Header Bg Gradient */}
+                        <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${option.color} opacity-80`} />
+
+                        <div className="flex justify-between items-start w-full">
+                            <div className={`w-10 h-10 rounded-lg bg-gray-700/50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform`}>
+                                {option.icon}
+                            </div>
+                            {selectedPlatform === option.mode && (
+                                <div className="bg-green-500/20 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-green-500/30">
+                                    ✓
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1">
+                            <h4 className={`font-bold text-sm ${selectedPlatform === option.mode ? 'text-white' : 'text-gray-200'}`}>
+                                {option.label}
+                            </h4>
+                            <p className="text-[10px] text-gray-400 mt-1 line-clamp-2 leading-tight">
+                                {option.description}
+                            </p>
+                            <div className="mt-2">
+                                <span className="text-[9px] text-gray-500 uppercase tracking-wide font-medium px-1.5 py-0.5 bg-gray-700/50 rounded">
+                                    {option.category}
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+                ))}
+            </div>
+
+            {/* Platform Info */}
+            <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl">
+                <p className="text-sm text-blue-200/90">
+                    <strong>Important:</strong> Select the correct platform for accurate parsing. Each parser is specifically tuned for its platform's HTML structure.
+                </p>
+            </div>
+        </div>
+    );
+
     const renderStep2 = () => (
         <div className="flex flex-col h-full">
             {inputMethod === 'extension' ? (
@@ -172,15 +340,23 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
                             <span>📄</span> {fileName}
                         </div>
                     )}
+                    <p className="text-xs text-yellow-500 italic mt-2">
+                        ⚠️ Only edit chats inside the application. Files edited after export may not import correctly.
+                    </p>
                 </div>
             ) : (
-                <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Paste your HTML or JSON here..."
-                    className="flex-1 w-full bg-gray-900 border border-gray-700 rounded-xl p-4 font-mono text-sm text-gray-300 focus:border-blue-500 outline-none resize-none"
-                    autoFocus
-                />
+                <>
+                    <textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder="Paste your HTML or JSON here..."
+                        className="flex-1 w-full bg-gray-900 border border-gray-700 rounded-xl p-4 font-mono text-sm text-gray-300 focus:border-blue-500 outline-none resize-none"
+                        autoFocus
+                    />
+                    <p className="text-xs text-yellow-500 italic mt-2">
+                        ⚠️ Only edit chats inside the application. Files edited after export may not import correctly.
+                    </p>
+                </>
             )}
 
             {/* Attachment Dropzone (Only for Paste Method) */}
@@ -256,7 +432,7 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
                         <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
                             <span className="text-2xl">🧙‍♂️</span> Import Wizard
                         </h2>
-                        <p className="text-gray-500 text-sm">Step {step} of 3: {step === 1 ? 'Select Method' : step === 2 ? 'Input Content' : 'Verify'}</p>
+                        <p className="text-gray-500 text-sm">Step {step} of 3: {step === 1 ? 'Select Method' : step === 1.5 ? 'Select Platform' : step === 2 ? 'Input Content' : 'Verify'}</p>
                     </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-white">✕</button>
                 </div>
@@ -264,6 +440,7 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
                 {/* Body */}
                 <div className="flex-1 p-8 overflow-y-auto bg-gray-900/50">
                     {step === 1 && renderStep1()}
+                    {step === 1.5 && renderStep1_5()}
                     {step === 2 && renderStep2()}
                     {step === 3 && renderStep3()}
                     {error && (
@@ -275,9 +452,12 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = ({ isOpen
 
                 {/* Footer */}
                 <div className="p-6 border-t border-gray-800 bg-gray-900 flex justify-between items-center">
-                    {step > 1 && (
+                    {stepHistory.length > 1 && (
                         <button
-                            onClick={() => setStep(prev => (prev - 1) as WizardStep)}
+                            onClick={() => {
+                                setStepHistory(prev => prev.slice(0, -1));
+                                setStep(stepHistory[stepHistory.length - 2]);
+                            }}
                             className="px-4 py-2 text-gray-400 hover:text-white"
                         >
                             Back

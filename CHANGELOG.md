@@ -14,40 +14,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Planning for Sprint 6.3: Archive Hub Polish (Conversation Card Redesign, v0.6.0)
 - Planning for Sprint 5.1: Extension Reliability (Toast Queue)
 
-    ### Changed
+---
 
-    ---
+## [v0.5.8.1] - January 18, 2026
 
-    ## [v0.5.8] - January 16, 2026
+### Added
+#### Modular Parser Infrastructure & Strict Standards
+- **Parser Factory Architecture**: Fully modularized parsing engine for enhanced maintainability and platform-specific tuning.
+- **Strict Noosphere Standard**: Formalized requirement for high-fidelity native exports with atomic validation (Strict Markdown/JSON).
+- **Enhanced 3rd-Party Flexibility**: Restored and improved parser for legacy formats and custom chat headers (e.g., `## Name:`).
+- **Markdown Firewall**: Tiered security system integrated across all parser modules for sanitized Markdown extraction.
+- **Import Wizard 2.0**: Guided workflow with distinct "Noosphere Standard" vs "3rd Party" parsing paths.
+- **Smart Detection**: Enhanced `importDetector.ts` to automatically categorize 3rd-party chats by structure.
+- **Technical Polish**: Centralized parsing utilities (`ParserUtils.ts`) and comprehensive unit test verification.
+- **Google Drive Sync Refinements**: Partitioned API handling and improved backup reliability.
 
-    ### Added
-    #### Google Drive Export with Format Options
-    - **Unified Export Flow**: Both local and Google Drive exports now share same format/package selection interface.
-    - **Format Selection**: Export as HTML, Markdown, or JSON to Google Drive.
-    - **Package Types**: Single File, Directory, or ZIP options for individual exports.
-    - **All Archives Supported**: Chat, Memory, and Prompt archives can export to Google Drive.
-    - **Smart Destination Modal**: Choose export destination (Local or Drive) with authentication awareness.
-    - **Enhanced ExportModal**: Shows visual indicator when uploading to Drive ("☁️ Export will be uploaded to Google Drive").
-    - **Batch Support**: Export multiple items in chosen format to Drive in one action.
-    - **Success Feedback**: Clear alerts confirming count of items exported: "✅ Exported 5 chats to Google Drive".
+### Fixed
+- **ChatGPT Casing**: Fixed internal version reference casing for ChatGPT parser.
+- **Regex Robustness**: Improved name detection in `ThirdPartyParser` to handle names with spaces and optional colons.
 
-    #### Artifact Viewer Enhancements
-    - **Markdown Preview Modal**: View markdown files inline with full-screen modal and syntax highlighting.
-    - **Smart File Routing**: Markdown files open in viewer, other formats download directly.
-    - **Artifact Indicators**: 📎 emoji shows in message lists for quick scanning of attachments.
-    - **Quick Download**: Download buttons for markdown files with easy access.
+---
 
-    #### Artifact Manager Improvements
-    - **Clean Separation**: Global Files and Message Attachments now properly separated (no duplicates).
-    - **Dual-Filter Architecture**: Unattached vs attached artifacts completely separated in UI.
-    - **Visual Distinction**: Purple tags show "Attached to Message #X" for attached artifacts.
-    - **Review Modal Sidebar**: New Message List section with click-to-jump navigation and artifact indicators.
+## [v0.5.8] - January 16, 2026
 
-    ---
+### Added
+#### Google Drive Export with Format Options
+- **Unified Export Flow**: Both local and Google Drive exports now share same format/package selection interface.
+- **Format Selection**: Export as HTML, Markdown, or JSON to Google Drive.
+- **Package Types**: Single File, Directory, or ZIP options for individual exports.
+- **All Archives Supported**: Chat, Memory, and Prompt archives can export to Google Drive.
+- **Smart Destination Modal**: Choose export destination (Local or Drive) with authentication awareness.
+- **Enhanced ExportModal**: Shows visual indicator when uploading to Drive ("☁️ Export will be uploaded to Google Drive").
+- **Batch Support**: Export multiple items in chosen format to Drive in one action.
+- **Success Feedback**: Clear alerts confirming count of items exported: "✅ Exported 5 chats to Google Drive".
 
-    ## [v0.5.7] - January 15, 2026
+#### Artifact Viewer Enhancements
+- **Markdown Preview Modal**: View markdown files inline with full-screen modal and syntax highlighting.
+- **Smart File Routing**: Markdown files open in viewer, other formats download directly.
+- **Artifact Indicators**: 📎 emoji shows in message lists for quick scanning of attachments.
+- **Quick Download**: Download buttons for markdown files with easy access.
 
-    ### Added
+#### Artifact Manager Improvements
+- **Clean Separation**: Global Files and Message Attachments now properly separated (no duplicates).
+- **Dual-Filter Architecture**: Unattached vs attached artifacts completely separated in UI.
+- **Visual Distinction**: Purple tags show "Attached to Message #X" for attached artifacts.
+- **Review Modal Sidebar**: New Message List section with click-to-jump navigation and artifact indicators.
+
+---
+
+## [v0.5.7] - January 15, 2026
+
+### Added
 #### Complete BasicConverter UI Revolution
 - **Content Import Wizard**: Replaced raw text input with a guided 3-step workflow (Method Selection -> Input -> Verification).
 - **Modal-First Architecture**: Entire BasicConverter redesigned around modal interactions
@@ -715,8 +732,6 @@ dist/assets/index.js    311.02 kB (gzip: 94.98 kB)
   - `lechat-capture.js` - LeChat/Mistral capture
   - `llamacoder-capture.js` - Llamacoder capture
   - Auto-title extraction for each platform
-  - Automatic session persistence via IndexedDB bridge
-
 - **Platform-Specific Parsers** (vanilla JS):
   - `claude-parser.js` - DOM-based parsing for claude.ai
   - `gpt-parser.js` - ChatGPT HTML structure parsing

@@ -24,5 +24,7 @@ dist-ssr
 *.sw?
 .claude
 .blackboxcli
+.clinerules
 html-doms
 agents/implementation-plans
+.env

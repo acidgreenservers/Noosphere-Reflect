@@ -10,7 +10,7 @@ export const ImportMethodGuide: React.FC<ImportMethodGuideProps> = ({ onSelectMe
     return (
         <div className="space-y-4 animate-fade-in-down">
             <h2 className="text-xl font-bold text-green-400 flex items-center gap-2">
-                1. Choose Import Method
+                Choose Import Method
                 <span className="text-xs font-normal text-gray-500 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">How did you get the data?</span>
             </h2>
 

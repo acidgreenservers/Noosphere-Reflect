@@ -128,24 +128,150 @@ This roadmap is organized into three tiers:
 
 ## 🚧 PLANNED PHASES (Active Work)
 
-## Phase 6.2.5 Syncing And Organization Enhancement (v0.5.8.2)
-**GitHub Integration for sync**
-** Add New Folder System**
-** Add New Tag System**
-** Add New Search System**
-** Add New Filter System**
-** Add New Sort System**
-** Add New Group System**
-** Add New Star System**
-** Add New Pin System**
-** Add New Archive System**
-** Add New Trash System**
-** Add New Trash System**
+## Phase 6.2.5: Smart Import Detection & Google Drive Sync (v0.5.8.2)
+
+**Goal**: Seamless import/export of Noosphere chats + 3rd-party chat support with intelligent file detection
+
+### Part A: Import File Type Detection (ACTIVE)
+
+**Detection Constraint 1: Noosphere Exported Chats (Priority)**
+- Files must contain standardized structure:
+  - `## Prompt:` and `## Response:` section headers
+  - Attribution text: `'Noosphere Reflect'` (searchable phrase in file)
+- When detected: **Full metadata preservation** (title, model, tags, author, source)
+- Filename pattern (optional): `[AI Service] - Title.ext` for enhanced metadata
+- Result: Seamless import with all metadata intact
+
+**Detection Constraint 2: 3rd-Party Chat Exports (Supported)**
+- Files with structure but WITHOUT 'Noosphere Reflect' attribution
+- Must contain: `## Prompt:` and `## Response:` section headers
+- Examples: Manual Markdown exports from any chat app, Claude exports, ChatGPT exports
+- When detected: **Import as basic chat** (auto-detect model from content)
+- Result: Import works, but limited metadata (auto-extracted only)
+
+**Detection Constraint 3: HTML Exports (Platform-Specific)**
+- Already supported: Claude HTML, ChatGPT HTML, Gemini HTML, LeChat HTML
+- Detected via content markers (no filename required)
+- Result: Full parsing with model/platform detection
+
+**Constraint 4: Reject Unsupported**
+- Files without `## Prompt:` / `## Response:` structure
+- Files that can't be parsed
+- Result: Show error, allow user to skip file
+
+### Part B: Import UI Modal - File Origin Detection
+
+**New Step 1: File Selection**
+- List all detected chat files (.md, .json, .html, .txt)
+- Display: filename, detected type (Noosphere/3rd-party/Platform), file size
+
+**New Step 2: Origin Detection (After selection)**
+- For each selected file:
+  - Search file content for `'Noosphere Reflect'`
+  - Search for `## Prompt:` / `## Response:` headers
+  - Identify platform (Claude/ChatGPT/Gemini via HTML markers)
+- Show user: "Detected as: Noosphere Export | 3rd-Party Markdown | Claude HTML"
+
+**New Step 3: Confirmation Dialog** (If mixed sources)
+Example: "Your selection includes 5 Noosphere exports and 2 3rd-party chats.
+- Noosphere files will import with full metadata
+- 3rd-party files will import as standard chats
+Continue?"
+
+### Part C: Apply Detection to Both Import Methods
+
+**Method 1: Google Drive Sync (Current Work)**
+- [ ] Search Drive for chat files (.md, .json, .html, .txt)
+- [ ] Download each file
+- [ ] Detect origin (Noosphere vs 3rd-party)
+- [ ] Show origin in modal UI
+- [ ] User confirms before import
+- [ ] Parse and save with appropriate metadata
+
+**Method 2: Local File Upload (Existing Wizard)**
+- [ ] Apply same detection logic
+- [ ] Show origin in file preview
+- [ ] User confirms source type
+- [ ] Parse and save with appropriate metadata
+
+### Part D: Implementation Files
+
+- `src/utils/importDetector.ts` (NEW) - Detect Noosphere vs 3rd-party
+  - `isNoosphereExport(content: string): boolean`
+  - `extractNoosphereMetadata(content: string): ChatMetadata`
+  - `hasChatStructure(content: string): boolean`
+  - `detectPlatform(content: string): ParserMode`
+
+- `src/components/GoogleDriveImportModal.tsx` (MODIFY)
+  - Add file origin detection before displaying
+  - Show "Detected: Noosphere | 3rd-Party | [Platform]" badge
+  - Confirmation dialog for mixed sources
+  - Pre-import validation
+
+- `src/services/converterService.ts` (MODIFY)
+  - Add detection functions to export
+  - Existing `parseChat()` already handles all formats
+
+### Part E: User Flow Example
+
+```
+User clicks "Sync from Drive"
+  ↓
+Modal searches Drive for .md, .json, .html, .txt files
+  ↓
+Shows 8 files total:
+  - 5 Noosphere exports (green badge "✨ Noosphere")
+  - 2 3rd-party Markdown (yellow badge "📄 3rd-Party")
+  - 1 Claude HTML (blue badge "🔵 Claude")
+  ↓
+User selects all 8 files
+  ↓
+Modal shows: "Detected origins: 5 Noosphere + 3 3rd-Party. Proceed?"
+  ↓
+User clicks "Import All"
+  ↓
+For each file:
+  1. Download from Drive
+  2. Detect origin (Noosphere/3rd-party/platform)
+  3. If Noosphere: Use enrichedMetadata() for full preservation
+  4. If 3rd-party: Use basic parser, auto-detect model
+  5. Save to IndexedDB
+  ↓
+Results: "✅ Imported 8 files: 5 with full metadata, 3 as standard chats"
+```
+
+### Acceptance Criteria
+- [ ] Noosphere exports detect correctly (via 'Noosphere Reflect' phrase)
+- [ ] 3rd-party chats detect correctly (via `## Prompt:` / `## Response:`)
+- [ ] HTML exports detect platform correctly (Claude/ChatGPT/Gemini)
+- [ ] Google Drive import shows file origins in UI
+- [ ] Mixed source imports show confirmation dialog
+- [ ] Metadata preserved for Noosphere exports, auto-detected for 3rd-party
+- [ ] Works for both Google Drive sync AND local file upload
+- [ ] All tests pass, no regression
+
+---
+
+## Future Enhancements (Post 6.2.5)
+
+**GitHub Integration for sync** (Phase 6.2.6)
+- Granular control over what to sync
+
+**Sharing System** (Phase 6.2.7)
+- Public link sharing for conversations
 
 ### Sprint 6.3: Archive Hub Polish (v0.5.8.3)
 **Goal:** Enhance Archive Hub with denser, more information-rich conversation cards.
+**Consistency** Consistent operation and functionality across all pages.
+- All pages should have the same operation of selection, badges, export functionality, 
+feeling. 
 
+**Folder System for Organization** (Phase 6.2.8)
+- New folder system for organization
+- Export specific folders
+- Share folder groups
 **Status**: 🚧 Next Up
+
 
 #### Sprint 6.3 Tasks
 - [ ] Redesign conversation cards for higher information density
@@ -153,6 +279,7 @@ This roadmap is organized into three tiers:
 - [ ] Enhanced filter UI with better visual feedback
 - [ ] Batch action bar improvements
 - [ ] Responsive layout optimizations
+- [ ] Export Themes Matching Services from exports
 
 **Acceptance Criteria**:
 - Conversation cards display more information without feeling cluttered
