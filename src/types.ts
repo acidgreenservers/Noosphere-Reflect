@@ -62,6 +62,20 @@ export enum ChatTheme {
   LightDefault = 'light-default',
   DarkGreen = 'dark-green',
   DarkPurple = 'dark-purple',
+  Claude = 'claude',
+}
+
+/**
+ * Chat Style - Defines the layout/structure of the exported HTML
+ * Separate from ChatTheme (color) to allow color + style combinations
+ */
+export enum ChatStyle {
+  Default = 'default',
+  Claude = 'claude',
+  ChatGPT = 'chatgpt',
+  Gemini = 'gemini',
+  Grok = 'grok',
+  LeChat = 'lechat',
 }
 
 export interface ThemeClasses {
@@ -100,7 +114,8 @@ export interface SavedChatSession {
   chatTitle: string;
   userName: string;
   aiName: string;
-  selectedTheme: ChatTheme;
+  selectedTheme: ChatTheme; // Color palette
+  selectedStyle?: ChatStyle; // Layout style (optional for backward compat)
   parserMode: ParserMode;
   chatData?: ChatData;
   metadata?: ChatMetadata; // Explicit metadata for easier hub access

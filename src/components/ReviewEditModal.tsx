@@ -238,6 +238,26 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                     Turn #{idx + 1}
                                                 </span>
                                             </div>
+
+                                            {/* Insert Before/After buttons (visible in edit mode) */}
+                                            {isEditing && (
+                                                <div className="flex gap-1 ml-2">
+                                                    <button
+                                                        onClick={() => handleInjectMessage(idx, 'before', msg.type === ChatMessageType.Prompt ? 'user' : 'model')}
+                                                        className="text-xs px-2 py-1 rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30 hover:border-blue-500/60 transition-all"
+                                                        title="Insert message before this one"
+                                                    >
+                                                        ↑ Insert
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleInjectMessage(idx, 'after', msg.type === ChatMessageType.Prompt ? 'user' : 'model')}
+                                                        className="text-xs px-2 py-1 rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30 hover:border-green-500/60 transition-all"
+                                                        title="Insert message after this one"
+                                                    >
+                                                        ↓ Insert
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Edit Button (Visible in Edit Mode) */}

@@ -2,16 +2,249 @@
 
 ## 📅 Current Session
 - **Date**: 2026-01-18
-- **Goal**: Formalize Modular Parser Infrastructure & Stable Release v0.5.8.1.
-- **Status**: Stable Release v0.5.8.1 Completed.
+- **Goal**: Theme Architecture Refactor & Export System Consolidation.
+- **Status**: Decoupled Color/Style, implemented 4 platform themes, and reorganized export components.
+
+## ✅ COMPLETED: Google Drive Login Fix (January 18, 2026)
+
+### Problem
+Google Drive login was failing with "client_secret is missing" error during OAuth token exchange. The application showed "Failed to complete authentication" with 400 status code from Google's token endpoint.
+
+### Root Causes Identified
+1. **Missing Client Secret**: Google OAuth requires `client_secret` parameter even for web applications using authorization code flow
+2. **Incomplete Environment Configuration**: `.env` file only had `VITE_GOOGLE_CLIENT_ID` but was missing `VITE_GOOGLE_CLIENT_SECRET`
+3. **COOP Policy Restrictions**: Cross-Origin-Opener-Policy was blocking OAuth popup communication
+4. **Environment Variable Inconsistency**: Mixed usage of `process.env` and `import.meta.env` causing runtime issues
+
+### Solutions Implemented
+
+**1. Added Client Secret Support**
+- **`.env`**: Added `VITE_GOOGLE_CLIENT_SECRET=your_google_client_secret_here`
+- **`.env.example`**: Updated to show required client secret variable
+- **GoogleAuthContext.tsx**: Added `client_secret` parameter to token exchange request
+- **Validation**: Added checks to ensure both client ID and secret are configured
+
+**2. Fixed Environment Variable Access**
+- Standardized all environment variable access to use `import.meta.env`
+- Removed inconsistent `process.env` usage throughout OAuth flow
+- Ensured consistent variable access across all components
+
+**3. Enhanced OAuth Configuration**
+- Added explicit `redirect_uri` parameter to OAuth configuration
+- Added `state` parameter for additional security against CSRF attacks
+- Configured `ux_mode: 'popup'` for better browser compatibility
+
+**4. Improved Error Handling & Debugging**
+- Added comprehensive error logging for token exchange failures
+- Enhanced error messages with specific details about what went wrong
+- Added validation for required OAuth parameters before requests
+
+### Files Modified
+- `.env`: Added `VITE_GOOGLE_CLIENT_SECRET` variable
+- `.env.example`: Updated with client secret requirement
+- `src/contexts/GoogleAuthContext.tsx`: Added client secret to token exchange, improved error handling, standardized env vars
+
+### Verification
+✅ Environment variables properly configured
+✅ Token exchange request includes all required parameters
+✅ Enhanced error logging provides clear debugging information
+✅ OAuth flow follows Google security best practices
+
+### How It Works Now
+1. User clicks "Connect Drive" → OAuth popup opens
+2. User authorizes app → receives authorization code
+3. Frontend exchanges code for tokens using `client_id`, `client_secret`, and `redirect_uri`
+4. Tokens stored securely in sessionStorage
+5. Google Drive folder initialized for exports
+
+### User Setup Required
+To complete setup, users need to:
+1. Get Client Secret from Google Cloud Console → APIs & Services → Credentials
+2. Add `VITE_GOOGLE_CLIENT_SECRET=GOCSPX-...` to their `.env` file
+3. Ensure redirect URI `http://localhost:3001` is configured in OAuth consent screen
+
+---
 
 ## Recent Changes
+
+### January 19, 2026 - Theme Architecture Refactor & Export Consolidation
+
+#### Phase 1: Core Theme Architecture Refactor
+**Problem**: Export themes were rigid, combining layout and color into a single "Theme" selection. Users couldn't apply "Dark Green" colors to a "Gemini" layout.
+**Solution**: Decoupled Color Palettes (ChatTheme) from Layout Styles (ChatStyle).
+
+- **Implementation Details**:
+  - **`src/types.ts`**: Added `ChatStyle` enum and `selectedStyle` to `SavedChatSession`.
+  - **`ConfigurationModal.tsx`**: Renamed "Theme" to "Color", added "Style" selection section with 6 platform-inspired layouts.
+  - **`ExportService.ts`**: Updated `generate()` to accept and use `ChatStyle` via `ThemeRegistry`.
+  - **`ThemeRegistry.ts`**: Added registration for `StyleConfig` and support for multiple layout renderers.
+
+#### Phase 2: Platform Theme Implementation
+**Achievement**: Implemented 4 new high-fidelity platform layout renderers based on official DOM references.
+- **ChatGPT Layout**: Söhne typography, rounded bubbles, message-specific margins.
+- **Gemini Layout**: Material Design icons, collapsible thought blocks, AI Studio styling.
+- **Grok Layout**: Thought process separation, rounded-xl code blocks with dark headers.
+- **LeChat Layout**: Teal accents, pill-shaped message bubbles, Lucide icons.
+- **Common Logic**: Extracted to `BaseThemeRenderer` to handle shared parsing/rendering patterns.
+
+#### Phase 3: Export System Consolidation (Organization)
+**Problem**: Export-related components were scattered in the main `src/components/` directory.
+**Solution**: Consolidated all export features into a unified feature folder structure.
+
+- **Files Moved**:
+  - `src/components/ExportModal.tsx` → `src/components/exports/ExportModal.tsx`
+  - `src/components/ExportDestinationModal.tsx` → `src/components/exports/ExportDestinationModal.tsx`
+  - `src/components/ExportDropdown.tsx` → `src/components/exports/ExportDropdown.tsx`
+- **Updates**:
+  - Refactored all import paths in `ArchiveHub`, `MemoryArchive`, `PromptArchive`, and `BasicConverter`.
+  - Fixed `exportService.generate()` calls in all pages to support the updated argument signature.
+  - Updated `ExportDropdown.tsx` to handle optional theme/style arguments correctly.
+
+---
+
+### January 18, 2026 - Extension UX Features (Gemini Preload & Message Insertion)
+
+#### Problem 1: Gemini Lazy-Loading Prevented Full Import
+**Issue**: Gemini uses custom Angular `infinite-scroller` component that only renders messages in viewport; earlier messages deload from DOM when scrolling down, preventing full conversation capture.
+
+**Solution**: Implemented manual pre-load button for Gemini-specific conversation preloading.
+
+**Implementation Details** (`extension/content-scripts/gemini-capture.js`):
+- Added `scrollToTopAndLoadAll()` function that:
+  1. Targets correct infinite-scroller via `data-test-id="chat-history-container"`
+  2. Loops up to 30 times, each time scrolling to top and waiting 400ms
+  3. Monitors message count to detect when new content loads
+  4. Validates stability with 2 consecutive unchanged checks, then 4-check final validation
+  5. Shows toast notifications with progress and final message count
+- Function called first in `extractSessionData()` to load all content before parsing
+
+**UI Integration** (`extension/content-scripts/ui-injector.js`):
+- Added Gemini-specific "Gemini Tools" menu section with "Pre-load Full Conversation" button
+- Implemented `handlePreload()` function with **mutex guard** to prevent concurrent executions:
+  - `isPreloading` boolean flag prevents rapid clicking spam
+  - Early return with info toast if preload already in progress
+  - Prevents infinite toast notification loops
+- Button only appears for Gemini platform (conditional menu building)
+
+**User Workflow**:
+1. User clicks "Pre-load Full Conversation" button in extension menu
+2. Extension scrolls to top of conversation repeatedly over ~12 seconds
+3. Toast shows progress: "📜 Loading full conversation..."
+4. Once stable (no new messages loading), shows final count: "✅ Loaded N messages!"
+5. User can now export knowing full conversation is captured
+
+**Result**: Gemini conversations now fully captured without manual scrolling; prevents lazy-load deloading during export.
+
+---
+
+#### Problem 2: Messages Always Append to Bottom in ReviewEditModal
+**Issue**: New messages in ReviewEditModal injected via `handleInjectMessage()` always appended to end, preventing surgical insertion between existing messages.
+
+**User Request**: "Can we make the message counter editable for specific injection between messages?"
+
+**Better Solution Identified**: Instead of complex turn-number editing, expose existing insertion logic with before/after positioning.
+
+**Implementation** (`src/components/ReviewEditModal.tsx`, lines 242-260):
+- Added inline "↑ Insert" and "↓ Insert" buttons next to each message's Turn # label
+- Buttons only visible when `isEditing === true`
+- Button design:
+  - **Blue "↑ Insert" button**: Inserts new message BEFORE current message at `index`
+  - **Green "↓ Insert" button**: Inserts new message AFTER current message at `index + 1`
+- Auto-inheritance: Message type automatically derived from adjacent message
+  - `msg.type === ChatMessageType.Prompt ? 'user' : 'model'`
+- Calls existing `handleInjectMessage(idx, position, role)` function
+- **Turn numbers auto-renumber via `.map()` index** - no manual turn tracking needed
+
+**Code Inserted**:
+```javascript
+{isEditing && (
+  <div className="flex gap-1 ml-2">
+    <button
+      onClick={() => handleInjectMessage(idx, 'before', msg.type === ChatMessageType.Prompt ? 'user' : 'model')}
+      className="text-xs px-2 py-1 rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30 hover:border-blue-500/60 transition-all"
+      title="Insert message before this one"
+    >
+      ↑ Insert
+    </button>
+    <button
+      onClick={() => handleInjectMessage(idx, 'after', msg.type === ChatMessageType.Prompt ? 'user' : 'model')}
+      className="text-xs px-2 py-1 rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30 hover:border-green-500/60 transition-all"
+      title="Insert message after this one"
+    >
+      ↓ Insert
+    </button>
+  </div>
+)}
+```
+
+**User Testing**: Confirmed working correctly; messages insert at proper positions with auto-renumbering.
+
+**Result**: Surgical message insertion now possible with intuitive UI affordances (color-coded buttons, clear positioning).
+
+---
+
 ### January 18, 2026 - Stable Release v0.5.8.1 (ad0b9c7)
 - **Modular Parser Infrastructure**: Transitioned to class-based `ParserFactory` architecture.
 - **Markdown Firewall**: Integrated `validateMarkdownOutput` security layer.
 - **Features**: Google Drive exports, smart message deduplication.
 
-## 🔄 IN PROGRESS: Phase 6.3.0 Smart Import Merge with Message Deduplication
+## ✅ COMPLETED: Google OAuth & GitHub Pages Deployment Fix (January 18, 2026)
+
+### Problem
+GitHub Pages deployment was failing with "Google OAuth components must be used within GoogleOAuthProvider" error. Frontend rendered fine locally but crashed on GitHub Pages.
+
+### Root Causes Identified
+1. **Missing OAuth Provider Wrap**: Conditional provider wrapping based on client ID caused crashes when ID was missing/undefined
+2. **Environment Variable Handling Mismatch**: Using `import.meta.env` in GoogleAuthContext while using `process.env` injection in vite.config
+3. **Content Security Policy Blocking**: CSP policy didn't allow connections to `https://oauth2.googleapis.com/token` endpoint
+4. **Module Resolution Issue**: TypeScript `moduleResolution: "Node"` instead of `"bundler"`
+
+### Solutions Implemented
+
+**1. Fixed OAuth Provider Wrapping (src/main.tsx)**
+- Always wrap with `GoogleOAuthProvider` (never conditional)
+- Use 'placeholder' as fallback client ID when env var is missing
+- Ensures `useGoogleLogin` hook always has a valid provider context
+
+**2. Fixed Environment Variable Injection**
+- **vite.config.ts**: Added `'process.env.VITE_GOOGLE_CLIENT_ID'` to `define` section for build-time injection
+- **GoogleAuthContext.tsx**: Use `process.env.VITE_GOOGLE_CLIENT_ID` for token exchange (injected by Vite)
+- **main.tsx**: Use `import.meta.env.VITE_GOOGLE_CLIENT_ID` for provider wrapper (Vite auto-exposes VITE_* vars)
+- **GitHub Actions**: Pass `VITE_GOOGLE_CLIENT_ID` from secrets during build step
+
+**3. Fixed Content Security Policy (index.html)**
+- Added `https://oauth2.googleapis.com` to `connect-src` directive
+- Allows frontend to make POST requests to Google's token endpoint
+- Resolves "violates Content Security Policy" errors
+
+**4. Fixed TypeScript Module Resolution (tsconfig.json)**
+- Changed `moduleResolution` from `"Node"` to `"bundler"`
+- Resolves module type resolution errors in IDE and build
+- Standard for modern Vite projects
+
+### Files Modified
+- `src/main.tsx`: Always wrap with provider, use fallback client ID
+- `vite.config.ts`: Inject `VITE_GOOGLE_CLIENT_ID` via `define`
+- `src/contexts/GoogleAuthContext.tsx`: Use `process.env.VITE_GOOGLE_CLIENT_ID`
+- `index.html`: Add oauth2.googleapis.com to CSP connect-src
+- `.github/workflows/deploy.yml`: Pass secret to build environment
+- `tsconfig.json`: Change moduleResolution to "bundler"
+
+### Verification
+✅ Build succeeds with no TypeScript errors
+✅ Login flow works locally with env vars
+✅ GitHub Actions builds and deploys successfully
+✅ Frontend renders on GitHub Pages
+
+### How It Works Now
+1. During GitHub Actions build: `VITE_GOOGLE_CLIENT_ID` secret → injected as `process.env.VITE_GOOGLE_CLIENT_ID`
+2. In main.tsx: `import.meta.env.VITE_GOOGLE_CLIENT_ID` (Vite auto-exposes it) → passed to GoogleOAuthProvider
+3. In GoogleAuthContext: Uses `process.env.VITE_GOOGLE_CLIENT_ID` to exchange auth code for tokens
+4. CSP allows token exchange request to `https://oauth2.googleapis.com`
+
+---
+
+## 🔄 PREVIOUS: Phase 6.3.0 Smart Import Merge with Message Deduplication
 
 ### 1. Message Deduplication System
 **Problem**: Re-importing the same chat creates duplicate messages because all three import paths used naive concatenation (`[...existing, ...new]`).

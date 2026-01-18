@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ParserMode, ChatData } from '../types';
-import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateBatchZipExport, parseChat, isJson } from '../services/converterService';
+import { generateZipExport, generateBatchZipExport, parseChat, isJson } from '../services/converterService';
+import { exportService } from '../components/exports/services';
 import { enrichMetadata } from '../utils/metadataEnricher';
 import { storageService } from '../services/storageService';
 import SettingsModal from '../components/SettingsModal';
 import { ArtifactManager } from '../components/ArtifactManager';
-import { ExportModal } from '../components/ExportModal';
-import { ExportDestinationModal } from '../components/ExportDestinationModal';
+import { ExportModal } from '../components/exports/ExportModal';
+import { ExportDestinationModal } from '../components/exports/ExportDestinationModal';
 import { ChatPreviewModal } from '../components/ChatPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
 import { SearchInterface } from '../components/SearchInterface';
@@ -421,29 +422,45 @@ const ArchiveHub: React.FC = () => {
                 let mimeType: string;
 
                 if (format === 'html') {
-                    content = generateHtml(
+                    content = exportService.generate(
+                        'html',
                         session.chatData!,
                         session.metadata?.title || session.chatTitle,
                         session.selectedTheme || ChatTheme.DarkDefault,
                         session.userName || 'User',
                         session.aiName || 'AI',
                         session.parserMode || ParserMode.Basic,
-                        session.metadata
+                        session.metadata,
+                        true,
+                        false,
+                        session.selectedStyle
                     );
                     extension = 'html';
                     mimeType = 'text/html';
                 } else if (format === 'markdown') {
-                    content = generateMarkdown(
+                    content = exportService.generate(
+                        'markdown',
                         session.chatData!,
                         session.metadata?.title || session.chatTitle,
+                        undefined,
                         session.userName || 'User',
                         session.aiName || 'AI',
+                        undefined,
                         session.metadata
                     );
                     extension = 'md';
                     mimeType = 'text/markdown';
                 } else {
-                    content = generateJson(session.chatData!, session.metadata);
+                    content = exportService.generate(
+                        'json',
+                        session.chatData!,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        session.metadata
+                    );
                     extension = 'json';
                     mimeType = 'application/json';
                 }
@@ -529,27 +546,43 @@ const ArchiveHub: React.FC = () => {
                     let extension: string;
 
                     if (format === 'html') {
-                        content = generateHtml(
+                        content = exportService.generate(
+                            'html',
                             session.chatData!,
                             title,
                             theme,
                             userName,
                             aiName,
                             session.parserMode,
-                            session.metadata
+                            session.metadata,
+                            true,
+                            false,
+                            session.selectedStyle
                         );
                         extension = 'html';
                     } else if (format === 'markdown') {
-                        content = generateMarkdown(
+                        content = exportService.generate(
+                            'markdown',
                             session.chatData!,
                             title,
+                            undefined,
                             userName,
                             aiName,
+                            undefined,
                             session.metadata
                         );
                         extension = 'md';
                     } else {
-                        content = generateJson(session.chatData!, session.metadata);
+                        content = exportService.generate(
+                            'json',
+                            session.chatData!,
+                            undefined,
+                            undefined,
+                            undefined,
+                            undefined,
+                            undefined,
+                            session.metadata
+                        );
                         extension = 'json';
                     }
 
@@ -659,15 +692,27 @@ const ArchiveHub: React.FC = () => {
         let content = '';
 
         if (format === 'markdown') {
-            content = generateMarkdown(
+            content = exportService.generate(
+                'markdown',
                 session.chatData,
                 title,
+                undefined,
                 userName,
                 aiName,
+                undefined,
                 session.metadata
             );
         } else if (format === 'json') {
-            content = generateJson(session.chatData, session.metadata);
+            content = exportService.generate(
+                'json',
+                session.chatData,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                session.metadata
+            );
         }
 
         try {
@@ -702,29 +747,45 @@ const ArchiveHub: React.FC = () => {
         let mimeType: string;
 
         if (format === 'html') {
-            content = generateHtml(
+            content = exportService.generate(
+                'html',
                 session.chatData!,
                 title,
                 theme,
                 userName,
                 aiName,
                 session.parserMode,
-                session.metadata
+                session.metadata,
+                true,
+                false,
+                session.selectedStyle
             );
             extension = 'html';
             mimeType = 'text/html';
         } else if (format === 'markdown') {
-            content = generateMarkdown(
+            content = exportService.generate(
+                'markdown',
                 session.chatData!,
                 title,
+                undefined,
                 userName,
                 aiName,
+                undefined,
                 session.metadata
             );
             extension = 'md';
             mimeType = 'text/markdown';
         } else {
-            content = generateJson(session.chatData!, session.metadata);
+            content = exportService.generate(
+                'json',
+                session.chatData!,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                session.metadata
+            );
             extension = 'json';
             mimeType = 'application/json';
         }
@@ -879,7 +940,8 @@ const ArchiveHub: React.FC = () => {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = generateHtml(
+                    content = exportService.generate(
+                        'html',
                         session.chatData!,
                         title,
                         theme,
@@ -891,17 +953,29 @@ const ArchiveHub: React.FC = () => {
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = generateMarkdown(
+                    content = exportService.generate(
+                        'markdown',
                         session.chatData!,
                         title,
+                        undefined, // theme
                         userName,
                         aiName,
+                        undefined, // parserMode
                         session.metadata
                     );
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = generateJson(session.chatData!, session.metadata);
+                    content = exportService.generate(
+                        'json',
+                        session.chatData!,
+                        undefined, // title
+                        undefined, // theme
+                        undefined, // userName
+                        undefined, // aiName
+                        undefined, // parserMode
+                        session.metadata
+                    );
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }
@@ -1052,29 +1126,45 @@ const ArchiveHub: React.FC = () => {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = generateHtml(
+                    content = exportService.generate(
+                        'html',
                         session.chatData!,
                         title,
                         theme,
                         userName,
                         aiName,
                         session.parserMode,
-                        session.metadata
+                        session.metadata,
+                        true,
+                        false,
+                        session.selectedStyle
                     );
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = generateMarkdown(
+                    content = exportService.generate(
+                        'markdown',
                         session.chatData!,
                         title,
+                        undefined,
                         userName,
                         aiName,
+                        undefined,
                         session.metadata
                     );
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = generateJson(session.chatData!, session.metadata);
+                    content = exportService.generate(
+                        'json',
+                        session.chatData!,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        session.metadata
+                    );
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }
@@ -1134,14 +1224,18 @@ const ArchiveHub: React.FC = () => {
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
 
-                const content = generateHtml(
+                const content = exportService.generate(
+                    'html',
                     session.chatData!,
                     title,
                     theme,
                     userName,
                     aiName,
                     session.parserMode,
-                    session.metadata
+                    session.metadata,
+                    true,
+                    false,
+                    session.selectedStyle
                 );
 
                 // Upload to Google Drive

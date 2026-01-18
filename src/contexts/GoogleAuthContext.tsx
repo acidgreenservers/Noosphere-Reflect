@@ -36,11 +36,26 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
 
     const login = useGoogleLogin({
         flow: 'auth-code',
+        ux_mode: 'popup',
+        redirect_uri: window.location.origin, // Explicitly set redirect URI
+        state: Math.random().toString(36).substring(7), // Add state parameter for security
         onSuccess: async (codeResponse: CodeResponse) => {
             setIsLoading(true);
             setError(null);
 
             try {
+                const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+                const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
+
+                if (!clientId) {
+                    throw new Error('Google Client ID not configured. Please check your .env file.');
+                }
+                if (!clientSecret) {
+                    throw new Error('Google Client Secret not configured. Please check your .env file.');
+                }
+
+                console.log('Exchanging authorization code for tokens...');
+
                 // Exchange authorization code for tokens
                 const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
                     method: 'POST',
@@ -48,7 +63,8 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
                     body: new URLSearchParams({
-                        client_id: process.env.VITE_GOOGLE_CLIENT_ID || '',
+                        client_id: clientId,
+                        client_secret: clientSecret,
                         code: codeResponse.code,
                         grant_type: 'authorization_code',
                         redirect_uri: window.location.origin,
@@ -56,10 +72,20 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
                 });
 
                 if (!tokenResponse.ok) {
-                    throw new Error('Failed to exchange authorization code for tokens');
+                    const errorText = await tokenResponse.text();
+                    console.error('Token exchange failed:', {
+                        status: tokenResponse.status,
+                        statusText: tokenResponse.statusText,
+                        error: errorText,
+                        clientId: clientId ? 'present' : 'missing',
+                        code: codeResponse.code ? 'present' : 'missing',
+                        redirectUri: window.location.origin
+                    });
+                    throw new Error(`Token exchange failed: ${tokenResponse.status} ${tokenResponse.statusText} - ${errorText}`);
                 }
 
                 const tokens = await tokenResponse.json();
+                console.log('Token exchange successful');
 
                 setAccessToken(tokens.access_token);
                 localStorage.setItem('google_access_token', tokens.access_token);
@@ -93,7 +119,8 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
 
             } catch (error) {
                 console.error('Failed to complete authentication:', error);
-                setError('Failed to complete authentication');
+                const errorMessage = error instanceof Error ? error.message : 'Unknown authentication error';
+                setError(`Authentication failed: ${errorMessage}`);
             } finally {
                 setIsLoading(false);
             }
@@ -137,7 +164,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: new URLSearchParams({
-                    client_id: process.env.VITE_GOOGLE_CLIENT_ID || '',
+                    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
                     grant_type: 'refresh_token',
                     refresh_token: refreshTokenValue,
                 }),

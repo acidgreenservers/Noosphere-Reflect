@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { ChatTheme } from '../types';
+import { ChatTheme, ChatStyle } from '../types';
 
 interface ConfigurationModalProps {
     chatTitle: string;
     userName: string;
     aiName: string;
     selectedTheme: ChatTheme;
+    selectedStyle: ChatStyle;
     onChatTitleChange: (title: string) => void;
     onUserNameChange: (name: string) => void;
     onAiNameChange: (name: string) => void;
     onThemeChange: (theme: ChatTheme) => void;
+    onStyleChange: (style: ChatStyle) => void;
     onClose: () => void;
 }
 
@@ -18,10 +20,12 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
     userName,
     aiName,
     selectedTheme,
+    selectedStyle,
     onChatTitleChange,
     onUserNameChange,
     onAiNameChange,
     onThemeChange,
+    onStyleChange,
     onClose
 }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -76,6 +80,7 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
                                         onUserNameChange('User');
                                         onAiNameChange('AI');
                                         onThemeChange(ChatTheme.DarkDefault);
+                                        onStyleChange(ChatStyle.Default);
                                     }}
                                     className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-200 rounded-lg transition-colors"
                                 >
@@ -94,7 +99,10 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
                                     📝 Chat Details
                                 </div>
                                 <div className="px-3 py-2 text-sm text-gray-400 bg-gray-800/50 rounded-lg">
-                                    🎨 Theme Selection
+                                    🎨 Color Selection
+                                </div>
+                                <div className="px-3 py-2 text-sm text-gray-400 bg-gray-800/50 rounded-lg">
+                                    🖼️ Style Selection
                                 </div>
                             </div>
                         </div>
@@ -141,22 +149,42 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
                                 </div>
                             </div>
 
-                            {/* Theme Selection */}
+                            {/* Color Selection (formerly Theme) */}
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-3">Theme</label>
+                                    <label className="block text-sm font-medium text-gray-400 mb-3">Color</label>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         {Object.values(ChatTheme).map((theme) => (
                                             <button
                                                 key={theme}
                                                 onClick={() => onThemeChange(theme)}
-                                                className={`px-4 py-3 rounded-lg text-sm font-medium border transition-all ${
-                                                    selectedTheme === theme
-                                                        ? 'bg-green-600 border-green-500 text-white shadow-lg shadow-green-500/20'
-                                                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
-                                                }`}
+                                                className={`px-4 py-3 rounded-lg text-sm font-medium border transition-all ${selectedTheme === theme
+                                                    ? 'bg-green-600 border-green-500 text-white shadow-lg shadow-green-500/20'
+                                                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
+                                                    }`}
                                             >
                                                 {theme.replace('dark-', '').replace('light-', '').replace('default', 'Gray')}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Style Selection (Layout) */}
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-3">Style</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {Object.values(ChatStyle).map((style) => (
+                                            <button
+                                                key={style}
+                                                onClick={() => onStyleChange(style)}
+                                                className={`px-4 py-3 rounded-lg text-sm font-medium border transition-all ${selectedStyle === style
+                                                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20'
+                                                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
+                                                    }`}
+                                            >
+                                                {style.charAt(0).toUpperCase() + style.slice(1)}
                                             </button>
                                         ))}
                                     </div>

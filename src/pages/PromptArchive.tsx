@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Prompt, AppSettings, DEFAULT_SETTINGS } from '../types';
+import { Prompt, AppSettings, DEFAULT_SETTINGS, ChatData, ChatTheme, ChatMessageType } from '../types';
 import logo from '../assets/logo.png';
 import { storageService } from '../services/storageService';
+import { exportService } from '../components/exports/services';
 import {
     generateMemoryHtml,
     generateMemoryMarkdown,
@@ -12,8 +13,8 @@ import {
 } from '../services/converterService';
 import MemoryInput from '../components/MemoryInput';
 import MemoryList from '../components/MemoryList';
-import { ExportModal } from '../components/ExportModal';
-import { ExportDestinationModal } from '../components/ExportDestinationModal';
+import { ExportModal } from '../components/exports/ExportModal';
+import { ExportDestinationModal } from '../components/exports/ExportDestinationModal';
 import { MemoryPreviewModal } from '../components/MemoryPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
 import { useGoogleAuth } from '../contexts/GoogleAuthContext';
@@ -237,7 +238,7 @@ export default function PromptArchive() {
         await loadPrompts();
     };
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedPrompts.size === 0) return;
 
         const selected = prompts.filter(p => selectedPrompts.has(p.id));
@@ -314,17 +315,17 @@ export default function PromptArchive() {
         setIsSendingToDrive(true);
         try {
             for (const prompt of selectedMetas) {
-                const filename = sanitizeFilename(prompt.title, 'kebab');
+                const filename = sanitizeFilename(prompt.metadata.title, appSettings.fileNamingCase);
 
                 // Create prompt-like structure for export
                 const promptAsChat: ChatData = {
                     messages: [{
-                        type: 'response' as const,
+                        type: ChatMessageType.Response,
                         content: prompt.content,
                         isEdited: false
                     }],
                     metadata: {
-                        title: prompt.title,
+                        title: prompt.metadata.title,
                         model: 'Prompt',
                         date: prompt.createdAt,
                         tags: prompt.tags || []
@@ -336,29 +337,33 @@ export default function PromptArchive() {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = generateHtml(
+                    content = exportService.generate(
+                        'html',
                         promptAsChat,
-                        prompt.title,
+                        prompt.metadata.title,
                         ChatTheme.DarkDefault,
                         'User',
                         'Prompt',
-                        'claude-html',
+                        undefined, // parserMode
                         promptAsChat.metadata
                     );
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = generateMarkdown(
+                    content = exportService.generate(
+                        'markdown',
                         promptAsChat,
-                        prompt.title,
+                        prompt.metadata.title,
+                        undefined,
                         'User',
                         'Prompt',
+                        undefined,
                         promptAsChat.metadata
                     );
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = generateJson(promptAsChat, promptAsChat.metadata);
+                    content = exportService.generate('json', promptAsChat, undefined, undefined, undefined, undefined, undefined, promptAsChat.metadata);
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }

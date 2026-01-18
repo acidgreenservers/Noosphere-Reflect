@@ -1,12 +1,14 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import logo from '../assets/logo.png';
-import { parseChat, generateHtml } from '../services/converterService';
+import { parseChat } from '../services/converterService';
+import { exportService } from '../components/exports/services';
 import MetadataEditor from '../components/MetadataEditor';
 import { ArtifactManager } from '../components/ArtifactManager';
-import ExportDropdown from '../components/ExportDropdown';
+import ExportDropdown from '../components/exports/ExportDropdown';
 import {
     ChatTheme,
+    ChatStyle,
     SavedChatSession,
     ParserMode,
     ThemeClasses,
@@ -106,6 +108,7 @@ const BasicConverter: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [fileType, setFileType] = useState<'markdown' | 'json' | 'auto'>('auto');
     const [selectedTheme, setSelectedTheme] = useState<ChatTheme>(ChatTheme.DarkDefault);
+    const [selectedStyle, setSelectedStyle] = useState<ChatStyle>(ChatStyle.Default);
     const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
     const [showSavedSessions, setShowSavedSessions] = useState<boolean>(false);
     const [isConversing, setIsConverting] = useState<boolean>(false);
@@ -193,7 +196,8 @@ const BasicConverter: React.FC = () => {
             }
 
             setChatData(loadedChatData);
-            const html = generateHtml(
+            const html = exportService.generate(
+                'html',
                 loadedChatData,
                 session.chatTitle,
                 session.selectedTheme,
@@ -359,7 +363,8 @@ const BasicConverter: React.FC = () => {
                 // Does ChatData include metadata? Yes: messages: [], metadata?: { ... }
                 // So mergedData.metadata should be the final metadata.
 
-                const html = generateHtml(
+                const html = exportService.generate(
+                    'html',
                     finalData,
                     chatTitle, // Keep existing title
                     selectedTheme,
@@ -451,7 +456,8 @@ const BasicConverter: React.FC = () => {
                     setInputContent(previousContent + '\n\n' + contentToConvert);
 
                     // Generate HTML
-                    const html = generateHtml(
+                    const html = exportService.generate(
+                        'html',
                         mergedData,
                         mergedMetadata.title || enrichedMetadata.title,
                         selectedTheme,
@@ -508,7 +514,8 @@ const BasicConverter: React.FC = () => {
                         }
                     }
 
-                    const html = generateHtml(
+                    const html = exportService.generate(
+                        'html',
                         data,
                         enrichedMetadata.title,
                         selectedTheme,
@@ -653,7 +660,8 @@ const BasicConverter: React.FC = () => {
             setChatData(updatedSession.chatData);
 
             // Regenerate HTML
-            const html = generateHtml(
+            const html = exportService.generate(
+                'html',
                 updatedSession.chatData,
                 updatedSession.chatTitle,
                 updatedSession.selectedTheme,
@@ -718,7 +726,8 @@ const BasicConverter: React.FC = () => {
         setChatData(newData);
 
         // Re-generate HTML
-        const html = generateHtml(
+        const html = exportService.generate(
+            'html',
             newData,
             chatTitle,
             selectedTheme,
@@ -867,7 +876,8 @@ const BasicConverter: React.FC = () => {
             setChatData(updatedChatData);
 
             // Re-generate HTML Preview immediately
-            const html = generateHtml(
+            const html = exportService.generate(
+                'html',
                 updatedChatData,
                 chatTitle,
                 selectedTheme,
@@ -923,7 +933,8 @@ const BasicConverter: React.FC = () => {
             setChatData(updatedChatData);
 
             // Regenerate HTML
-            const html = generateHtml(
+            const html = exportService.generate(
+                'html',
                 updatedChatData,
                 chatTitle,
                 selectedTheme,
@@ -1595,10 +1606,12 @@ const BasicConverter: React.FC = () => {
                     userName={userName}
                     aiName={aiName}
                     selectedTheme={selectedTheme}
+                    selectedStyle={selectedStyle}
                     onChatTitleChange={setChatTitle}
                     onUserNameChange={setUserName}
                     onAiNameChange={setAiName}
                     onThemeChange={setSelectedTheme}
+                    onStyleChange={setSelectedStyle}
                     onClose={() => setShowConfigurationModal(false)}
                 />
             )}

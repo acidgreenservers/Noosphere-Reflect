@@ -193,7 +193,34 @@
 **Next Major Release:** v0.6.0 - Advanced Search & Analytics (Q1 2026)
 ---
 
-## Recent Updates (January 17, 2026)
+## Recent Updates (January 18, 2026)
+
+- **January 18, 2026 - Extension UX Features ✅ (Gemini Preload & Message Insertion)**:
+  - ✅ **Gemini Lazy-Loading Preload**: Implemented manual "Pre-load Full Conversation" button
+    - Added `scrollToTopAndLoadAll()` function with DOM polling for stable message count detection
+    - Targets correct `infinite-scroller` component via `data-test-id="chat-history-container"`
+    - Loops up to 30 times with 400ms waits, validates stability with 2+4 consecutive checks
+    - Shows toast notifications with progress and final message count
+  - ✅ **Mutex Guard Pattern**: Prevents concurrent preload operations (no toast spam)
+    - `isPreloading` boolean flag prevents rapid clicking from spawning multiple operations
+    - Early return with info toast: "⏳ Preload already in progress..."
+  - ✅ **Inline Message Insertion**: Added "↑ Insert" and "↓ Insert" buttons in ReviewEditModal
+    - Blue button inserts BEFORE current message, green button inserts AFTER
+    - Buttons appear next to Turn # label only in edit mode
+    - Auto-inherits message type from adjacent message (prompt or response)
+    - Turn numbers auto-renumber via `.map()` index without manual tracking
+  - **Files Modified**: extension/content-scripts/gemini-capture.js, extension/content-scripts/ui-injector.js, src/components/ReviewEditModal.tsx
+
+- **January 18, 2026 - Google OAuth & GitHub Pages Deployment Fix ✅**:
+  - ✅ **Provider Wrapping**: Always wrap with `GoogleOAuthProvider` (never conditional) to prevent React hook errors
+  - ✅ **Environment Variable Handling**: Fixed mismatch between `import.meta.env` and `process.env` usage
+  - ✅ **CSP Policy**: Added `https://oauth2.googleapis.com` to `connect-src` directive to allow token exchange
+  - ✅ **TypeScript Configuration**: Changed `moduleResolution` to `"bundler"` for proper module resolution
+  - ✅ **GitHub Actions**: Pass `VITE_GOOGLE_CLIENT_ID` secret during build for secure deployment
+  - ✅ **Login Functionality**: OAuth flow now works correctly locally and on GitHub Pages
+  - **Files Modified**: main.tsx, vite.config.ts, GoogleAuthContext.tsx, index.html, deploy.yml, tsconfig.json
+
+## Previous Updates (January 17, 2026)
 
 - **January 17, 2026 - Security Audit & UI Fixes ✅**:
   - ✅ **Critical Security Resolution**: Fixed 3 critical vulnerabilities (Stored XSS, Trust Boundary Violations, OAuth Token Storage) and 4 warnings through comprehensive security audit.

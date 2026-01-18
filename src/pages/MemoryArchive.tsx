@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Memory, AppSettings, DEFAULT_SETTINGS } from '../types';
+import { Memory, AppSettings, DEFAULT_SETTINGS, ChatData, ChatTheme, ChatMessageType } from '../types';
 import logo from '../assets/logo.png';
 import { storageService } from '../services/storageService';
+import { exportService } from '../components/exports/services';
 import {
     generateMemoryHtml,
     generateMemoryMarkdown,
@@ -12,8 +13,8 @@ import {
 } from '../services/converterService';
 import MemoryInput from '../components/MemoryInput';
 import MemoryList from '../components/MemoryList';
-import { ExportModal } from '../components/ExportModal';
-import { ExportDestinationModal } from '../components/ExportDestinationModal';
+import { ExportModal } from '../components/exports/ExportModal';
+import { ExportDestinationModal } from '../components/exports/ExportDestinationModal';
 import { MemoryPreviewModal } from '../components/MemoryPreviewModal';
 import { sanitizeFilename } from '../utils/securityUtils';
 import { useGoogleAuth } from '../contexts/GoogleAuthContext';
@@ -206,7 +207,7 @@ export default function MemoryArchive() {
         await loadMemories();
     };
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip') => {
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedMemories.size === 0) return;
 
         const selected = memories.filter(m => selectedMemories.has(m.id));
@@ -270,17 +271,17 @@ export default function MemoryArchive() {
         setIsSendingToDrive(true);
         try {
             for (const memory of selectedMetas) {
-                const filename = sanitizeFilename(memory.title, 'kebab');
+                const filename = sanitizeFilename(memory.metadata.title, appSettings.fileNamingCase);
 
                 // Create memory-like structure for export
                 const memoryAsChat: ChatData = {
                     messages: [{
-                        type: 'response' as const,
+                        type: ChatMessageType.Response,
                         content: memory.content,
                         isEdited: false
                     }],
                     metadata: {
-                        title: memory.title,
+                        title: memory.metadata.title,
                         model: 'Memory',
                         date: memory.createdAt,
                         tags: memory.tags || []
@@ -292,29 +293,33 @@ export default function MemoryArchive() {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = generateHtml(
+                    content = exportService.generate(
+                        'html',
                         memoryAsChat,
-                        memory.title,
+                        memory.metadata.title,
                         ChatTheme.DarkDefault,
                         'User',
                         'Memory',
-                        'claude-html',
+                        undefined, // parserMode
                         memoryAsChat.metadata
                     );
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = generateMarkdown(
+                    content = exportService.generate(
+                        'markdown',
                         memoryAsChat,
-                        memory.title,
+                        memory.metadata.title,
+                        undefined,
                         'User',
                         'Memory',
+                        undefined,
                         memoryAsChat.metadata
                     );
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = generateJson(memoryAsChat, memoryAsChat.metadata);
+                    content = exportService.generate('json', memoryAsChat, undefined, undefined, undefined, undefined, undefined, memoryAsChat.metadata);
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }
@@ -417,8 +422,8 @@ export default function MemoryArchive() {
                     </button>
                 </div>
 
-                <MemoryInput 
-                    onSave={handleSaveMemory} 
+                <MemoryInput
+                    onSave={handleSaveMemory}
                     editingMemory={editingMemory}
                     onCancelEdit={() => setEditingMemory(null)}
                 />

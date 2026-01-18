@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatData, ChatTheme, ParserMode, ChatMetadata, SavedChatSession } from '../types';
-import { generateHtml, generateMarkdown, generateJson, generateZipExport, generateDirectoryExportWithPicker } from '../services/converterService';
-import { storageService } from '../services/storageService';
-import { sanitizeFilename } from '../utils/securityUtils';
+import { ChatData, ChatTheme, ParserMode, ChatMetadata, SavedChatSession } from '../../types';
+import { generateZipExport, generateDirectoryExportWithPicker } from '../../services/converterService';
+import { exportService } from './services';
+import { storageService } from '../../services/storageService';
+import { sanitizeFilename } from '../../utils/securityUtils';
 
 interface ExportDropdownProps {
   chatData: ChatData;
@@ -84,15 +85,15 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
       let mimeType: string;
 
       if (format === 'html') {
-        content = generateHtml(chatData, chatTitle, selectedTheme, userName, aiName, parserMode, metadata);
+        content = exportService.generate('html', chatData, chatTitle, selectedTheme, userName, aiName, parserMode, metadata);
         extension = 'html';
         mimeType = 'text/html';
       } else if (format === 'markdown') {
-        content = generateMarkdown(chatData, chatTitle, userName, aiName, metadata);
+        content = exportService.generate('markdown', chatData, chatTitle, undefined, userName, aiName, undefined, metadata);
         extension = 'md';
         mimeType = 'text/markdown';
       } else {
-        content = generateJson(chatData, metadata);
+        content = exportService.generate('json', chatData, undefined, undefined, undefined, undefined, undefined, metadata);
         extension = 'json';
         mimeType = 'application/json';
       }

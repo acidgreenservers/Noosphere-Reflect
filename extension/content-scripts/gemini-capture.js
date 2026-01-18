@@ -53,7 +53,102 @@ async function handleCopyAction(format, sendResponse) {
   }
 }
 
+/**
+ * Auto-scroll to top and wait for all content to load
+ * Handles Gemini's lazy-loading by scrolling up and allowing DOM to render
+ */
+async function scrollToTopAndLoadAll() {
+  window.ToastManager.show('📜 Loading full conversation...', 'info');
+
+  // Target the infinite-scroller component (chat-history-container)
+  const scrollContainer = document.querySelector('[data-test-id="chat-history-container"]') ||
+                         document.querySelector('.chat-history') ||
+                         document.querySelector('infinite-scroller');
+
+  if (!scrollContainer) {
+    console.warn('[Gemini Capture] Could not find scroll container, proceeding anyway');
+    return;
+  }
+
+  // Keep scrolling up until we hit the top
+  // Gemini's infinite-scroller lazy-loads as you scroll up
+  let scrollCount = 0;
+  const maxScrollAttempts = 30;
+  let lastMessageCount = 0;
+  let stableCount = 0;
+
+  while (scrollCount < maxScrollAttempts) {
+    // Scroll to the absolute top
+    scrollContainer.scrollTop = 0;
+
+    // Wait for messages to load
+    await new Promise(r => setTimeout(r, 400));
+
+    const newMessageCount = document.querySelectorAll('.query-text, .message-content').length;
+
+    // If message count hasn't changed, we've loaded everything
+    if (newMessageCount === lastMessageCount) {
+      stableCount++;
+      if (stableCount >= 2) {
+        break; // No new messages for 2 iterations, we're at the top
+      }
+    } else {
+      stableCount = 0;
+      lastMessageCount = newMessageCount;
+    }
+
+    // If scrollTop is 0 and no new messages, we're done
+    if (scrollContainer.scrollTop === 0 && newMessageCount === lastMessageCount) {
+      break;
+    }
+
+    scrollCount++;
+  }
+
+  // Final wait for DOM to settle
+  await new Promise(r => setTimeout(r, 500));
+
+  // Wait for loading to stabilize - monitor for final DOM changes
+  let checkCount = 0;
+  let unchangedCount = 0;
+  let lastElementCount = document.querySelectorAll('.query-text, .message-content').length;
+
+  await new Promise(resolve => {
+    const checkInterval = setInterval(() => {
+      const currentCount = document.querySelectorAll('.query-text, .message-content').length;
+
+      if (currentCount === lastElementCount) {
+        unchangedCount++;
+        // If count hasn't changed for 4 checks (800ms), assume done loading
+        if (unchangedCount >= 4) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      } else {
+        // Reset counter if new content arrived
+        unchangedCount = 0;
+        lastElementCount = currentCount;
+      }
+
+      checkCount++;
+    }, 200);
+
+    // Timeout after 15 seconds just in case
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      resolve();
+    }, 15000);
+  });
+
+  const finalCount = document.querySelectorAll('.query-text, .message-content').length;
+  window.ToastManager.show(`✅ Loaded ${finalCount} messages!`, 'success');
+  console.log(`[Gemini Capture] Loaded ${finalCount} total messages from conversation`);
+}
+
 async function extractSessionData(importType = 'merge') {
+  // 0. Scroll to top and load all content
+  await scrollToTopAndLoadAll();
+
   // 1. Extract full HTML
   const htmlContent = document.documentElement.outerHTML;
 

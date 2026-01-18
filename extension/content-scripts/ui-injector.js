@@ -634,6 +634,40 @@
     closeMenu();
   }
 
+  // ============================================================================
+  // PRELOAD HANDLER (Gemini-specific)
+  // ============================================================================
+  let isPreloading = false;
+
+  async function handlePreload() {
+    // Prevent multiple simultaneous preloads
+    if (isPreloading) {
+      window.ToastManager.show('⏳ Preload already in progress...', 'info');
+      return;
+    }
+
+    isPreloading = true;
+    updateButtonLoading(true);
+    window.ToastManager.show('⬆️ Starting to pre-load conversation...', 'info');
+
+    try {
+      // Call the scrollToTopAndLoadAll function from gemini-capture.js
+      if (typeof scrollToTopAndLoadAll === 'function') {
+        await scrollToTopAndLoadAll();
+        window.ToastManager.show('✅ Conversation pre-loaded! Ready to export.', 'success');
+      } else {
+        throw new Error('Pre-load function not available');
+      }
+    } catch (error) {
+      console.error('UI Injector: Pre-load error:', error);
+      window.ToastManager.show(`❌ Pre-load failed: ${error.message}`, 'error');
+    } finally {
+      isPreloading = false;
+      updateButtonLoading(false);
+      closeMenu();
+    }
+  }
+
 
   // ============================================================================
   // MENU MANAGEMENT
@@ -697,7 +731,8 @@
     const menuDirectionClass = direction === 'up' ? '' : 'menu-down';
     const arrow = direction === 'up' ? '▲' : '▼';
 
-    container.innerHTML = `
+    // Build menu HTML (no user input, safe for innerHTML)
+    let menuHTML = `
       <div class="nr-export-menu ${menuDirectionClass}">
         <div class="nr-menu-section">
           <div class="nr-menu-label">Select Messages</div>
@@ -707,7 +742,20 @@
             <button class="nr-selection-btn" data-mode="ai">🤖 AI</button>
             <button class="nr-selection-btn" data-mode="none">None</button>
           </div>
-        </div>
+        </div>`;
+
+    // Add Gemini-specific pre-load section
+    if (platform.key === 'gemini') {
+      menuHTML += `
+        <div class="nr-menu-section">
+          <div class="nr-menu-label">Gemini Tools</div>
+          <div class="nr-menu-item" data-action="preload-conversation">
+            ⬆️ Pre-load Full Conversation
+          </div>
+        </div>`;
+    }
+
+    menuHTML += `
         <div class="nr-menu-section">
           <div class="nr-menu-label">Export</div>
           <div class="nr-menu-item" data-action="import">
@@ -729,6 +777,8 @@
       </div>
       <button class="nr-export-btn">📋 Export ${arrow}</button>
     `;
+
+    container.innerHTML = menuHTML;
 
 
     // Apply positioning logic
@@ -786,6 +836,8 @@
         if (item.dataset.action === 'clear-selectors') {
           removeCheckboxes();
           closeMenu();
+        } else if (item.dataset.action === 'preload-conversation') {
+          handlePreload();
         } else {
           handleExport(item.dataset.action);
         }
