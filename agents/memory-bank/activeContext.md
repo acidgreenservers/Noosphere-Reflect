@@ -1,9 +1,15 @@
 # Active Context
 
 ## 📅 Current Session
-- **Date**: 2026-01-17
-- **Goal**: Implement Smart Import & Data Integrity features.
-- **Status**: Phase 6.2.5 - Smart Import Detection, Header Standardization, and Google Drive Integration completed.
+- **Date**: 2026-01-18
+- **Goal**: Formalize Modular Parser Infrastructure & Stable Release v0.5.8.1.
+- **Status**: Stable Release v0.5.8.1 Completed.
+
+## Recent Changes
+### January 18, 2026 - Stable Release v0.5.8.1 (ad0b9c7)
+- **Modular Parser Infrastructure**: Transitioned to class-based `ParserFactory` architecture.
+- **Markdown Firewall**: Integrated `validateMarkdownOutput` security layer.
+- **Features**: Google Drive exports, smart message deduplication.
 
 ## 🔄 IN PROGRESS: Phase 6.3.0 Smart Import Merge with Message Deduplication
 
