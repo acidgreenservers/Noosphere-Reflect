@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System 🗃️
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.8-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.8.2-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
@@ -227,13 +227,19 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.7 (Current)
+## 🆕 What's New in v0.5.8.1 (Current)
 
-### Content Import Wizard & Studio Interface
-- **Guided Import Wizard**: A new 3-step wizard (Method -> Input -> Verify) makes importing chat logs foolproof. Supports Paste, Upload, and Extension capture methods.
-- **Modal-First Studio**: The Basic Converter has been reimagined as a professional studio with dedicated full-screen modals for Configuration, Metadata, Content, and Review.
-- **Dual Editor Tools**: The Message Editor now features split **"Add AI"** / **"Add User"** buttons for rapid conversation building, plus precise message injection.
-- **Smart Content Manager**: A single, context-aware action button guides you through the workflow ("Start Import" -> "Merge Messages").
+### Theme Architecture Refactor & Export System Consolidation
+- **Decoupled Color/Style Architecture**: Separated ChatTheme (color palettes) from ChatStyle (layout renderers) for flexible theming options.
+- **4 Platform-Specific Theme Renderers**: High-fidelity layout implementations based on official DOM references for ChatGPT, Gemini, Grok, and LeChat.
+- **Export System Consolidation**: Unified feature folder structure with all export components moved to `src/components/exports/`.
+- **Google Drive Client Secret Support**: Complete OAuth token exchange implementation with enhanced error handling.
+- **Gemini Extension Enhancements**: Conversation preloading with mutex guards and progress toasts for full conversation capture.
+- **Surgical Message Insertion**: Inline "↑ Insert" and "↓ Insert" buttons in ReviewEditModal with auto-renumbering.
+- **Markdown Firewall Security**: XSS prevention system blocking dangerous tags and event handlers.
+- **Parser Modularization**: Clean architecture with ParserFactory pattern and comprehensive test suite.
+- **ContentImportWizard Navigation**: Fixed modal back button with proper step history tracking.
+- **Environment Configuration**: Updated CSP policies and deployment settings.
 
 ## 🆕 What's New in v0.5.6
 

@@ -123,7 +123,7 @@ export class FilePackager {
       exportDate: new Date().toISOString(),
       exportedBy: {
         tool: 'Noosphere Reflect',
-        version: '0.5.8'
+        version: '0.5.8.2'
       },
       chats: chatMetadata,
       summary: {

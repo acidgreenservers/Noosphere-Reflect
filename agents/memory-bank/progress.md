@@ -195,6 +195,43 @@
 
 ## Recent Updates (January 18, 2026)
 
+- **January 18, 2026 - Theme Architecture Refactor & Export System Consolidation ✅**:
+  - ✅ **Decoupled Color/Style Architecture**: Separated ChatTheme (color palettes) from ChatStyle (layout renderers)
+    - Added `ChatStyle` enum and `selectedStyle` to `SavedChatSession` type
+    - Renamed "Theme" to "Color" in ConfigurationModal with separate "Style" selection
+    - Updated ExportService to accept and use ChatStyle via ThemeRegistry
+  - ✅ **4 Platform-Specific Theme Renderers**: High-fidelity layout implementations based on official DOM references
+    - ChatGPT: Söhne typography, rounded bubbles, message-specific margins
+    - Gemini: Material Design icons, collapsible thought blocks, AI Studio styling
+    - Grok: Thought process separation, rounded-xl code blocks with dark headers
+    - LeChat: Teal accents, pill-shaped message bubbles, Lucide icons
+    - Extracted BaseThemeRenderer for shared parsing/rendering logic
+  - ✅ **Export System Consolidation**: Unified feature folder structure
+    - Moved `ExportModal.tsx`, `ExportDestinationModal.tsx`, `ExportDropdown.tsx` to `src/components/exports/`
+    - Refactored import paths in ArchiveHub, MemoryArchive, PromptArchive, BasicConverter
+    - Fixed exportService.generate() calls with updated argument signatures
+  - ✅ **Google Drive Client Secret Support**: Complete OAuth token exchange implementation
+    - Added `VITE_GOOGLE_CLIENT_SECRET` to environment configuration
+    - Updated GoogleAuthContext with client_secret parameter for token exchange
+    - Enhanced error handling and validation for OAuth parameters
+  - ✅ **Gemini Extension Enhancements**: Conversation preloading and mutex guards
+    - Added `scrollToTopAndLoadAll()` with DOM polling for stable message detection
+    - Implemented mutex pattern to prevent concurrent preload operations
+    - Shows progress toasts: "📜 Loading full conversation..." → "✅ Loaded N messages!"
+  - ✅ **Surgical Message Insertion**: Inline editing capabilities in ReviewEditModal
+    - Added "↑ Insert" and "↓ Insert" buttons next to Turn # labels (edit mode only)
+    - Auto-inherits message type from adjacent messages (prompt/response)
+    - Turn numbers auto-renumber via `.map()` index without manual tracking
+  - ✅ **Markdown Firewall Security**: XSS prevention system for all platform imports
+    - Blocks dangerous tags: `<script>`, `<iframe>`, `<object>`, `<embed>`
+    - Strips event handlers: `onerror`, `onclick`, `onload`, etc.
+    - 10MB size limits and input hardening for resource exhaustion protection
+  - ✅ **Parser Modularization**: Clean architecture with ParserFactory pattern
+    - 8 dedicated platform parsers (ChatGPT, Claude, Gemini, AI Studio, Grok, Kimi, LeChat, Llamacoder)
+    - Centralized ParserFactory for dynamic parser selection
+    - Comprehensive test suite (11 tests) with 100% functional coverage
+    - Reduced converterService.ts complexity by ~1200 lines
+
 - **January 18, 2026 - Extension UX Features ✅ (Gemini Preload & Message Insertion)**:
   - ✅ **Gemini Lazy-Loading Preload**: Implemented manual "Pre-load Full Conversation" button
     - Added `scrollToTopAndLoadAll()` function with DOM polling for stable message count detection

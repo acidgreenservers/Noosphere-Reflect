@@ -13,6 +13,23 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8.2',
+            date: 'Jan 18, 2026',
+            title: 'Theme Architecture Refactor & Export System Consolidation',
+            items: [
+                'Decoupled Color/Style Architecture: Separated ChatTheme (color palettes) from ChatStyle (layout renderers) with new type definitions and ConfigurationModal updates.',
+                '4 Platform-Specific Theme Renderers: High-fidelity layout implementations based on official DOM references for ChatGPT, Gemini, Grok, and LeChat with BaseThemeRenderer for shared logic.',
+                'Export System Consolidation: Unified feature folder structure with all export components moved to src/components/exports/ and refactored import paths.',
+                'Google Drive Client Secret Support: Complete OAuth token exchange implementation with enhanced error handling and environment configuration updates.',
+                'Gemini Extension Enhancements: Conversation preloading with mutex guards, DOM polling for stable message detection, and progress toast notifications.',
+                'Surgical Message Insertion: Inline "↑ Insert" and "↓ Insert" buttons in ReviewEditModal with auto-inheritance and auto-renumbering functionality.',
+                'Markdown Firewall Security: XSS prevention system blocking dangerous tags, event handlers, and malicious URLs across all platform imports.',
+                'Parser Modularization: Clean architecture with ParserFactory pattern, 8 dedicated platform parsers, and comprehensive test suite reducing converterService.ts complexity by ~1200 lines.',
+                'ContentImportWizard Navigation: Fixed modal back button with proper step history tracking and state reset functionality.',
+                'Environment Configuration: Updated CSP policies for OAuth endpoints and deployment settings.',
+            ]
+        },
+        {
             version: 'v0.5.8.1',
             date: 'Jan 18, 2026',
             title: 'Modular Parser Infrastructure & Strict Standards',
@@ -20,11 +37,11 @@ const Changelog: React.FC = () => {
                 'Parser Refactor: Complete modularization of all AI chat parsers into dedicated specialist classes.',
                 'Formalized Standards: Intelligent differentiation between "Noosphere Standard" (Strict) and "3rd Party Exports" (Flexible).',
                 'enhanced ThirdPartyParser: Restored and improved detection for legacy and custom chat headers (e.g., ## Name:).',
-                'Markdown Firewall: Multi-layered security validation integrated into all parser modules.',
-                'Import Wizard 2.0: Clean selection interface for distinct parsing modes with helpful descriptive labels.',
+                'Markdown Firewall: Tiered security system integrated across all parser modules for sanitized Markdown extraction.',
+                'Import Wizard 2.0: Guided workflow with distinct "Noosphere Standard" vs "3rd Party" parsing paths.',
                 'Smart Detection: Enhanced importDetector.ts to automatically categorize 3rd-party chats by structure.',
                 'Technical Polish: Centralized parsing utilities (ParserUtils) and comprehensive unit test verification.',
-                'Google Drive Reliability: Refined backup sync logic and partitioned API handling.',
+                'Google Drive Sync Refinements: Partitioned API handling and improved backup reliability.',
             ]
         },
         {
