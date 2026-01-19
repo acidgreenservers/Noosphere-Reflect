@@ -18,6 +18,7 @@ import { useGoogleAuth } from '../contexts/GoogleAuthContext';
 import { googleDriveService, DriveFile } from '../services/googleDriveService';
 import { GoogleDriveImportModal } from '../components/GoogleDriveImportModal';
 import { deduplicateMessages } from '../utils/messageDedupe';
+import { ChatSessionCard } from '../archive/chats/components';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 
@@ -1041,6 +1042,7 @@ const ArchiveHub: React.FC = () => {
         try {
             let imported = 0;
             let skipped = 0;
+            let merged = 0;
 
             // Download and import each selected file
             for (const file of selectedFiles) {
@@ -1052,24 +1054,89 @@ const ArchiveHub: React.FC = () => {
                     const chatData = await parseChat(content, 'auto', mode);
                     const enrichedMetadata = enrichMetadata(chatData, mode);
 
-                    // Create session object with enriched metadata
-                    const newSession: SavedChatSession = {
-                        id: crypto.randomUUID(),
-                        name: enrichedMetadata.title,
-                        date: enrichedMetadata.date,
-                        chatTitle: enrichedMetadata.title,
-                        userName: 'User',
-                        aiName: enrichedMetadata.model || 'AI',
-                        selectedTheme: ChatTheme.DarkDefault,
-                        parserMode: mode,
-                        inputContent: content,
-                        chatData,
-                        metadata: enrichedMetadata
-                    };
+                    // Check if session exists
+                    const normalizedTitle = enrichedMetadata.title ? (await import('../utils/textNormalization')).normalizeTitle(enrichedMetadata.title) : '';
+                    let existingSession = null;
+                    if (normalizedTitle) {
+                        existingSession = await storageService.getSessionByNormalizedTitle(normalizedTitle);
+                    }
 
-                    // Save using existing logic (handles merge/copy)
-                    await storageService.saveSession(newSession);
-                    imported++;
+                    if (existingSession) {
+                        // MERGE LOGIC
+                        // Deduplicate Messages
+                        const existingMessages = existingSession.chatData?.messages || [];
+                        const newMessages = chatData.messages || [];
+                        const { messages: updatedMessages, skipped: duplicateCount, hasNewMessages } = deduplicateMessages(
+                            existingMessages,
+                            newMessages
+                        );
+
+                        // Skip merge if no new messages
+                        if (!hasNewMessages && duplicateCount > 0) {
+                            console.log(`⏭️ Skipping merge: All ${duplicateCount} messages already exist in session "${existingSession.name}"`);
+                            skipped++;
+                            continue;
+                        }
+
+                        console.log(`🔄 Merging content into existing session: ${existingSession.name} (${duplicateCount} duplicates skipped)`);
+
+                        // Merge Artifacts
+                        const distinctArtifacts = [...(existingSession.metadata?.artifacts || [])];
+                        // Merge session-level artifacts AND message-level artifacts if they are lifted to metadata
+                        const newArtifacts = enrichedMetadata.artifacts || [];
+
+                        // Also consider artifacts inside the messages themselves if not properly in metadata
+                        // (Though enrichMetadata normally handles this, let's be safe)
+
+                        newArtifacts.forEach((art: ConversationArtifact) => {
+                            if (!distinctArtifacts.some(existing => existing.id === art.id)) {
+                                distinctArtifacts.push(art);
+                            }
+                        });
+
+                        // Create Merged Session Object
+                        const mergedSession: SavedChatSession = {
+                            ...existingSession,
+                            date: new Date().toISOString(), // Update modified date
+                            chatData: {
+                                messages: updatedMessages,
+                                metadata: existingSession.chatData?.metadata
+                            },
+                            metadata: {
+                                ...existingSession.metadata, // Keep existing metadata as base
+                                ...enrichedMetadata,         // Update with new metadata (optional, maybe we should prefer existing? logic usually favors existing for title but maybe new for tags?)
+                                // Let's keep existing title/model but merge tags/artifacts
+                                title: existingSession.metadata?.title || existingSession.name,
+                                model: existingSession.metadata?.model || enrichedMetadata.model || 'Unknown',
+                                tags: [...new Set([...(existingSession.metadata?.tags || []), ...(enrichedMetadata.tags || [])])],
+                                artifacts: distinctArtifacts,
+                                exportStatus: existingSession.metadata?.exportStatus // Preserve export status
+                            },
+                            // Append content for record
+                            inputContent: existingSession.inputContent + '\n\n' + content
+                        };
+
+                        await storageService.saveSession(mergedSession);
+                        merged++;
+                    } else {
+                        // NEW SESSION
+                        const newSession: SavedChatSession = {
+                            id: crypto.randomUUID(),
+                            name: enrichedMetadata.title,
+                            date: enrichedMetadata.date,
+                            chatTitle: enrichedMetadata.title,
+                            userName: 'User',
+                            aiName: enrichedMetadata.model || 'AI',
+                            selectedTheme: ChatTheme.DarkDefault,
+                            parserMode: mode,
+                            inputContent: content,
+                            chatData,
+                            metadata: enrichedMetadata
+                        };
+
+                        await storageService.saveSession(newSession);
+                        imported++;
+                    }
                 } catch (error) {
                     console.error(`Failed to import ${file.name}:`, error);
                     skipped++;
@@ -1080,8 +1147,11 @@ const ArchiveHub: React.FC = () => {
             await loadSessions();
 
             // Show summary
-            if (imported > 0 || skipped > 0) {
-                const summary = `✅ Import Complete:\n- ${imported} file(s) imported\n- ${skipped} file(s) skipped`;
+            if (imported > 0 || skipped > 0 || merged > 0) {
+                let summary = '✅ Import Complete:';
+                if (imported > 0) summary += `\n- ${imported} new chat(s)`;
+                if (merged > 0) summary += `\n- ${merged} chat(s) merged`;
+                if (skipped > 0) summary += `\n- ${skipped} skipped (all duplicates)`;
                 alert(summary);
             }
         } catch (error) {
@@ -1468,162 +1538,20 @@ const ArchiveHub: React.FC = () => {
                         </div>
                     ) : filteredSessions.length > 0 ? (
                         filteredSessions.map(session => (
-                            <div
+                            <ChatSessionCard
                                 key={session.id}
-                                onClick={async () => {
-                                    // Fetch full session for preview
-                                    try {
-                                        const full = await storageService.getSessionById(session.id);
-                                        if (full) setPreviewSession(full);
-                                    } catch (e) {
-                                        console.error('Failed to load session regarding', e);
-                                    }
+                                session={session}
+                                isSelected={selectedIds.has(session.id)}
+                                onSelect={toggleSelection}
+                                onDelete={handleDelete}
+                                onStatusToggle={handleStatusToggle}
+                                onPreview={setPreviewSession}
+                                onManageArtifacts={(full) => {
+                                    setSelectedSessionForArtifacts(full);
+                                    setShowArtifactManager(true);
                                 }}
-                                className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 block cursor-pointer
-                                    ${selectedIds.has(session.id)
-                                        ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20'
-                                        : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-green-500/30 hover:shadow-green-900/10 hover:shadow-lg hover:shadow-green-500/20'
-                                    }`}
-                            >
-
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex gap-2">
-                                        {session.metadata?.model && (
-                                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${getModelBadgeColor(session.metadata.model)}`}>
-                                                {(() => {
-                                                    // Capitalize model name properly (e.g., "gpt-4" → "GPT-4", "claude" → "Claude")
-                                                    const model = session.metadata.model;
-                                                    return model
-                                                        .split('-')
-                                                        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-                                                        .join('-');
-                                                })()}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={(e) => handleStatusToggle(session, e)}
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${session.exportStatus === 'exported'
-                                                ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
-                                                : 'bg-red-500/20 border-red-500/50 text-red-400'
-                                                }`}
-                                            title={`Export Status: ${session.exportStatus === 'exported' ? 'Exported' : 'Not Exported'} (Click to toggle)`}
-                                        >
-                                            {session.exportStatus === 'exported' ? '📤' : '📥'}
-                                        </button>
-                                        {/* Simplified artifact check: only check session-level artifacts to avoid loading full chatData */}
-                                        {(session.metadata?.artifacts && session.metadata.artifacts.length > 0) && (
-                                            <button
-                                                onClick={async (e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    try {
-                                                        const full = await storageService.getSessionById(session.id);
-                                                        if (full) {
-                                                            setSelectedSessionForArtifacts(full);
-                                                            setShowArtifactManager(true);
-                                                        }
-                                                    } catch (err) {
-                                                        console.error('Failed to load session for artifacts', err);
-                                                    }
-                                                }}
-                                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-colors hover:scale-105 shadow-lg shadow-emerald-500/50"
-                                                title="Manage artifacts for this chat"
-                                            >
-                                                <span>📎</span>
-                                                <span>{session.metadata.artifacts.length}</span>
-                                            </button>
-                                        )}
-                                        {(!session.metadata?.artifacts || session.metadata.artifacts.length === 0) && (
-                                            <button
-                                                onClick={async (e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    try {
-                                                        const full = await storageService.getSessionById(session.id);
-                                                        if (full) {
-                                                            setSelectedSessionForArtifacts(full);
-                                                            setShowArtifactManager(true);
-                                                        }
-                                                    } catch (err) {
-                                                        console.error('Failed to load session for artifacts', err);
-                                                    }
-                                                }}
-                                                className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-colors font-medium hover:scale-105"
-                                                title="Add artifacts to this chat"
-                                            >
-                                                + Add Artifacts
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={(e) => handleDelete(session.id, e)}
-                                            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <h3 className="text-lg font-semibold text-gray-100 mb-2 line-clamp-2 group-hover:text-green-300 transition-colors">
-                                    {session.metadata?.title || session.chatTitle || session.name || 'Untitled Chat'}
-                                </h3>
-
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {(session.metadata?.tags || []).map((tag, i) => (
-                                        <span key={i} className="text-xs text-gray-400 bg-white/5 px-2 py-0.5 rounded-full">
-                                            #{tag}
-                                        </span>
-                                    ))}
-                                    {(!session.metadata?.tags || session.metadata.tags.length === 0) && (
-                                        <span className="text-xs text-gray-600 italic">No tags</span>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            {new Date(session.metadata?.date || session.date).toLocaleDateString()}
-                                        </div>
-                                        {session.exportStatus === 'exported' && (
-                                            <span className="px-2 py-0.5 bg-green-900/40 text-green-300 border border-green-700/50 rounded text-xs flex items-center gap-1 w-fit">
-                                                ✓ Exported
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                navigate(`/converter?load=${session.id}`);
-                                            }}
-                                            className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500/20 hover:border-purple-500/40 transition-all"
-                                            title="Edit conversation content"
-                                        >
-                                            Edit Chat
-                                        </button>
-                                        <button
-                                            onClick={(e) => toggleSelection(session.id, e)}
-                                            className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110
-                                                ${selectedIds.has(session.id)
-                                                    ? 'bg-green-500 border-green-500 text-white'
-                                                    : 'bg-gray-900/50 border-gray-600 hover:border-green-400 text-transparent'
-                                                }`}
-                                            title={selectedIds.has(session.id) ? "Deselect this chat" : "Select this chat"}
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                getModelBadgeColor={getModelBadgeColor}
+                            />
                         ))
                     ) : (
                         <div className="col-span-full py-20 text-center text-gray-500">

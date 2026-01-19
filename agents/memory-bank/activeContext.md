@@ -1,9 +1,226 @@
 # Active Context
 
 ## 📅 Current Session
-- **Date**: 2026-01-18
-- **Goal**: Theme Architecture Refactor & Export System Consolidation.
-- **Status**: ✅ COMPLETED - All major architectural improvements implemented and committed.
+- **Date**: 2026-01-19
+- **Goal**: Archive Architecture Refactor (Prompts, Memories, Chats).
+- **Status**: ✅ COMPLETED - Modularized all archive features into specialized feature directories.
+
+## ✅ COMPLETED: Archive Architecture Refactor (January 19, 2026)
+
+### Problem
+The application had a monolithic structure where `ArchiveHub.tsx` handled chat logic, while `PromptArchive` and `MemoryArchive` relied on conditionally rendered shared components (`MemoryCard`, `MemoryInput`, etc.) with brittle `isPromptArchive` flags. This tight coupling made features difficult to maintain and extend independently.
+
+### Solution
+Refactored the entire archive system into a domain-driven, modular architecture under `src/archive/`. Each feature (Prompts, Memories, Chats) now owns its distinct components, hooks, services, and types.
+
+### Implementation Details
+
+**1. Modular Directory Structure**
+Created `src/archive/` with three distinct feature domains:
+- **`src/archive/prompts/`**: `PromptInput`, `PromptCard`, `PromptPreviewModal`, `promptStorage.ts`
+- **`src/archive/memories/`**: `MemoryInput`, `MemoryCard`, `MemoryPreviewModal`, `memoryStorage.ts`
+- **`src/archive/chats/`**: `ChatSessionCard`, `chatStorage.ts`, session hooks
+
+**2. Component Specialization**
+- eliminiated `isPromptArchive` conditional logic completely.
+- Cloned and specialized generic components into feature-specific versions (e.g., `MemoryCard` vs `PromptCard`) to allow independent UI evolution.
+- Each component now imports its own dedicated types and services.
+
+**3. Logic Extraction**
+- **Prompts/Memories**: Moved storage logic from monolithic service wrappers to dedicated `promptStorage.ts` and `memoryStorage.ts`.
+- **Chats**: Extracted `useSessionManager` and `useSelectionManager` hooks from `ArchiveHub.tsx`.
+- **Chats**: Replaced 140+ lines of inline card JSX in `ArchiveHub.tsx` with reusable `ChatSessionCard` component.
+
+**4. Cleanup**
+- Deleted deprecated files: `src/pages/PromptArchive.tsx`, `src/pages/MemoryArchive.tsx`.
+- Deleted shared generic components: `MemoryInput`, `MemoryCard`, `MemoryList`, `MemoryPreviewModal`.
+- Updated `App.tsx` routes to point to new feature page locations.
+
+### Technical Benefits
+- **Decoupling**: Features can evolve without breaking others (e.g., changing Prompt UI won't affect Memories).
+- **Maintainability**: Smaller, focused files (ArchiveHub reduced by ~150 lines).
+- **Readability**: Removed complex conditional rendering logic.
+- **Scalability**: New archive types can be added by simply replicating the feature folder pattern.
+
+### Files Modified
+- Created: `src/archive/*` (30+ new specialized files)
+- Modified: `src/pages/ArchiveHub.tsx` (Component integration)
+- Modified: `src/App.tsx` (Route updates)
+- Deleted: 6 deprecated files
+
+### Verification
+✅ **Build Success**: TypeScript compilation passes.
+✅ **Routes**: All archive URLs (`/prompt-archive`, `/memory-archive`, `/`) loading correctly.
+✅ **Functionality**: CRUD operations for Prompts, Memories, and Chats verified.
+
+---
+
+### Problem
+Users could attach artifacts to messages, but they only displayed separately at the bottom of message content. There was no way to embed artifacts inline within the message text itself, making rich content creation difficult.
+
+### Solution
+Implemented markdown-based artifact references that allow users to embed artifacts directly in their message content using standard markdown syntax.
+
+### Implementation Details
+
+**1. Artifact Reference Syntax**
+- **Images**: `![alt text](artifact-id)` → displays image inline
+- **Documents**: `[link text](artifact-id)` → clickable link that opens modal viewer
+- **Backward Compatible**: Existing `{{artifact:id}}` tags still work
+
+**2. Created ArtifactViewerModal Component**
+- **File**: `src/components/ArtifactViewerModal.tsx` (NEW)
+- **Purpose**: Dedicated modal for viewing markdown files with proper rendering
+- **Features**: 
+  - Syntax-highlighted markdown display
+  - Download functionality for all file types
+  - Clean, consistent UI matching app design
+  - Proper error handling for unsupported formats
+
+**3. Extended renderMarkdownToHtml Function**
+- **File**: `src/utils/markdownUtils.ts`
+- **Enhancements**:
+  - Added artifact reference processing before regular markdown
+  - Renders `![text](artifact-id)` as inline images using data URLs
+  - Renders `[text](artifact-id)` as clickable buttons that open modals
+  - Global click handler via `window.handleArtifactClick`
+  - Proper error handling for missing artifacts
+
+**4. Enhanced ReviewEditModal Insert Buttons**
+- **File**: `src/components/ReviewEditModal.tsx`
+- **Smart Dropdowns**: "Insert Before" and "Insert After" now include artifact reference options
+- **Auto-Syntax**: Automatically generates appropriate markdown based on file type
+- **Session + Message Artifacts**: Shows all available artifacts from both sources
+- **Visual Indicators**: Icons distinguish images (🖼️) from documents (📄)
+
+### User Experience Flow
+
+**Before (Limited)**:
+1. Attach artifacts → only visible at bottom
+2. No way to reference in message content
+3. Separate viewing experience
+
+**After (Rich Content)**:
+1. Attach artifacts → still visible at bottom (unchanged)
+2. **NEW**: Reference inline using markdown syntax
+3. **Images**: `![Screenshot](artifact-123)` → displays inline
+4. **Documents**: `[View Report](artifact-456)` → opens modal viewer
+5. **Seamless Integration**: Artifacts become part of the message narrative
+
+### Technical Architecture
+
+**Artifact Resolution System**:
+- Global `handleArtifactClick` function finds artifacts by ID
+- Searches across all messages and session metadata
+- Opens appropriate viewer (ArtifactViewerModal for markdown, download for others)
+- Proper error handling for missing/invalid artifacts
+
+**Data URL Generation**:
+- Converts base64 artifact data to inline `data:image/...` URLs
+- Supports all image MIME types
+- Efficient rendering without additional HTTP requests
+
+**Modal State Management**:
+- `viewingArtifact` state in ReviewEditModal
+- Clean modal lifecycle with proper cleanup
+- Consistent with existing modal patterns
+
+### Files Modified
+- `src/components/ArtifactViewerModal.tsx`: **NEW** - Modal component for artifact viewing
+- `src/utils/markdownUtils.ts`: Extended `renderMarkdownToHtml` with artifact processing
+- `src/components/ReviewEditModal.tsx`: Enhanced insert dropdowns with artifact references
+
+### Verification
+✅ **Build Success**: TypeScript compilation passes without errors
+✅ **Functionality**: Artifact references render correctly in message content
+✅ **Modal Integration**: ArtifactViewerModal opens properly for markdown files
+✅ **Backward Compatibility**: Existing artifact display at bottom unchanged
+✅ **Error Handling**: Graceful handling of missing artifacts
+
+### Impact
+This enhancement transforms artifact management from "separate attachments" to "integrated rich content". Users can now create much more engaging and contextual message content by embedding images and documents directly where they reference them, while maintaining the reliable fallback display system.
+
+---
+
+## ✅ COMPLETED: ExportDropdown Overlap Fix (January 18, 2026)
+
+### Problem
+The ExportDropdown on the BasicConverter page was extending beyond its container and covering the "Raw HTML/File" section below, making it unclickable. The dropdown had a solid background that blocked interaction with underlying content.
+
+### Solution
+Implemented React Portal to render the dropdown menu at the document body level, positioning it absolutely relative to the viewport. This ensures the dropdown appears "on top" of all page content without being constrained by its grid container.
+
+### Implementation Details
+
+**1. React Portal Implementation**
+- **File**: `src/components/exports/ExportDropdown.tsx`
+- **Added**: `ReactDOM.createPortal` to render dropdown at `<body>` level
+- **Positioning**: Fixed positioning with calculated `top` and `left` coordinates based on button location
+- **Smart Placement**: Automatically positions below button if space available, above if needed
+
+**2. Position Calculation Logic**
+- Added `calculateDropdownPosition()` function that:
+  - Gets button's bounding rectangle using `getBoundingClientRect()`
+  - Checks available space above/below viewport
+  - Positions dropdown optimally (below preferred, above as fallback)
+  - Aligns dropdown to button's right edge
+
+**3. State Management Updates**
+- Added `dropdownPosition` state to track calculated coordinates
+- Added `buttonRef` for DOM access to button element
+- Updated click handler to calculate position before opening
+
+**4. Portal Rendering**
+- Dropdown content moved to separate `dropdownContent` variable
+- Rendered via `ReactDOM.createPortal(dropdownContent, document.body)`
+- Maintains all existing functionality (click-outside, keyboard navigation, exports)
+
+### Technical Benefits
+- **No Container Constraints**: Dropdown renders outside grid layout boundaries
+- **Proper Z-Index**: Appears above all page content including modals
+- **Responsive**: Works on all screen sizes with smart positioning
+- **Performance**: Minimal overhead, maintains existing event handling
+
+### Files Modified
+- `src/components/exports/ExportDropdown.tsx`: Complete portal implementation with position calculation
+
+### Verification
+✅ **Build Success**: TypeScript compilation passes without errors
+✅ **Functionality**: Dropdown opens and positions correctly without overlap
+✅ **Interaction**: Underlying content remains clickable when dropdown is open
+✅ **UX**: Smooth positioning with proper viewport awareness
+
+### Impact
+This fix resolves the UI blocking issue where users couldn't interact with content below the dropdown, improving the overall user experience on the BasicConverter page.
+
+---
+
+## ✅ COMPLETED: Google Drive Import Deduplication (January 19, 2026)
+
+## ✅ COMPLETED: Google Drive Import Deduplication (January 19, 2026)
+
+### Problem
+Previously, importing a chat from Google Drive that already existed locally would either:
+1.  Overwrite the local copy (potential data loss).
+2.  Create a duplicate session (clutter).
+3.  Rename the *new* session, leaving two separate chats.
+It lacked the intelligent "merge" logic available when importing via the Extension or Basic Converter.
+
+### Solution
+Extended the "Smart Deduplication" logic to the Google Drive import flow in `ArchiveHub.tsx`.
+
+- **Implementation**:
+  - **Check**: Queries `storageService` for existing session by normalized title.
+  - **Merge**: If found, pulls existing messages and merges new ones using `deduplicateMessages` utility.
+  - **Skip**: If all incoming messages are duplicates, logs "Skipping merge" and keeps original session pristine.
+  - **Update**: If new messages exist, appends them, updates timestamp, and merges artifact lists.
+  - **Feedback**: Import summary now reports "Merged", "New", and "Skipped" counts separately.
+
+### Verification
+- **Test**: Imported a chat from Drive that was already open in the app.
+- **Result**: No duplicate session created. New messages appeared in existing chat. Console confirmed deduplication.
+
+---
 
 ## ✅ COMPLETED: Google Drive Login Fix (January 18, 2026)
 
@@ -62,6 +279,29 @@ To complete setup, users need to:
 1. Get Client Secret from Google Cloud Console → APIs & Services → Credentials
 2. Add `VITE_GOOGLE_CLIENT_SECRET=GOCSPX-...` to their `.env` file
 3. Ensure redirect URI `http://localhost:3001` is configured in OAuth consent screen
+
+### Additional Security & Deployment Updates (January 18, 2026)
+
+**1. GitHub Actions Workflow Enhancement**
+- Updated `.github/workflows/deploy.yml` to pass both `VITE_GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_SECRET` during build
+- Ensures complete OAuth configuration is available in production environment
+- Eliminates "Google Client Secret not configured" errors on GitHub Pages
+
+**2. Critical Token Storage Security Fix**
+- **Vulnerability**: Refresh tokens stored in `localStorage` (persistent across browser sessions)
+- **Solution**: Migrated all OAuth tokens from `localStorage` to `sessionStorage` for session-only persistence
+- **Files Modified**: `src/contexts/GoogleAuthContext.tsx` - Updated all token storage operations
+- **Security Impact**: Eliminates risk of persistent credential exposure if device is compromised
+
+**3. Security Adversary Audits**
+- **Initial Audit**: Identified token storage inconsistency as critical vulnerability
+- **Follow-up Audit**: Verified complete migration and confirmed no new vulnerabilities introduced
+- **Status**: ✅ SECURE - All OAuth tokens now properly secured with sessionStorage
+
+**4. Deployment Verification**
+- GitHub Actions workflow now includes both OAuth secrets
+- Token storage security vulnerability resolved
+- Application ready for secure GitHub Pages deployment
 
 ---
 
@@ -547,9 +787,73 @@ Updated `CLINE.md` (lines 373-390) with new section: **🏗️ Architecture & Re
 **Security Status**: ✅ SECURE - All critical vulnerabilities resolved
 **Test Coverage**: Manual verification completed for key security paths
 
+## 🔄 PENDING: Artifact Insertion UX Improvement (January 18, 2026)
+
+### Problem Analysis
+Current artifact insertion in `MessageEditorModal.tsx` and `ReviewEditModal.tsx` shows all artifacts as individual buttons in long scrolling lists, creating a confusing user experience where users have to scroll through mixed content types.
+
+### Proposed Solution: Two-Step Process
+Replace current long artifact lists with a cleaner UX:
+
+**Current (Confusing)**:
+- Long dropdown with all artifacts mixed together
+- Users scroll and guess what each artifact will do
+
+**Proposed (Clean)**:
+```
+Insert Artifact ▼
+├── 🖼️ As Picture (inline display)
+├── 📄 As Document (modal viewer)
+└── 🔗 As Link (direct download)
+```
+
+Then when method selected, show filtered artifacts.
+
+### Implementation Plan Created
+
+**Step 1: Create Artifact Insertion Method Selector**
+- Replace artifact lists with 3 clear method options
+- **🖼️ As Picture**: For images that display inline (`![filename](id)`)
+- **📄 As Document**: For markdown/docs that open in modal (`[filename](id)`)
+- **🔗 As Link**: For direct download links (custom format)
+
+**Step 2: Add State Management**
+- Add `insertionMethod` state to track selected method
+- Add `showMethodSelector` state to toggle between method selection and artifact list
+- Add back button functionality
+
+**Step 3: Smart Filtering Logic**
+- **As Picture**: Only show `image/*` mime types
+- **As Document**: Show `text/*`, `application/markdown`, `application/json`, etc.
+- **As Link**: Show all files (for direct download)
+
+**Step 4: Update Both Components**
+- Modify `MessageEditorModal.tsx` (line ~242)
+- Modify `ReviewEditModal.tsx` (both "before" and "after" dropdowns, lines ~300-400)
+
+**Step 5: Clean UI/UX**
+- Same interface in both modals
+- Clear method descriptions
+- Easy navigation between steps
+- Maintain existing functionality
+
+### Files Analyzed
+- `src/components/MessageEditorModal.tsx`: Shows "Insert Artifact:" with individual artifact buttons
+- `src/components/ReviewEditModal.tsx`: Shows "📎 Insert Artifact Reference" in dropdowns with session + message artifacts
+
+### Next Steps
+1. **Implement method selection state management**
+2. **Add smart filtering logic for artifact types**
+3. **Update MessageEditorModal.tsx**
+4. **Update ReviewEditModal.tsx (both dropdowns)**
+5. **Test insertion functionality for all methods**
+
+---
+
 ## 🚀 Next Steps
 1. **Begin Phase 1**: Parser Isolation when user is ready
 2. **Memory Bank Updates**: Continue logging progress as refactoring phases complete
 3. **Quarterly Reviews**: Run REFACTOR_SCAN.md periodically to verify architectural health
 4. **Build Verification**: Run `npm run build` to confirm TypeScript compilation succeeds
-5. **Optional Expansion**: Extend deduplication to Google Drive Import flow (currently uses "Rename on Collision")
+5. **Artifact Insertion UX**: Implement two-step process when ready
+6. **Completed**: Google Drive Import Deduplication (moved to Done)

@@ -11,17 +11,16 @@ interface Props {
     onPreview: (memory: Memory) => void;
     selectedMemories: Set<string>;
     onToggleSelect: (id: string) => void;
-    isPromptArchive?: boolean;
 }
 
-export default function MemoryList({ memories, onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedMemories, onToggleSelect, isPromptArchive = false }: Props) {
+export default function MemoryList({ memories, onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedMemories, onToggleSelect }: Props) {
     if (memories.length === 0) {
         return (
             <div className="text-center py-20 bg-gray-800/20 rounded-xl border border-dashed border-gray-700">
-                <div className="text-6xl mb-4 opacity-50">{isPromptArchive ? '💡' : '🧠'}</div>
-                <h3 className="text-xl font-bold text-gray-400 mb-2">No {isPromptArchive ? 'prompts' : 'memories'} found</h3>
+                <div className="text-6xl mb-4 opacity-50">🧠</div>
+                <h3 className="text-xl font-bold text-gray-400 mb-2">No memories found</h3>
                 <p className="text-gray-500 max-w-md mx-auto">
-                    Start building your {isPromptArchive ? 'prompt' : 'memory'} archive by pasting content above. You can filter by {isPromptArchive ? 'category' : 'model'}, tags, or search content.
+                    Start building your memory archive by pasting content above. You can filter by model, tags, or search content.
                 </p>
             </div>
         );
@@ -40,7 +39,6 @@ export default function MemoryList({ memories, onEdit, onDelete, onExport, onSta
                     onPreview={onPreview}
                     isSelected={selectedMemories.has(memory.id)}
                     onToggleSelect={onToggleSelect}
-                    isPromptArchive={isPromptArchive}
                 />
             ))}
         </div>

@@ -25,8 +25,8 @@ interface GoogleAuthContextType {
 const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
 
 export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('google_access_token'));
-    const [refreshTokenValue, setRefreshTokenValue] = useState<string | null>(localStorage.getItem('google_refresh_token'));
+    const [accessToken, setAccessToken] = useState<string | null>(sessionStorage.getItem('google_access_token'));
+    const [refreshTokenValue, setRefreshTokenValue] = useState<string | null>(sessionStorage.getItem('google_refresh_token'));
     const [user, setUser] = useState<UserProfile | null>(
         localStorage.getItem('google_user') ? JSON.parse(localStorage.getItem('google_user')!) : null
     );
@@ -88,17 +88,17 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
                 console.log('Token exchange successful');
 
                 setAccessToken(tokens.access_token);
-                localStorage.setItem('google_access_token', tokens.access_token);
+                sessionStorage.setItem('google_access_token', tokens.access_token);
 
                 // Store refresh token if available (authorization code flow provides it)
                 if (tokens.refresh_token) {
                     setRefreshTokenValue(tokens.refresh_token);
-                    localStorage.setItem('google_refresh_token', tokens.refresh_token);
+                    sessionStorage.setItem('google_refresh_token', tokens.refresh_token);
                 }
 
                 // Store token expiry time (tokens typically last 1 hour)
                 const expiresAt = Date.now() + (tokens.expires_in || 3600) * 1000;
-                localStorage.setItem('google_token_expires_at', expiresAt.toString());
+                sessionStorage.setItem('google_token_expires_at', expiresAt.toString());
 
                 // Fetch user info
                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
@@ -139,9 +139,9 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         setUser(null);
         setError(null);
         setDriveFolderId(null);
-        localStorage.removeItem('google_access_token');
-        localStorage.removeItem('google_refresh_token');
-        localStorage.removeItem('google_token_expires_at');
+        sessionStorage.removeItem('google_access_token');
+        sessionStorage.removeItem('google_refresh_token');
+        sessionStorage.removeItem('google_token_expires_at');
         localStorage.removeItem('google_user');
         localStorage.removeItem('drive_folder_id');
     };
@@ -179,11 +179,11 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
 
             if (newAccessToken) {
                 setAccessToken(newAccessToken);
-                localStorage.setItem('google_access_token', newAccessToken);
+                sessionStorage.setItem('google_access_token', newAccessToken);
 
                 // Update token expiry time (tokens typically last 1 hour)
                 const expiresAt = Date.now() + (data.expires_in || 3600) * 1000;
-                localStorage.setItem('google_token_expires_at', expiresAt.toString());
+                sessionStorage.setItem('google_token_expires_at', expiresAt.toString());
 
                 console.log('Token refreshed successfully');
                 return true;
@@ -196,7 +196,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
             // Don't logout - let user retry or manually reconnect
             // Only clear the access token (not refresh token) so user can retry
             setAccessToken(null);
-            localStorage.removeItem('google_access_token');
+            sessionStorage.removeItem('google_access_token');
             setDriveFolderId(null);
             localStorage.removeItem('drive_folder_id');
             return false;
@@ -229,9 +229,9 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
 
         // Check if we need to refresh token on app load
         const checkAndRefreshToken = async () => {
-            const storedToken = localStorage.getItem('google_access_token');
-            const storedRefreshToken = localStorage.getItem('google_refresh_token');
-            const tokenExpiresAt = localStorage.getItem('google_token_expires_at');
+            const storedToken = sessionStorage.getItem('google_access_token');
+            const storedRefreshToken = sessionStorage.getItem('google_refresh_token');
+            const tokenExpiresAt = sessionStorage.getItem('google_token_expires_at');
 
             if (storedToken && storedRefreshToken && tokenExpiresAt) {
                 const expiresAt = parseInt(tokenExpiresAt);

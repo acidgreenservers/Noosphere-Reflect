@@ -1,15 +1,16 @@
 /**
  * Basic Markdown to HTML converter for preview mode.
  * Handles common formatting without heavy external dependencies.
+ * Extended to support artifact references.
  */
-export function renderMarkdownToHtml(text: string): string {
+export function renderMarkdownToHtml(text: string, onArtifactClick?: (artifactId: string) => void): string {
     if (!text) return '';
 
     // 1. Escape HTML first (security)
     let html = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>');
 
     // 2. Extract code blocks to prevent formatting inside them
     const codeBlocks: string[] = [];
@@ -25,12 +26,28 @@ export function renderMarkdownToHtml(text: string): string {
         return `__INLINE_CODE_${inlineCode.length - 1}__`;
     });
 
-    // 4. Basic Formatting
+    // 4. Handle artifact references (before regular links/images)
+    const artifactRefs: string[] = [];
+    html = html.replace(/!\[([^\]]+)\]\((artifact-[^)]+)\)/g, (match, alt, artifactId) => {
+        // Image artifact reference
+        const index = artifactRefs.length;
+        artifactRefs.push(`<button onclick="window.handleArtifactClick && window.handleArtifactClick('${artifactId}')" class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-900/50 hover:bg-purple-800/50 text-purple-300 hover:text-purple-200 rounded-lg border border-purple-700/50 hover:border-purple-600/50 transition-all cursor-pointer text-sm" title="View artifact: ${alt}">🖼️ ${alt}</button>`);
+        return `__ARTIFACT_REF_${index}__`;
+    });
+
+    html = html.replace(/\[([^\]]+)\]\((artifact-[^)]+)\)/g, (match, text, artifactId) => {
+        // Regular artifact reference
+        const index = artifactRefs.length;
+        artifactRefs.push(`<button onclick="window.handleArtifactClick && window.handleArtifactClick('${artifactId}')" class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 hover:text-blue-200 rounded-lg border border-blue-700/50 hover:border-blue-600/50 transition-all cursor-pointer text-sm" title="View artifact: ${text}">📄 ${text}</button>`);
+        return `__ARTIFACT_REF_${index}__`;
+    });
+
+    // 5. Basic Formatting
     html = html
         .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>') // Bold
         .replace(/\*(.+?)\*/g, '<em class="text-gray-300">$1</em>') // Italic
-        .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-lg my-3 border border-gray-700 shadow-md"/>') // Images
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 hover:underline transition-colors">$1</a>') // Links
+        .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-lg my-3 border border-gray-700 shadow-md"/>') // Images (non-artifact)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 hover:underline transition-colors">$1</a>') // Links (non-artifact)
         .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold text-white mt-6 mb-3 border-b border-gray-700 pb-2">$1</h1>')
         .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold text-gray-100 mt-5 mb-2">$1</h2>')
         .replace(/^### (.*$)/gm, '<h3 class="text-lg font-medium text-gray-200 mt-4 mb-2">$1</h3>')
@@ -38,9 +55,9 @@ export function renderMarkdownToHtml(text: string): string {
         .replace(/^\s*\d+\.\s+(.*$)/gm, '<li class="ml-4 list-decimal text-gray-300">$1</li>') // Numbered list
         .replace(/\n/g, '<br/>'); // Line breaks
 
-    // 5. Thought & Collapsible Support (Handling the escaped tags &lt;thought&gt; and &lt;collapsible&gt;)
+    // 6. Thought & Collapsible Support (Handling the escaped tags <thought> and <collapsible>)
     // Process thoughts
-    html = html.replace(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/g, (match, content) => {
+    html = html.replace(/<thought>([\s\S]*?)<\/thought>/g, (match, content) => {
         return `
             <details class="markdown-thought-block my-4">
                 <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
@@ -54,7 +71,7 @@ export function renderMarkdownToHtml(text: string): string {
     });
 
     // Process collapsible
-    html = html.replace(/&lt;collapsible&gt;([\s\S]*?)&lt;\/collapsible&gt;/g, (match, content) => {
+    html = html.replace(/<collapsible>([\s\S]*?)<\/collapsible>/g, (match, content) => {
         return `
             <details class="markdown-collapsible-block my-4">
                 <summary class="markdown-collapsible-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
@@ -67,7 +84,8 @@ export function renderMarkdownToHtml(text: string): string {
         `;
     });
 
-    // 6. Restore code blocks
+    // 7. Restore artifact references, code blocks, and inline code
+    html = html.replace(/__ARTIFACT_REF_(\d+)__/g, (match, index) => artifactRefs[parseInt(index)]);
     html = html.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => codeBlocks[parseInt(index)]);
     html = html.replace(/__INLINE_CODE_(\d+)__/g, (match, index) => inlineCode[parseInt(index)]);
 

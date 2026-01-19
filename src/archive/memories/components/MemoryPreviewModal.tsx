@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { Memory } from '../types';
-import { renderMarkdownToHtml } from '../utils/markdownUtils';
+import { renderMarkdownToHtml } from '../../../utils/markdownUtils';
 
 interface MemoryPreviewModalProps {
     memory: Memory;
     onClose: () => void;
     onSave: (updatedMemory: Memory) => Promise<void>;
-    isPromptArchive?: boolean;
 }
 
-export const MemoryPreviewModal: React.FC<MemoryPreviewModalProps> = ({ memory, onClose, onSave, isPromptArchive = false }) => {
+export const MemoryPreviewModal: React.FC<MemoryPreviewModalProps> = ({ memory, onClose, onSave }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(memory.content);
@@ -84,7 +83,7 @@ export const MemoryPreviewModal: React.FC<MemoryPreviewModalProps> = ({ memory, 
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
-                            
+
                             {!isEditing ? (
                                 <button
                                     onClick={() => setIsEditing(true)}
@@ -117,7 +116,7 @@ export const MemoryPreviewModal: React.FC<MemoryPreviewModalProps> = ({ memory, 
                                     <p className="text-sm text-purple-200">
                                         You are currently editing this memory. Changes will update the word count automatically.
                                     </p>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setEditedContent(memory.content);
                                             setIsEditing(false);
@@ -190,8 +189,8 @@ export const MemoryPreviewModal: React.FC<MemoryPreviewModalProps> = ({ memory, 
                             <div className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
                                 <div className="max-w-3xl mx-auto">
                                     <div className="prose prose-invert max-w-none">
-                                        <div 
-                                            dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(memory.content) }} 
+                                        <div
+                                            dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(memory.content) }}
                                             className="leading-relaxed text-gray-300 font-mono text-sm whitespace-pre-wrap"
                                         />
                                     </div>

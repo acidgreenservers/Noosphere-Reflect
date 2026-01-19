@@ -23,6 +23,17 @@
 - **Environment**: `.env` file requires `GEMINI_API_KEY` for AI features.
 - **Config**: `vite.config.ts` handles plugins and base paths (for GitHub Pages compatibility).
 
+## Application Architecture (Modular) - NEW 🚀
+- **Source**: `src/`
+    - **`archive/`**: Feature-based modules for core functionalities.
+        - **`prompts/`**: Prompt Archive (Components, Hooks, Services).
+        - **`memories/`**: Memory Archive (Components, Hooks, Services).
+        - **`chats/`**: Archive Hub/Chats (Components, Hooks, Services).
+    - **`components/`**: Shared UI components (Input, Modal, Layouts).
+    - **`services/`**: Core infrastructure (`storageService`, `parserFactory`, `googleDrive`).
+    - **`hooks/`**: Global hooks (`useTheme`, `useGoogleLogin`).
+    - **`pages/`**: Top-level route orchestrators (`BasicConverter`, `AIConverter`).
+
 ## Data Management
 - **Storage Engine**: `IndexedDB` (Wrapper: `StorageService` class).
 - **Schema Version**: v6

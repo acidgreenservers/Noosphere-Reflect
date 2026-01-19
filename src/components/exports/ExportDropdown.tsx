@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { ChatData, ChatTheme, ParserMode, ChatMetadata, SavedChatSession } from '../../types';
 import { generateZipExport, generateDirectoryExportWithPicker } from '../../services/converterService';
 import { exportService } from './services';
@@ -31,6 +32,8 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
   session
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -60,6 +63,40 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen]);
+
+  const calculateDropdownPosition = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = 180; // Approximate height of dropdown
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      let top: number;
+      if (spaceBelow >= dropdownHeight) {
+        // Enough space below, position below button
+        top = rect.bottom + 8;
+      } else if (spaceAbove >= dropdownHeight) {
+        // Enough space above, position above button
+        top = rect.top - dropdownHeight - 8;
+      } else {
+        // Not enough space above or below, position below and let it scroll
+        top = rect.bottom + 8;
+      }
+
+      setDropdownPosition({
+        top,
+        left: rect.right - 224 // 224px = w-56 (14rem = 224px)
+      });
+    }
+  };
+
+  const handleToggleDropdown = () => {
+    if (!isOpen) {
+      calculateDropdownPosition();
+    }
+    setIsOpen(!isOpen);
+  };
 
   const handleExport = async (format: 'html' | 'markdown' | 'json') => {
     if (!chatData) {
@@ -117,10 +154,55 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
     }
   };
 
-  return (
-    <div ref={dropdownRef} className="relative w-full">
+  const dropdownContent = (
+    <div
+      ref={dropdownRef}
+      className="fixed w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden"
+      style={{
+        top: dropdownPosition?.top || 0,
+        left: dropdownPosition?.left || 0,
+      }}
+    >
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => handleExport('html')}
+        className="w-full px-4 py-3 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 flex items-center gap-3"
+      >
+        <span className="text-lg">🌐</span>
+        <div>
+          <div className="font-semibold text-sm">HTML (Standalone)</div>
+          <div className="text-xs text-gray-400">Complete with styling</div>
+        </div>
+      </button>
+
+      <button
+        onClick={() => handleExport('markdown')}
+        className="w-full px-4 py-3 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 flex items-center gap-3"
+      >
+        <span className="text-lg">📝</span>
+        <div>
+          <div className="font-semibold text-sm">Markdown (.md)</div>
+          <div className="text-xs text-gray-400">Portable text format</div>
+        </div>
+      </button>
+
+      <button
+        onClick={() => handleExport('json')}
+        className="w-full px-4 py-3 text-left text-gray-100 hover:bg-gray-700 transition-colors flex items-center gap-3"
+      >
+        <span className="text-lg">{ /* JSON braces */}{'{ }'}</span>
+        <div>
+          <div className="font-semibold text-sm">JSON (Data Only)</div>
+          <div className="text-xs text-gray-400">Machine-readable format</div>
+        </div>
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="relative w-full">
+      <button
+        ref={buttonRef}
+        onClick={handleToggleDropdown}
         className={buttonClassName}
       >
         <span>⬇️</span>
@@ -128,42 +210,7 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
         <span className="text-xs ml-1">▼</span>
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
-          <button
-            onClick={() => handleExport('html')}
-            className="w-full px-4 py-3 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 flex items-center gap-3"
-          >
-            <span className="text-lg">🌐</span>
-            <div>
-              <div className="font-semibold text-sm">HTML (Standalone)</div>
-              <div className="text-xs text-gray-400">Complete with styling</div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleExport('markdown')}
-            className="w-full px-4 py-3 text-left text-gray-100 hover:bg-gray-700 transition-colors border-b border-gray-700 flex items-center gap-3"
-          >
-            <span className="text-lg">📝</span>
-            <div>
-              <div className="font-semibold text-sm">Markdown (.md)</div>
-              <div className="text-xs text-gray-400">Portable text format</div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleExport('json')}
-            className="w-full px-4 py-3 text-left text-gray-100 hover:bg-gray-700 transition-colors flex items-center gap-3"
-          >
-            <span className="text-lg">{ /* JSON braces */}{'{ }'}</span>
-            <div>
-              <div className="font-semibold text-sm">JSON (Data Only)</div>
-              <div className="text-xs text-gray-400">Machine-readable format</div>
-            </div>
-          </button>
-        </div>
-      )}
+      {isOpen && dropdownPosition && ReactDOM.createPortal(dropdownContent, document.body)}
     </div>
   );
 };

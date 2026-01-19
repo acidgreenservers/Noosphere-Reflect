@@ -1,54 +1,76 @@
-# Security Audit Walkthrough: Stable Release v0.5.8.1 & Modular Parser Architecture
+# Security Audit Walkthrough: OAuth Token Storage Migration
 
 ## Summary
-✅ **Safe** - The new Modular Parser Architecture successfully implements the "Markdown Firewall" pattern. Input validation, sanitization, and output encoding are strictly enforced across all 8 platform parsers. Storage integrity and extension security remain robust.
+✅ **SAFE** - Token storage migration from localStorage to sessionStorage successfully implemented. All OAuth tokens now have appropriate session-limited storage with proper validation and cleanup. No new vulnerabilities introduced and OAuth flow remains secure.
 
 ## Audit Findings
 
-### Processing Layer (The "Markdown Firewall")
-#### 1. Vulnerability Check: Parser Sanitization Pipeline (ParserUtils.ts, ChatGptParser.ts)
+### GoogleAuthContext.tsx - Token Storage Migration
+#### 1. Vulnerability Check: Access Token Storage Migration (Lines 19, 86-88, 139, 179, 196)
 - **Status**: ✅ Safe
-- **Analysis**: The new `ParserFactory` architecture enforces a strict pipeline: `extractMarkdownFromHtml` -> `validateMarkdownOutput`. 
-    - `extractMarkdownFromHtml` (ParserUtils.ts:45) removes script/iframe/object tags and on* attributes before processing.
-    - `validateMarkdownOutput` (ParserUtils.ts:260) acts as a final gate, throwing errors if dangerous patterns (javascript:, data:) or suspicious entities persist.
-    - `ChatGptParser.ts` correctly implements this pipeline for both user and assistant messages.
-- **Remediation**: None required. Pattern is correctly applied.
+- **Analysis**: Access tokens successfully migrated from localStorage to sessionStorage. All storage/retrieval operations (initialization, login, refresh, logout) consistently use sessionStorage.getItem/setItem/removeItem.
+- **Remediation**: None required - migration complete and correct.
 
-#### 2. Vulnerability Check: Resource Exhaustion (ParserUtils.ts: Line 57)
+#### 2. Vulnerability Check: Refresh Token Storage Migration (Lines 20, 89-91, 141, 180, 197)
 - **Status**: ✅ Safe
-- **Analysis**: `extractMarkdownFromHtml` enforces a strict 10MB limit on input HTML content using `validateFileSize`. This prevents large payload attacks (Zip bombs) from freezing the main thread during parsing.
-- **Remediation**: None required.
+- **Analysis**: Refresh tokens successfully migrated from localStorage to sessionStorage. All operations consistently use sessionStorage, preventing persistent token storage across browser sessions.
+- **Remediation**: None required - migration complete and correct.
 
-### Input Layer (Validation & Limits)
-#### 3. Vulnerability Check: File & Batch Limits (securityUtils.ts)
+#### 3. Vulnerability Check: Token Expiry Storage Migration (Lines 94-96, 183-185, 205-207)
 - **Status**: ✅ Safe
-- **Analysis**: `INPUT_LIMITS` constants are properly defined and utilized. `validateBatchImport` ensures total import size < 100MB, protecting against memory overflow during bulk operations.
-- **Remediation**: None required.
+- **Analysis**: Token expiry timestamps migrated from localStorage to sessionStorage. Automatic refresh logic correctly reads from sessionStorage.
+- **Remediation**: None required - migration complete and correct.
 
-#### 4. Vulnerability Check: Dangerous Extension Handling (securityUtils.ts:190)
+#### 4. Vulnerability Check: User Profile Storage Appropriateness (Lines 21-23, 116-120, 143)
 - **Status**: ✅ Safe
-- **Analysis**: `neutralizeDangerousExtension` correctly appends `.txt` to high-risk file types (.html, .exe, .svg), preventing them from being executed if the user downloads an artifact.
+- **Analysis**: User profile data correctly maintained in localStorage for cross-session persistence. This is appropriate since profile data (name, email, picture) should persist across browser restarts while tokens should not.
+- **Remediation**: None required - correct design decision.
 
-### Storage Layer (Atomic Integrity)
-#### 5. Vulnerability Check: Duplicate Prevention & Integrity (storageService.ts:150)
+#### 5. Vulnerability Check: Drive Folder ID Storage Appropriateness (Lines 25, 127, 145, 199)
 - **Status**: ✅ Safe
-- **Analysis**: 
-    - The `normalizedTitle` unique index correctly enforces uniqueness.
-    - The `saveSession` method implements a robust "Rename on Collision" strategy using `ConstraintError` handling, ensuring no data loss when imports have conflicting titles.
-    - All database writes use atomic transactions (`readwrite` mode).
-- **Remediation**: None required.
+- **Analysis**: Drive folder ID correctly maintained in localStorage for persistence. This allows users to maintain their export folder preference across sessions.
+- **Remediation**: None required - correct design decision.
 
-### Extension Layer
-#### 6. Vulnerability Check: Permission Scope (manifest.json)
+#### 6. Vulnerability Check: OAuth Flow Regression Testing (Lines 30-148)
 - **Status**: ✅ Safe
-- **Analysis**: The extension adheres to the Principle of Least Privilege. `host_permissions` are restricted to specific AI domains (claude.ai, chatgpt.com, etc.) and do not include `<all_urls>`.
-- **Remediation**: None required.
+- **Analysis**: OAuth authorization code flow remains intact with proper client ID/secret validation, state parameter CSRF protection, and secure token exchange. Error handling improved with detailed logging.
+- **Remediation**: None required - flow integrity maintained.
+
+#### 7. Vulnerability Check: Token Refresh Security (Lines 150-210)
+- **Status**: ✅ Safe
+- **Analysis**: Automatic token refresh mechanism properly implemented with sessionStorage token validation. Failed refresh attempts correctly clear only access tokens while preserving refresh tokens for retry.
+- **Remediation**: None required - secure refresh implementation.
+
+#### 8. Vulnerability Check: Logout Cleanup Completeness (Lines 134-147)
+- **Status**: ✅ Safe
+- **Analysis**: Logout function completely clears all stored authentication data from both sessionStorage (tokens) and localStorage (user profile, folder ID). No residual data left behind.
+- **Remediation**: None required - complete cleanup implemented.
+
+### googleDriveService.ts - Token Management Integration
+#### 9. Vulnerability Check: Secure Token Functions (Lines 12-34)
+- **Status**: ✅ Safe
+- **Analysis**: Secure token storage functions properly validate token format and length before sessionStorage operations. Invalid tokens are automatically cleared with warning logs.
+- **Remediation**: None required - robust validation implemented.
+
+#### 10. Vulnerability Check: Authenticated Request Handling (Lines 36-67)
+- **Status**: ✅ Safe
+- **Analysis**: Automatic token refresh on 401 errors properly implemented with secure token retrieval and request retry. Error handling prevents infinite retry loops.
+- **Remediation**: None required - secure request handling.
+
+#### 11. Vulnerability Check: Token Consistency Across Services
+- **Status**: ✅ Safe
+- **Analysis**: GoogleAuthContext and googleDriveService both consistently use sessionStorage for token operations. No mixed storage patterns that could cause authentication failures.
+- **Remediation**: None required - consistent implementation.
 
 ## Verification
-- **Build Status**: ✅ PASSED (Inferred from context)
-- **Manual Verification**: Code review confirms `validateMarkdownOutput` is called in `ChatGptParser`. Shared logic in `ParserUtils` covers other parsers.
-- **Double-Escape Prevention**: `ParserUtils` extracts text (decoding entities implicitly via DOM), and `converterService` applies escaping *after* parsing during HTML generation. This separation of concerns prevents double-escaping issues.
+- **Build Status**: ✅ PASSED - TypeScript compilation successful
+- **Storage Migration**: ✅ COMPLETE - All OAuth tokens migrated to sessionStorage
+- **OAuth Flow**: ✅ INTACT - Authorization code flow, token refresh, and logout all functional
+- **Security Posture**: ✅ IMPROVED - Session-limited token storage eliminates persistent credential risk
 
 ## Security Notes
-- **Markdown Firewall**: The centralized `ParserUtils.ts` is a critical security asset. Any changes to it must be audited carefully.
-- **Future Recommendation**: Consider adding Content Security Policy (CSP) headers to the generated HTML exports as an additional defense-in-depth layer.
+- **Migration Success**: Complete migration from vulnerable localStorage to secure sessionStorage eliminates the primary OAuth token persistence vulnerability
+- **Appropriate Data Segregation**: Sensitive tokens stored in sessionStorage while user preferences maintained in localStorage
+- **No Regressions**: OAuth flow integrity preserved with enhanced error handling and logging
+- **Defense in Depth**: Multiple validation layers (format checking, expiry validation, automatic cleanup) prevent token-related attacks
+- **Future Recommendations**: Consider implementing token rotation for additional security, though current implementation follows OAuth best practices

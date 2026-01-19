@@ -5,6 +5,7 @@
 ## Recent Milestones
 - [x] **Phase 6.4.0: Modular AI Chat Parsers** (Formalized Noosphere Standard vs 3rd Party)
 - [x] **Phase 6.5.0: Google Drive Integration & Backup System**
+- [x] **Archive Architecture Refactor**: Prompts, Memories, and Chats modularized into feature domains.
 - [x] **v0.5.8.1 Release**: Formalizing infrastructure and syncing documentation.
 
 ## Completed Features ✅
@@ -33,10 +34,11 @@
 - ✅ **Unified Message Deduplication System**:
   - **`src/utils/messageHash.ts` (NEW)**: Stable content hashing (type + normalized content)
   - **`src/utils/messageDedupe.ts` (NEW)**: Main deduplication orchestration with skip logic
-  - **Three Import Paths Updated**:
+  - **Four Import Paths Updated**:
     - Extension Bridge (ArchiveHub.tsx) - Early skip with continue
     - BasicConverter In-Memory (mergeChatData hook) - Returns original if all duplicate
     - BasicConverter Database (lines 405-421) - User alert + early return
+    - **Google Drive Import (ArchiveHub.tsx)** - Full merge capability with artifact union
   - **User Guidance Warnings Added**:
     - BasicConverter: "⚠️ Only edit chats inside the application..." warning
     - GoogleDriveImportModal: "Note: Duplicate messages are automatically skipped..."
@@ -193,7 +195,28 @@
 **Next Major Release:** v0.6.0 - Advanced Search & Analytics (Q1 2026)
 ---
 
-## Recent Updates (January 18, 2026)
+## Recent Updates (January 19, 2026)
+
+- **January 18, 2026 - ExportDropdown Overlap Fix ✅**:
+  - ✅ **React Portal Implementation**: Fixed dropdown overlap issue on BasicConverter page using ReactDOM.createPortal
+  - ✅ **Smart Positioning**: Added viewport-aware positioning that places dropdown below button (or above if insufficient space)
+  - ✅ **No Container Constraints**: Dropdown now renders at document body level, preventing coverage of underlying content
+  - ✅ **Maintained Functionality**: All existing features (click-outside, keyboard navigation, exports) preserved
+  - ✅ **Cross-Platform**: Works correctly on all screen sizes with proper viewport calculations
+  - **Files Modified**: src/components/exports/ExportDropdown.tsx
+
+- **January 19, 2026 - Archive Architecture Refactor ✅**:
+  - ✅ **Modular Feature Architecture**: Refactored monolithic archives into `src/archive/{chats,memories,prompts}` domains.
+  - ✅ **Logic Extraction**: Extracted hooks (`useSessionManager`), services (`chatStorage.ts`), and components (`ChatSessionCard`).
+  - ✅ **De-Coupling**: Eliminated brittle `isPromptArchive` conditional logic from shared components.
+  - ✅ **Code Cleanup**: Deleted 6 deprecated files and specialized all UI components for their specific domains.
+  - **Files Modified**: `src/archive/*`, `src/pages/ArchiveHub.tsx`, `src/App.tsx`.
+
+- **January 19, 2026 - Google Drive Import Deduplication ✅**:
+  - ✅ **Smart Merge Logic**: Extended message deduplication to Google Drive import flow in `ArchiveHub`.
+  - ✅ **Duplicate Prevention**: Prevents creating "Copy" sessions when importing existing chats from Drive.
+  - ✅ **Merge Feedback**: Import summary now breaks down results into New, Merged, and Skipped categories.
+  - ✅ **Artifact Handling**: Correctly merges artifact lists when combining sessions.
 
 - **January 18, 2026 - Theme Architecture Refactor & Export System Consolidation ✅**:
   - ✅ **Decoupled Color/Style Architecture**: Separated ChatTheme (color palettes) from ChatStyle (layout renderers)
@@ -256,6 +279,22 @@
   - ✅ **GitHub Actions**: Pass `VITE_GOOGLE_CLIENT_ID` secret during build for secure deployment
   - ✅ **Login Functionality**: OAuth flow now works correctly locally and on GitHub Pages
   - **Files Modified**: main.tsx, vite.config.ts, GoogleAuthContext.tsx, index.html, deploy.yml, tsconfig.json
+
+- **January 18, 2026 - OAuth Security & Deployment Completion ✅**:
+  - ✅ **GitHub Actions Enhancement**: Updated workflow to pass both `VITE_GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_SECRET` during build
+  - ✅ **Critical Token Storage Security Fix**: Migrated all OAuth tokens from vulnerable `localStorage` to secure `sessionStorage`
+  - ✅ **Security Adversary Audits**: Completed initial and follow-up audits confirming secure implementation
+  - ✅ **Deployment Readiness**: Application now fully configured for secure GitHub Pages deployment with complete OAuth support
+  - **Files Modified**: .github/workflows/deploy.yml, src/contexts/GoogleAuthContext.tsx, CURRENT_SECURITY_AUDIT.md
+
+- **January 18, 2026 - Markdown Artifact References Implementation ✅**:
+  - ✅ **ArtifactViewerModal Component**: Created dedicated modal for viewing markdown files with syntax highlighting
+  - ✅ **Extended renderMarkdownToHtml**: Added support for artifact references (`![alt](artifact-id)` and `[text](artifact-id)`)
+  - ✅ **Smart Insert Buttons**: Enhanced ReviewEditModal dropdowns with artifact reference options
+  - ✅ **Artifact Resolution System**: Global click handler finds artifacts by ID across messages and session metadata
+  - ✅ **Inline Content Support**: Images display inline, documents open in modal viewer
+  - ✅ **Backward Compatibility**: Existing artifact display at bottom unchanged, `{{artifact:id}}` tags still work
+  - **Files Modified**: src/components/ArtifactViewerModal.tsx, src/utils/markdownUtils.ts, src/components/ReviewEditModal.tsx
 
 ## Previous Updates (January 17, 2026)
 

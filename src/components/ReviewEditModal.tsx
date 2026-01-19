@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ChatData, ChatMessageType, ChatMessage } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChatData, ChatMessageType, ChatMessage, ConversationArtifact } from '../types';
 import { renderMarkdownToHtml } from '../utils/markdownUtils';
+import { ArtifactViewerModal } from './ArtifactViewerModal';
 
 interface ReviewEditModalProps {
     chatData: ChatData | null;
@@ -25,13 +26,30 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
 }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState<'before' | 'after' | null>(null);
+    const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const handleInjectMessage = (index: number, position: 'before' | 'after', role: 'user' | 'model' = 'user') => {
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setDropdownOpen(null);
+            }
+        };
+
+        if (dropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [dropdownOpen]);
+
+    const handleInjectMessage = (index: number, position: 'before' | 'after', role: 'user' | 'model' = 'user', content?: string) => {
         if (!chatData) return;
 
         const newMessage: ChatMessage = {
             type: role === 'user' ? ChatMessageType.Prompt : ChatMessageType.Response,
-            content: role === 'user' ? 'New user message' : 'New AI response',
+            content: content || (role === 'user' ? 'New user message' : 'New AI response'),
             isEdited: true,
             artifacts: []
         };
@@ -49,6 +67,31 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
         newMessages.splice(index, 1);
         onMessagesChange(newMessages);
     };
+
+    const handleArtifactClick = (artifactId: string) => {
+        // Find artifact in all messages
+        for (const message of chatData?.messages || []) {
+            const artifact = message.artifacts?.find(a => a.id === artifactId);
+            if (artifact) {
+                setViewingArtifact(artifact);
+                return;
+            }
+        }
+
+        // If not found in messages, check session artifacts (from metadata)
+        const sessionArtifact = chatData?.metadata?.artifacts?.find(a => a.id === artifactId);
+        if (sessionArtifact) {
+            setViewingArtifact(sessionArtifact);
+        }
+    };
+
+    // Set up global artifact click handler
+    useEffect(() => {
+        (window as any).handleArtifactClick = handleArtifactClick;
+        return () => {
+            delete (window as any).handleArtifactClick;
+        };
+    }, [chatData]);
 
     if (!chatData) {
         return (
@@ -239,23 +282,174 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                 </span>
                                             </div>
 
-                                            {/* Insert Before/After buttons (visible in edit mode) */}
+                                            {/* Insert Before/After dropdowns (visible in edit mode) */}
                                             {isEditing && (
-                                                <div className="flex gap-1 ml-2">
-                                                    <button
-                                                        onClick={() => handleInjectMessage(idx, 'before', msg.type === ChatMessageType.Prompt ? 'user' : 'model')}
-                                                        className="text-xs px-2 py-1 rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30 hover:border-blue-500/60 transition-all"
-                                                        title="Insert message before this one"
-                                                    >
-                                                        ↑ Insert
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleInjectMessage(idx, 'after', msg.type === ChatMessageType.Prompt ? 'user' : 'model')}
-                                                        className="text-xs px-2 py-1 rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30 hover:border-green-500/60 transition-all"
-                                                        title="Insert message after this one"
-                                                    >
-                                                        ↓ Insert
-                                                    </button>
+                                                <div ref={dropdownRef} className="flex gap-1 ml-2 relative">
+                                                    {/* Insert Before Dropdown */}
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setDropdownOpen(dropdownOpen === 'before' ? null : 'before')}
+                                                            className="text-xs px-2 py-1 rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30 hover:border-blue-500/60 transition-all flex items-center gap-1"
+                                                            title="Insert message before this one"
+                                                        >
+                                                            ↑ Insert
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        </button>
+                                                        {dropdownOpen === 'before' && (
+                                                            <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 min-w-[200px] max-h-64 overflow-y-auto">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        handleInjectMessage(idx, 'before', 'user');
+                                                                        setDropdownOpen(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-2 text-xs text-blue-300 hover:bg-blue-700/50 transition-colors border-b border-gray-700/50"
+                                                                >
+                                                                    👤 User Message
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        handleInjectMessage(idx, 'before', 'model');
+                                                                        setDropdownOpen(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-2 text-xs text-blue-300 hover:bg-blue-700/50 transition-colors"
+                                                                >
+                                                                    🤖 AI Message
+                                                                </button>
+                                                                {/* Artifact Reference Options */}
+                                                                {chatData && (chatData.metadata?.artifacts || chatData.messages.some(m => m.artifacts?.length)) && (
+                                                                    <>
+                                                                        <div className="border-t border-gray-700/50 mt-1 pt-1">
+                                                                            <p className="text-xs text-gray-500 px-3 py-1">📎 Insert Artifact Reference</p>
+                                                                            {/* Session Artifacts */}
+                                                                            {chatData.metadata?.artifacts?.map(artifact => (
+                                                                                <button
+                                                                                    key={artifact.id}
+                                                                                    onClick={() => {
+                                                                                        const isImage = artifact.mimeType.startsWith('image/');
+                                                                                        const markdownRef = isImage
+                                                                                            ? `![${artifact.fileName}](${artifact.id})`
+                                                                                            : `[${artifact.fileName}](${artifact.id})`;
+                                                                                        handleInjectMessage(idx, 'before', 'user', markdownRef);
+                                                                                        setDropdownOpen(null);
+                                                                                    }}
+                                                                                    className="w-full text-left px-3 py-2 text-xs text-purple-300 hover:bg-purple-700/50 transition-colors"
+                                                                                    title={`Insert reference to ${artifact.fileName}`}
+                                                                                >
+                                                                                    {artifact.mimeType.startsWith('image/') ? '🖼️' : '📄'} {artifact.fileName}
+                                                                                </button>
+                                                                            ))}
+                                                                            {/* Message Artifacts */}
+                                                                            {chatData.messages
+                                                                                .filter(m => m.artifacts?.length)
+                                                                                .flatMap(m => m.artifacts || [])
+                                                                                .map(artifact => (
+                                                                                    <button
+                                                                                        key={artifact.id}
+                                                                                        onClick={() => {
+                                                                                            const isImage = artifact.mimeType.startsWith('image/');
+                                                                                            const markdownRef = isImage
+                                                                                                ? `![${artifact.fileName}](${artifact.id})`
+                                                                                                : `[${artifact.fileName}](${artifact.id})`;
+                                                                                            handleInjectMessage(idx, 'before', 'user', markdownRef);
+                                                                                            setDropdownOpen(null);
+                                                                                        }}
+                                                                                        className="w-full text-left px-3 py-2 text-xs text-purple-300 hover:bg-purple-700/50 transition-colors"
+                                                                                        title={`Insert reference to ${artifact.fileName}`}
+                                                                                    >
+                                                                                        {artifact.mimeType.startsWith('image/') ? '🖼️' : '📄'} {artifact.fileName}
+                                                                                    </button>
+                                                                                ))}
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Insert After Dropdown */}
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setDropdownOpen(dropdownOpen === 'after' ? null : 'after')}
+                                                            className="text-xs px-2 py-1 rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30 hover:border-green-500/60 transition-all flex items-center gap-1"
+                                                            title="Insert message after this one"
+                                                        >
+                                                            ↓ Insert
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        </button>
+                                                        {dropdownOpen === 'after' && (
+                                                            <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 min-w-[200px] max-h-64 overflow-y-auto">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        handleInjectMessage(idx, 'after', 'user');
+                                                                        setDropdownOpen(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-2 text-xs text-green-300 hover:bg-green-700/50 transition-colors border-b border-gray-700/50"
+                                                                >
+                                                                    👤 User Message
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        handleInjectMessage(idx, 'after', 'model');
+                                                                        setDropdownOpen(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-2 text-xs text-green-300 hover:bg-green-700/50 transition-colors"
+                                                                >
+                                                                    🤖 AI Message
+                                                                </button>
+                                                                {/* Artifact Reference Options */}
+                                                                {chatData && (chatData.metadata?.artifacts || chatData.messages.some(m => m.artifacts?.length)) && (
+                                                                    <>
+                                                                        <div className="border-t border-gray-700/50 mt-1 pt-1">
+                                                                            <p className="text-xs text-gray-500 px-3 py-1">📎 Insert Artifact Reference</p>
+                                                                            {/* Session Artifacts */}
+                                                                            {chatData.metadata?.artifacts?.map(artifact => (
+                                                                                <button
+                                                                                    key={artifact.id}
+                                                                                    onClick={() => {
+                                                                                        const isImage = artifact.mimeType.startsWith('image/');
+                                                                                        const markdownRef = isImage
+                                                                                            ? `![${artifact.fileName}](${artifact.id})`
+                                                                                            : `[${artifact.fileName}](${artifact.id})`;
+                                                                                        handleInjectMessage(idx, 'after', 'user', markdownRef);
+                                                                                        setDropdownOpen(null);
+                                                                                    }}
+                                                                                    className="w-full text-left px-3 py-2 text-xs text-purple-300 hover:bg-purple-700/50 transition-colors"
+                                                                                    title={`Insert reference to ${artifact.fileName}`}
+                                                                                >
+                                                                                    {artifact.mimeType.startsWith('image/') ? '🖼️' : '📄'} {artifact.fileName}
+                                                                                </button>
+                                                                            ))}
+                                                                            {/* Message Artifacts */}
+                                                                            {chatData.messages
+                                                                                .filter(m => m.artifacts?.length)
+                                                                                .flatMap(m => m.artifacts || [])
+                                                                                .map(artifact => (
+                                                                                    <button
+                                                                                        key={artifact.id}
+                                                                                        onClick={() => {
+                                                                                            const isImage = artifact.mimeType.startsWith('image/');
+                                                                                            const markdownRef = isImage
+                                                                                                ? `![${artifact.fileName}](${artifact.id})`
+                                                                                                : `[${artifact.fileName}](${artifact.id})`;
+                                                                                            handleInjectMessage(idx, 'after', 'user', markdownRef);
+                                                                                            setDropdownOpen(null);
+                                                                                        }}
+                                                                                        className="w-full text-left px-3 py-2 text-xs text-purple-300 hover:bg-purple-700/50 transition-colors"
+                                                                                        title={`Insert reference to ${artifact.fileName}`}
+                                                                                    >
+                                                                                        {artifact.mimeType.startsWith('image/') ? '🖼️' : '📄'} {artifact.fileName}
+                                                                                    </button>
+                                                                                ))}
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -353,6 +547,12 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Artifact Viewer Modal */}
+                <ArtifactViewerModal
+                    artifact={viewingArtifact}
+                    onClose={() => setViewingArtifact(null)}
+                />
             </div>
         </div>
     );

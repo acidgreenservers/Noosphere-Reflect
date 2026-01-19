@@ -5,10 +5,11 @@ import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import ArchiveHub from './pages/ArchiveHub';
 import BasicConverter from './pages/BasicConverter';
-import MemoryArchive from './pages/MemoryArchive';
-import PromptArchive from './pages/PromptArchive';
+import MemoryArchive from './archive/memories/pages/MemoryArchive';
+import PromptArchive from './archive/prompts/pages/PromptArchive';
 import Changelog from './pages/Changelog';
 import Features from './pages/Features';
+
 function App() {
   return (
     <Router>
