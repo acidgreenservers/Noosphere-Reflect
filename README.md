@@ -227,21 +227,21 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.8.1 (Current)
+## 🆕 What's New in v0.5.8.2 (Current)
 
-### Theme Architecture Refactor & Export System Consolidation
+### Basic Converter & Archive Refactor (Jan 20)
+- **Modular Architecture**: Split the monolithic `BasicConverter` into 5 specialized components, reducing file size by 30%.
+- **Domain-Driven Structure**: Moved Key pages to `src/archive/` and `src/components/converter/` for better code organization.
+- **Page Orchestrator Pattern**: Separation of logic (Orchestrator) and UI (Components) for cleaner maintenance.
+
+### Theme Architecture & Security (Jan 18)
 - **Decoupled Color/Style Architecture**: Separated ChatTheme (color palettes) from ChatStyle (layout renderers) for flexible theming options.
 - **4 Platform-Specific Theme Renderers**: High-fidelity layout implementations based on official DOM references for ChatGPT, Gemini, Grok, and LeChat.
 - **Export System Consolidation**: Unified feature folder structure with all export components moved to `src/components/exports/`.
-- **Google Drive Client Secret Support**: Complete OAuth token exchange implementation with enhanced error handling.
-- **Gemini Extension Enhancements**: Conversation preloading with mutex guards and progress toasts for full conversation capture.
-- **Surgical Message Insertion**: Inline "↑ Insert" and "↓ Insert" buttons in ReviewEditModal with auto-renumbering.
 - **Markdown Firewall Security**: XSS prevention system blocking dangerous tags and event handlers.
-- **Parser Modularization**: Clean architecture with ParserFactory pattern and comprehensive test suite.
-- **ContentImportWizard Navigation**: Fixed modal back button with proper step history tracking.
-- **Environment Configuration**: Updated CSP policies and deployment settings.
+- **Gemini Extension**: Conversation preloading with mutex guards and progress toasts for full conversation capture.
 
-## 🆕 What's New in v0.5.6
+## 🆕 What's New in v0.5.7
 
 ### Auto-Save & Workflow Optimization
 - **Auto-Save Core**: Eliminated the manual "Save Session" button. All changes to metadata, config, and content are now background-saved automatically with a smart debounce.

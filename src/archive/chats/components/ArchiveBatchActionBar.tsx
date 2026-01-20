@@ -1,17 +1,20 @@
+// ArchiveBatchActionBar Component
+// Extracted from ArchiveHub.tsx
+
 import React from 'react';
 
-interface BatchActionsBarProps {
+export interface ArchiveBatchActionBarProps {
     selectedCount: number;
-    onBatchDelete: () => void;
-    onBatchExport: () => void;
+    onExport: () => void;
+    onDelete: () => void;
     onClearSelection: () => void;
 }
 
-export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
+export const ArchiveBatchActionBar: React.FC<ArchiveBatchActionBarProps> = ({
     selectedCount,
-    onBatchDelete,
-    onBatchExport,
-    onClearSelection,
+    onExport,
+    onDelete,
+    onClearSelection
 }) => {
     if (selectedCount === 0) return null;
 
@@ -21,22 +24,24 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
                 {selectedCount} selected
             </span>
 
-            <button
-                onClick={onBatchExport}
-                className="flex items-center gap-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors"
-                title="Export selected chats with format and packaging options"
-            >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Export Selected
-                <span className="text-xs">▼</span>
-            </button>
+            <div className="relative">
+                <button
+                    onClick={onExport}
+                    className="flex items-center gap-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors"
+                    title="Export selected chats with format and packaging options"
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export Selected
+                    <span className="text-xs">▼</span>
+                </button>
+            </div>
 
             <div className="w-px h-4 bg-white/10 mx-1"></div>
 
             <button
-                onClick={onBatchDelete}
+                onClick={onDelete}
                 className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
             >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,7 +53,6 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
             <button
                 onClick={onClearSelection}
                 className="ml-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors"
-                title="Clear selection"
             >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

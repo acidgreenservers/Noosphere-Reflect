@@ -3,8 +3,8 @@ import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 
 // Pages
 import Home from './pages/Home';
-import ArchiveHub from './pages/ArchiveHub';
-import BasicConverter from './pages/BasicConverter';
+import ArchiveHub from './archive/chats/pages/ArchiveHub';
+import BasicConverter from './components/converter/pages/BasicConverter';
 import MemoryArchive from './archive/memories/pages/MemoryArchive';
 import PromptArchive from './archive/prompts/pages/PromptArchive';
 import Changelog from './pages/Changelog';

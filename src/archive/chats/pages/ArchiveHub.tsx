@@ -1,30 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.png';
-import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ParserMode, ChatData } from '../types';
-import { generateZipExport, generateBatchZipExport, parseChat, isJson } from '../services/converterService';
-import { exportService } from '../components/exports/services';
-import { enrichMetadata } from '../utils/metadataEnricher';
-import { storageService } from '../services/storageService';
-import SettingsModal from '../components/SettingsModal';
-import { ArtifactManager } from '../components/ArtifactManager';
-import { ExportModal } from '../components/exports/ExportModal';
-import { ExportDestinationModal } from '../components/exports/ExportDestinationModal';
-import { ChatPreviewModal } from '../components/ChatPreviewModal';
-import { sanitizeFilename } from '../utils/securityUtils';
-import { SearchInterface } from '../components/SearchInterface';
-import { searchService } from '../services/searchService';
-import { useGoogleAuth } from '../contexts/GoogleAuthContext';
-import { googleDriveService, DriveFile } from '../services/googleDriveService';
-import { GoogleDriveImportModal } from '../components/GoogleDriveImportModal';
-import { deduplicateMessages } from '../utils/messageDedupe';
-import { ChatSessionCard } from '../archive/chats/components';
+import logo from '../../../assets/logo.png';
+import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ParserMode, ChatData } from '../../../types';
+import { generateZipExport, generateBatchZipExport, parseChat, isJson } from '../../../services/converterService';
+import { exportService } from '../../../components/exports/services';
+import { enrichMetadata } from '../../../utils/metadataEnricher';
+import { storageService } from '../../../services/storageService';
+import SettingsModal from '../../../components/SettingsModal';
+import { ArtifactManager } from '../../../components/ArtifactManager';
+import { ExportModal } from '../../../components/exports/ExportModal';
+import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
+import { ChatPreviewModal } from '../../../components/ChatPreviewModal';
+import { sanitizeFilename } from '../../../utils/securityUtils';
+import { SearchInterface } from '../../../components/SearchInterface';
+import { searchService } from '../../../services/searchService';
+import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
+import { googleDriveService, DriveFile } from '../../../services/googleDriveService';
+import { GoogleDriveImportModal } from '../../../components/GoogleDriveImportModal';
+import { deduplicateMessages } from '../../../utils/messageDedupe';
+import { ChatSessionCard, ArchiveHeader, ArchiveSearchBar, ArchiveBatchActionBar, ArchiveSessionGrid } from '../components';
+import { useExtensionBridge } from '../hooks/useExtensionBridge';
+import { useArchiveSearch } from '../hooks/useArchiveSearch';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSessionMetadata[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
@@ -116,180 +118,17 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        const initSearch = async () => {
-            try {
-                await searchService.init();
-                // Index all sessions - Streamed to avoid OOM
-                // We fetch full sessions one by one so the GC can clean them up
-                for (const sessionMeta of sessions) {
-                    try {
-                        // Check if we need to index? For now, we index everything but safely
-                        const fullSession = await storageService.getSessionById(sessionMeta.id);
-                        if (fullSession) {
-                            await searchService.indexSession(fullSession);
-                        }
-                        // Small delay to yield to main thread and allow GC
-                        await new Promise(resolve => setTimeout(resolve, 10));
-                    } catch (err) {
-                        console.warn(`Failed to index session ${sessionMeta.id}`, err);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to initialize search:', error);
-            }
-        };
-        if (sessions.length > 0) {
-            initSearch();
-        }
-    }, [sessions]);
+    // Use extension bridge hook
+    const { checkExtensionBridge } = useExtensionBridge(loadSessions);
 
-    const checkExtensionBridge = async () => {
-        // Use window messaging to communicate with localhost-bridge content script
-        return new Promise<void>((resolve) => {
-            try {
-                // Send message to content script
-                window.postMessage({ type: 'NOOSPHERE_CHECK_BRIDGE' }, '*');
-
-                // Listen for response
-                const handler = async (event: MessageEvent) => {
-                    if (event.source !== window) return;
-
-                    if (event.data.type === 'NOOSPHERE_BRIDGE_RESPONSE') {
-                        window.removeEventListener('message', handler);
-
-                        const { noosphere_bridge_data, noosphere_bridge_flag } = event.data.data;
-
-                        if (noosphere_bridge_flag?.pending && noosphere_bridge_data) {
-                            // Handle array of sessions (backward compatible with single session)
-                            const sessions = Array.isArray(noosphere_bridge_data)
-                                ? noosphere_bridge_data
-                                : [noosphere_bridge_data];
-
-                            // Import all sessions from the queue
-                            let importedCount = 0;
-                            for (const session of sessions) {
-                                try {
-                                    const importType = session.metadata?.importType; // 'merge' | 'copy' (undefined = merge default)
-
-                                    if (importType === 'copy') {
-                                        // Case 1: Force New / Copy
-                                        // Just save it. Storage service creates "Old Copy" if title exists.
-                                        await storageService.saveSession(session);
-                                        console.log(`✨ Imported as valid copy: ${session.metadata?.title}`);
-                                    } else {
-                                        // Case 2: Merge (Default)
-                                        // Check if session exists
-                                        const normalizedTitle = session.normalizedTitle || session.metadata?.title ? (await import('../utils/textNormalization')).normalizeTitle(session.metadata?.title || '') : '';
-
-                                        let existingSession = null;
-                                        if (normalizedTitle) {
-                                            existingSession = await storageService.getSessionByNormalizedTitle(normalizedTitle);
-                                        }
-
-                                        if (existingSession) {
-                                            // Merge Messages with deduplication
-                                            const existingMessages = existingSession.chatData?.messages || [];
-                                            const newMessages = session.chatData?.messages || [];
-                                            const { messages: updatedMessages, skipped, hasNewMessages } = deduplicateMessages(
-                                                existingMessages,
-                                                newMessages
-                                            );
-
-                                            // Skip merge if no new messages
-                                            if (!hasNewMessages && skipped > 0) {
-                                                console.log(`⏭️ Skipping merge: All ${skipped} messages already exist in session "${existingSession.name}"`);
-                                                continue; // Skip this session, move to next
-                                            }
-
-                                            console.log(`🔄 Merging content into existing session: ${existingSession.name} (${skipped} duplicates skipped)`);
-
-                                            // Merge Artifacts
-                                            const distinctArtifacts = [...(existingSession.metadata?.artifacts || [])];
-                                            const newArtifacts = session.metadata?.artifacts || [];
-                                            newArtifacts.forEach((art: ConversationArtifact) => {
-                                                if (!distinctArtifacts.some(existing => existing.id === art.id)) {
-                                                    distinctArtifacts.push(art);
-                                                }
-                                            });
-
-                                            // Create Merged Session Object
-                                            const mergedSession: SavedChatSession = {
-                                                ...existingSession,
-                                                date: new Date().toISOString(), // Update modified date
-                                                chatData: {
-                                                    messages: updatedMessages,
-                                                    metadata: existingSession.chatData?.metadata
-                                                },
-                                                metadata: {
-                                                    title: existingSession.metadata?.title || existingSession.name, // Ensure title exists
-                                                    model: existingSession.metadata?.model || 'Unknown',
-                                                    date: existingSession.metadata?.date || new Date().toISOString(),
-                                                    tags: existingSession.metadata?.tags || [],
-                                                    ...existingSession.metadata,
-                                                    artifacts: distinctArtifacts,
-                                                },
-                                                // Append content for record
-                                                inputContent: existingSession.inputContent + '\n\n' + session.inputContent
-                                            };
-
-                                            await storageService.saveSession(mergedSession);
-                                        } else {
-                                            // New Session (despite 'merge' intent, nothing to merge with)
-                                            await storageService.saveSession(session);
-                                        }
-                                    }
-
-                                    importedCount++;
-                                } catch (error) {
-                                    console.error('Failed to import session:', error);
-                                }
-                            }
-
-                            // Tell content script to clear bridge after importing all sessions
-                            window.postMessage({ type: 'NOOSPHERE_CLEAR_BRIDGE' }, '*');
-
-                            // Reload sessions list once after all imports
-                            await loadSessions();
-
-                            // Show success message
-                            if (importedCount > 0) {
-                                console.log(`✅ Imported ${importedCount} session(s) from extension`);
-                            }
-                        }
-
-                        resolve();
-                    } else if (event.data.type === 'NOOSPHERE_BRIDGE_ERROR' || event.data.type === 'NOOSPHERE_BRIDGE_CLEARED') {
-                        window.removeEventListener('message', handler);
-                        resolve();
-                    }
-                };
-
-                window.addEventListener('message', handler);
-
-                // Timeout after 2 seconds (content script might not be available)
-                setTimeout(() => {
-                    window.removeEventListener('message', handler);
-                    resolve();
-                }, 2000);
-            } catch (error) {
-                console.warn('Extension bridge check failed:', error);
-                resolve();
-            }
-        });
-    };
+    // Use archive search hook
+    const { searchTerm, setSearchTerm, filterSessions } = useArchiveSearch(sessions);
+    const filteredSessions = filterSessions(sessions);
 
     const handleManualRefresh = () => {
         // Hard refresh the page to ensure all imports are loaded
         window.location.reload();
     };
-
-    const filteredSessions = sessions.filter(session => {
-        const searchLower = searchTerm.toLowerCase();
-        const title = (session.metadata?.title || session.chatTitle || session.name).toLowerCase();
-        const tags = session.metadata?.tags?.join(' ').toLowerCase() || '';
-        return title.includes(searchLower) || tags.includes(searchLower);
-    });
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.preventDefault();
@@ -1055,7 +894,7 @@ const ArchiveHub: React.FC = () => {
                     const enrichedMetadata = enrichMetadata(chatData, mode);
 
                     // Check if session exists
-                    const normalizedTitle = enrichedMetadata.title ? (await import('../utils/textNormalization')).normalizeTitle(enrichedMetadata.title) : '';
+                    const normalizedTitle = enrichedMetadata.title ? (await import('../../../utils/textNormalization')).normalizeTitle(enrichedMetadata.title) : '';
                     let existingSession = null;
                     if (normalizedTitle) {
                         existingSession = await storageService.getSessionByNormalizedTitle(normalizedTitle);

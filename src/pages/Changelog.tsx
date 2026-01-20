@@ -14,19 +14,19 @@ const Changelog: React.FC = () => {
     const changes: Release[] = [
         {
             version: 'v0.5.8.2',
-            date: 'Jan 18, 2026',
-            title: 'Theme Architecture Refactor & Export System Consolidation',
+            date: 'Jan 20, 2026',
+            title: 'Basic Converter Refactor & Theme Architecture',
             items: [
-                'Decoupled Color/Style Architecture: Separated ChatTheme (color palettes) from ChatStyle (layout renderers) with new type definitions and ConfigurationModal updates.',
-                '4 Platform-Specific Theme Renderers: High-fidelity layout implementations based on official DOM references for ChatGPT, Gemini, Grok, and LeChat with BaseThemeRenderer for shared logic.',
-                'Export System Consolidation: Unified feature folder structure with all export components moved to src/components/exports/ and refactored import paths.',
-                'Google Drive Client Secret Support: Complete OAuth token exchange implementation with enhanced error handling and environment configuration updates.',
-                'Gemini Extension Enhancements: Conversation preloading with mutex guards, DOM polling for stable message detection, and progress toast notifications.',
-                'Surgical Message Insertion: Inline "↑ Insert" and "↓ Insert" buttons in ReviewEditModal with auto-inheritance and auto-renumbering functionality.',
-                'Markdown Firewall Security: XSS prevention system blocking dangerous tags, event handlers, and malicious URLs across all platform imports.',
-                'Parser Modularization: Clean architecture with ParserFactory pattern, 8 dedicated platform parsers, and comprehensive test suite reducing converterService.ts complexity by ~1200 lines.',
-                'ContentImportWizard Navigation: Fixed modal back button with proper step history tracking and state reset functionality.',
-                'Environment Configuration: Updated CSP policies for OAuth endpoints and deployment settings.',
+                'Basic Converter Modularization: Split monolithic 1600+ line file into 5 specialized components (Header, Preview, Sidebar, Setup, Review).',
+                'Archive Architecture: Moved ArchiveHub and BasicConverter to domain-driven folders (src/archive/chats and src/components/converter).',
+                'Decoupled Color/Style Architecture: Separated ChatTheme (colors) from ChatStyle (renderers) for flexible styling.',
+                '4 Platform-Specific Renderers: High-fidelity layouts for ChatGPT, Gemini, Grok, and LeChat.',
+                'Export System Consolidation: Unified export components into src/components/exports/.',
+                'Google Drive Client Secret: Enhanced OAuth security and environment config.',
+                'Gemini Extension: Added "Load Full Conversation" preload button with mutex guards.',
+                'Surgical Message Insertion: Inline "Insert Before/After" buttons in Review editor.',
+                'Markdown Firewall: Comprehensive XSS prevention for all platform imports.',
+                'Parser Modularization: 8 dedicated platform parsers with clean Factory architecture.',
             ]
         },
         {

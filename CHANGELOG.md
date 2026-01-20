@@ -16,9 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.5.8.2] - January 18, 2026
+## [v0.5.8.2] - January 20, 2026
 
 ### Added
+#### Basic Converter & Archive Hub Refactor
+- **Modular Architecture**: Split monolithic `BasicConverter.tsx` into 5 specialized components (`ConverterHeader`, `ConverterPreview`, `ConverterSidebar`, `ConverterSetup`, `ConverterReviewManage`).
+- **Domain-Driven Organization**: Moved `ArchiveHub` to `src/archive/chats/pages/` and `BasicConverter` to `src/components/converter/pages/` to align with feature modules.
+- **Page Orchestrator Pattern**: Refactored pages to handle state/logic only, delegating rendering to pure UI components.
+- **Deep Linking Fixes**: Resolved complex relative import paths and dynamic imports across the new directory structure.
+
 #### Theme Architecture Refactor & Export System Consolidation
 - **Decoupled Color/Style Architecture**: Separated ChatTheme (color palettes) from ChatStyle (layout renderers) with new type definitions and ConfigurationModal updates.
 - **4 Platform-Specific Theme Renderers**: High-fidelity layout implementations based on official DOM references for ChatGPT, Gemini, Grok, and LeChat with BaseThemeRenderer for shared logic.
@@ -32,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Environment Configuration**: Updated CSP policies for OAuth endpoints and deployment settings.
 
 ### Fixed
+- **Deep Import Resolution**: Fixed `ReferenceError` and dynamic import failures caused by file relocation.
 - **Export Component Imports**: Updated all import statements following the consolidation into `src/components/exports/` feature folder.
 - **Theme Registry Integration**: Fixed exportService.generate() calls to support updated ChatStyle argument signatures.
 - **Extension Mutex Guards**: Prevented concurrent preload operations with proper isPreloading boolean flags and user feedback.

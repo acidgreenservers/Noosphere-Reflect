@@ -5,6 +5,7 @@
 ## Recent Milestones
 - [x] **Phase 6.4.0: Modular AI Chat Parsers** (Formalized Noosphere Standard vs 3rd Party)
 - [x] **Phase 6.5.0: Google Drive Integration & Backup System**
+- [x] **Archive Hub Refactor Phase 1**: Hook extraction (Search, Export, Drive, Extension Bridge).
 - [x] **Archive Architecture Refactor**: Prompts, Memories, and Chats modularized into feature domains.
 - [x] **v0.5.8.1 Release**: Formalizing infrastructure and syncing documentation.
 
@@ -197,6 +198,13 @@
 
 ## Recent Updates (January 19, 2026)
 
+- **January 20, 2026 - BasicConverter Refactor & Architectural Finalization ✅**:
+  - ✅ **Modularization**: Split monolithic `BasicConverter.tsx` into 5 specialized sub-components (`ConverterHeader`, `ConverterPreview`, etc.).
+  - ✅ **Codebase Organization**: Moved `ArchiveHub` to `src/archive/chats/pages/` and `BasicConverter` to `src/components/converter/pages/`.
+  - ✅ **Separation of Concerns**: Extracted UI rendering from business logic, reducing main file size by ~30%.
+  - ✅ **Build Integrity**: Fixed deep import paths and dynamic import resolutions; verified clean build.
+  - **Files Modified**: `BasicConverter.tsx`, `ArchiveHub.tsx`, `App.tsx`, `src/components/converter/components/*`.
+
 - **January 18, 2026 - ExportDropdown Overlap Fix ✅**:
   - ✅ **React Portal Implementation**: Fixed dropdown overlap issue on BasicConverter page using ReactDOM.createPortal
   - ✅ **Smart Positioning**: Added viewport-aware positioning that places dropdown below button (or above if insufficient space)
@@ -204,6 +212,37 @@
   - ✅ **Maintained Functionality**: All existing features (click-outside, keyboard navigation, exports) preserved
   - ✅ **Cross-Platform**: Works correctly on all screen sizes with proper viewport calculations
   - **Files Modified**: src/components/exports/ExportDropdown.tsx
+
+- **January 19-20, 2026 - Archive Hub Refactor Phase 4 (Hook Integration) ⏸️ Partial**:
+  - ✅ **useExtensionBridge Managed**: Replaced ~133 lines of extension communication logic.
+  - ✅ **useArchiveSearch Managed**: Replaced ~40 lines of search indexing/filtering logic.
+  - ⏸️ **useArchiveExport & useArchiveGoogleDrive**: Deferred to maintain stability due to high complexity.
+  - ✅ **Runtime Fix**: Resolved `ReferenceError` from missing imports after revert.
+  - **Result**: Significant logic decoupling and file size reduction.
+
+- **January 19, 2026 - Archive Hub Refactor Phase 1 (Hook Extraction) ✅**:
+  - ✅ **State & Logic Extraction**: Moved search, export, Google Drive, and Extension communication from `ArchiveHub.tsx` to modular hooks.
+  - ✅ **useArchiveSearch**: Extracted indexing and search filtering logic.
+  - ✅ **useArchiveExport**: Extracted local packaging (ZIP/Directory) and clipboard logic.
+  - ✅ **useArchiveGoogleDrive**: Extracted cloud storage sync and import/export logic.
+  - ✅ **useExtensionBridge**: Extracted messaging and import merger logic.
+  - ✅ **Verification**: Build success confirmed with zero functional regressions.
+
+- **January 19, 2026 - Archive Hub Refactor Phase 2 (UI Component Extraction) ✅**:
+  - ✅ **ArchiveHeader**: Navigation bar with search toggle, settings, Drive sync, and archive links.
+  - ✅ **ArchiveSearchBar**: Search input, Select All, and Refresh buttons.
+  - ✅ **ArchiveBatchActionBar**: Floating glassmorphism bar for batch Export/Delete.
+  - ✅ **ArchiveSessionGrid**: Main session card grid with loading and empty states.
+  - ✅ **Barrel Exports Updated**: `src/archive/chats/components/index.ts` exports all new components.
+  - ✅ **Verification**: Build success, all lint errors resolved.
+
+- **January 19, 2026 - Archive Hub Refactor Phase 3 (Component Integration) ✅ Complete**:
+  - ✅ **ArchiveHeader Wired**: Replaced ~70 lines of navigation JSX.
+  - ✅ **ArchiveBatchActionBar Wired**: Replaced ~40 lines of floating action bar JSX.
+  - ✅ **ArchiveSearchBar Wired**: Replaced ~50 lines of search/filter JSX.
+  - ✅ **ArchiveSessionGrid Wired**: Replaced ~25 lines of grid JSX.
+  - **File Size**: Reduced from 1,750 to ~1,580 lines (~10% reduction).
+  - ✅ **Build Verification**: All tests pass, zero errors.
 
 - **January 19, 2026 - Archive Architecture Refactor ✅**:
   - ✅ **Modular Feature Architecture**: Refactored monolithic archives into `src/archive/{chats,memories,prompts}` domains.

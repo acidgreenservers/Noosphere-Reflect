@@ -27,8 +27,11 @@
 - **Atomic Persistence**: Database writes wrapped in transactions with unique index collision handling.
 - **Integration Pattern (Hydration)**: `loadSession` logic auto-syncs `chatData.messages[].artifacts` from `metadata.artifacts` to ensure UI consistency (Badges/Links) regardless of save state.
 - **Export Schema**: Naming convention `[Service] - [Title]` and `export-metadata.json` manifest at chat and batch levels.
+- **Hook-Based Feature Extraction (New)**: For monolithic page refactoring, business logic is first extracted into specialized custom hooks (`useArchive*`) before UI componentization.
+- **Page Orchestrator Pattern (New)**: Complex pages (`BasicConverter`, `ArchiveHub`) are treated as "Orchestrators" that manage state and data flow, but delegate all rendering to specialized, dumb UI components. These Orchestrator pages live in their domain directories (`src/archive/`, `src/components/converter/pages/`) rather than the generic `src/pages/` root.
 
 - **Security & Rendering Patterns**:
+
   - **Sandboxed Previewer**: Use of strict `iframe` sandboxing (`allow-scripts`, `allow-downloads`) coupled with dynamic script injection to enable functionality (like downloads) that is normally blocked by sandbox navigation policies.
   - **Context-Aware Artifact Linking**: 
   - *Preview*: Injects `onclick` handlers + Base64 Blobs.
