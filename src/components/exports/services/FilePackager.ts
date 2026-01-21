@@ -69,7 +69,7 @@ export class FilePackager {
 
     // Generate conversation file
     const contentKey = format === 'html' ? 'conversation.html' :
-                      format === 'markdown' ? 'conversation.md' : 'conversation.json';
+      format === 'markdown' ? 'conversation.md' : 'conversation.json';
     files[contentKey] = generateContent(session, format);
 
     // Generate manifest if artifacts exist
@@ -123,7 +123,7 @@ export class FilePackager {
       exportDate: new Date().toISOString(),
       exportedBy: {
         tool: 'Noosphere Reflect',
-        version: '0.5.8.2'
+        version: '0.5.8.3'
       },
       chats: chatMetadata,
       summary: {

@@ -330,7 +330,13 @@ export default function PromptArchive() {
         <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
             <div className="max-w-6xl mx-auto">
                 <div className="flex items-center gap-4 mb-8">
-                    <img src={logo} alt="Noosphere Reflect Logo" className="w-10 h-10 mix-blend-screen drop-shadow-[0_0_12px_rgba(168,85,247,0.4)] object-contain cursor-pointer" onClick={() => navigate('/')} />
+                    <img
+                        src={logo}
+                        alt="Noosphere Reflect Logo"
+                        className="w-10 h-10 logo-mask drop-shadow-[0_0_12px_rgba(168,85,247,0.4)] object-contain cursor-pointer"
+                        onClick={() => navigate('/')}
+                        style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
+                    />
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-cyan-500 to-teal-600 bg-clip-text text-transparent">💡 Prompt Archive</h1>
                     <button onClick={() => navigate('/hub')} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-lg transition-colors text-sm font-medium" title="Back to Archive Hub">← Hub</button>
                 </div>

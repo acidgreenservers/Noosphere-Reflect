@@ -79,4 +79,14 @@
   .markdown-thought-content {
     @apply text-gray-300 leading-relaxed;
   }
+
+  /* Seamless Logo Mask */
+  .logo-mask {
+    mask-mode: luminance;
+    -webkit-mask-mode: luminance;
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+    mask-size: contain;
+    -webkit-mask-size: contain;
+  }
 }

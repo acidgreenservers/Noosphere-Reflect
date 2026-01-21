@@ -41,10 +41,10 @@ export const ArchiveSearchBar: React.FC<ArchiveSearchBarProps> = ({
                 <button
                     onClick={onSelectAll}
                     disabled={filteredCount === 0}
-                    className={`px-4 py-3 backdrop-blur-sm rounded-full border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
+                    className={`px-4 py-3 backdrop-blur-sm rounded-full border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus:outline-none focus:ring-2
                         ${areAllSelected
-                            ? 'bg-green-600 border-green-500 text-white'
-                            : 'bg-gray-800/50 hover:bg-gray-700 border-white/10 text-gray-300'}`}
+                            ? 'bg-green-600 border-green-500 text-white focus:ring-green-500 active:bg-green-700'
+                            : 'bg-gray-800/50 hover:bg-gray-700 border-white/10 text-gray-300 focus:ring-green-500 active:bg-gray-600'}`}
                     title={areAllSelected ? "Deselect all filtered results" : "Select all filtered results"}
                 >
                     <svg className={`w-5 h-5 ${areAllSelected ? 'text-white' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -58,7 +58,7 @@ export const ArchiveSearchBar: React.FC<ArchiveSearchBarProps> = ({
                 <button
                     onClick={onRefresh}
                     disabled={isRefreshing}
-                    className="p-3 bg-gray-800/50 hover:bg-gray-700 border border-white/10 rounded-full text-gray-400 hover:text-white transition-all disabled:opacity-50"
+                    className="p-3 bg-gray-800/50 hover:bg-green-500/10 border border-white/10 rounded-full text-gray-400 hover:text-green-400 transition-all hover:scale-110 active:scale-95 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600/20"
                     title="Refresh archives"
                 >
                     <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">

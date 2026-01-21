@@ -27,8 +27,12 @@
 - **Atomic Persistence**: Database writes wrapped in transactions with unique index collision handling.
 - **Integration Pattern (Hydration)**: `loadSession` logic auto-syncs `chatData.messages[].artifacts` from `metadata.artifacts` to ensure UI consistency (Badges/Links) regardless of save state.
 - **Export Schema**: Naming convention `[Service] - [Title]` and `export-metadata.json` manifest at chat and batch levels.
-- **Hook-Based Feature Extraction (New)**: For monolithic page refactoring, business logic is first extracted into specialized custom hooks (`useArchive*`) before UI componentization.
-- **Page Orchestrator Pattern (New)**: Complex pages (`BasicConverter`, `ArchiveHub`) are treated as "Orchestrators" that manage state and data flow, but delegate all rendering to specialized, dumb UI components. These Orchestrator pages live in their domain directories (`src/archive/`, `src/components/converter/pages/`) rather than the generic `src/pages/` root.
+- **Hook-Based Feature Extraction**: For monolithic page refactoring, business logic is first extracted into specialized custom hooks (`useArchive*`) before UI componentization.
+- **Page Orchestrator Pattern**: Complex domains (`BasicConverter`, `ArchiveHub`) use a "Page Orchestrator" pattern where the main page handles state and hook wiring, but delegates all rendering to specialized, dumb UI components. These pages live in domain directories (e.g., `src/archive/chats/pages/`) while keeping components local to the domain (`src/archive/chats/components/`).
+- **Scale & Glow Feedback Pattern (NEW)**: Global tactile response system for interactive elements.
+  - **Tactile**: `hover:scale-110` (utility) or `scale-105` (navigation) with `active:scale-95`.
+  - **Glow**: Theme-appropriate background highlights (`bg-*/10`) and focus rings (`focus:ring-2`) matched to the action's domain (e.g., purple for Memory, green for Convert).
+  - **Standard**: All header icons, links, and modal actions must use this system for a "premium" tactile feel.
 
 - **Security & Rendering Patterns**:
 
@@ -50,6 +54,7 @@
 - **Sticky Header Actions**: Primary actions (Upload, Import) relocated to sticky page headers for persistent accessibility.
 - **Inline Editing**: "Click-to-Edit" or "Toggle-Edit" patterns that swap read-only views for form inputs in-place.
 - **Guided Ingestion**: Replacement of raw text inputs with multi-step Wizards (Method -> Input -> Verify) to validate data before it enters application state.
+- **CSS Luminance Masking (NEW)**: First-class pattern for achieving seamless transparency on high-contrast image assets without dedicated alpha channels. Uses the image as its own luminance mask to remove black backgrounds while preserving intricate glowing details.
 
 ## Specialist Agent Roles
 1.  **Claude Code (Builder)**: Implementer and Debugger.

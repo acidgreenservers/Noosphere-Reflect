@@ -12,6 +12,7 @@ interface ReviewEditModalProps {
     onRemoveMessageArtifact: (messageIndex: number, artifactId: string) => void;
     onMessagesChange: (messages: ChatMessage[]) => void;
     onClose: () => void;
+    initialEditing?: boolean;
 }
 
 export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
@@ -22,10 +23,11 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
     onAttachToMessage,
     onRemoveMessageArtifact,
     onMessagesChange,
-    onClose
+    onClose,
+    initialEditing = false
 }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(initialEditing);
     const [dropdownOpen, setDropdownOpen] = useState<'before' | 'after' | null>(null);
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -139,9 +141,9 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsEditing(!isEditing)}
-                            className={`p-2 rounded-lg border transition-all ${isEditing
-                                ? 'bg-purple-600 text-white border-purple-500'
-                                : 'bg-gray-800 text-purple-400 border-gray-700 hover:bg-gray-700'
+                            className={`p-2 rounded-lg border transition-all duration-200 hover:scale-110 active:scale-95 ${isEditing
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-500/30'
+                                : 'bg-gray-800 text-purple-400 border-gray-700 hover:bg-gray-700 hover:ring-2 hover:ring-purple-500/50'
                                 }`}
                             title={isEditing ? "Exit Edit Mode" : "Enable Edit Mode"}
                         >
@@ -151,7 +153,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                         </button>
                         <button
                             onClick={onClose}
-                            className="text-gray-500 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700"
+                            className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-purple-500/50"
                         >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -164,7 +166,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                     {/* Sidebar Toggle Button (Floating) */}
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gray-800 border border-gray-700 p-1.5 rounded-r-lg text-gray-400 hover:text-white shadow-xl transition-all duration-300 hidden lg:block ${isSidebarCollapsed ? 'translate-x-0' : 'translate-x-80'}`}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gray-800 border border-gray-700 p-1.5 rounded-r-lg text-gray-400 hover:text-white shadow-xl transition-all duration-200 hover:scale-x-110 active:scale-95 hidden lg:block ${isSidebarCollapsed ? 'translate-x-0' : 'translate-x-80'}`}
                         title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
                         <svg className={`w-4 h-4 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -189,9 +191,9 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                             <div className="space-y-2">
                                 <button
                                     onClick={() => setIsEditing(!isEditing)}
-                                    className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${isEditing
+                                    className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200 flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] ${isEditing
                                         ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
-                                        : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                                        : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200 hover:ring-1 hover:ring-purple-500/30'
                                         }`}
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -240,7 +242,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                 const element = document.querySelector(`[data-message-idx="${idx}"]`);
                                                 element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                             }}
-                                            className={`w-full text-left px-3 py-2 text-sm text-gray-400 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-all border border-transparent hover:border-gray-700 flex items-center justify-between`}
+                                            className={`w-full text-left px-3 py-2 text-sm text-gray-400 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-all duration-200 border border-transparent hover:border-gray-700 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-between hover:ring-1 hover:ring-purple-500/30`}
                                             title={`${isUser ? 'User' : 'AI'} message ${idx + 1}${hasArtifacts ? ` - ${(msg.artifacts?.length || 0)} artifact(s)` : ''}`}
                                         >
                                             <span className="font-mono font-bold">#{idx + 1} <span className="text-xs text-gray-500">{isUser ? 'U' : 'AI'}</span></span>
@@ -272,14 +274,21 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                 }`}>
                                                 {msg.type === ChatMessageType.Prompt ? 'U' : 'AI'}
                                             </div>
-                                            <div>
+                                            <div className="flex flex-col">
                                                 <span className={`text-sm font-bold block ${msg.type === ChatMessageType.Prompt ? 'text-green-400' : 'text-cyan-400'
                                                     }`}>
                                                     {msg.type === ChatMessageType.Prompt ? 'You' : 'AI'}
                                                 </span>
-                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">
-                                                    Turn #{idx + 1}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">
+                                                        Turn #{idx + 1}
+                                                    </span>
+                                                    {msg.artifacts && msg.artifacts.length > 0 && (
+                                                        <span className="text-xs text-purple-400 animate-pulse" title={`${msg.artifacts.length} artifact(s)`}>
+                                                            📎
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Insert Before/After dropdowns (visible in edit mode) */}
@@ -289,7 +298,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                     <div className="relative">
                                                         <button
                                                             onClick={() => setDropdownOpen(dropdownOpen === 'before' ? null : 'before')}
-                                                            className="text-xs px-2 py-1 rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30 hover:border-blue-500/60 transition-all flex items-center gap-1"
+                                                            className="text-xs px-2 py-1 rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30 hover:border-blue-500/60 transition-all duration-200 flex items-center gap-1 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-blue-500/50"
                                                             title="Insert message before this one"
                                                         >
                                                             ↑ Insert
@@ -372,7 +381,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                     <div className="relative">
                                                         <button
                                                             onClick={() => setDropdownOpen(dropdownOpen === 'after' ? null : 'after')}
-                                                            className="text-xs px-2 py-1 rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30 hover:border-green-500/60 transition-all flex items-center gap-1"
+                                                            className="text-xs px-2 py-1 rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30 hover:border-green-500/60 transition-all duration-200 flex items-center gap-1 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-green-500/50"
                                                             title="Insert message after this one"
                                                         >
                                                             ↓ Insert
@@ -460,7 +469,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                 {/* Delete button (New) */}
                                                 <button
                                                     onClick={() => handleDeleteMessage(idx)}
-                                                    className="text-xs font-medium text-red-400 hover:text-white transition-colors bg-red-600/10 hover:bg-red-600 px-3 py-1.5 rounded-lg border border-red-500/20"
+                                                    className="text-xs font-medium text-red-400 hover:text-white transition-all duration-200 bg-red-600/10 hover:bg-red-600 px-3 py-1.5 rounded-lg border border-red-500/20 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-red-500/50"
                                                     title="Delete Message"
                                                 >
                                                     🗑️
@@ -469,7 +478,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                 {/* Attach button */}
                                                 <button
                                                     onClick={() => onAttachToMessage(idx)}
-                                                    className="text-xs font-medium text-purple-300 hover:text-white transition-colors bg-purple-600/10 hover:bg-purple-600 px-3 py-1.5 rounded-lg border border-purple-500/20 flex items-center gap-2"
+                                                    className="text-xs font-medium text-purple-300 hover:text-white transition-all duration-200 bg-purple-600/10 hover:bg-purple-600 px-3 py-1.5 rounded-lg border border-purple-500/20 flex items-center gap-2 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/50"
                                                 >
                                                     <span>📎</span>
                                                     {msg.artifacts && msg.artifacts.length > 0 ? `Manage (${msg.artifacts.length})` : 'Attach'}
@@ -478,7 +487,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                 {/* Edit button */}
                                                 <button
                                                     onClick={() => onEditMessage(idx)}
-                                                    className="text-xs font-medium text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700"
+                                                    className="text-xs font-medium text-gray-400 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/30"
                                                 >
                                                     Edit Text
                                                 </button>
@@ -508,7 +517,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                         </div>
                                                         <button
                                                             onClick={() => onRemoveMessageArtifact(idx, artifact.id)}
-                                                            className="text-gray-600 hover:text-red-400 p-1 opacity-0 group-hover/artifact:opacity-100 transition-opacity"
+                                                            className="text-gray-600 hover:text-red-400 p-1 opacity-0 group-hover/artifact:opacity-100 transition-all duration-200 hover:scale-125 active:scale-90"
                                                         >
                                                             ✕
                                                         </button>
@@ -526,13 +535,13 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => handleInjectMessage(chatData.messages.length - 1, 'after', 'model')}
-                                        className="flex-1 py-4 border-2 border-dashed border-green-500/30 hover:border-green-500/60 bg-green-500/5 hover:bg-green-500/10 rounded-xl text-green-400 hover:text-green-300 transition-all font-bold flex items-center justify-center gap-2"
+                                        className="flex-1 py-4 border-2 border-dashed border-green-500/30 hover:border-green-500/60 bg-green-500/5 hover:bg-green-500/10 rounded-xl text-green-400 hover:text-green-300 transition-all duration-200 font-bold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg hover:shadow-green-500/20 focus:outline-none focus:ring-2 focus:ring-green-500"
                                     >
                                         <span>➕ Add AI Message</span>
                                     </button>
                                     <button
                                         onClick={() => handleInjectMessage(chatData.messages.length - 1, 'after', 'user')}
-                                        className="flex-1 py-4 border-2 border-dashed border-blue-500/30 hover:border-blue-500/60 bg-blue-500/5 hover:bg-blue-500/10 rounded-xl text-blue-400 hover:text-blue-300 transition-all font-bold flex items-center justify-center gap-2"
+                                        className="flex-1 py-4 border-2 border-dashed border-blue-500/30 hover:border-blue-500/60 bg-blue-500/5 hover:bg-blue-500/10 rounded-xl text-blue-400 hover:text-blue-300 transition-all duration-200 font-bold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg hover:shadow-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     >
                                         <span>➕ Add User Message</span>
                                     </button>

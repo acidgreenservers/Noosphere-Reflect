@@ -79,7 +79,7 @@ export const ConverterSetup: React.FC<ConverterSetupProps> = ({
 
                     <button
                         onClick={onShowConfigurationModal}
-                        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-500 shadow-lg shadow-blue-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-blue-500/30 mt-auto"
+                        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-500 shadow-lg shadow-blue-500/20 text-sm font-medium transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 group-hover:shadow-blue-500/30 mt-auto focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-700"
                     >
                         <span>Configure Chat</span>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,7 +151,7 @@ export const ConverterSetup: React.FC<ConverterSetupProps> = ({
 
                     <button
                         onClick={onShowMetadataModal}
-                        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg border border-purple-500 shadow-lg shadow-purple-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-purple-500/30 mt-auto"
+                        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg border border-purple-500 shadow-lg shadow-purple-500/20 text-sm font-medium transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 group-hover:shadow-purple-500/30 mt-auto focus:outline-none focus:ring-2 focus:ring-purple-500 active:bg-purple-700"
                     >
                         <span>Edit Metadata</span>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -215,7 +215,7 @@ export const ConverterSetup: React.FC<ConverterSetupProps> = ({
                             <>
                                 <button
                                     onClick={() => onShowImportWizard(false)}
-                                    className="col-span-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white border border-purple-500 shadow-lg shadow-purple-500/20 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-blue-500/30"
+                                    className="col-span-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white border border-purple-500 shadow-lg shadow-purple-500/20 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/50 flex items-center justify-center gap-2 group-hover:shadow-blue-500/30"
                                 >
                                     <span>Merge New Messages</span>
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -224,7 +224,7 @@ export const ConverterSetup: React.FC<ConverterSetupProps> = ({
                                 </button>
                                 <button
                                     onClick={() => onShowImportWizard(true)}
-                                    className="col-span-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600 hover:border-gray-500 rounded-lg shadow-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                    className="col-span-1 px-4 py-3 bg-gray-700 hover:bg-gray-800 text-gray-200 border border-gray-600 hover:border-gray-500 rounded-lg shadow-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-gray-500/10 flex items-center justify-center gap-2"
                                     title="Import content as a completely new chat session (preserves current chat)"
                                 >
                                     <span>Make New Copy</span>
@@ -236,7 +236,7 @@ export const ConverterSetup: React.FC<ConverterSetupProps> = ({
                         ) : (
                             <button
                                 onClick={() => onShowImportWizard(false)}
-                                className="col-span-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 shadow-lg shadow-blue-500/20 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-blue-500/30"
+                                className="col-span-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 shadow-lg shadow-blue-500/20 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-blue-500/50 flex items-center justify-center gap-2 group-hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-700"
                             >
                                 <span>Start Import Wizard</span>
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

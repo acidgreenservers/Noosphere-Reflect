@@ -6,11 +6,10 @@ import { generateZipExport, generateBatchZipExport, parseChat, isJson } from '..
 import { exportService } from '../../../components/exports/services';
 import { enrichMetadata } from '../../../utils/metadataEnricher';
 import { storageService } from '../../../services/storageService';
-import SettingsModal from '../../../components/SettingsModal';
-import { ArtifactManager } from '../../../components/ArtifactManager';
+import { SettingsModal } from '../../../components/settings';
+import { ArtifactManager } from '../../../components/artifacts';
 import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
-import { ChatPreviewModal } from '../../../components/ChatPreviewModal';
 import { sanitizeFilename } from '../../../utils/securityUtils';
 import { SearchInterface } from '../../../components/SearchInterface';
 import { searchService } from '../../../services/searchService';
@@ -18,7 +17,7 @@ import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService, DriveFile } from '../../../services/googleDriveService';
 import { GoogleDriveImportModal } from '../../../components/GoogleDriveImportModal';
 import { deduplicateMessages } from '../../../utils/messageDedupe';
-import { ChatSessionCard, ArchiveHeader, ArchiveSearchBar, ArchiveBatchActionBar, ArchiveSessionGrid } from '../components';
+import { ChatSessionCard, ArchiveHeader, ArchiveSearchBar, ArchiveBatchActionBar, ArchiveSessionGrid, ChatPreviewModal } from '../components';
 import { useExtensionBridge } from '../hooks/useExtensionBridge';
 import { useArchiveSearch } from '../hooks/useArchiveSearch';
 
@@ -465,7 +464,7 @@ const ArchiveHub: React.FC = () => {
                         exportDate: new Date().toISOString(),
                         exportedBy: {
                             tool: 'Noosphere Reflect',
-                            version: '0.5.8'
+                            version: '0.5.8.3'
                         },
                         chats: [{
                             filename: baseFilename,
@@ -704,7 +703,7 @@ const ArchiveHub: React.FC = () => {
             exportDate: new Date().toISOString(),
             exportedBy: {
                 tool: 'Noosphere Reflect',
-                version: '0.5.8'
+                version: '0.5.8.3'
             },
             chats: [{
                 filename: baseFilename,
@@ -1211,85 +1210,15 @@ const ArchiveHub: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 pb-24">
             {/* Header */}
-            <header className="sticky top-0 z-50 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
-                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <img
-                            src={logo}
-                            alt="Noosphere Reflect Logo"
-                            className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
-                        />
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 via-purple-400 to-emerald-500 bg-clip-text text-transparent">
-                            Archival Hub
-                        </h1>
-                    </Link>
+            <ArchiveHeader
+                logo={logo}
+                onToggleSearch={() => setShowSearch(true)}
+                onOpenSettings={() => setSettingsModalOpen(true)}
+                onSyncFromDrive={handleSyncFromDrive}
+                isLoggedIn={isLoggedIn}
+                isSyncing={isSendingToDrive}
+            />
 
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setShowSearch(true)}
-                            className="p-2 text-gray-400 hover:text-purple-400 hover:bg-white/5 rounded-lg transition-colors"
-                            title="Search conversations"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </button>
-                        {isLoggedIn && (
-                            <button
-                                onClick={handleSyncFromDrive}
-                                disabled={isSendingToDrive}
-                                className="p-2 text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Sync chats from Google Drive"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                                </svg>
-                            </button>
-                        )}
-                        <button
-                            onClick={() => setSettingsModalOpen(true)}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                            title="Settings"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </button>
-                        <Link
-                            to="/memory-archive"
-                            className="group relative px-4 py-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-2"
-                        >
-                            <div className="relative flex items-center justify-center">
-                                {/* Purple shimmer effect on hover */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-purple-500/30 rounded-lg animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
-                                <span className="relative z-10 text-lg">🧠</span>
-                            </div>
-                            Memory Archive
-                        </Link>
-                        <Link
-                            to="/prompt-archive"
-                            className="group relative px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2"
-                        >
-                            <div className="relative flex items-center justify-center">
-                                {/* Blue shimmer effect on hover */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-lg animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
-                                <span className="relative z-10 text-lg">💡</span>
-                            </div>
-                            Prompt Archive
-                        </Link>
-                        <Link
-                            to="/converter"
-                            className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-2"
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            New Import
-                        </Link>
-                    </div>
-                </div>
-            </header>
 
             {/* Noosphere Reflect Header */}
             <div className="bg-gradient-to-r from-green-900/20 via-emerald-900/20 to-green-900/20 border-b border-green-500/20 py-6">
@@ -1315,58 +1244,16 @@ const ArchiveHub: React.FC = () => {
                 </div>
 
                 {/* Search & Filters */}
-                <div className="mb-8 flex flex-col sm:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <input
-                            type="text"
-                            placeholder="Search archives by title or tag..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-gray-800/50 border border-white/10 rounded-full px-4 py-3 pl-11 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all"
-                        />
-                        <svg className="w-5 h-5 text-gray-500 absolute left-3.5 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
+                <ArchiveSearchBar
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    onSelectAll={handleSelectAll}
+                    onRefresh={handleManualRefresh}
+                    areAllSelected={areAllSelected}
+                    filteredCount={filteredSessions.length}
+                    isRefreshing={isRefreshing}
+                />
 
-                    {/* Select All Button */}
-                    <button
-                        onClick={handleSelectAll}
-                        className={`px-4 py-3 backdrop-blur-sm rounded-full border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105
-                            ${areAllSelected
-                                ? 'bg-green-600 border-green-500 text-white'
-                                : 'bg-gray-800/50 hover:bg-gray-700 border-white/10 text-gray-300'}`}
-                        title={areAllSelected ? "Deselect all filtered results" : "Select all filtered results"}
-                    >
-                        <svg className={`w-5 h-5 ${areAllSelected ? 'text-white' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={areAllSelected
-                                ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                : "M3.25 10.5c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"} />
-                        </svg>
-                        {areAllSelected ? 'Deselect All' : `Select All (${filteredSessions.length})`}
-                    </button>
-
-                    <button
-                        onClick={handleManualRefresh}
-                        className="px-4 py-3 bg-green-600/90 hover:bg-green-600 backdrop-blur-sm rounded-full border border-green-500/50 shadow-lg shadow-green-500/50 transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105"
-                        title="Refresh page to load imported chats"
-                    >
-                        <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                            />
-                        </svg>
-                        Refresh
-                    </button>
-                </div>
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1410,49 +1297,13 @@ const ArchiveHub: React.FC = () => {
             </main>
 
             {/* Floating Action Bar (Batch Actions) */}
-            {selectedIds.size > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-lg border border-white/10 rounded-full shadow-2xl px-6 py-3 flex items-center gap-4 z-50 animate-fade-in-up">
-                    <span className="text-sm font-medium text-gray-300 border-r border-white/10 pr-4">
-                        {selectedIds.size} selected
-                    </span>
+            <ArchiveBatchActionBar
+                selectedCount={selectedIds.size}
+                onExport={handleExportStart}
+                onDelete={handleBatchDelete}
+                onClearSelection={() => setSelectedIds(new Set())}
+            />
 
-                    <div className="relative">
-                        <button
-                            onClick={handleExportStart}
-                            className="flex items-center gap-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors"
-                            title="Export selected chats with format and packaging options"
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Export Selected
-                            <span className="text-xs">▼</span>
-                        </button>
-
-                    </div>
-
-                    <div className="w-px h-4 bg-white/10 mx-1"></div>
-
-                    <button
-                        onClick={handleBatchDelete}
-                        className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete
-                    </button>
-
-                    <button
-                        onClick={() => setSelectedIds(new Set())}
-                        className="ml-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            )}
 
             {/* Export Destination Modal */}
             <ExportDestinationModal

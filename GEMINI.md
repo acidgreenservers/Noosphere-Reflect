@@ -47,33 +47,33 @@
 - **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- **Version**: Web App `v0.5.6` | Extension `v0.5.6`
+- **Version**: Web App `v0.5.8.3` | Extension `v0.5.8.2`
 - **Core Functionality**:
-  - **ArchiveHub**: Robust dashboard with batch selection, export options, and visual consistency.
+  - **Archive Hub**: Modularized dashboard with batch selection, export options, and "Scale & Glow" feedback.
     - Batch operations: Select multiple chats, export in various formats (HTML/MD/JSON), delete selected.
     - Floating glassmorphism action bar for batch operations.
     - Export status tracking with visual badges.
-  - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0+).
-    - **NEW**: Batch selection system matching Archive Hub UX.
-    - **NEW**: Export status tracking (`exported` / `not_exported`).
-    - **NEW**: Floating action bar with purple-themed export options.
-    - **NEW**: Purple glassmorphism selection highlighting.
-    - Memory exports (HTML/MD/JSON) with automatic export status marking.
+  - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (`src/archive/memories`).
+    - Batch selection system matching Archive Hub UX.
+    - Export status tracking (`exported` / `not_exported`).
+    - Floating action bar with purple-themed export options.
+    - Purple glassmorphism selection highlighting.
+  - **Prompt Archive**: Reusable library for saving and organizing prompts by category (`src/archive/prompts`).
+    - Full CRUD capabilities with category tagging.
+    - Integrated with the global "Scale & Glow" tactile system.
   - **Settings System**:
-    - **NEW**: Configurable export filename casing (kebab-case, Kebab-Case, snake_case, Snake_Case, PascalCase, camelCase).
-    - **NEW**: Visual UI with live preview examples and capitalization toggle.
+    - Configurable export filename casing (6 options).
+    - Visual UI with live previews and capitalization toggle.
     - Persistent settings stored in IndexedDB.
-    - Default username configuration for imports.
-  - **Import/Export**: Full JSON import/export; Batch import; Directory import with attribution validation.
-  - **Security**: Comprehensive XSS hardening, Input validation, and Atomic duplicate detection (v0.3.0+).
-- **Extension**: Fully functional Chrome Extension supporting:
-  - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok.
-  - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation.
+  - **Import/Export**: Full JSON import/export; Batch import; Directory import; **Google Drive Smart Merge**.
+  - **Security**: Comprehensive XSS hardening, "Markdown Firewall", and Atomic duplicate detection.
+- **Extension**: Fully functional Chrome Extension supporting 8+ platforms (Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, Kimi, AI Studio).
+  - Features: One-click capture, "Copy as Markdown", "Copy as JSON", **Gemini Lazy-Loading Preload**.
 - **Recent Improvements**:
-  - Visual consistency between Archive Hub and Memory Archive (purple theme, glassmorphism).
-  - Enhanced filename sanitization with multiple case format support.
-  - Improved batch operation UX with floating action bars.
-  - Export status badges for tracking exported content.
+  - **Global "Scale & Glow" Synergy**: Standardized tactile feedback across all archive navigation.
+  - **Page Orchestrator Pattern**: Decoupled state-management from UI rendering in main domains.
+  - **Google Drive Deduplication**: Smart merge logic preventing redundant copies during cloud sync.
+  - **Strict Noosphere Standard**: Formalized high-fidelity native export validation vs 3rd-party flexibility.
 
 ## 🔒 Security & QA Workflow: Adversary Auditor (3-Eyes Verification)
 
@@ -98,13 +98,18 @@ The project employs a "3-Eyes" verification system (Developer, AI, Adversary Age
 - **Web App (`/src`)**:
   - **Entry**: `index.html` -> `src/main.tsx` -> `App.tsx` (Router)
   - **Routes**:
-    - `/`: `ArchiveHub` (Main Dashboard)
-    - `/basic`: `BasicConverter` (Manual Import/Convert)
-    - `/ai`: `AIConverter` (Gemini Studio mode)
+    - `/`: `Home` (Landing Page)
+    - `/hub`: `ArchiveHub` (Main Dashboard - `src/archive/chats/pages/`)
+    - `/converter`: `BasicConverter` (Manual Import/Convert - `src/components/converter/pages/`)
+    - `/memory-archive`: `MemoryArchive` (Insights Library - `src/archive/memories/pages/`)
+    - `/prompt-archive`: `PromptArchive` (Prompt Library - `src/archive/prompts/pages/`)
   - **Key Services**:
-    - `storageService.ts`: IndexedDB wrapper for persistence (currently v2).
-    - `converterService.ts`: Unified HTML parsing logic for all platforms.
-    - `utils/securityUtils.ts`: XSS prevention and input validation.
+    - `src/services/storageService.ts`: IndexedDB wrapper for persistence (Schema v6).
+    - `src/services/converterService.ts`: Unified HTML parsing logic and "Markdown Firewall".
+    - `src/utils/securityUtils.ts`: XSS prevention and filename/URL validation.
+  - **Key Patterns**:
+    - **Page Orchestrator**: Pages manage state and hooks; delegate UI to domain components.
+    - **Scale & Glow**: Tactile feedback standard (`scale-110`, `ring-2`, theme highlights).
 
 - **Chrome Extension (`/extension`)**:
   - **Manifest**: V3 (`manifest.json`)
@@ -144,6 +149,6 @@ MEMORY BANK SECTION
 
 The Memory Bank is the persistent context for the project. For the complete structure and workflow, refer to the protocol file.
 
-👉 **Refer to [`MEMORY_BANK_PROTOCOL.md`](./agents/protocols/MEMORY_BANK_PROTOCOL.md) for the Memory Bank standards.**
+👉 **Refer to [`MEMORY_BANK_PROTOCOL.md`](agents/protocols/MEMORY_BANK_PROTOCOL.md) for the Memory Bank standards.**
 
 END MEMORY BANK SECTION

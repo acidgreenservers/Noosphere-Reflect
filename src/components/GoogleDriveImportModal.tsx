@@ -6,6 +6,7 @@ import { parseChat, isJson } from '../services/converterService';
 import { enrichMetadata } from '../utils/metadataEnricher';
 import { ParserMode } from '../types';
 import { detectImportSource, getSourceLabel, getSourceDescription, ImportDetectionResult } from '../utils/importDetector';
+import { validateBatchImport, validateFileSize, INPUT_LIMITS } from '../utils/securityUtils';
 
 interface GoogleDriveImportModalProps {
     isOpen: boolean;
@@ -99,7 +100,10 @@ export const GoogleDriveImportModal: React.FC<GoogleDriveImportModalProps> = ({
                 const driveFiles = await googleDriveService.searchForChatFiles(accessToken);
 
                 // Show all files - parseChat() will handle format detection
-                const filesWithStatus: FileWithStatus[] = driveFiles.map(file => ({
+                // Filter out export-metadata.json files as they are directory metadata
+                const chatFiles = driveFiles.filter(file => file.name !== 'export-metadata.json');
+
+                const filesWithStatus: FileWithStatus[] = chatFiles.map(file => ({
                     ...file,
                     isDuplicate: false, // Will be set after title extraction
                     extractedTitle: '',
@@ -220,6 +224,32 @@ export const GoogleDriveImportModal: React.FC<GoogleDriveImportModalProps> = ({
             return;
         }
 
+        // 1. Validate Batch Limits (Count & Total Size)
+        const totalSize = selectedFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+        const batchValidation = validateBatchImport(
+            selectedFiles.length,
+            totalSize,
+            INPUT_LIMITS.BATCH_MAX_FILES,
+            INPUT_LIMITS.BATCH_MAX_TOTAL_SIZE_MB
+        );
+
+        if (!batchValidation.valid) {
+            alert(`❌ Import Failed: ${batchValidation.error}`);
+            return;
+        }
+
+        // 2. Validate Individual File Sizes
+        for (const file of selectedFiles) {
+            const fileValidation = validateFileSize(
+                file.size || 0,
+                INPUT_LIMITS.FILE_MAX_SIZE_MB
+            );
+            if (!fileValidation.valid) {
+                alert(`❌ Import Failed: File "${file.name}" is too large.\n${fileValidation.error}`);
+                return;
+            }
+        }
+
         // Check if we have mixed source files
         const stats = {
             noosphere: selectedFiles.filter(f => f.detectionResult?.source === 'noosphere').length,
@@ -322,9 +352,8 @@ export const GoogleDriveImportModal: React.FC<GoogleDriveImportModalProps> = ({
                                     {files.map(file => (
                                         <div
                                             key={file.id}
-                                            className={`p-3 hover:bg-gray-700/30 transition-colors ${
-                                                file.isDuplicate ? 'opacity-60' : ''
-                                            }`}
+                                            className={`p-3 hover:bg-gray-700/30 transition-colors ${file.isDuplicate ? 'opacity-60' : ''
+                                                }`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <input
@@ -341,15 +370,14 @@ export const GoogleDriveImportModal: React.FC<GoogleDriveImportModalProps> = ({
                                                             {file.extractedTitle}
                                                         </span>
                                                         {file.sourceLabel && (
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
-                                                                file.detectionResult?.source === 'noosphere'
+                                                            <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${file.detectionResult?.source === 'noosphere'
                                                                     ? 'bg-green-500/20 text-green-400'
                                                                     : file.detectionResult?.source === '3rd-party'
-                                                                    ? 'bg-yellow-500/20 text-yellow-400'
-                                                                    : file.detectionResult?.source === 'platform-html'
-                                                                    ? 'bg-blue-500/20 text-blue-400'
-                                                                    : 'bg-gray-500/20 text-gray-400'
-                                                            }`}>
+                                                                        ? 'bg-yellow-500/20 text-yellow-400'
+                                                                        : file.detectionResult?.source === 'platform-html'
+                                                                            ? 'bg-blue-500/20 text-blue-400'
+                                                                            : 'bg-gray-500/20 text-gray-400'
+                                                                }`}>
                                                                 {file.sourceLabel}
                                                             </span>
                                                         )}

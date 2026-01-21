@@ -10,6 +10,7 @@ import { LlamacoderParser } from './LlamacoderParser';
 import { KimiParser } from './KimiParser';
 import { NoosphereParser } from './NoosphereParser';
 import { ThirdPartyParser } from './ThirdPartyParser';
+import { BlankParser } from './BlankParser';
 
 export class ParserFactory {
     static getParser(mode: ParserMode): BaseParser | null {
@@ -36,6 +37,8 @@ export class ParserFactory {
             case ParserMode.ThirdPartyMarkdown:
             case ParserMode.ThirdPartyJson:
                 return new ThirdPartyParser();
+            case ParserMode.Blank:
+                return new BlankParser();
             default:
                 return null;
         }

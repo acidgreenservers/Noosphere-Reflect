@@ -62,7 +62,7 @@ export const ConverterPreview: React.FC<ConverterPreviewProps> = ({
                     </div>
                     <button
                         onClick={onShowPreviewModal}
-                        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg border border-purple-500 shadow-lg shadow-purple-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-purple-500/30"
+                        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg border border-purple-500 shadow-lg shadow-purple-500/20 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/50 flex items-center justify-center gap-2 group-hover:shadow-purple-500/30"
                     >
                         <span>Open Reader</span>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -84,7 +84,7 @@ export const ConverterPreview: React.FC<ConverterPreviewProps> = ({
                     </div>
                     <button
                         onClick={onShowRawPreviewModal}
-                        className="w-full px-4 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg border border-cyan-500 shadow-lg shadow-cyan-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-cyan-500/30"
+                        className="w-full px-4 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg border border-cyan-500 shadow-lg shadow-cyan-500/20 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-cyan-500/50 flex items-center justify-center gap-2 group-hover:shadow-cyan-500/30"
                     >
                         <span>View Raw HTML</span>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -114,7 +114,7 @@ export const ConverterPreview: React.FC<ConverterPreviewProps> = ({
                             parserMode={parserMode}
                             metadata={{ ...metadata, artifacts }}
                             buttonText="Download Chat"
-                            buttonClassName="w-full px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all text-sm font-bold flex items-center justify-center gap-2 group-hover:shadow-green-500/30"
+                            buttonClassName="w-full px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg hover:shadow-green-500/20 transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-green-500/50 text-sm font-bold flex items-center justify-center gap-2 group-hover:shadow-green-500/30"
                             session={{
                                 id: loadedSessionId || Date.now().toString(),
                                 name: chatTitle,

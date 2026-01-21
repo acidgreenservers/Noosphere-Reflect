@@ -145,14 +145,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <button
                         onClick={handleExportClick}
                         disabled={isExportingToDrive}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                        className={`flex-1 ${accentColor === 'purple' ? 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'} disabled:bg-gray-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg ${accentColor === 'purple' ? 'hover:shadow-purple-500/20 hover:ring-2 hover:ring-purple-500/50' : 'hover:shadow-blue-500/20 hover:ring-2 hover:ring-blue-500/50'} focus:outline-none focus:ring-2`}
                     >
                         {isExportingToDrive ? 'Uploading...' : 'Export'}
                     </button>
                     <button
                         onClick={onClose}
                         disabled={isExportingToDrive}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors"
+                        className="flex-1 bg-gray-700 hover:bg-gray-800 disabled:bg-gray-800 disabled:opacity-50 text-gray-200 px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105 active:scale-95 border border-gray-600 hover:border-gray-500 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
                     >
                         Cancel
                     </button>

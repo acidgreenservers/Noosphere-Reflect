@@ -66,27 +66,51 @@ npm run preview      # Preview production build locally
 
 ## Current Status
 
-- **Version**: Web App `v0.5.3` | Extension `v0.5.3`
+- **Version**: Web App `v0.5.8.3` | Extension `v0.5.8.3`
 - **Core Functionality**:
   - **ArchiveHub**: Robust dashboard for browsing, filtering, and managing saved chats
   - **Memory Archive**: Dedicated system for storing and organizing AI thoughts/snippets (v0.4.0)
-  - **Import/Export**: Full JSON import/export; Batch import; Memory exports (HTML/MD/JSON)
-  - **Security**: Comprehensive XSS hardening, Input validation, and Atomic duplicate detection (v0.3.0+)
+  - **Prompt Archive**: New searchable library for saving and organizing reusable prompts by category
+  - **Import/Export**: Full JSON import/export; Batch import; Memory exports (HTML/MD/JSON); Google Drive integration
+  - **Security**: Comprehensive XSS hardening, Input validation, Atomic duplicate detection, and "Markdown Firewall" system (v0.3.0+)
+  - **Smart Deduplication**: Message-level deduplication prevents duplicates during multi-source imports
+  - **Artifact Management**: File upload system with inline referencing and viewer modal
 - **Extension**: Fully functional Chrome Extension supporting:
-  - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok
-  - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation
-- **Goal**: Polish Archive Hub visuals and ensure Extension reliability (Toasts)
+  - **Platforms**: Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok, AI Studio, Kimi
+  - **Features**: One-click capture, "Copy as Markdown", "Copy as JSON", thought process preservation, Gemini conversation preloading
+- **Architecture**: Modular domain-driven structure with specialized parsers and comprehensive testing
+- **Goal**: Continue architectural refinement and feature enhancement
 
 ## Architecture Overview
 
 ### High-Level Structure
 
-The app uses **HashRouter** for client-side routing (suitable for static deployment). Three main pages serve different purposes:
+The app uses **HashRouter** for client-side routing (suitable for static deployment) and follows a **modular domain-driven architecture** with specialized feature modules.
 
+#### Core Pages
 1. **ArchiveHub** (`/`) - Main dashboard displaying saved chat sessions with search, filtering, batch operations (select/export/delete), and metadata editing
 2. **BasicConverter** (`/basic`) - Regex-based parser for clean markdown/JSON chat logs (supports `<thought>` collapsible sections)
 3. **AIConverter** (`/ai`) - Intelligent parser using Google Gemini for unstructured/messy text
 4. **Changelog** (`/changelog`) - Version history page
+
+#### Modular Architecture (v0.5.8+)
+- **`src/archive/`**: Domain-driven feature modules
+  - **`chats/`**: Chat archive functionality (components, hooks, pages, services)
+  - **`memories/`**: Memory/thought archive system
+  - **`prompts/`**: Prompt library and management
+- **`src/components/`**: Shared UI components organized by feature
+  - **`converter/`**: Basic/AI converter components
+  - **`exports/`**: Export system components
+  - **`settings/`**: Settings modal and configuration
+  - **`wizard/`**: Import/export wizards
+- **`src/services/parsers/`**: Modular parser architecture
+  - **`BaseParser.ts`**: Abstract parser interface
+  - **`ParserFactory.ts`**: Parser instantiation and management
+  - **`ParserUtils.ts`**: Shared parsing utilities and "Markdown Firewall"
+  - **Platform-specific parsers**: `ClaudeParser.ts`, `ChatGptParser.ts`, `GeminiParser.ts`, etc.
+- **`src/services/`**: Core business logic services
+- **`src/hooks/`**: Global and feature-specific React hooks
+- **`src/utils/`**: Utility functions and security helpers
 
 ### Data Flow & Storage
 
@@ -103,17 +127,26 @@ The app uses **HashRouter** for client-side routing (suitable for static deploym
 - `ParserMode` enum: `basic`, `ai`, `json-import`, `claude-html`, `chatgpt-html`, `lechat-html`, `llamacoder-html`, `gemini-html` (for specialized HTML parsing)
 - `ChatTheme` enum: Dark/light themes with color palettes
 
-**Parsing Layer** (`converterService.ts`):
+**Parsing Layer** (`converterService.ts` + `src/services/parsers/`):
+- **Modular Parser Architecture** (v0.5.8+): Platform-specific parsing logic extracted into dedicated classes
+  - **`ParserFactory.ts`**: Central dispatcher that instantiates appropriate parser based on `ParserMode`
+  - **`BaseParser.ts`**: Abstract interface ensuring consistent contract across all parsers
+  - **Platform Parsers**: `ClaudeParser.ts`, `ChatGptParser.ts`, `GeminiParser.ts`, `AiStudioParser.ts`, `GrokParser.ts`, `KimiParser.ts`, `LeChatParser.ts`, `LlamacoderParser.ts`
+  - **`ParserUtils.ts`**: Shared utilities including the "Markdown Firewall" security system
 - `parseChat()` - Main entry point dispatching to appropriate parser based on `ParserMode`
   - **Basic mode**: Detects JSON vs markdown, uses regex patterns to split prompts/responses on headers like `## Prompt:`, `## Response:`
   - **AI mode**: Sends unstructured text to Gemini 2.0 Flash with JSON schema response, preserves all content including code blocks and thought processes
   - **JSON Import mode**: Detects Noosphere Reflect exports by signature (`exportedBy.tool`), preserves all metadata (title, model, date, tags, author, sourceUrl), supports backward compatibility with legacy JSON formats
-  - **HTML modes**: DOM-based parsing from chat UI HTML exports
+  - **HTML modes**: DOM-based parsing from chat UI HTML exports via modular parsers
     - **Claude HTML**: Uses thought block detection (`<thought>` tags)
     - **ChatGPT HTML**: Uses `[data-turn]` attributes for reliable message detection
     - **LeChat HTML**: Mistral-specific DOM selectors
     - **Llamacoder HTML**: Llamacoder interface parsing
     - **Gemini HTML**: Detects and preserves thinking blocks (`.model-thoughts`), wraps in `<thought>` tags
+- **"Markdown Firewall" Security System**: Multi-layered validation protecting all parsing operations
+  - **Input Hardening**: 10MB size limits, pre-processing element removal (scripts, iframes, event handlers)
+  - **Output Validation**: `validateMarkdownOutput()` blocks dangerous tags, protocols, and entities
+  - **Trust Boundary Enforcement**: All parsers validate output before returning to application state
 - `generateHtml()` - Creates standalone HTML artifact with theming, inline styles, and collapsible sections
 - `parseExportedJson()` - Handles Noosphere Reflect JSON exports with metadata preservation and format detection
 
@@ -247,6 +280,45 @@ The `generateHtml()` function creates self-contained HTML files with:
 - No external dependencies—files work offline
 - Metadata rendered as header (title, model, date, tags)
 - Collapsible thought sections
+
+### Current Development Patterns (v0.5.8+)
+
+#### Modular Parser Architecture
+- **ParserFactory Pattern**: Central dispatcher for platform-specific parsers
+- **BaseParser Interface**: Ensures consistent contract across all parsing implementations
+- **Platform Isolation**: Each AI platform (Claude, ChatGPT, Gemini, etc.) has dedicated parser class
+- **Shared Utilities**: `ParserUtils.ts` provides common DOM manipulation and security functions
+- **Test-Driven Development**: Comprehensive test suite (`__tests__/`) validates parser functionality
+
+#### "Markdown Firewall" Security Pattern
+- **Multi-Layer Validation**: Input sanitization → Processing → Output validation
+- **Trust Boundary Enforcement**: All parsers validate output before returning to application state
+- **Resource Protection**: 10MB size limits prevent denial-of-service attacks
+- **Content Sanitization**: Automatic removal of dangerous HTML elements and attributes
+
+#### Domain-Driven Architecture
+- **Feature Modules**: `src/archive/{chats,memories,prompts}/` contain complete feature implementations
+- **Component Organization**: UI components grouped by feature (`converter/`, `exports/`, `settings/`)
+- **Hook-Based Logic**: Business logic extracted into custom hooks (`useArchiveSearch`, `useExtensionBridge`)
+- **Service Layer**: Core business logic in dedicated service files
+
+#### Smart Deduplication System
+- **Message Hashing**: Stable content-based duplicate detection using normalized text
+- **Merge Logic**: Intelligent combining of sessions with artifact preservation
+- **Import Path Coverage**: Extension, BasicConverter, and Google Drive imports all deduplicate
+- **User Feedback**: Clear messaging about merge outcomes and skipped duplicates
+
+#### Scale & Glow UI Pattern
+- **Tactile Feedback**: `hover:scale-110/105` with `active:scale-95` for premium feel
+- **Theme-Aware Glow**: Dynamic background highlights (`bg-*/10`) matching feature domains
+- **Accessibility First**: Focus rings and semantic HTML throughout
+- **Consistent Timing**: Standardized `duration-300` transitions
+
+#### Memory Bank Documentation System
+- **Session Continuity**: Complete project context maintained across AI sessions
+- **Structured Updates**: Timestamped entries in `activeContext.md` for every change
+- **Multi-File Knowledge Base**: Specialized files for different knowledge domains
+- **Learning Path Creation**: No gaps in project history for future sessions
 
 ### Design System & Theming (Noosphere Nexus Green v0.3.2)
 

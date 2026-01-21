@@ -28,7 +28,8 @@ export const ArchiveHeader: React.FC<ArchiveHeaderProps> = ({
                     <img
                         src={logo}
                         alt="Noosphere Reflect Logo"
-                        className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                        className="w-8 h-8 logo-mask drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                        style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
                     />
                     <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 via-purple-400 to-emerald-500 bg-clip-text text-transparent">
                         Archival Hub
@@ -38,7 +39,7 @@ export const ArchiveHeader: React.FC<ArchiveHeaderProps> = ({
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onToggleSearch}
-                        className="p-2 text-gray-400 hover:text-purple-400 hover:bg-white/5 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-all hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 active:bg-purple-600"
                         title="Search conversations"
                     >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,7 +50,7 @@ export const ArchiveHeader: React.FC<ArchiveHeaderProps> = ({
                         <button
                             onClick={onSyncFromDrive}
                             disabled={isSyncing}
-                            className="p-2 text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-600"
                             title="Sync chats from Google Drive"
                         >
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,7 +60,7 @@ export const ArchiveHeader: React.FC<ArchiveHeaderProps> = ({
                     )}
                     <button
                         onClick={onOpenSettings}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-500/10 rounded-lg transition-all hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-500 active:bg-gray-600"
                         title="Settings"
                     >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -69,27 +70,27 @@ export const ArchiveHeader: React.FC<ArchiveHeaderProps> = ({
                     </button>
                     <Link
                         to="/memory-archive"
-                        className="group relative px-4 py-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-2"
+                        className="group relative px-4 py-2 text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-purple-500 active:bg-purple-600 rounded-lg"
                     >
                         <div className="relative flex items-center justify-center">
-                            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-purple-500/30 rounded-lg animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/40 via-pink-500/40 to-purple-500/40 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             <span className="relative z-10 text-lg">🧠</span>
                         </div>
-                        <span className="hidden sm:inline">Memory Archive</span>
+                        <span className="relative z-10 hidden sm:inline">Memory Archive</span>
                     </Link>
                     <Link
                         to="/prompt-archive"
-                        className="group relative px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2"
+                        className="group relative px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-600 rounded-lg"
                     >
                         <div className="relative flex items-center justify-center">
-                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-lg animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/40 via-cyan-500/40 to-blue-500/40 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             <span className="relative z-10 text-lg">💡</span>
                         </div>
-                        <span className="hidden sm:inline">Prompt Archive</span>
+                        <span className="relative z-10 hidden sm:inline">Prompt Archive</span>
                     </Link>
                     <Link
                         to="/converter"
-                        className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+                        className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-green-500/10 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600 rounded-lg"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

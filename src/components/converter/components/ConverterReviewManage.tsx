@@ -51,7 +51,7 @@ export const ConverterReviewManage: React.FC<ConverterReviewManageProps> = ({
                     {chatData ? (
                         <button
                             onClick={onShowReviewEditModal}
-                            className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg border border-orange-500 shadow-lg shadow-orange-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-orange-500/30 mt-auto"
+                            className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg border border-orange-500 shadow-lg shadow-orange-500/20 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-orange-500/50 flex items-center justify-center gap-2 group-hover:shadow-orange-500/30 mt-auto"
                         >
                             <span>Review Messages</span>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +123,7 @@ export const ConverterReviewManage: React.FC<ConverterReviewManageProps> = ({
 
                     <button
                         onClick={onShowArtifactManager}
-                        className="w-full px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg border border-red-500 shadow-lg shadow-red-500/20 text-sm font-medium transition-all flex items-center justify-center gap-2 group-hover:shadow-red-500/30 mt-auto"
+                        className="w-full px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg border border-red-500 shadow-lg shadow-red-500/20 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-red-500/50 flex items-center justify-center gap-2 group-hover:shadow-red-500/30 mt-auto"
                     >
                         <span>Manage Files</span>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

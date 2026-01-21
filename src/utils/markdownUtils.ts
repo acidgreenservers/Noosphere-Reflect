@@ -1,3 +1,5 @@
+import { escapeHtml } from './securityUtils';
+
 /**
  * Basic Markdown to HTML converter for preview mode.
  * Handles common formatting without heavy external dependencies.
@@ -7,10 +9,7 @@ export function renderMarkdownToHtml(text: string, onArtifactClick?: (artifactId
     if (!text) return '';
 
     // 1. Escape HTML first (security)
-    let html = text
-        .replace(/&/g, '&')
-        .replace(/</g, '<')
-        .replace(/>/g, '>');
+    let html = escapeHtml(text);
 
     // 2. Extract code blocks to prevent formatting inside them
     const codeBlocks: string[] = [];

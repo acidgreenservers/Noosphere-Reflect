@@ -12,7 +12,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Planning for Sprint 6.3: Archive Hub Polish (Conversation Card Redesign, v0.6.0)
-- Planning for Sprint 5.1: Extension Reliability (Toast Queue)
+
+---
+
+## [v0.5.8.3] - January 21, 2026
+
+### Added
+#### Global Archive & Converter UI Polish
+- **Create Blank Chat**: Added a new pink-themed "Blank Chat" option to the Content Import Wizard, allowing users to start new conversations from scratch.
+- **Auto-Edit Entry**: Initiating a blank chat automatically opens the Review & Edit modal with Edit Mode pre-enabled for immediate manual entry.
+- **Seamless Logo Integration**: Implemented a global CSS Luminance Masking system (`.logo-mask`) to achieve perfect logo transparency without the artifacts caused by previous blending hacks.
+- **Global "Scale & Glow" System**: Implemented a comprehensive tactile feedback system across the entire application's navigation and utility areas.
+- **Tactile Feedback**: Added `hover:scale-110` (utility) or `scale-105` (navigation) and `active:scale-95` to all header icons, archive links, and modal action buttons.
+- **Dynamic Glow Highlights**: Added theme-aware hover backgrounds and glow effects for various action types (e.g., green for Sync, purple for Memories, blue for Prompts).
+- **Standardized Accessibility**: Enforced consistent focus rings (`focus:ring-2`) and high-contrast active states for all interactive elements to ensure accessibility and professional polish.
+- **Cross-Page UI Parity**: Synchronized the visual refinement system across `ArchiveHub`, `BasicConverter`, and all specialized preview modals.
+
+#### Full Modular Refactor
+- **Archive Hub Orchestration**: Completed the final integration of modular components (`ArchiveHeader`, `ArchiveSearchBar`, `ArchiveBatchActionBar`) into the main `ArchiveHub.tsx` orchestrator.
+- **Preview Modal Refinement**: Unified title editing and metadata persistence across Chat, Memory, and Prompt previewers.
+- **Component Domain Guarding**: Finalized relocation of core components to their respective domain directories (`src/archive/chats`, `src/components/converter`), eliminating dead logic paths.
+
+### Fixed
+- **Drive Import Filtering**: Resolved UI clutter where `export-metadata.json` files were intermittently appearing as "Unsupported Format" in the Google Drive import wizard.
+- **Layout Shift Detection**: Fixed minor layout jumps in the Archive Hub header during component hydrations.
+- **Missing Theme Types**: Resolved TypeScript lint errors regarding missing legacy theme definitions in the Basic Converter.
 
 ---
 

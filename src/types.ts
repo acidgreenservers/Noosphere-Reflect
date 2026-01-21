@@ -104,6 +104,7 @@ export enum ParserMode {
   GrokHtml = 'grok-html',
   ThirdPartyMarkdown = 'third-party-markdown',
   ThirdPartyJson = 'third-party-json',
+  Blank = 'blank',
 }
 
 export interface SavedChatSession {

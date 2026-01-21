@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System 🗃️
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.8.2-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.8.3-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
@@ -227,7 +227,22 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.8.2 (Current)
+## 🆕 What's New in v0.5.8.3 (Current)
+
+### Full Modular Refactor & UI Refinement (Jan 20-21)
+- **Blank Chat Entry**: New wizard option to start fresh conversations manually with auto-initializing Edit Mode.
+- **Brand Logo Transparency**: Implemented professional CSS Luminance Masking to eliminate black background artifacts across all application headers.
+- **Full Refactor Core**: Core components now follow a standardized feature-based modular structure (`src/archive/chats/components/`, `src/components/wizard/`, etc.).
+- **Modularized Modules**:
+  - `SettingsModal`: Extracted into components, hooks, and page structure.
+  - `ArtifactManager`: Fully modularized into reusable UI and logic layers.
+  - `ContentImportWizard`: Refactored for better maintainability and performance.
+  - `ChatPreviewModal`: Relocated to its correct modular home within `src/archive/chats/`.
+- **Enhanced Preview Modals**: All preview modals (Chat, Memory, Prompt) now support direct title editing with persistence.
+- **Improved Import Logic**: Refined Google Drive import to filter out metadata files, ensuring a cleaner archive view.
+- **Glassmorphism Consistency**: Unified the purple/blue glassmorphism theme across all archival modules.
+
+## 🆕 What's New in v0.5.8.2
 
 ### Basic Converter & Archive Refactor (Jan 20)
 - **Modular Architecture**: Split the monolithic `BasicConverter` into 5 specialized components, reducing file size by 30%.
@@ -372,6 +387,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 0.5.7
-**Last Updated**: January 15, 2026
-**Status**: Stable Release with Wizard & Studio Interface ✅
+**Version**: 0.5.8.3
+**Last Updated**: January 21, 2026
+**Status**: Stable Release with Full Modular Refactor ✅

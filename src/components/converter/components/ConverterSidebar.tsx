@@ -60,13 +60,13 @@ export const ConverterSidebar: React.FC<ConverterSidebarProps> = ({
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => onLoadSession(session)}
-                                    className="flex-1 text-xs py-1.5 bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
+                                    className="flex-1 text-xs py-1.5 bg-green-600 hover:bg-green-500 text-white rounded transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-1 focus:ring-green-400 active:bg-green-700 font-medium"
                                 >
                                     Load
                                 </button>
                                 <button
                                     onClick={() => onDeleteSession(session.id)}
-                                    className="px-2 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 rounded transition-colors text-xs"
+                                    className="px-2 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 rounded transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-1 focus:ring-red-400 active:bg-red-700"
                                 >
                                     Del
                                 </button>

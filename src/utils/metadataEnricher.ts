@@ -79,6 +79,7 @@ const getModelFromMode = (mode: ParserMode): string => {
         case ParserMode.KimiHtml: return 'Kimi';
         case ParserMode.KimiShareCopy: return 'Kimi';
         case ParserMode.Basic: return 'AI Assistant';
+        case ParserMode.Blank: return 'Manual Entry';
         default: return 'AI Assistant';
     }
 }

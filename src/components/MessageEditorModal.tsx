@@ -160,7 +160,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-200 transition-colors p-1"
+                        className="text-gray-400 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 p-1 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600 hover:scale-110 active:scale-95 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50"
                         aria-label="Close modal"
                         disabled={isSaving}
                     >
@@ -198,7 +198,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                     <button
                                         onClick={handleSave}
                                         title="Save changes (Ctrl+Enter)"
-                                        className="flex items-center gap-1 px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                        className="flex items-center gap-1 px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-600/30 rounded text-[10px] uppercase font-bold transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-green-500/50 hover:shadow-lg hover:shadow-green-500/10"
                                         disabled={isSaving || !hasChanges}
                                     >
                                         <kbd className="bg-green-900/40 px-1 rounded border border-green-500/30">Ctrl+Enter</kbd>
@@ -209,7 +209,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                     <button
                                         onClick={onClose}
                                         title="Cancel editing (Esc)"
-                                        className="flex items-center gap-1 px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                        className="flex items-center gap-1 px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 rounded text-[10px] uppercase font-bold transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-red-500/50 hover:shadow-lg hover:shadow-red-500/10"
                                         disabled={isSaving}
                                     >
                                         <kbd className="bg-red-900/40 px-1 rounded border border-red-500/30">Esc</kbd>
@@ -220,7 +220,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                     <button
                                         onClick={handleInsertCollapsible}
                                         title="Insert or wrap selection in <collapsible> tags (Ctrl+T)"
-                                        className="flex items-center gap-1 px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/30 rounded text-[10px] uppercase font-bold transition-all"
+                                        className="flex items-center gap-1 px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/30 rounded text-[10px] uppercase font-bold transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10"
                                         disabled={isSaving}
                                     >
                                         <kbd className="bg-purple-900/40 px-1 rounded border border-purple-500/30">Ctrl+T</kbd>
@@ -245,7 +245,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                         <button
                                             key={art.id}
                                             onClick={() => handleInsertArtifactTag(art.id)}
-                                            className="text-[10px] px-2 py-1 bg-gray-700 hover:bg-purple-900/40 text-gray-300 hover:text-purple-300 border border-gray-600 rounded flex items-center gap-1 transition-colors group"
+                                            className="text-[10px] px-2 py-1 bg-gray-700 hover:bg-purple-900/40 text-gray-300 hover:text-purple-300 border border-gray-600 rounded flex items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-purple-500/30 hover:shadow-md group"
                                             title="Insert artifact reference tag"
                                         >
                                             <span className="group-hover:text-purple-400">📄</span>
@@ -286,14 +286,14 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                     <div className="flex gap-3">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
+                            className="px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 border border-gray-600 hover:border-gray-500 hover:shadow-lg text-sm font-medium"
                             disabled={isSaving}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={isSaving || !hasChanges}
                         >
                             {isSaving ? (

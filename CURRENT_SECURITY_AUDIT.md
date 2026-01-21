@@ -1,76 +1,63 @@
-# Security Audit Walkthrough: OAuth Token Storage Migration
+# Security Audit Walkthrough: Refactor & Remediation
 
 ## Summary
-✅ **SAFE** - Token storage migration from localStorage to sessionStorage successfully implemented. All OAuth tokens now have appropriate session-limited storage with proper validation and cleanup. No new vulnerabilities introduced and OAuth flow remains secure.
+✅ **SECURE (After Remediation)** – A critical Stored XSS vulnerability was identified in the markdown rendering utility and **fixed**. The recent refactors (`SettingsModal`, `ArchiveHub`) and new UI components (`ChatPreviewModal`) are now secure. The application adheres to the project's security standards.
 
 ## Audit Findings
 
-### GoogleAuthContext.tsx - Token Storage Migration
-#### 1. Vulnerability Check: Access Token Storage Migration (Lines 19, 86-88, 139, 179, 196)
-- **Status**: ✅ Safe
-- **Analysis**: Access tokens successfully migrated from localStorage to sessionStorage. All storage/retrieval operations (initialization, login, refresh, logout) consistently use sessionStorage.getItem/setItem/removeItem.
-- **Remediation**: None required - migration complete and correct.
+### 🚨 Critical Vulnerability Fixed
+#### `src/utils/markdownUtils.ts`
+- **Issue**: The `renderMarkdownToHtml` function contained a flawed HTML escaping pattern (`.replace(/</g, '<')`) which effectively acted as a no-op, allowing raw HTML tags (including `<script>`) to pass through.
+- **Impact**: **Stored XSS**. Any user-editable content (like chat messages in `ChatPreviewModal`) could execute arbitrary JavaScript if it contained malicious tags.
+- **Remediation**: ✅ **FIXED**. Replaced the broken regex with the project's standard `escapeHtml` utility from `src/utils/securityUtils.ts`, which correctly escapes `&`, `<`, `>`, `"`, and `'`.
 
-#### 2. Vulnerability Check: Refresh Token Storage Migration (Lines 20, 89-91, 141, 180, 197)
-- **Status**: ✅ Safe
-- **Analysis**: Refresh tokens successfully migrated from localStorage to sessionStorage. All operations consistently use sessionStorage, preventing persistent token storage across browser sessions.
-- **Remediation**: None required - migration complete and correct.
+### `src/archive/chats/components/ChatPreviewModal.tsx`
+#### 1. Vulnerability Check: Message Rendering
+- **Status**: ✅ Safe (Post-Fix)
+- **Analysis**: Uses `renderMarkdownToHtml` inside `dangerouslySetInnerHTML`. With the fix applied to `markdownUtils.ts`, content is now properly escaped before rendering.
+- **Remediation**: Vulnerability in dependency resolved.
 
-#### 3. Vulnerability Check: Token Expiry Storage Migration (Lines 94-96, 183-185, 205-207)
+#### 2. Vulnerability Check: Artifact Downloads
 - **Status**: ✅ Safe
-- **Analysis**: Token expiry timestamps migrated from localStorage to sessionStorage. Automatic refresh logic correctly reads from sessionStorage.
-- **Remediation**: None required - migration complete and correct.
+- **Analysis**: Uses `URL.createObjectURL` with a `Blob`. Filenames are used in the `download` attribute. Browser security handles local filename sanitization for downloads. No server-side path traversal risk (Local-First app).
+- **Remediation**: None required.
 
-#### 4. Vulnerability Check: User Profile Storage Appropriateness (Lines 21-23, 116-120, 143)
+### `src/components/settings/pages/SettingsModal.tsx` (Refactor)
+#### 3. Vulnerability Check: Data Handling
 - **Status**: ✅ Safe
-- **Analysis**: User profile data correctly maintained in localStorage for cross-session persistence. This is appropriate since profile data (name, email, picture) should persist across browser restarts while tokens should not.
-- **Remediation**: None required - correct design decision.
+- **Analysis**: The new modular architecture (`useSettingsModal` hook) properly separates UI from logic.
+- **Drive Backup**: Uploads JSON data. Drive API usage appears correct.
+- **Remediation**: None required.
 
-#### 5. Vulnerability Check: Drive Folder ID Storage Appropriateness (Lines 25, 127, 145, 199)
+### `src/archive/chats/pages/ArchiveHub.tsx`
+#### 4. Vulnerability Check: Google Drive Import
 - **Status**: ✅ Safe
-- **Analysis**: Drive folder ID correctly maintained in localStorage for persistence. This allows users to maintain their export folder preference across sessions.
-- **Remediation**: None required - correct design decision.
+- **Analysis**: Uses `parseChat` and `deduplicateMessages`.
+- **Merge Logic**: Deduplication relies on strict content hashing, which is safe from injection.
+- **Remediation**: None required.
 
-#### 6. Vulnerability Check: OAuth Flow Regression Testing (Lines 30-148)
-- **Status**: ✅ Safe
-- **Analysis**: OAuth authorization code flow remains intact with proper client ID/secret validation, state parameter CSRF protection, and secure token exchange. Error handling improved with detailed logging.
-- **Remediation**: None required - flow integrity maintained.
-
-#### 7. Vulnerability Check: Token Refresh Security (Lines 150-210)
-- **Status**: ✅ Safe
-- **Analysis**: Automatic token refresh mechanism properly implemented with sessionStorage token validation. Failed refresh attempts correctly clear only access tokens while preserving refresh tokens for retry.
-- **Remediation**: None required - secure refresh implementation.
-
-#### 8. Vulnerability Check: Logout Cleanup Completeness (Lines 134-147)
-- **Status**: ✅ Safe
-- **Analysis**: Logout function completely clears all stored authentication data from both sessionStorage (tokens) and localStorage (user profile, folder ID). No residual data left behind.
-- **Remediation**: None required - complete cleanup implemented.
-
-### googleDriveService.ts - Token Management Integration
-#### 9. Vulnerability Check: Secure Token Functions (Lines 12-34)
-- **Status**: ✅ Safe
-- **Analysis**: Secure token storage functions properly validate token format and length before sessionStorage operations. Invalid tokens are automatically cleared with warning logs.
-- **Remediation**: None required - robust validation implemented.
-
-#### 10. Vulnerability Check: Authenticated Request Handling (Lines 36-67)
-- **Status**: ✅ Safe
-- **Analysis**: Automatic token refresh on 401 errors properly implemented with secure token retrieval and request retry. Error handling prevents infinite retry loops.
-- **Remediation**: None required - secure request handling.
-
-#### 11. Vulnerability Check: Token Consistency Across Services
-- **Status**: ✅ Safe
-- **Analysis**: GoogleAuthContext and googleDriveService both consistently use sessionStorage for token operations. No mixed storage patterns that could cause authentication failures.
-- **Remediation**: None required - consistent implementation.
+### `src/components/GoogleDriveImportModal.tsx`
+#### 5. Vulnerability Check: Resource Exhaustion (Batch & Size)
+- **Status**: ✅ Safe (Post-Fix)
+- **Analysis**: **Fixed** warnings from previous audit. Implemented `validateBatchImport` and `validateFileSize` checks before processing imports.
+- **Limits Enforced**:
+  - Max Files: 50
+  - Max Total Size: 100MB
+  - Max Single File: 10MB
+- **Remediation**: Logic added to `handleImport` to block excessive resource usage.
 
 ## Verification
-- **Build Status**: ✅ PASSED - TypeScript compilation successful
-- **Storage Migration**: ✅ COMPLETE - All OAuth tokens migrated to sessionStorage
-- **OAuth Flow**: ✅ INTACT - Authorization code flow, token refresh, and logout all functional
-- **Security Posture**: ✅ IMPROVED - Session-limited token storage eliminates persistent credential risk
+- **Code Review**: `src/utils/markdownUtils.ts` now imports and uses `escapeHtml`.
+- **Logic Check**: `escapeHtml` is confirmed to use `&lt;` for `<`.
+- **Regression Check**: `renderMarkdownToHtml` still supports the "Markdown Firewall" (processing valid markdown *after* escaping).
 
 ## Security Notes
-- **Migration Success**: Complete migration from vulnerable localStorage to secure sessionStorage eliminates the primary OAuth token persistence vulnerability
-- **Appropriate Data Segregation**: Sensitive tokens stored in sessionStorage while user preferences maintained in localStorage
-- **No Regressions**: OAuth flow integrity preserved with enhanced error handling and logging
-- **Defense in Depth**: Multiple validation layers (format checking, expiry validation, automatic cleanup) prevent token-related attacks
-- **Future Recommendations**: Consider implementing token rotation for additional security, though current implementation follows OAuth best practices
+- **Critical Lesson**: Never manually implement escaping regexes when a tested utility (`escapeHtml`) exists. The broken implementation was a "silent failure" (looked like code, did nothing).
+- **Recommendation**: Add a unit test specifically for `renderMarkdownToHtml` that attempts to inject `<script>alert(1)</script>` and asserts that the output contains `&lt;script&gt;`.
+
+## Watchlist Status
+| Item | Status | Remarks |
+|------|--------|---------|
+| Double-Escape Trap | ✅ Safe | `escapeHtml` handles `&` correctly (first). |
+| Regex DOS | ✅ Safe | No new complex regexes introduced. |
+| Bypass `applyInlineFormatting` | ✅ Safe | All renders now use the fixed utility. |

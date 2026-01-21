@@ -37,7 +37,7 @@ export const ArtifactViewerModal: React.FC<ArtifactViewerModalProps> = ({ artifa
     };
 
     const isMarkdown = artifact.fileName.toLowerCase().endsWith('.md') ||
-                      artifact.fileName.toLowerCase().endsWith('.markdown');
+        artifact.fileName.toLowerCase().endsWith('.markdown');
 
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] backdrop-blur-sm p-4">
@@ -51,7 +51,7 @@ export const ArtifactViewerModal: React.FC<ArtifactViewerModalProps> = ({ artifa
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleDownload}
-                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                            className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-green-400/50 shadow-lg shadow-green-500/20"
                             title="Download this file"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -61,7 +61,7 @@ export const ArtifactViewerModal: React.FC<ArtifactViewerModalProps> = ({ artifa
                         </button>
                         <button
                             onClick={onClose}
-                            className="text-gray-500 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg"
+                            className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg hover:scale-110 active:scale-95 hover:ring-2 hover:ring-purple-500/50 border border-gray-700"
                         >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

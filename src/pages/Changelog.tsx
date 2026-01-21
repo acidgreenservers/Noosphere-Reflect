@@ -13,6 +13,20 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8.3',
+            date: 'Jan 21, 2026',
+            title: 'Full Modular Refactor & UI Refinement',
+            items: [
+                'Create Blank Chat: Introduced a new entry point in the Content Import Wizard to start fresh conversations manually with auto-initializing Edit Mode.',
+                'Seamless Logo Integration: Implemented CSS Luminance Masking to remove black backgrounds from the brand logo across all pages, ensuring high color fidelity and transparency.',
+                'Global "Scale & Glow" System: Implemented comprehensive hover:scale (110%), active:scale (95%), and dynamic glow effects for all header and navigation buttons.',
+                'Archive Hub Orchestration: Fully integrated ArchiveHeader, ArchiveSearchBar, and ArchiveBatchActionBar modular components into the core dashboard.',
+                'Cross-Domain Parity: Synchronized tactile feedback standards across Archive Hub, Basic Converter, and all Preview Modals.',
+                'Modular Cleanliness: Finalized relocation of core components to domain-driven directories, reducing Orchestrator file complexity.',
+                'Accessibility Standards: Standardized focus rings (ring-2) and high-contrast active states for all interactive icons and utility links.',
+            ]
+        },
+        {
             version: 'v0.5.8.2',
             date: 'Jan 20, 2026',
             title: 'Basic Converter Refactor & Theme Architecture',
@@ -370,7 +384,8 @@ const Changelog: React.FC = () => {
                             <img
                                 src={logo}
                                 alt="Noosphere Reflect Logo"
-                                className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                                className="w-8 h-8 logo-mask drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                                style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
                             />
                         </Link>
                         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-purple-400 to-emerald-500">

@@ -209,7 +209,10 @@ export const googleDriveService = {
         const extensions = ['md', 'json', 'html', 'txt'];
 
         for (const ext of extensions) {
-            const query = `trashed=false and name contains '.${ext}'`;
+            let query = `trashed=false and name contains '.${ext}'`;
+            if (ext === 'json') {
+                query += " and name != 'export-metadata.json'";
+            }
             const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size)&pageSize=1000`;
 
             const token = getSecureToken() || currentToken;

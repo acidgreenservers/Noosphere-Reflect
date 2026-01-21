@@ -30,13 +30,7 @@ Collection of console scripts for exporting chat conversations from AI platforms
 
 Use these when you need guaranteed compatibility with a specific platform.
 
-### Legacy Platform-Specific Scripts
 
-**`claude-scraper.js`** - Fast Claude-only extraction (DOM-based)
-**`chatgpt-scraper.js`** - Fast ChatGPT-only extraction (DOM-based)
-**`gemini-scraper.js`** - Fast Gemini-only extraction (DOM-based)
-
-Use these for quick, automatic collection if you prefer direct DOM extraction.
 
 **Documentation:**
 - `QUICKSTART.md` - 30-second setup guide
@@ -72,10 +66,8 @@ Use these for quick, automatic collection if you prefer direct DOM extraction.
 |------|--------|-----|
 | **All platforms, one script** | `universal-native-scraper.js` | Auto-detects, works everywhere |
 | **Maximum platform compatibility** | `[platform]-native-scraper.js` | Hardcoded selectors, no detection |
-| **Fast export, JSON only** | `[platform]-scraper.js` (legacy) | Direct DOM extraction |
 | **Markdown export** | `universal-native-scraper.js` or `-native-` | Built-in format |
 | **User controls collection** | `universal-native-scraper.js` or `-native-` | Interactive menus |
-| **Automatic bulk grab** | `[platform]-scraper.js` (legacy) | One-click export |
 | **Specific platform guaranteed** | `[platform]-native-scraper.js` | No multi-platform overhead |
 
 ---
@@ -105,15 +97,7 @@ Use these for quick, automatic collection if you prefer direct DOM extraction.
 ⚠️ Requires user interaction
 ```
 
-### Platform-Specific Legacy (`[platform]-scraper.js`)
-```
-✅ Very fast (direct DOM query)
-✅ Automatic collection
-✅ Simple one-button export
-⚠️ Need separate script per platform
-⚠️ Breaks if DOM changes
-⚠️ Legacy approach
-```
+
 
 ---
 
@@ -230,12 +214,6 @@ Universal scraper auto-detects platform from URL and DOM markers.
 - **Full Metadata** - Attachs Noosphere export info
 - **Platform Brand Colors** - Claude purple, ChatGPT teal, Gemini green, LeChat blue, Grok pink
 
-### Legacy Platform-Specific Scripts
-- **Fast Extraction** - Direct DOM query
-- **Automatic Collection** - Gets all messages
-- **Simple Interface** - Single button export
-- **JSON Output** - Noosphere-compatible format
-- **Platform-Optimized** - Uses best selectors
 
 ---
 
@@ -381,11 +359,6 @@ noosphere-scrapers/
 ├── gemini-native-scraper.js .............. Gemini platform-specific
 ├── lechat-native-scraper.js .............. LeChat platform-specific
 ├── grok-native-scraper.js ................ Grok platform-specific
-│
-├── LEGACY PLATFORM-SPECIFIC SCRAPERS
-├── claude-scraper.js ..................... Legacy Claude extraction
-├── chatgpt-scraper.js .................... Legacy ChatGPT extraction
-├── gemini-scraper.js ..................... Legacy Gemini extraction
 │
 ├── DOCUMENTATION
 ├── QUICKSTART.md ......................... Quick reference guide

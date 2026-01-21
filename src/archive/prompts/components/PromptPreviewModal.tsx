@@ -12,6 +12,7 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ prompt, 
     const [searchTerm, setSearchTerm] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(prompt.content);
+    const [editedTitle, setEditedTitle] = useState(prompt.metadata.title);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSave = async () => {
@@ -23,6 +24,7 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ prompt, 
                 updatedAt: new Date().toISOString(),
                 metadata: {
                     ...prompt.metadata,
+                    title: editedTitle,
                     wordCount: editedContent.split(/\s+/).length,
                     characterCount: editedContent.length
                 }
@@ -41,11 +43,24 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ prompt, 
             <div className="bg-gray-900 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-800 shrink-0 bg-gray-900">
-                    <div className="flex flex-col gap-1">
-                        <h2 className="text-xl font-bold text-gray-100 flex items-center gap-3">
-                            <span className="text-2xl">💡</span>
-                            {prompt.metadata.title}
-                        </h2>
+                    <div className="flex flex-col gap-1 flex-1 pr-4">
+                        {isEditing ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">💡</span>
+                                <input
+                                    type="text"
+                                    value={editedTitle}
+                                    onChange={(e) => setEditedTitle(e.target.value)}
+                                    className="bg-gray-800 border border-blue-500/50 rounded-lg px-3 py-1 text-xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1"
+                                    placeholder="Prompt Title"
+                                />
+                            </div>
+                        ) : (
+                            <h2 className="text-xl font-bold text-gray-100 flex items-center gap-3">
+                                <span className="text-2xl">💡</span>
+                                {prompt.metadata.title}
+                            </h2>
+                        )}
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                             <span>{new Date(prompt.createdAt).toLocaleDateString()}</span>
                             <span>•</span>
@@ -54,9 +69,24 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ prompt, 
                             <span>{isEditing ? editedContent.split(/\s+/).length : prompt.metadata.wordCount} words</span>
                         </div>
                     </div>
+                    {/* Copy button */}
+                    <button
+                        onClick={() => {
+                            const text = isEditing ? editedContent : prompt.content;
+                            navigator.clipboard.writeText(text);
+                        }}
+                        className="text-gray-400 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700 mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-600 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20"
+                        disabled={isSaving}
+                        title="Copy prompt content"
+                    >
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2M16 3h2a2 2 0 012 2v12a2 2 0 01-2 2h-2M8 9h8M8 13h5" />
+                        </svg>
+                    </button>
+
                     <button
                         onClick={onClose}
-                        className="text-gray-500 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700"
+                        className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-600 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20"
                         disabled={isSaving}
                     >
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -87,7 +117,7 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ prompt, 
                             {!isEditing ? (
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 border border-gray-700 rounded-lg transition-colors"
+                                    className="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 border border-gray-700 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-600 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-blue-500/50"
                                     title="Edit Prompt"
                                 >
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -98,7 +128,7 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ prompt, 
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving}
-                                    className="p-2 bg-green-600 hover:bg-green-500 text-white border border-green-600 rounded-lg transition-colors"
+                                    className="p-2 bg-green-600 hover:bg-green-500 text-white border border-green-600 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-green-500/50"
                                     title="Save Changes"
                                 >
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,7 +151,7 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ prompt, 
                                             setEditedContent(prompt.content);
                                             setIsEditing(false);
                                         }}
-                                        className="mt-4 w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm border border-gray-700 transition-colors"
+                                        className="mt-4 w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm border border-gray-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 active:bg-blue-600 hover:scale-[1.02] active:scale-[0.98] hover:ring-1 hover:ring-blue-500/30"
                                     >
                                         Cancel Edit
                                     </button>

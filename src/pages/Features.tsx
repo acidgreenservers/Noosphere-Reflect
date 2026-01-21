@@ -12,7 +12,8 @@ const Features: React.FC = () => {
                         <img
                             src={logo}
                             alt="Noosphere Reflect Logo"
-                            className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                            className="w-8 h-8 logo-mask drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                            style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
                         />
                         <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 via-purple-400 to-emerald-500 bg-clip-text text-transparent">
                             Noosphere Reflect

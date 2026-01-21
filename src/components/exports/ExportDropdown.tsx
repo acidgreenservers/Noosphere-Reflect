@@ -203,7 +203,7 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
       <button
         ref={buttonRef}
         onClick={handleToggleDropdown}
-        className={buttonClassName}
+        className={`${buttonClassName} hover:scale-105 active:scale-95 duration-200 hover:ring-2 hover:ring-green-500/50 hover:shadow-lg hover:shadow-green-500/20`}
       >
         <span>⬇️</span>
         {buttonText}

@@ -7,12 +7,15 @@
 - [x] **Phase 6.5.0: Google Drive Integration & Backup System**
 - [x] **Archive Hub Refactor Phase 1**: Hook extraction (Search, Export, Drive, Extension Bridge).
 - [x] **Archive Architecture Refactor**: Prompts, Memories, and Chats modularized into feature domains.
-- [x] **v0.5.8.1 Release**: Formalizing infrastructure and syncing documentation.
+- [x] **v0.5.8.3 Modularization & UI Polish**: Completed component integration and global tactile feedback system.
+- [x] **Seamless Logo Integration**: Implemented high-fidelity CSS Luminance Masking for the brand logo.
+- [x] **Create Blank Chat**: Introduced "Blank Chat" entry point for manual conversation curation.
 
 ## Completed Features ✅
 
 ### Core Functionality (Phase 1-2)
 - ✅ **Archive Hub Dashboard**: Complete session management with search, filtering, and batch operations
+- ✅ **Content Import Wizard**: 4-method import system (Extension, Paste, Upload, and **Blank Chat**)
 - ✅ **Multi-Platform Extension**: Support for 7 AI platforms (Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok, AI Studio)
 - ✅ **Rich Parsing Engine**: Basic, AI-powered, and platform-specific parsers
 - ✅ **Export System**: HTML (themed), Markdown, and JSON formats
@@ -197,6 +200,14 @@
 ---
 
 ## Recent Updates (January 19, 2026)
+
+- ✅ **Global Archive & Converter UI Polish (January 21, 2026)**:
+  - ✅ **Scale & Glow System**: Implemented `hover:scale-110/105` and `active:scale-95` tactile feedback across all archive and converter navigation.
+  - ✅ **Dynamic Theming**: Added theme-aware hover backgrounds and glow effects for various action types (Sync, Settings, Archive Links).
+  - ✅ **Unified Accessibility**: Standardized focus rings (`focus:ring-2`) and high-contrast active states for all interactive icons and links.
+  - ✅ **Cross-Page Parity**: Successfully synchronized the UI refinement between `ArchiveHub` and `BasicConverter` modules.
+
+- ✅ **UI Copy Button & Styling Refactor (January 21, 2026)**: Added copy buttons to `PromptPreviewModal`, `MemoryPreviewModal`, and `ChatPreviewModal` with theme‑specific focus‑ring and active‑background styling. Ran the **SECURITY_ADVERSARY_AGENT** audit; no new security issues detected.
 
 - **January 20, 2026 - BasicConverter Refactor & Architectural Finalization ✅**:
   - ✅ **Modularization**: Split monolithic `BasicConverter.tsx` into 5 specialized sub-components (`ConverterHeader`, `ConverterPreview`, etc.).

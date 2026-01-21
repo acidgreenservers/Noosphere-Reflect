@@ -31,7 +31,7 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-500 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700"
+                        className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-purple-500/50"
                     >
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -43,7 +43,7 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({
                     {/* Sidebar Toggle Button (Floating) */}
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gray-800 border border-gray-700 p-1.5 rounded-r-lg text-gray-400 hover:text-white shadow-xl transition-all duration-300 hidden lg:block ${isSidebarCollapsed ? 'translate-x-0' : 'translate-x-80'}`}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gray-800 border border-gray-700 p-1.5 rounded-r-lg text-gray-400 hover:text-white shadow-xl transition-all duration-200 hover:scale-x-110 active:scale-95 hidden lg:block ${isSidebarCollapsed ? 'translate-x-0' : 'translate-x-80'}`}
                         title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
                         <svg className={`w-4 h-4 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -67,7 +67,7 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({
                                         tags: [],
                                         artifacts: []
                                     })}
-                                    className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-200 rounded-lg transition-colors"
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-200 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] hover:ring-1 hover:ring-red-500/30"
                                 >
                                     Clear All Metadata
                                 </button>
@@ -108,7 +108,7 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({
                             <div className="mt-8 pt-6 border-t border-gray-800">
                                 <button
                                     onClick={onClose}
-                                    className="w-full px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium transition-colors shadow-lg shadow-green-500/20"
+                                    className="w-full px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium transition-all duration-200 shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-[0.98] hover:ring-2 hover:ring-green-500/50"
                                 >
                                     Save Metadata
                                 </button>

@@ -23,12 +23,14 @@ export const ConverterHeader: React.FC<ConverterHeaderProps> = ({
                         <img
                             src={logo}
                             alt="Noosphere Reflect Logo"
-                            className="w-8 h-8 mix-blend-screen drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                            className="w-8 h-8 logo-mask drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] object-contain"
+                            style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
                         />
                     </Link>
-                    <Link to="/hub" className="text-gray-400 hover:text-white transition-colors">
+                    <Link to="/hub" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 px-2 py-1 rounded-md hover:bg-white/5">
                         ← Back
                     </Link>
+
                     <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-purple-400 to-emerald-600">
                         Basic Converter
                     </h1>
@@ -37,11 +39,15 @@ export const ConverterHeader: React.FC<ConverterHeaderProps> = ({
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onToggleSavedSessions}
-                        className="text-sm px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+                        className={`text-sm px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-500 hover:shadow-lg
+                            ${showSavedSessions
+                                ? 'bg-gray-700 text-white border-gray-600'
+                                : 'bg-gray-800 hover:bg-gray-750 text-gray-300 border-gray-700 hover:text-white hover:shadow-white/5'}`}
                     >
                         {showSavedSessions ? 'Hide Saved' : 'Saved Sessions'}
                     </button>
                 </div>
+
             </div>
         </nav>
     );

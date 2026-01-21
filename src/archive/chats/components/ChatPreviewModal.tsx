@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { SavedChatSession, ChatMessage } from '../types';
-import { renderMarkdownToHtml } from '../utils/markdownUtils';
-import { MessageEditorModal } from './MessageEditorModal';
+import { SavedChatSession, ChatMessage } from '../../../types';
+import { renderMarkdownToHtml } from '../../../utils/markdownUtils';
+import { MessageEditorModal } from '../../../components/MessageEditorModal';
 
 interface ChatPreviewModalProps {
     session: SavedChatSession;
@@ -16,6 +16,8 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [viewingArtifact, setViewingArtifact] = useState<any>(null);
+    const [editedTitle, setEditedTitle] = useState(session.metadata?.title || session.chatTitle);
+    const [isSavingTitle, setIsSavingTitle] = useState(false);
 
     const messages = session.chatData?.messages || [];
 
@@ -99,16 +101,68 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         setEditingMessageIndex(null);
     };
 
+    const handleSaveTitle = async () => {
+        setIsSavingTitle(true);
+        try {
+            const updatedSession: SavedChatSession = {
+                ...session,
+                chatTitle: editedTitle,
+                metadata: session.metadata ? {
+                    ...session.metadata,
+                    title: editedTitle
+                } : {
+                    title: editedTitle,
+                    model: 'Unknown',
+                    date: session.date || new Date().toISOString(),
+                    tags: []
+                }
+            };
+            await onSave(updatedSession);
+        } catch (error) {
+            console.error('Failed to save title:', error);
+            alert('Failed to save title.');
+        } finally {
+            setIsSavingTitle(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
             <div className="bg-gray-900 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-800 shrink-0 bg-gray-900">
-                    <div className="flex flex-col gap-1">
-                        <h2 className="text-xl font-bold text-gray-100 flex items-center gap-3">
-                            <span className="text-2xl">📖</span>
-                            {session.metadata?.title || session.chatTitle}
-                        </h2>
+                    <div className="flex flex-col gap-1 flex-1 pr-4">
+                        {isEditing ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">📖</span>
+                                <input
+                                    type="text"
+                                    value={editedTitle}
+                                    onChange={(e) => setEditedTitle(e.target.value)}
+                                    className="bg-gray-800 border border-purple-500/50 rounded-lg px-3 py-1 text-xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1"
+                                    placeholder="Chat Title"
+                                />
+                                <button
+                                    onClick={handleSaveTitle}
+                                    disabled={isSavingTitle}
+                                    className="p-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all duration-200 flex items-center justify-center disabled:opacity-50 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600 shadow-lg shadow-green-500/20"
+                                    title="Save Title"
+                                >
+                                    {isSavingTitle ? (
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        ) : (
+                            <h2 className="text-xl font-bold text-gray-100 flex items-center gap-3">
+                                <span className="text-2xl">📖</span>
+                                {session.metadata?.title || session.chatTitle}
+                            </h2>
+                        )}
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                             <span>{new Date(session.metadata?.date || session.date).toLocaleDateString()}</span>
                             <span>•</span>
@@ -119,7 +173,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-500 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg border border-gray-700"
+                        className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-green-500/10 p-2 rounded-lg border border-gray-700 hover:scale-110 active:scale-95 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600"
                     >
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -131,7 +185,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                     {/* Sidebar Toggle Button (Floating) */}
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gray-800 border border-gray-700 p-1.5 rounded-r-lg text-gray-400 hover:text-white shadow-xl transition-all duration-300 hidden lg:block ${isSidebarCollapsed ? 'translate-x-0' : 'translate-x-80'}`}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gray-800 border border-gray-700 p-1.5 rounded-r-lg text-gray-400 hover:text-white shadow-xl transition-all duration-200 hover:scale-x-110 active:scale-95 hidden lg:block ${isSidebarCollapsed ? 'translate-x-0' : 'translate-x-80'}`}
                         title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
                         <svg className={`w-4 h-4 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -158,9 +212,9 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
 
                             <button
                                 onClick={() => setIsEditing(!isEditing)}
-                                className={`p-2 rounded-lg border transition-all ${isEditing
-                                    ? 'bg-purple-600 text-white border-purple-500'
-                                    : 'bg-gray-800 text-purple-400 border-gray-700 hover:bg-gray-700'}`}
+                                className={`p-2 rounded-lg border transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 ${isEditing
+                                    ? 'bg-purple-600 text-white border-purple-500 focus:ring-purple-500 active:bg-purple-600 shadow-lg shadow-purple-500/30'
+                                    : 'bg-gray-800 text-purple-400 border-gray-700 hover:bg-purple-500/10 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20 hover:ring-2 hover:ring-purple-500/50 focus:ring-purple-500 active:bg-purple-600'}`}
                                 title={isEditing ? "Exit Edit Mode" : "Enable Edit Mode"}
                             >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -198,7 +252,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                     #{idx + 1} {isUser ? 'User' : 'AI'}
                                                 </span>
                                                 {hasArtifacts && (
-                                                    <span className="ml-auto text-sm" title={`${msg.artifacts.length} artifact(s)`}>
+                                                    <span className="ml-auto text-sm" title={`${msg.artifacts?.length || 0} artifact(s)`}>
                                                         📎
                                                     </span>
                                                 )}
@@ -240,7 +294,14 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                     }`}>
                                                     {isUser ? session.userName || 'User' : session.aiName || 'AI'}
                                                 </span>
-                                                <span className="text-xs text-gray-600 font-mono">#{idx + 1}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-600 font-mono">#{idx + 1}</span>
+                                                    {msg.artifacts && msg.artifacts.length > 0 && (
+                                                        <span className="text-xs text-purple-400 animate-pulse" title={`${msg.artifacts.length} artifact(s)`}>
+                                                            📎
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {msg.isEdited && <span className="text-xs text-yellow-500/60 ml-2">(Edited)</span>}
                                             </div>
 
@@ -248,7 +309,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                             {isEditing && (
                                                 <button
                                                     onClick={() => setEditingMessageIndex(idx)}
-                                                    className="p-1.5 bg-gray-800 hover:bg-purple-600 hover:text-white text-gray-400 rounded-lg transition-colors border border-gray-700 hover:border-purple-500"
+                                                    className="p-1.5 bg-gray-800 hover:bg-purple-600 hover:text-white text-gray-400 rounded-lg transition-all duration-200 border border-gray-700 hover:scale-110 active:scale-95 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20 hover:ring-2 hover:ring-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500 active:bg-purple-600"
                                                     title="Edit this message"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -281,7 +342,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                 <div key={art.id} className="flex items-center gap-2">
                                                                     <button
                                                                         onClick={() => handleArtifactAction(art)}
-                                                                        className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500 hover:bg-purple-900/20 transition-all group cursor-pointer text-left flex-1"
+                                                                        className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500 hover:bg-purple-900/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group cursor-pointer text-left flex-1 hover:ring-1 hover:ring-purple-500/30"
                                                                         title={isMarkdown ? `View ${art.fileName}` : `Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
                                                                     >
                                                                         <span className="text-lg">{isMarkdown ? '📝' : '📄'}</span>
@@ -300,7 +361,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                                 e.stopPropagation();
                                                                                 handleDownloadArtifact(art);
                                                                             }}
-                                                                            className="p-2 bg-gray-900/80 border border-gray-700 hover:border-green-500 hover:bg-green-900/20 rounded-lg transition-all group cursor-pointer"
+                                                                            className="p-2 bg-gray-900/80 border border-gray-700 hover:border-green-500 hover:bg-green-900/20 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 group cursor-pointer hover:ring-2 hover:ring-green-500/50"
                                                                             title={`Download ${art.fileName}`}
                                                                         >
                                                                             <svg className="w-4 h-4 text-gray-600 group-hover:text-green-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -355,7 +416,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => handleDownloadArtifact(viewingArtifact)}
-                                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95 hover:border-green-400 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600"
                                     title="Download this file"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -365,7 +426,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                 </button>
                                 <button
                                     onClick={() => setViewingArtifact(null)}
-                                    className="text-gray-500 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg"
+                                    className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-green-500/10 p-2 rounded-lg hover:scale-110 active:scale-95 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600"
                                 >
                                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

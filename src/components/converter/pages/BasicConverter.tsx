@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { parseChat } from '../../../services/converterService';
 import { exportService } from '../../../components/exports/services';
 import MetadataEditor from '../../../components/MetadataEditor';
-import { ArtifactManager } from '../../../components/ArtifactManager';
+import { ArtifactManager } from '../../../components/artifacts';
 import {
     ChatTheme,
     ChatStyle,
@@ -29,12 +29,12 @@ import { processArtifactUpload, processGlobalArtifactRemoval, processMessageArti
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
 import { ImportMethodGuide } from '../../../components/ImportMethodGuide';
 import { DocsModal } from '../../../components/DocsModal';
-import { ChatPreviewModal } from '../../../components/ChatPreviewModal';
+import { ChatPreviewModal } from '../../../archive/chats/components/ChatPreviewModal';
 import { RawPreviewModal } from '../../../components/RawPreviewModal';
 import { ConfigurationModal } from '../../../components/ConfigurationModal';
 import { MetadataModal } from '../../../components/MetadataModal';
 import { ReviewEditModal } from '../../../components/ReviewEditModal';
-import { ContentImportWizard } from '../../../components/ContentImportWizard';
+import { ContentImportWizard } from '../../../components/wizard';
 import { enrichMetadata } from '../../../utils/metadataEnricher';
 // Converter Components
 import {
@@ -99,7 +99,20 @@ const themeMap: Record<ChatTheme, ThemeClasses> = {
         codeBg: 'bg-gray-800',
         codeText: 'text-yellow-300',
     },
+    [ChatTheme.Claude]: {
+        htmlClass: 'dark',
+        bodyBg: 'bg-[#1a1a1a]',
+        bodyText: 'text-gray-100',
+        containerBg: 'bg-[#1a1a1a]', // Claude often has unified bg
+        titleText: 'text-orange-400',
+        promptBg: 'bg-gray-800/50',
+        responseBg: 'bg-[#1a1a1a]',
+        blockquoteBorder: 'border-orange-500/50',
+        codeBg: 'bg-gray-900',
+        codeText: 'text-orange-200',
+    },
 };
+
 
 
 const BasicConverter: React.FC = () => {
@@ -335,7 +348,7 @@ const BasicConverter: React.FC = () => {
         const contentToConvert = overrideContent ?? inputContent;
         const modeToUse = overrideMode ?? parserMode;
 
-        if (!contentToConvert.trim()) return;
+        if (!contentToConvert.trim() && modeToUse !== ParserMode.Blank) return;
 
         setIsConverting(true);
         setError(null);
@@ -593,6 +606,12 @@ const BasicConverter: React.FC = () => {
         }
         // Trigger immediate conversion
         handleConvert(content, mode, forceNewImport);
+
+        // If blank chat, auto-open the Review/Edit modal for manual entry
+        if (mode === ParserMode.Blank) {
+            setShowReviewEditModal(true);
+        }
+
         setShowImportWizard(false);
         setForceNewImport(false); // Reset
     };
@@ -1056,7 +1075,7 @@ const BasicConverter: React.FC = () => {
                                 </h2>
                                 <button
                                     onClick={() => setShowArtifactManager(false)}
-                                    className="text-gray-400 hover:text-white transition-colors bg-gray-700/50 hover:bg-gray-700 p-2 rounded-lg"
+                                    className="text-gray-400 hover:text-white transition-all hover:scale-110 active:scale-95 bg-gray-700/50 hover:bg-gray-700 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                 >
                                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1106,7 +1125,7 @@ const BasicConverter: React.FC = () => {
                             <div className="p-6 border-t border-gray-700 bg-gray-900/30 shrink-0 flex justify-end">
                                 <button
                                     onClick={() => setShowArtifactManager(false)}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-purple-500/20"
+                                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-400"
                                 >
                                     Done
                                 </button>
@@ -1214,6 +1233,7 @@ const BasicConverter: React.FC = () => {
                     onRemoveMessageArtifact={handleRemoveMessageArtifact}
                     onMessagesChange={handleMessagesUpdate}
                     onClose={() => setShowReviewEditModal(false)}
+                    initialEditing={parserMode === ParserMode.Blank}
                 />
             )}
         </div >
