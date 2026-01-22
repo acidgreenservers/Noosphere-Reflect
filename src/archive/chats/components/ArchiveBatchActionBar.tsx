@@ -7,6 +7,7 @@ export interface ArchiveBatchActionBarProps {
     selectedCount: number;
     onExport: () => void;
     onDelete: () => void;
+    onMove?: () => void;
     onClearSelection: () => void;
 }
 
@@ -14,6 +15,7 @@ export const ArchiveBatchActionBar: React.FC<ArchiveBatchActionBarProps> = ({
     selectedCount,
     onExport,
     onDelete,
+    onMove,
     onClearSelection
 }) => {
     if (selectedCount === 0) return null;
@@ -49,6 +51,21 @@ export const ArchiveBatchActionBar: React.FC<ArchiveBatchActionBarProps> = ({
                 </svg>
                 Delete
             </button>
+
+            {onMove && (
+                <>
+                    <div className="w-px h-4 bg-white/10 mx-1"></div>
+                    <button
+                        onClick={onMove}
+                        className="flex items-center gap-2 text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 px-3 py-1.5 rounded-lg transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Move
+                    </button>
+                </>
+            )}
 
             <button
                 onClick={onClearSelection}

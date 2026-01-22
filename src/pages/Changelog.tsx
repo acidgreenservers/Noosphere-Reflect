@@ -13,6 +13,21 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8.4',
+            date: 'Jan 22, 2026',
+            title: 'Folder Management System',
+            items: [
+                'Hierarchical Organization: Complete nested folder system for organizing chats, memories, and prompts with unlimited depth.',
+                'Cross-Archive Support: Unified folder system working seamlessly across Chat Archive, Memory Archive, and Prompt Archive.',
+                'Breadcrumb Navigation: Visual breadcrumb trail showing current folder path with clickable navigation back to parent folders.',
+                'Folder CRUD Operations: Create, rename, move, and delete folders with full persistence in IndexedDB.',
+                'Drag & Drop Organization: Intuitive selection and batch moving of items between folders.',
+                'Visual Folder Cards: Dedicated folder cards with distinct styling, action menus, and item count displays.',
+                'Move Selection Modal: Batch move multiple items to different folders with confirmation dialog and preview.',
+                'Database Schema Extension: Added folders object store with parent-child relationships and type-specific organization.',
+            ]
+        },
+        {
             version: 'v0.5.8.3',
             date: 'Jan 21, 2026',
             title: 'Full Modular Refactor & UI Refinement',

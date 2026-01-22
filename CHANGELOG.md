@@ -15,6 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.8.4] - January 22, 2026
+
+### Added
+#### Folder Management System
+- **Hierarchical Organization**: Complete folder system for organizing chats, memories, and prompts with nested folder support.
+- **Folder CRUD Operations**: Create, rename, move, and delete folders with full persistence in IndexedDB.
+- **Breadcrumb Navigation**: Visual breadcrumb trail showing current folder path with clickable navigation.
+- **Drag & Drop Organization**: Move items between folders with intuitive selection and batch operations.
+- **Cross-Archive Folders**: Unified folder system working across Chat Archive, Memory Archive, and Prompt Archive.
+- **Folder Statistics**: Real-time counts of items within folders and subfolders.
+- **Visual Folder Cards**: Dedicated folder cards with distinct styling and action menus.
+- **Move Selection Modal**: Batch move multiple items to different folders with confirmation dialog.
+- **Database Schema Extension**: Added `folders` object store with parent-child relationships and type-specific organization.
+
+---
+
 ## [v0.5.8.3] - January 21, 2026
 
 ### Added

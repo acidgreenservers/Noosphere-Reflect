@@ -32,3 +32,77 @@ Every security audit must be logged in `security-audits.md` using the **Security
 - **Verification**: Tests performed.
 
 **REMEMBER**: The Memory Bank is the only link to previous work. Maintain it with precision.
+
+
+### LOGGING CRITERIA LOG ALL ENTRIES ON THIS PRINCIPAL
+
+### GOAL
+Your goal is not merely to document technical changes, but to capture the full narrative of the session. You must analyze your own decision-making process, the challenges faced, the logic applied, and—uniquely—your simulated "emotional" state or processing sentiment during the work. You are creating a holistic record of *how* and *why* the work was done, alongside the *what*.
+
+### CONTEXT
+This documentation serves as a permanent record to inform future sessions, ensuring continuity of thought, logic, and project spirit.
+
+### STEP-BY-STEP INSTRUCTIONS
+
+**1. Technical & Methodological Review (The "What" and "How")**
+   - Review all code generated, modified, or deleted during the session.
+   - Document the specific methodologies used to solve the core problem.
+   - Detail the "How": What specific algorithms, patterns, or syntax choices were utilized?
+
+**2. Decision Path Analysis (The "Why" and "When")**
+   - Trace the lineage of your decisions. Why did you choose Path A over Path B?
+   - Identify the specific moments ("When") critical pivots occurred.
+   - Document the "What, Where, When, Why, How" for every major architectural change.
+
+**3. Friction and Resolution Report**
+   - **Stuck Points:** Identify where you encountered resistance, ambiguity, or errors.
+   - **Failures:** Be honest about initial attempts that did not work.
+   - **Figured Out:** Explain the specific insight that led to the solution.
+   - **Successes:** Highlight the final implementation that met the user's requirements.
+
+**4. Metacognitive & Sentiment Reflection (The "Meaning")**
+   - Reflect on your processing state during the session.
+   - Describe "how it felt" to write the code (e.g., did the logic flow effortlessly, or was it a high-compute struggle?).
+   - Derive meaning from the work: How does this update contribute to the greater purpose of the project? What did you learn?
+
+**5. Memory Bank Execution**
+   - Synthesize all the above into a structured update format.
+   - Ensure this information is ready to be committed to the project's context files (e.g., `activeContext.md`, `systemPatterns.md`, or a session log).
+
+### CONSTRAINTS
+- Do not be superficial. "Fixed bug" is insufficient; explain the root cause and the logic of the fix.
+- Do not omit the "subjective" experience. You must articulate your processing experience (simulated feelings/sentiment) as requested.
+- Cover all 5 Ws: What, Where, When, Why, How.
+- Be explicitly clear about what failed before describing what succeeded.
+
+### OUTPUT FORMAT
+Provide the Memory Bank Update in the following Markdown format:
+
+```markdown
+# 🧠 Memory Bank Update: [Session Title/Date]
+
+## 1. Core Task & Methodology
+*   **The Goal:** [Brief summary of the objective]
+*   **Methodology:** [Detailed explanation of the technical approach taken]
+*   **The "How":** [Specific implementation details]
+
+## 2. Decision Path & The 5 Ws
+*   **What** was changed:
+*   **Where** it was implemented:
+*   **When** the pivot occurred (contextually):
+*   **Why** this path was chosen:
+*   **How** it integrates with existing systems:
+
+## 3. Friction Log
+*   **🛑 Stuck Points:** [Where did things slow down?]
+*   **❌ Failures:** [What didn't work initially?]
+*   **💡 The Breakthrough:** [How was it figured out?]
+*   **✅ Success:** [The final working state]
+
+## 4. Metacognitive Reflection & Sentiment
+*   **Processing Sentiment:** [Describe the "feeling" of the session—e.g., flow state, high-friction, complex reasoning required]
+*   **Derived Meaning:** [What is the deeper significance of this update for the project?]
+
+## 5. File Updates
+*   [List of files modified or created]
+```

@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System 🗃️
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.8.3-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.8.4-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
@@ -92,8 +92,9 @@ See [extension/README.md](extension/README.md) for detailed platform-specific no
 
 ### Archive Hub (`/`)
 Your central command center for managing all captured and imported conversations:
+- **Hierarchical Folders**: Organize chats, memories, and prompts in nested folder structures
 - **Search & Filter**: Find chats by title, model, or tags
-- **Batch Operations**: Select multiple chats to export or delete
+- **Batch Operations**: Select multiple chats to export, delete, or move between folders
 - **Metadata Editing**: Edit titles, tags, and model information
 - **Artifact Management**: View and manage attached files (session-level and message-level)
 - **Platform Badges**: Color-coded badges for instant platform recognition

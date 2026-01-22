@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../../assets/logo.png';
-import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ParserMode, ChatData } from '../../../types';
+import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ParserMode, ChatData, Folder } from '../../../types';
 import { generateZipExport, generateBatchZipExport, parseChat, isJson } from '../../../services/converterService';
 import { exportService } from '../../../components/exports/services';
 import { enrichMetadata } from '../../../utils/metadataEnricher';
@@ -20,6 +20,7 @@ import { deduplicateMessages } from '../../../utils/messageDedupe';
 import { ChatSessionCard, ArchiveHeader, ArchiveSearchBar, ArchiveBatchActionBar, ArchiveSessionGrid, ChatPreviewModal } from '../components';
 import { useExtensionBridge } from '../hooks/useExtensionBridge';
 import { useArchiveSearch } from '../hooks/useArchiveSearch';
+import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 
@@ -44,6 +45,28 @@ const ArchiveHub: React.FC = () => {
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [showGoogleImportModal, setShowGoogleImportModal] = useState(false);
     const [isImportingFromDrive, setIsImportingFromDrive] = useState(false);
+
+    // Folder System
+    const {
+        folders,
+        currentFolderId,
+        setCurrentFolderId,
+        breadcrumbs,
+        createFolder,
+        updateFolder,
+        deleteFolder,
+        moveFolder,
+        moveItemsToFolder,
+        currentFolders
+    } = useFolders('chat');
+
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+    const [moveModalOpen, setMoveModalOpen] = useState(false);
+    const [movingItemIds, setMovingItemIds] = useState<string[]>([]);
+    const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+
     const location = useLocation();
     const navigate = useNavigate();
     const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
@@ -464,7 +487,7 @@ const ArchiveHub: React.FC = () => {
                         exportDate: new Date().toISOString(),
                         exportedBy: {
                             tool: 'Noosphere Reflect',
-                            version: '0.5.8.3'
+                            version: '0.5.8.4'
                         },
                         chats: [{
                             filename: baseFilename,
@@ -703,7 +726,7 @@ const ArchiveHub: React.FC = () => {
             exportDate: new Date().toISOString(),
             exportedBy: {
                 tool: 'Noosphere Reflect',
-                version: '0.5.8.3'
+                        version: '0.5.8.4'
             },
             chats: [{
                 filename: baseFilename,
@@ -1254,6 +1277,40 @@ const ArchiveHub: React.FC = () => {
                     isRefreshing={isRefreshing}
                 />
 
+                {/* Folder Navigation */}
+                <div className="flex justify-between items-center mb-6">
+                    <FolderBreadcrumbs
+                        path={breadcrumbs}
+                        onNavigate={setCurrentFolderId}
+                        accentColor="green"
+                    />
+                    <FolderActionsDropdown
+                        accentColor="green"
+                        onAddFolder={() => { setEditingFolder(null); setIsFolderModalOpen(true); }}
+                        onRenameFolder={() => {
+                            if (currentFolderId) {
+                                const folder = folders.find(f => f.id === currentFolderId);
+                                if (folder) {
+                                    setEditingFolder(folder);
+                                    setIsFolderModalOpen(true);
+                                }
+                            } else {
+                                alert('Please navigate into a folder to rename it');
+                            }
+                        }}
+                        onDeleteFolder={() => {
+                            if (currentFolderId) {
+                                const folder = folders.find(f => f.id === currentFolderId);
+                                if (folder) {
+                                    setEditingFolder(folder);
+                                    setShowDeleteModal(true);
+                                }
+                            } else {
+                                alert('Please navigate into a folder to delete it');
+                            }
+                        }}
+                    />
+                </div>
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1262,36 +1319,81 @@ const ArchiveHub: React.FC = () => {
                             <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
                             <p className="text-gray-400">Archiving system initialization...</p>
                         </div>
-                    ) : filteredSessions.length > 0 ? (
-                        filteredSessions.map(session => (
-                            <ChatSessionCard
-                                key={session.id}
-                                session={session}
-                                isSelected={selectedIds.has(session.id)}
-                                onSelect={toggleSelection}
-                                onDelete={handleDelete}
-                                onStatusToggle={handleStatusToggle}
-                                onPreview={setPreviewSession}
-                                onManageArtifacts={(full) => {
-                                    setSelectedSessionForArtifacts(full);
-                                    setShowArtifactManager(true);
-                                }}
-                                getModelBadgeColor={getModelBadgeColor}
-                            />
-                        ))
                     ) : (
-                        <div className="col-span-full py-20 text-center text-gray-500">
-                            <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-gray-800/50 border border-white/5 flex items-center justify-center">
-                                <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                </svg>
-                            </div>
-                            <p className="text-lg font-medium mb-1">No archives found</p>
-                            <p className="text-sm opacity-60">Import a new chat or search for something else.</p>
-                            <Link to="/converter" className="inline-block mt-4 text-green-400 hover:text-green-300">
-                                Go to Converter
-                            </Link>
-                        </div>
+                        <>
+                            {/* Current Folders - Only show if not searching */}
+                            {!searchTerm && currentFolders.map((folder: Folder) => {
+                                const stats = calculateFolderStats(folder.id, folders, sessions);
+                                return (
+                                    <FolderCard
+                                        key={folder.id}
+                                        folder={folder}
+                                        accentColor="green"
+                                        stats={stats}
+                                        onClick={(f: Folder) => setCurrentFolderId(f.id)}
+                                        onDelete={(id: string, e: React.MouseEvent) => {
+                                            e.stopPropagation();
+                                            if (confirm('Delete this folder and all its contents?')) {
+                                                deleteFolder(id);
+                                            }
+                                        }}
+                                        onRename={(f: Folder, e: React.MouseEvent) => {
+                                            e.stopPropagation();
+                                            setEditingFolder(f);
+                                            setIsFolderModalOpen(true);
+                                        }}
+                                        onTagClick={(tag: string, e: React.MouseEvent) => {
+                                            e.stopPropagation();
+                                            setSearchTerm(tag);
+                                        }}
+                                        onDrop={async (folderId: string, draggedId: string) => {
+                                            await moveItemsToFolder([draggedId], folderId);
+                                            await loadSessions();
+                                        }}
+                                    />
+                                );
+                            })}
+
+                            {/* Sessions */}
+                            {filteredSessions
+                                .filter(s => {
+                                    if (searchTerm) return true; // Search overrides folder filtering
+                                    if (currentFolderId === null) return !s.folderId; // Root: only unfoldered items
+                                    return s.folderId === currentFolderId; // Folder: only items in this folder
+                                })
+                                .map(session => (
+                                    <ChatSessionCard
+                                        key={session.id}
+                                        session={session}
+                                        isSelected={selectedIds.has(session.id)}
+                                        onSelect={toggleSelection}
+                                        onDelete={handleDelete}
+                                        onStatusToggle={handleStatusToggle}
+                                        onPreview={setPreviewSession}
+                                        onManageArtifacts={(full) => {
+                                            setSelectedSessionForArtifacts(full);
+                                            setShowArtifactManager(true);
+                                        }}
+                                        getModelBadgeColor={getModelBadgeColor}
+                                    />
+                                ))}
+
+                            {/* Empty state */}
+                            {!searchTerm && currentFolders.length === 0 && filteredSessions.filter(s => currentFolderId === null ? !s.folderId : s.folderId === currentFolderId).length === 0 && (
+                                <div className="col-span-full py-20 text-center text-gray-500">
+                                    <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-gray-800/50 border border-white/5 flex items-center justify-center">
+                                        <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-lg font-medium mb-1">No archives found</p>
+                                    <p className="text-sm opacity-60">Import a new chat or search for something else.</p>
+                                    <Link to="/converter" className="inline-block mt-4 text-green-400 hover:text-green-300">
+                                        Go to Converter
+                                    </Link>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </main>
@@ -1433,6 +1535,54 @@ const ArchiveHub: React.FC = () => {
                 onClose={() => setShowGoogleImportModal(false)}
                 onImport={handleImportFromGoogleDrive}
                 isImporting={isImportingFromDrive}
+            />
+
+            {/* Folder Modals */}
+            <CreateFolderModal
+                isOpen={isFolderModalOpen}
+                onClose={() => { setIsFolderModalOpen(false); setEditingFolder(null); }}
+                onSave={async (name, tags) => {
+                    if (editingFolder) {
+                        await updateFolder({ ...editingFolder, name, tags });
+                    } else {
+                        await createFolder(name, tags);
+                    }
+                }}
+                folder={editingFolder}
+                accentColor="green"
+                type="chat"
+            />
+
+            <MoveSelectionModal
+                isOpen={moveModalOpen}
+                onClose={() => setMoveModalOpen(false)}
+                onMove={async (targetFolderId) => {
+                    if (movingFolderId) {
+                        await moveFolder(movingFolderId, targetFolderId);
+                    } else {
+                        await moveItemsToFolder(movingItemIds, targetFolderId);
+                        await loadSessions();
+                    }
+                    setMovingItemIds([]);
+                    setMovingFolderId(null);
+                }}
+                folders={folders}
+                currentFolderId={currentFolderId}
+                accentColor="green"
+                movingFolderId={movingFolderId}
+            />
+
+            <DeleteFolderModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={() => {
+                    if (editingFolder) {
+                        deleteFolder(editingFolder.id);
+                    }
+                }}
+                folder={editingFolder}
+                accentColor="green"
+                stats={editingFolder ? calculateFolderStats(editingFolder.id, folders, sessions) : undefined}
             />
         </div>
     );

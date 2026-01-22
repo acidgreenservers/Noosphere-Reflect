@@ -57,9 +57,16 @@ export function ChatSessionCard({
 
     const artifactCount = session.metadata?.artifacts?.length || 0;
 
+    const handleDragStart = (e: React.DragEvent) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', session.id);
+    };
+
     return (
         <div
             onClick={handleCardClick}
+            draggable
+            onDragStart={handleDragStart}
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 block cursor-pointer
                 ${isSelected
                     ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20'

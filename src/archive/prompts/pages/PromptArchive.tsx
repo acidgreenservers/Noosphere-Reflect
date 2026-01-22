@@ -19,6 +19,8 @@ import { PromptPreviewModal } from '../components/PromptPreviewModal';
 import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
+import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
+import { Folder } from '../../../types';
 
 export default function PromptArchive() {
     const navigate = useNavigate();
@@ -36,6 +38,28 @@ export default function PromptArchive() {
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
+
+    // Folder State
+    const {
+        folders,
+        currentFolderId,
+        setCurrentFolderId,
+        breadcrumbs,
+        createFolder,
+        updateFolder,
+        deleteFolder,
+        moveFolder,
+        moveItemsToFolder,
+        currentFolders
+    } = useFolders('prompt');
+
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+    const [moveModalOpen, setMoveModalOpen] = useState(false);
+    const [movingItemIds, setMovingItemIds] = useState<string[]>([]);
+    const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+
     const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
 
     useEffect(() => {
@@ -208,6 +232,32 @@ export default function PromptArchive() {
         await loadPrompts();
     };
 
+    const handleBatchMove = () => {
+        if (selectedPrompts.size === 0) return;
+        setMovingItemIds(Array.from(selectedPrompts));
+        setMovingFolderId(null);
+        setMoveModalOpen(true);
+    };
+
+    const handleMoveConfirm = async (targetFolderId: string | null) => {
+        if (movingFolderId) {
+            await moveFolder(movingFolderId, targetFolderId);
+        } else if (movingItemIds.length > 0) {
+            await moveItemsToFolder(movingItemIds, targetFolderId);
+            setSelectedPrompts(new Set());
+        }
+        await loadPrompts();
+    };
+
+    const handleCreateFolder = async (name: string, tags: string[]) => {
+        if (editingFolder) {
+            await updateFolder({ ...editingFolder, name, tags });
+            setEditingFolder(null);
+        } else {
+            await createFolder(name, tags);
+        }
+    };
+
     const handleStatusToggle = async (prompt: Prompt, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -360,7 +410,89 @@ export default function PromptArchive() {
                         </div>
                     </div>
 
-                    <PromptList prompts={filteredPrompts} onEdit={handleEditStart} onDelete={handleDeletePrompt} onExport={handleExport} onStatusToggle={handleStatusToggle} onPreview={setPreviewPrompt} selectedPrompts={selectedPrompts} onToggleSelect={handleToggleSelect} />
+                    <div className="flex justify-between items-center mb-6">
+                        <FolderBreadcrumbs
+                            path={breadcrumbs}
+                            onNavigate={setCurrentFolderId}
+                            accentColor="blue"
+                        />
+                        <FolderActionsDropdown
+                            accentColor="blue"
+                            onAddFolder={() => { setEditingFolder(null); setIsFolderModalOpen(true); }}
+                            onRenameFolder={() => {
+                                if (currentFolderId) {
+                                    const folder = folders.find(f => f.id === currentFolderId);
+                                    if (folder) {
+                                        setEditingFolder(folder);
+                                        setIsFolderModalOpen(true);
+                                    }
+                                } else {
+                                    alert('Please navigate into a folder to rename it');
+                                }
+                            }}
+                            onDeleteFolder={() => {
+                                if (currentFolderId) {
+                                    const folder = folders.find(f => f.id === currentFolderId);
+                                    if (folder) {
+                                        setEditingFolder(folder);
+                                        setShowDeleteModal(true);
+                                    }
+                                } else {
+                                    alert('Please navigate into a folder to delete it');
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {/* Folders & Prompts Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        {!searchQuery && currentFolders.map((folder: Folder) => {
+                            const stats = calculateFolderStats(folder.id, folders, prompts);
+                            return (
+                                <FolderCard
+                                    key={folder.id}
+                                    folder={folder}
+                                    accentColor="blue"
+                                    stats={stats}
+                                    onClick={(f: Folder) => setCurrentFolderId(f.id)}
+                                    onDelete={(id: string, e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        if (confirm('Delete this folder and all its contents?')) {
+                                            deleteFolder(id);
+                                        }
+                                    }}
+                                    onRename={(f: Folder, e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        setEditingFolder(f);
+                                        setIsFolderModalOpen(true);
+                                    }}
+                                    onTagClick={(tag: string, e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        setSearchQuery(tag);
+                                    }}
+                                    onDrop={async (folderId: string, draggedId: string) => {
+                                        await moveItemsToFolder([draggedId], folderId);
+                                        await loadPrompts();
+                                    }}
+                                />
+                            );
+                        })}
+                    </div>
+
+                    <PromptList
+                        prompts={filteredPrompts.filter(p => {
+                            if (searchQuery) return true;
+                            if (currentFolderId === null) return !p.folderId;
+                            return p.folderId === currentFolderId;
+                        })}
+                        onEdit={handleEditStart}
+                        onDelete={handleDeletePrompt}
+                        onExport={handleExport}
+                        onStatusToggle={handleStatusToggle}
+                        onPreview={setPreviewPrompt}
+                        selectedPrompts={selectedPrompts}
+                        onToggleSelect={handleToggleSelect}
+                    />
                 </div>
 
                 {previewPrompt && (
@@ -375,6 +507,11 @@ export default function PromptArchive() {
                             Export <span className="text-xs">▼</span>
                         </button>
                         <div className="w-px h-4 bg-white/10 mx-1"></div>
+                        <button onClick={handleBatchMove} className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            Move
+                        </button>
+                        <div className="w-px h-4 bg-white/10 mx-1"></div>
                         <button onClick={handleBatchDelete} className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             Delete
@@ -387,6 +524,40 @@ export default function PromptArchive() {
 
                 <ExportDestinationModal isOpen={showExportDestination} onClose={() => setShowExportDestination(false)} onDestinationSelected={(d) => { setExportDestination(d); setShowExportDestination(false); setExportModalOpen(true); }} isExporting={isSendingToDrive} accentColor="blue" />
                 <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} onExport={handleBatchExport} selectedCount={selectedPrompts.size} hasArtifacts={false} exportFormat={exportFormat} setExportFormat={setExportFormat} exportPackage={exportPackage} setExportPackage={setExportPackage} accentColor="blue" exportDestination={exportDestination} onExportDrive={handleBatchExportToDrive} isExportingToDrive={isSendingToDrive} />
+
+                {/* Folder Modals */}
+                <CreateFolderModal
+                    isOpen={isFolderModalOpen}
+                    onClose={() => setIsFolderModalOpen(false)}
+                    onSave={handleCreateFolder}
+                    folder={editingFolder}
+                    accentColor="blue"
+                    type="prompt"
+                />
+
+
+                <MoveSelectionModal
+                    isOpen={moveModalOpen}
+                    onClose={() => setMoveModalOpen(false)}
+                    onMove={handleMoveConfirm}
+                    folders={folders}
+                    currentFolderId={currentFolderId}
+                    accentColor="blue"
+                    movingFolderId={movingFolderId}
+                />
+
+                <DeleteFolderModal
+                    isOpen={showDeleteModal}
+                    onClose={() => setShowDeleteModal(false)}
+                    onConfirm={() => {
+                        if (editingFolder) {
+                            deleteFolder(editingFolder.id);
+                        }
+                    }}
+                    folder={editingFolder}
+                    accentColor="blue"
+                    stats={editingFolder ? calculateFolderStats(editingFolder.id, folders, prompts) : undefined}
+                />
             </div>
         </div>
     );

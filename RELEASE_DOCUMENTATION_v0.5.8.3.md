@@ -1,55 +1,52 @@
-# Release Documentation v0.5.8.3
-**Release Date**: January 21, 2026
+# Release Documentation v0.5.8.4
+**Release Date**: January 22, 2026
 **Status**: Stable
 
 ## 🚀 Overview
-Version 0.5.8.3 focuses on UI refinement, functional flexibility, and architectural finalization. This release introduces the **"Create Blank Chat"** feature for manual entry, implements a professional **Seamless Logo Integration** via CSS masking, and deploys a comprehensive "Scale & Glow" tactile feedback system across the entire application.
+Version 0.5.8.4 introduces a comprehensive **Folder Management System** that enables hierarchical organization of chats, memories, and prompts. This release adds nested folder structures, breadcrumb navigation, drag-and-drop organization, and cross-archive folder support with full CRUD operations and persistent storage.
 
 ## ✨ New Features & Improvements
 
-### 1. Create Blank Chat (New!)
-- **Manual Conversation Entry**: Added a new entry point in the Content Import Wizard for creating chats from scratch.
-- **Auto-Initialization**: Initiating a blank chat automatically skip redundant steps and initializes the Review & Edit mode.
-- **Contextual Defaults**: Sets metadata to "Manual Entry" and defaults to the Noosphere Standard parser for clean manual curation.
+### 1. Folder Management System (New!)
+- **Hierarchical Organization**: Complete nested folder system for organizing chats, memories, and prompts with unlimited depth.
+- **Cross-Archive Support**: Unified folder system working seamlessly across Chat Archive, Memory Archive, and Prompt Archive.
+- **Breadcrumb Navigation**: Visual breadcrumb trail showing current folder path with clickable navigation back to parent folders.
+- **Folder CRUD Operations**: Create, rename, move, and delete folders with full persistence in IndexedDB.
+- **Drag & Drop Organization**: Intuitive selection and batch moving of items between folders.
+- **Visual Folder Cards**: Dedicated folder cards with distinct styling, action menus, and item count displays.
+- **Move Selection Modal**: Batch move multiple items to different folders with confirmation dialog and preview.
+- **Database Schema Extension**: Added `folders` object store with parent-child relationships and type-specific organization.
 
-### 2. Seamless Logo Integration (New!)
-- **CSS Luminance Masking**: Replaced old `mix-blend-screen` hacks with a professional CSS mask system (`.logo-mask`).
-- **High Fidelity**: Ensures the brand logo maintains perfect color accuracy while achieving 100% transparency on its previously black background.
-- **Global Deployment**: Synchronized across all headers (Home, Hub, Converter, Memories, Prompts).
+### 2. Enhanced Archive Organization
+- **Folder Statistics**: Real-time counts of items within folders and subfolders.
+- **Smart Folder Filtering**: Folders are filtered by archive type (chats, memories, prompts) for clean organization.
+- **Nested Folder Support**: Create subfolders within folders for granular organization.
+- **Folder Path Display**: Full path visualization in folder cards and navigation elements.
 
-### 3. Global "Scale & Glow" UI System (New!)
-- **Comprehensive Tactile Feedback**: Implemented `hover:scale-110` (utility) and `hover:scale-105` (navigation) across all interactive elements.
-- **Dynamic Glow Effects**: Added theme-aware hover backgrounds and glow effects for action types:
-  - Green glow for Sync operations
-  - Purple glow for Memory operations
-  - Blue glow for Prompt operations
-- **Active State Feedback**: Added `active:scale-95` for satisfying button press animations.
-- **Standardized Accessibility**: Enforced consistent focus rings (`focus:ring-2`) and high-contrast active states.
-
-### 2. Archive Hub Orchestration Finalization
-- **Modular Component Integration**: Completed integration of `ArchiveHeader`, `ArchiveSearchBar`, and `ArchiveBatchActionBar` into the main `ArchiveHub.tsx` orchestrator.
-- **Cross-Domain UI Parity**: Synchronized tactile feedback standards across Archive Hub, Basic Converter, and all Preview Modals.
-- **Component Domain Guarding**: Finalized relocation of core components to domain-driven directories (`src/archive/chats`, `src/components/converter`).
-
-### 3. Preview Modal Refinement
-- **Unified Title Editing**: Consistent title editing and metadata persistence across Chat, Memory, and Prompt previewers.
-- **Enhanced Modal Consistency**: All preview modals now follow the established ChatPreviewModal pattern with collapsible sidebars.
+### 3. UI/UX Improvements
+- **Consistent Folder Theming**: Folder cards use neutral gray theming to distinguish from content cards.
+- **Action Menu Integration**: Folder-specific actions (Create Subfolder, Rename, Move, Delete) in dropdown menus.
+- **Loading States**: Proper loading indicators during folder operations and data fetching.
+- **Error Handling**: User-friendly error messages for folder operations with recovery options.
 
 ## 🛠️ Technical Details
-- **Build System**: Clean build with Vite 6.2.0 and TypeScript 5.8.2.
-- **UI Performance**: Optimized hover animations with `duration-300` transitions.
-- **Accessibility Compliance**: WCAG-compliant focus management and keyboard navigation.
-- **Cross-Browser Compatibility**: Consistent behavior across Chrome, Firefox, and Safari.
+- **Database Migration**: Automatic IndexedDB schema upgrade with backward compatibility.
+- **React Hooks Architecture**: Custom `useFolders` hook managing folder state and operations.
+- **Type Safety**: Full TypeScript interfaces for Folder entities and operations.
+- **Performance Optimization**: Efficient folder queries with indexed database lookups.
+- **Cross-Component Communication**: Seamless integration between folder components and archive views.
 
 ## 📦 Migration Notes
-- **No Database Changes**: Fully compatible with v0.5.8.2 schema (IndexedDB v6).
-- **No User Action Required**: Update is seamless with enhanced visual feedback.
-- **Backward Compatibility**: All existing functionality preserved with improved UX.
+- **Database Upgrade**: Automatic migration to IndexedDB v7 with new `folders` object store.
+- **Zero Data Loss**: Existing chats, memories, and prompts remain unchanged.
+- **Backward Compatibility**: All existing functionality preserved with new folder capabilities.
+- **Optional Adoption**: Users can continue using flat organization or adopt folders gradually.
 
 ## 🎨 Visual Enhancements
-- **Premium Tactile Experience**: Every interactive element now provides satisfying visual feedback.
-- **Consistent Theme Application**: Glow effects match the established color scheme (Green/Purple/Blue archives).
-- **Professional Polish**: Enhanced user experience through thoughtful animation and interaction design.
+- **Clean Folder Design**: Neutral gray cards with folder icons and item counts.
+- **Breadcrumb Styling**: Subtle navigation elements with hover states and clear hierarchy.
+- **Consistent Interactions**: Folder operations follow established UI patterns.
+- **Responsive Layout**: Folder grids adapt to different screen sizes and content densities.
 
 ---
 *Preserving Meaning Through Memory.*

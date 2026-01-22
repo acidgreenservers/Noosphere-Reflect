@@ -40,9 +40,16 @@ export default function PromptCard({ prompt, onEdit, onDelete, onExport, onStatu
         }
     };
 
+    const handleDragStart = (e: React.DragEvent) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', prompt.id);
+    };
+
     return (
         <div
             onClick={() => onPreview(prompt)}
+            draggable
+            onDragStart={handleDragStart}
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 cursor-pointer
             ${isSelected
                     ? 'bg-blue-900/20 border-blue-500/50 shadow-lg shadow-blue-900/10 shadow-blue-500/20'

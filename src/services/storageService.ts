@@ -1,15 +1,16 @@
-import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme } from '../types';
+import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme, Folder, ArchiveType } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 import { validateImportData } from '../utils/importValidator';
 import { validateReflectFile } from '../utils/reflectValidator';
 import { parseChat } from './converterService';
 
 const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const STORE_NAME = 'sessions';
 const SETTINGS_STORE_NAME = 'settings';
 const MEMORY_STORE_NAME = 'memories';
 const PROMPT_STORE_NAME = 'prompts';
+const FOLDERS_STORE_NAME = 'folders';
 
 class StorageService {
     private db: IDBDatabase | null = null;
@@ -107,6 +108,33 @@ class StorageService {
                     promptStore.createIndex('createdAt', 'createdAt', { unique: false });
                     promptStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
                     console.log('✅ Created prompts object store with indexes');
+                }
+
+                // v6 → v7: Add folders object store and folderId indexes
+                if (oldVersion < 7) {
+                    if (!db.objectStoreNames.contains(FOLDERS_STORE_NAME)) {
+                        const folderStore = db.createObjectStore(FOLDERS_STORE_NAME, { keyPath: 'id' });
+                        folderStore.createIndex('type', 'type', { unique: false });
+                        folderStore.createIndex('parentId', 'parentId', { unique: false });
+                        console.log('✅ Created folders object store with indexes');
+                    }
+
+                    // Add folderId indexes to existing stores
+                    const sessionStore = transaction.objectStore(STORE_NAME);
+                    if (!sessionStore.indexNames.contains('folderId')) {
+                        sessionStore.createIndex('folderId', 'folderId', { unique: false });
+                    }
+
+                    const memoryStore = transaction.objectStore(MEMORY_STORE_NAME);
+                    if (!memoryStore.indexNames.contains('folderId')) {
+                        memoryStore.createIndex('folderId', 'folderId', { unique: false });
+                    }
+
+                    const promptStore = transaction.objectStore(PROMPT_STORE_NAME);
+                    if (!promptStore.indexNames.contains('folderId')) {
+                        promptStore.createIndex('folderId', 'folderId', { unique: false });
+                    }
+                    console.log('✅ Added folderId indexes to sessions, memories, and prompts');
                 }
             };
 
@@ -923,6 +951,137 @@ class StorageService {
 
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
+        });
+    }
+
+    // ========== FOLDER METHODS ==========
+
+    async saveFolder(folder: Folder): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(FOLDERS_STORE_NAME);
+            const request = store.put(folder);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getFoldersByType(type: ArchiveType): Promise<Folder[]> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(FOLDERS_STORE_NAME);
+            const index = store.index('type');
+            const request = index.getAll(type);
+
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async deleteFolder(id: string): Promise<void> {
+        const db = await this.getDB();
+
+        // First, get the folder to know its type
+        const folder = await this.getFolderById(id);
+        if (!folder) return;
+
+        // Get all child folders recursively
+        const allFolders = await this.getFoldersByType(folder.type);
+        const getDescendantIds = (parentId: string): string[] => {
+            const children = allFolders.filter(f => f.parentId === parentId);
+            return children.reduce(
+                (acc, child) => [...acc, child.id, ...getDescendantIds(child.id)],
+                [] as string[]
+            );
+        };
+        const descendantIds = [id, ...getDescendantIds(id)];
+
+        // Move items in these folders back to root
+        await this.moveItemsFromFoldersToRoot(descendantIds, folder.type);
+
+        // Delete all folders
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(FOLDERS_STORE_NAME);
+
+            descendantIds.forEach(folderId => store.delete(folderId));
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+    }
+
+    private async getFolderById(id: string): Promise<Folder | null> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(FOLDERS_STORE_NAME);
+            const request = store.get(id);
+
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    private async moveItemsFromFoldersToRoot(folderIds: string[], type: ArchiveType): Promise<void> {
+        const db = await this.getDB();
+        const storeName = type === 'chat' ? STORE_NAME : type === 'memory' ? MEMORY_STORE_NAME : PROMPT_STORE_NAME;
+
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.openCursor();
+
+            request.onsuccess = (event) => {
+                const cursor = (event.target as IDBRequest).result;
+                if (cursor) {
+                    const item = cursor.value;
+                    if (item.folderId && folderIds.includes(item.folderId)) {
+                        item.folderId = null;
+                        cursor.update(item);
+                    }
+                    cursor.continue();
+                }
+            };
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+    }
+
+    async moveFolder(folderId: string, targetParentId: string | null): Promise<void> {
+        const folder = await this.getFolderById(folderId);
+        if (!folder) return;
+
+        folder.parentId = targetParentId;
+        folder.updatedAt = new Date().toISOString();
+        await this.saveFolder(folder);
+    }
+
+    async moveItemsToFolder(itemIds: string[], targetFolderId: string | null, type: ArchiveType): Promise<void> {
+        const db = await this.getDB();
+        const storeName = type === 'chat' ? STORE_NAME : type === 'memory' ? MEMORY_STORE_NAME : PROMPT_STORE_NAME;
+
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+
+            itemIds.forEach(id => {
+                const getRequest = store.get(id);
+                getRequest.onsuccess = () => {
+                    const item = getRequest.result;
+                    if (item) {
+                        item.folderId = targetFolderId;
+                        store.put(item);
+                    }
+                };
+            });
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
         });
     }
 }

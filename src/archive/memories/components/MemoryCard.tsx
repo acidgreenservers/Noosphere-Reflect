@@ -41,9 +41,16 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
         }
     };
 
+    const handleDragStart = (e: React.DragEvent) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', memory.id);
+    };
+
     return (
         <div
             onClick={() => onPreview(memory)}
+            draggable
+            onDragStart={handleDragStart}
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 cursor-pointer
             ${isSelected
                     ? 'bg-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20'

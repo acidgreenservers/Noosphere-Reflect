@@ -122,6 +122,7 @@ export interface SavedChatSession {
   metadata?: ChatMetadata; // Explicit metadata for easier hub access
   normalizedTitle?: string; // Normalized title for duplicate detection indexing
   exportStatus?: 'exported' | 'not_exported'; // Mirror of metadata.exportStatus
+  folderId?: string | null; // Folder organization
 }
 
 export type SavedChatSessionMetadata = Omit<SavedChatSession, 'inputContent' | 'chatData'>;
@@ -154,6 +155,7 @@ export interface Memory {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: MemoryMetadata;
+  folderId?: string | null;      // Folder organization
 }
 
 // Prompt Archive Types
@@ -172,6 +174,7 @@ export interface Prompt {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: PromptMetadata;
+  folderId?: string | null;      // Folder organization
 }
 
 // Search Filters
@@ -179,4 +182,18 @@ export interface SearchFilters {
   messageTypes?: ('prompt' | 'response' | 'thought')[];
   dateRange?: { start: number; end: number };
   models?: string[];
+}
+
+// Archive Types for Foldering System
+export type ArchiveType = 'chat' | 'memory' | 'prompt';
+
+// Folder System Types
+export interface Folder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  type: ArchiveType;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
 }
