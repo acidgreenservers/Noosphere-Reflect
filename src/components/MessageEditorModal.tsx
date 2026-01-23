@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from '../types';
+import { renderMarkdownToHtml } from '../utils/markdownUtils';
 
 interface MessageEditorModalProps {
     message: ChatMessage;
@@ -94,48 +95,9 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         }
     };
 
-    // Simple markdown-to-HTML preview (basic formatting)
+    // Use centralized markdown-to-HTML utility
     const renderPreview = (text: string) => {
-        let html = text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br/>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/`([^`]+)`/g, '<code class="bg-gray-800 px-1 rounded text-green-400">$1</code>')
-            .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-lg my-2"/>')
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>');
-
-        // Process thoughts
-        html = html.replace(/&lt;thought&gt;([\s\S]*?)&lt;\/thought&gt;/g, (match, content) => {
-            return `
-                <details class="markdown-thought-block my-2 border border-purple-500/30 rounded-lg overflow-hidden bg-purple-500/5">
-                    <summary class="markdown-thought-summary cursor-pointer p-2 bg-purple-900/20 text-purple-200 text-xs font-bold uppercase tracking-wider">
-                        Thought process
-                    </summary>
-                    <div class="p-3 text-gray-300 text-xs">
-                        ${content.trim()}
-                    </div>
-                </details>
-            `;
-        });
-
-        // Process collapsible
-        html = html.replace(/&lt;collapsible&gt;([\s\S]*?)&lt;\/collapsible&gt;/g, (match, content) => {
-            return `
-                <details class="markdown-collapsible-block my-2 border border-purple-500/30 rounded-lg overflow-hidden bg-purple-500/5">
-                    <summary class="markdown-collapsible-summary cursor-pointer p-2 bg-purple-900/20 text-purple-200 text-xs font-bold uppercase tracking-wider">
-                        Collapsible Section
-                    </summary>
-                    <div class="p-3 text-gray-300 text-xs">
-                        ${content.trim()}
-                    </div>
-                </details>
-            `;
-        });
-
-        return html;
+        return renderMarkdownToHtml(text);
     };
 
     if (!isOpen) return null;

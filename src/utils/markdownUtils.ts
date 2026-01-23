@@ -55,28 +55,30 @@ export function renderMarkdownToHtml(text: string, onArtifactClick?: (artifactId
         .replace(/\n/g, '<br/>'); // Line breaks
 
     // 6. Thought & Collapsible Support (Handling the escaped tags <thought> and <collapsible>)
-    // Process thoughts
-    html = html.replace(/<thought>([\s\S]*?)<\/thought>/g, (match, content) => {
+    // Process thoughts - Handle both raw and escaped tags for robustness
+    html = html.replace(/(?:<thought>|&lt;thought&gt;)([\s\S]*?)(?:<\/thought>|&lt;\/thought&gt;)/g, (match, content) => {
         return `
-            <details class="markdown-thought-block my-4">
-                <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
-                    Thought process: <span class="text-xs ml-2 opacity-70">(Click to expand)</span>
+            <details class="markdown-thought-block my-4 group/thought">
+                <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold group-hover/thought:text-purple-300">
+                    <span class="flex items-center gap-2">🧠 Thought Process</span>
+                    <span class="text-xs opacity-70 group-open:hidden uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded">Click to expand</span>
                 </summary>
-                <div class="markdown-thought-content p-3 border rounded-b-md">
+                <div class="markdown-thought-content p-4 bg-gray-950/20 backdrop-blur-sm border-t border-purple-500/20">
                     ${content.trim()}
                 </div>
             </details>
         `;
     });
 
-    // Process collapsible
-    html = html.replace(/<collapsible>([\s\S]*?)<\/collapsible>/g, (match, content) => {
+    // Process collapsible - Handle both raw and escaped tags for robustness
+    html = html.replace(/(?:<collapsible>|&lt;collapsible&gt;)([\s\S]*?)(?:<\/collapsible>|&lt;\/collapsible&gt;)/g, (match, content) => {
         return `
-            <details class="markdown-collapsible-block my-4">
-                <summary class="markdown-collapsible-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
-                    Collapsible Section: <span class="text-xs ml-2 opacity-70">(Click to expand)</span>
+            <details class="markdown-collapsible-block my-4 group/collapsible">
+                <summary class="markdown-collapsible-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold group-hover/collapsible:text-purple-300">
+                    <span class="flex items-center gap-2">📂 Detailed View</span>
+                    <span class="text-xs opacity-70 group-open:hidden uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded">Click to expand</span>
                 </summary>
-                <div class="markdown-thought-content p-3 border rounded-b-md">
+                <div class="markdown-thought-content p-4 bg-gray-950/20 backdrop-blur-sm border-t border-purple-500/20">
                     ${content.trim()}
                 </div>
             </details>

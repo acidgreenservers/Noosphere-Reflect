@@ -40,7 +40,7 @@
       messageSelector: '[data-test-render-count]',
       userSelector: '[data-testid="user-message"]',
       aiSelector: '.font-claude-response',
-      expandSelector: '.border-border-300.rounded-lg button',
+      expandSelector: '[data-test-render-count] .border-border-300.rounded-lg button',
       expandText: null, // Always try to expand
       color: '#D97757'
     },

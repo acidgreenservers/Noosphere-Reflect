@@ -1,9 +1,97 @@
 # Active Context
 
+### 🟢 FIXED: Message Insertion Logic in Review & Edit Modal (January 22, 2026)
+
+#### Problem
+Users reported that the "Insert User/AI Message" (Above/Below) buttons in the `ReviewEditModal` were unresponsive. 
+
+#### Root Cause
+Two critical architectural flaws in the modal:
+1.  **State Smearing**: The `dropdownOpen` state was a simple string, causing *all* messages to react to a single toggle.
+2.  **Ref Collision**: The `dropdownRef` used for "click outside" logic was trapped in a `.map` loop, meaning it only ever tracked the final message in the chat. Clicking any other message triggered a "click outside" event for the last message, closing the dropdown before the insertion click could be registered.
+
+#### Solution
+- **State Partitioning**: Refactored `dropdownOpen` to an object `{ index, type }`, ensuring isolated dropdown control.
+- **Improved Containment**: Switched from a brittle `useRef` array to a delegation-based `target.closest` check for click-outside detection.
+- **Logic Verification**: Confirmed `splice` indices correctly handle insertions at the start, middle, and end (index -1) of the conversation.
+
+### 🟢 REFINED: Claude Extension Capture (January 23, 2026)
+
+#### Problem
+The Claude extension was clicking global UI elements (like the "Documents" button) because the `expandSelector` was too broad.
+
+#### Solution
+Narrowed the `expandSelector` in `ui-injector.js` from `.border-border-300.rounded-lg button` to `[data-test-render-count] .border-border-300.rounded-lg button`. This ensures the auto-expand logic only targets buttons within message containers, leaving global navigation and project buttons untouched.
+
+---
+
+### 1. Core Task & Methodology
+*   **The Goal:** Finalize the "Smart Import Merge" verification and resolve a critical aesthetic/functional bug where `<collapsible>` and `<thought>` sections were failing to render in the chat preview and editor.
+*   **Methodology:** 
+    *   **Verification:** Trace-audited the `deduplicateMessages` logic across four major ingestion paths: Google Drive, Extension Bridge, Manual Import, and DB Smart Resume.
+    *   **Unification:** Centralized the rendering engine by removing localized markdown logic in `MessageEditorModal` and piping all previews through the global `renderMarkdownToHtml` utility.
+    *   **Regex Robustness:** Refactored the markdown parser to handle both raw (`<tag>`) and security-escaped (`&lt;tag&gt;`) markers.
+    *   **Aesthetic Engineering:** Utilized Tailwind `@apply` patterns to implement a multi-stop "Purple Waterfall" gradient system with backdrop blurs and slide-down animations.
+
+*   **The "How":** 
+    *   Updated `markdownUtils.ts` with non-capturing groups `(?:...)` in regex to match varied tag formats.
+    *   Replaced 50+ lines of redundant rendering code in `MessageEditorModal.tsx` with a single call to the global utility.
+    *   Engineered `index.css` with `group-hover` and `group-open` states for synchronized visual feedback on collapsible headers.
+
+### 2. Decision Path & The 5 Ws
+*   **What** was changed: The centralized markdown utility, global CSS definitions for collapsibles, and the internal preview logic of the Message Editor.
+*   **Where** it was implemented: `src/utils/markdownUtils.ts`, `src/index.css`, `src/components/MessageEditorModal.tsx`.
+*   **When** the pivot occurred: Mid-session when I realized the "missing" collapsibles in the preview weren't a styling issue, but a regex failure caused by the security layer escaping tags before the parser reached them.
+*   **Why** this path was chosen: Fixing it in the utility (rather than the modals) ensured that *any* future modal or reader mode (like the Basic Converter's) would automatically benefit from the fix without further code duplication.
+*   **How** it integrates: It completes the "Strict Noosphere Standard" for native exports, ensuring that saved thoughts and complex sections are preserved with high fidelity.
+
+### 3. Friction Log
+*   **🛑 Stuck Points:** I encountered several "target content not found" errors while attempting to overwrite large blocks in `index.css`. The CSS file structure was slightly different than my initial view predicted due to previous granular edits.
+*   **❌ Failures:** My first attempt at fixing the collapsible rendering only looked for `<collapsible>`. This failed because the `escapeHtml` function (which runs first for safety) had already turned them into `&lt;collapsible&gt;`.
+*   **💡 The Breakthrough:** Realizing that robustness requires supporting *all* states of the tag (escaped and unescaped). I adjusted the regex to be "tag-state agnostic."
+*   **✅ Success:** Achieved 1:1 visual parity between the Editor, the Hub Preview, and the Converter Reader Mode, all driven by a single CSS source-of-truth.
+
+### 4. Metacognitive Reflection & Sentiment
+*   **Processing Sentiment:** This session felt like **"High-Precision Calibration."** The logic for message deduplication was a high-compute verification task (mentally mapping data flows), while the CSS/Regex work felt more like a "flow state" artistic refinement. There was a brief moment of frustration with the CSS tool-calls, but it served as a reminder to respect the specificity of the local environment.
+*   **Derived Meaning:** This update marks the transition of *Noosphere Reflect* from a functional tool to a premium experience. By unifying the rendering, we've eliminated "UI Drift"—the subtle differences in look-and-feel that often plague complex apps. It reinforces the project's spirit of high-fidelity archival.
+
+### 5. File Updates
+*   **Modified:** `src/utils/markdownUtils.ts` (Regex fix for escaped tags)
+*   **Modified:** `src/index.css` (Purple Waterfall styling)
+*   **Modified:** `src/components/MessageEditorModal.tsx` (Logic unification & imports)
+*   **Updated Artifacts:** `task.md`, `implementation_plan.md`, `walkthrough.md`.
+
+---
+
+## ✅ COMPLETED: High-Fidelity Artifact Integration in Chat Preview (January 22, 2026)
+
+### Problem
+Artifacts in the `ChatPreviewModal` (Archive Hub) were inconsistent with the Basic Converter's "Review" stage. They used generic emojis, lacked message-level hydration (often making attachments invisible in the conversation stream), and used a simplified internal viewer instead of the standardized app-wide component.
+
+### Solution
+Upgraded the `ChatPreviewModal` to a "Converter-Class" artifact experience.
+1.  **Runtime Hydration**: Implemented a `useMemo` orchestrator that links metadata-stored artifacts to their respective messages at runtime, enabling sidebar badges and message-level lists for all sessions.
+2.  **Rich Visual Language**: Integrated the global `getFileIcon` utility to display context-aware icons (🖼️, 🎥, 💻, 📝, 📄) instead of generic hardcoded emojis.
+3.  **Standardized Interaction**: Switched to the app-wide `ArtifactViewerModal` for consistent markdown rendering and robust download handling.
+
+### Implementation Details
+- **`ChatPreviewModal.tsx`**:
+    - Added `hydratedMessages` memoization to map session metadata artifacts to message indices.
+    - Replaced hardcoded icon logic with `getFileIcon(art.mimeType)`.
+    - Integrated `ArtifactViewerModal` to handle artifact viewing and downloads.
+    - Improved sidebar logic to correctly detect and badge message-linked artifacts.
+- **Type Safety**: Ensured `ConversationArtifact` and other core types are explicitly imported and used for better code reliability.
+
+### Verification
+✅ **Hydration**: Artifacts now correctly appear in the message stream based on metadata indices.
+✅ **Icons**: Verified rich icon display for 5+ file categories.
+✅ **Interactivity**: One-click download and high-quality Markdown viewing verified.
+✅ **Sidebar**: Jump-list icons (📎) accurately reflect message attachments.
+
 ## 📅 Current Session
-- **Date**: 2026-01-20
-- **Goal**: Restore and integrate the Unified Foldering System across all archives with advanced stats and consistent UI.
-- **Status**: ✅ COMPLETED - Folders restored, integrated into Archive Hub, and UI consistency fixed across all domains.
+- **Date**: 2026-01-22
+- **Goal**: Harmonize artifact experience in Archive Hub to match Basic Converter (rich icons, hydration, full interactivity).
+- **Status**: ✅ COMPLETED - Artifact icons (getFileIcon), hydration logic, and viewer integration finalized.
 
 ## ✅ COMPLETED: Unified Foldering System & Archive Hub Restoration (January 22, 2026)
 
@@ -1228,3 +1316,42 @@ Then when method selected, show filtered artifacts.
 4. **Build Verification**: Run `npm run build` to confirm TypeScript compilation succeeds
 5. **Artifact Insertion UX**: Implement two-step process when ready
 6. **Completed**: Google Drive Import Deduplication (moved to Done)
+
+---
+
+# 🧠 Memory Bank Update: January 22, 2026 - Quick Add Modals & UI Refinement
+
+## 1. Core Task & Methodology
+*   **The Goal:** Move the Memory and Prompt entry forms into dedicated popup overlay modals and add "pillbox" trigger buttons to create a cleaner, more focused archive interface.
+*   **Methodology:** Followed the "Page Orchestrator" pattern by extracting inline input components into new modal wrappers (`MemoryAddModal`, `PromptAddModal`) and updating the page state to manage modal visibility.
+*   **The "How":** 
+    - Created `MemoryAddModal.tsx` and `PromptAddModal.tsx` using absolute positioning, glassmorphism, and Tailwind `animate-in` transitions.
+    - Integrated them into `MemoryArchive.tsx` and `PromptArchive.tsx` using state-driven rendering (`isAddModalOpen`).
+    - Implemented a "Zero Scroll" design system that uses viewport-relative units (`vh`, `vw`) and specific padding (`p-[25px]`) to ensure the form fits perfectly on most displays.
+
+## 2. Decision Path & The 5 Ws
+*   **What** was changed: Inline `MemoryInput` and `PromptInput` removed from pages; replaced by `MemoryAddModal` and `PromptAddModal`. Added pillbox "Add New" buttons.
+*   **Where** it was implemented: `src/archive/memories/` and `src/archive/prompts/` domains.
+*   **When** the pivot occurred: After initially implementing `max-w-4xl` modals, the user requested an "edge-to-edge" feel. This led to a series of responsive refinements (`95vw`, then `96vh`, finally `p-[25px]`) to maximize workspace while maintaining usability.
+*   **Why** this path was chosen: Popup modals provide a cleaner default view, allowing the user to focus on their saved content immediately without the visual noise of a permanent entry form.
+*   **How** it integrates with existing systems: Uses the existing `MemoryInput` and `PromptInput` components as internals for the modals, maintaining functional parity and reuse.
+
+## 3. Friction Log
+*   **🛑 Stuck Points:** Removing imports accidentally during the `MemoryArchive.tsx` refactor caused several "Cannot find name" errors.
+*   **❌ Failures:** Initial "edge-to-edge" scaling (95vw/96vh) pushed the "Save" and "Cancel" buttons off-screen, requiring a vertical scroll within the modal.
+*   **💡 The Breakthrough:** Realizing that a fixed padding on the overlay (`p-[25px]`) combined with `max-h-full` on the modal and a controlled textarea height (`h-[55vh]`) creates a "perfect fit" for the form.
+*   **✅ Success:** A "Zero Scroll" interface that maximizes working surface area while keeping all controls visible.
+
+## 4. Metacognitive Reflection & Sentiment
+*   **Processing Sentiment:** Very high flow state. Iterating on the "surface area" with the user felt incredibly productive—a collaborative "sculpting" of the UI. The refinement loop (bigger -> bigger -> edge -> 25px gap) was a great example of agent-user synergy.
+*   **Derived Meaning:** This update reinforces the "Noosphere Standard" of high-fidelity, premium UI. It turns purely functional archives into immersive "workspaces" for capturing thought.
+
+## 5. File Updates
+*   `src/archive/memories/components/MemoryAddModal.tsx` (NEW)
+*   `src/archive/prompts/components/PromptAddModal.tsx` (NEW)
+*   `src/archive/memories/pages/MemoryArchive.tsx` (MODIFIED)
+*   `src/archive/prompts/pages/PromptArchive.tsx` (MODIFIED)
+*   `src/archive/memories/components/MemoryInput.tsx` (MODIFIED - height adjustment)
+*   `src/archive/prompts/components/PromptInput.tsx` (MODIFIED - height adjustment)
+*   `agents/memory-bank/activeContext.md` (MODIFIED)
+*   `agents/memory-bank/progress.md` (MODIFIED)

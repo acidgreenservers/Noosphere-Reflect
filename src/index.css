@@ -57,18 +57,28 @@
     color: white;
   }
 
-  /* Thought & Collapsible Blocks */
-  .markdown-thought-block, .markdown-collapsible-block {
-    @apply border border-purple-500/30 rounded-xl overflow-hidden bg-purple-500/5 backdrop-blur-sm transition-all duration-300;
+  /* Thought & Collapsible Blocks (Purple Waterfall) */
+  .markdown-thought-block,
+  .markdown-collapsible-block {
+    @apply border border-purple-500/30 rounded-2xl overflow-hidden bg-purple-500/5 backdrop-blur-md transition-all duration-500 shadow-sm;
   }
 
-  .markdown-thought-block:hover, .markdown-collapsible-block:hover {
-    @apply border-purple-500/50 bg-purple-500/10 shadow-lg shadow-purple-500/10;
+  .markdown-thought-block:hover,
+  .markdown-collapsible-block:hover {
+    @apply border-purple-500/60 bg-purple-500/10 shadow-xl shadow-purple-500/10 scale-[1.005];
   }
 
-  .markdown-thought-summary, .markdown-collapsible-summary {
-    @apply bg-gradient-to-r from-purple-900/40 to-transparent text-purple-200 border-b border-purple-500/20 px-4 py-3;
+  .markdown-thought-summary,
+  .markdown-collapsible-summary {
+    @apply bg-gradient-to-r from-purple-700/40 via-purple-900/40 to-transparent text-purple-100 border-b border-purple-500/20 px-5 py-4 transition-all duration-300;
     list-style: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .markdown-thought-summary:hover,
+  .markdown-collapsible-summary:hover {
+    @apply from-purple-600/50 via-purple-800/50 text-white;
   }
 
   .markdown-thought-summary::-webkit-details-marker,
@@ -77,7 +87,20 @@
   }
 
   .markdown-thought-content {
-    @apply text-gray-300 leading-relaxed;
+    @apply text-gray-300 leading-relaxed font-normal;
+    animation: slideDown 0.4s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   /* Seamless Logo Mask */

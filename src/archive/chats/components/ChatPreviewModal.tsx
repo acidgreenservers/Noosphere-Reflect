@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { SavedChatSession, ChatMessage } from '../../../types';
+import { SavedChatSession, ChatMessage, ConversationArtifact } from '../../../types';
 import { renderMarkdownToHtml } from '../../../utils/markdownUtils';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
+import { ArtifactViewerModal } from '../../../components/ArtifactViewerModal';
+import { getFileIcon } from '../../../components/artifacts/utils';
 
 interface ChatPreviewModalProps {
     session: SavedChatSession;
@@ -15,11 +17,37 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     const [isEditing, setIsEditing] = useState(false);
     const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [viewingArtifact, setViewingArtifact] = useState<any>(null);
+    const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
     const [editedTitle, setEditedTitle] = useState(session.metadata?.title || session.chatTitle);
     const [isSavingTitle, setIsSavingTitle] = useState(false);
 
-    const messages = session.chatData?.messages || [];
+    // HYDRATION: Link artifacts from metadata to messages at runtime
+    const hydratedMessages = useMemo(() => {
+        const rawMessages = session.chatData?.messages || [];
+        const artifacts = session.metadata?.artifacts || [];
+
+        if (artifacts.length === 0) return rawMessages;
+
+        const updated = [...rawMessages];
+        artifacts.forEach(art => {
+            if (art.insertedAfterMessageIndex !== undefined && updated[art.insertedAfterMessageIndex]) {
+                const msg = updated[art.insertedAfterMessageIndex];
+                const msgArtifacts = [...(msg.artifacts || [])];
+
+                // Avoid duplicates
+                if (!msgArtifacts.some(a => a.id === art.id)) {
+                    msgArtifacts.push(art);
+                    updated[art.insertedAfterMessageIndex] = {
+                        ...msg,
+                        artifacts: msgArtifacts
+                    };
+                }
+            }
+        });
+        return updated;
+    }, [session.chatData?.messages, session.metadata?.artifacts]);
+
+    const messages = hydratedMessages;
 
     // Filter messages for the sidebar list
     const filteredMessageIndices = useMemo(() => {
@@ -345,7 +373,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                         className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500 hover:bg-purple-900/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group cursor-pointer text-left flex-1 hover:ring-1 hover:ring-purple-500/30"
                                                                         title={isMarkdown ? `View ${art.fileName}` : `Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
                                                                     >
-                                                                        <span className="text-lg">{isMarkdown ? '📝' : '📄'}</span>
+                                                                        <span className="text-lg">{getFileIcon(art.mimeType)}</span>
                                                                         <span className="text-sm text-gray-300 truncate flex-1 group-hover:text-purple-300">{art.fileName}</span>
                                                                         <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                             {isMarkdown ? (
@@ -403,54 +431,11 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                 </div>
             )}
 
-            {/* Markdown Artifact Viewer Modal */}
-            {viewingArtifact && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] backdrop-blur-sm p-4">
-                    <div className="bg-gray-900 rounded-2xl shadow-2xl w-full h-full max-w-4xl border border-gray-700 flex flex-col overflow-hidden">
-                        {/* Modal Header */}
-                        <div className="flex justify-between items-center p-6 border-b border-gray-800 shrink-0">
-                            <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-                                <span>📝</span>
-                                {viewingArtifact.fileName}
-                            </h3>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => handleDownloadArtifact(viewingArtifact)}
-                                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95 hover:border-green-400 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600"
-                                    title="Download this file"
-                                >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                    Download
-                                </button>
-                                <button
-                                    onClick={() => setViewingArtifact(null)}
-                                    className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-green-500/10 p-2 rounded-lg hover:scale-110 active:scale-95 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600"
-                                >
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="flex-1 overflow-y-auto bg-gray-950 p-6 custom-scrollbar">
-                            <div className="prose prose-invert max-w-none">
-                                <div
-                                    dangerouslySetInnerHTML={{
-                                        __html: renderMarkdownToHtml(
-                                            atob(viewingArtifact.fileData)
-                                        )
-                                    }}
-                                    className="text-gray-300 leading-relaxed"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Standardized Artifact Viewer Modal */}
+            <ArtifactViewerModal
+                artifact={viewingArtifact}
+                onClose={() => setViewingArtifact(null)}
+            />
         </div>
     );
 };

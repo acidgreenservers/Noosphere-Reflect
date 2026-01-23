@@ -32,7 +32,7 @@
 - **Scale & Glow Feedback Pattern (NEW)**: Global tactile response system for interactive elements.
   - **Tactile**: `hover:scale-110` (utility) or `scale-105` (navigation) with `active:scale-95`.
   - **Glow**: Theme-appropriate background highlights (`bg-*/10`) and focus rings (`focus:ring-2`) matched to the action's domain (e.g., purple for Memory, green for Convert).
-  - **Standard**: All header icons, links, and modal actions must use this system for a "premium" tactile feel.
+  - **Unified Rendering Strategy (NEW)**: To prevent "UI Drift," all markdown/content previews across the application (Chat Preview, Reader Mode, Message Editor) MUST use the centralized `renderMarkdownToHtml` utility. Localized rendering logic is strictly forbidden to ensure consistent feature parity (e.g., collapsible support, artifact links, waterfall styling).
 
 - **Security & Rendering Patterns**:
 

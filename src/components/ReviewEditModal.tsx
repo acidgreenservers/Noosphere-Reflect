@@ -28,14 +28,14 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
 }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isEditing, setIsEditing] = useState(initialEditing);
-    const [dropdownOpen, setDropdownOpen] = useState<'before' | 'after' | null>(null);
+    const [dropdownOpen, setDropdownOpen] = useState<{ index: number, type: 'before' | 'after' } | null>(null);
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.insertion-dropdown-container')) {
                 setDropdownOpen(null);
             }
         };
@@ -293,11 +293,11 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
 
                                             {/* Insert Before/After dropdowns (visible in edit mode) */}
                                             {isEditing && (
-                                                <div ref={dropdownRef} className="flex gap-1 ml-2 relative">
+                                                <div className="flex gap-1 ml-2 relative insertion-dropdown-container">
                                                     {/* Insert Before Dropdown */}
                                                     <div className="relative">
                                                         <button
-                                                            onClick={() => setDropdownOpen(dropdownOpen === 'before' ? null : 'before')}
+                                                            onClick={() => setDropdownOpen(dropdownOpen?.index === idx && dropdownOpen?.type === 'before' ? null : { index: idx, type: 'before' })}
                                                             className="text-xs px-2 py-1 rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30 hover:border-blue-500/60 transition-all duration-200 flex items-center gap-1 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-blue-500/50"
                                                             title="Insert message before this one"
                                                         >
@@ -306,7 +306,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                             </svg>
                                                         </button>
-                                                        {dropdownOpen === 'before' && (
+                                                        {dropdownOpen?.index === idx && dropdownOpen?.type === 'before' && (
                                                             <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 min-w-[200px] max-h-64 overflow-y-auto">
                                                                 <button
                                                                     onClick={() => {
@@ -380,7 +380,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                     {/* Insert After Dropdown */}
                                                     <div className="relative">
                                                         <button
-                                                            onClick={() => setDropdownOpen(dropdownOpen === 'after' ? null : 'after')}
+                                                            onClick={() => setDropdownOpen(dropdownOpen?.index === idx && dropdownOpen?.type === 'after' ? null : { index: idx, type: 'after' })}
                                                             className="text-xs px-2 py-1 rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30 hover:border-green-500/60 transition-all duration-200 flex items-center gap-1 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-green-500/50"
                                                             title="Insert message after this one"
                                                         >
@@ -389,7 +389,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                             </svg>
                                                         </button>
-                                                        {dropdownOpen === 'after' && (
+                                                        {dropdownOpen?.index === idx && dropdownOpen?.type === 'after' && (
                                                             <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 min-w-[200px] max-h-64 overflow-y-auto">
                                                                 <button
                                                                     onClick={() => {

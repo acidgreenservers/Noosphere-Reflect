@@ -13,18 +13,31 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8.5',
+            date: 'Jan 22, 2026',
+            title: 'High-Fidelity Artifact Integration',
+            items: [
+                'Runtime Session Hydration: Implemented intelligent message-to-artifact mapping in the Chat Preview, ensuring message-linked attachments are visible even in legacy or sync-restricted sessions.',
+                'Rich Visual Language: Integrated getFileIcon utility to replace generic emojis with context-aware, category-specific icons (Images, Videos, Code, etc.).',
+                'Interactive Conversation Bubbles: Artifact cards in the chat stream now feature specific actions for viewing (Markdown) or downloading, with rich metadata display.',
+                'Standardized Artifact Viewer: Unified the preview experience by integrating the app-wide ArtifactViewerModal into the Archive Hub.',
+            ]
+        },
+        {
             version: 'v0.5.8.4',
             date: 'Jan 22, 2026',
-            title: 'Folder Management System',
+            title: 'Folder Management & UI Workspace Refinement',
             items: [
                 'Hierarchical Organization: Complete nested folder system for organizing chats, memories, and prompts with unlimited depth.',
                 'Cross-Archive Support: Unified folder system working seamlessly across Chat Archive, Memory Archive, and Prompt Archive.',
-                'Breadcrumb Navigation: Visual breadcrumb trail showing current folder path with clickable navigation back to parent folders.',
                 'Folder CRUD Operations: Create, rename, move, and delete folders with full persistence in IndexedDB.',
+                'Archive Quick Add Modals: Replaced inline entry forms with dedicated "Zero Scroll" popup overlay modals for Memory and Prompt archives.',
+                'Pillbox Style Triggers: Added elegant, fully-rounded "Add New" buttons with standardized Scale & Glow feedback.',
+                'Zero Scroll Optimization: Refined modal dimensions and internal padding to ensure the workspace fills the viewport with a consistent 25px screen gap.',
+                'Enhanced Working Surface: Expanded textarea heights to h-[45vh] for an immersive writing experience within the archival modals.',
                 'Drag & Drop Organization: Intuitive selection and batch moving of items between folders.',
                 'Visual Folder Cards: Dedicated folder cards with distinct styling, action menus, and item count displays.',
                 'Move Selection Modal: Batch move multiple items to different folders with confirmation dialog and preview.',
-                'Database Schema Extension: Added folders object store with parent-child relationships and type-specific organization.',
             ]
         },
         {

@@ -11,7 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Planning for Sprint 6.3: Archive Hub Polish (Conversation Card Redesign, v0.6.0)
+- Planning for Sprint 6.4: Unified Search across all archives.
+
+---
+
+## [v0.5.8.5] - January 22, 2026
+
+### Added
+#### High-Fidelity Artifact Integration
+- **Runtime Session Hydration**: Implemented intelligent message-to-artifact mapping in the Chat Preview, ensuring message-linked attachments are visible even in legacy or sync-restricted sessions.
+- **Rich Visual Language (Scale & Glow Icons)**: Integrated the `getFileIcon` utility to replace generic emojis with context-aware, category-specific icons (🖼️, 🎥, 💻, 📝, 📄).
+- **Interactive Conversation Bubbles**: Artifact cards in the chat stream now feature specific actions for viewing (Markdown) or downloading (General files), with rich metadata display.
+- **Standardized Artifact Viewer**: Unified the preview experience by integrating the app-wide `ArtifactViewerModal` into the Archive Hub.
+
+### Fixed
+- **Artifact Visibility**: Resolved an issue where message-linked artifacts were not displaying correctly in the Archive Hub's jump list and conversation bubbles.
+- **Type Safety**: Hardened the `ChatPreviewModal` state management with explicit `ConversationArtifact` typing.
 
 ---
 
@@ -28,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Visual Folder Cards**: Dedicated folder cards with distinct styling and action menus.
 - **Move Selection Modal**: Batch move multiple items to different folders with confirmation dialog.
 - **Database Schema Extension**: Added `folders` object store with parent-child relationships and type-specific organization.
+
+#### Quick Add & Workspace UI
+- **Archive Quick Add Modals**: Replaced inline entry forms with dedicated "Zero Scroll" popup overlay modals for Memory and Prompt archives.
+- **Pillbox Style Triggers**: Added elegant, fully-rounded "Add New" buttons with standardized Scale & Glow feedback.
+- **Zero Scroll Optimization**: Refined modal dimensions and internal padding to ensure the workspace fills the viewport with a consistent 25px screen gap.
+- **Enhanced Working Surface**: Expanded textarea heights to `h-[45vh]` for an immersive writing experience within the archival modals.
 
 ---
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Prompt, AppSettings, DEFAULT_SETTINGS, ChatData, ChatTheme, ChatMessageType } from '../../../types';
+import { Prompt, AppSettings, DEFAULT_SETTINGS, ChatData, ChatTheme, ChatMessageType, Folder } from '../../../types';
 import logo from '../../../assets/logo.png';
 import { storageService } from '../../../services/storageService';
 import { exportService } from '../../../components/exports/services';
@@ -12,6 +12,7 @@ import {
     generateMemoryBatchDirectoryExportWithPicker
 } from '../../../services/converterService';
 import PromptInput from '../components/PromptInput';
+import PromptAddModal from '../components/PromptAddModal';
 import PromptList from '../components/PromptList';
 import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
@@ -20,7 +21,7 @@ import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
 import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
-import { Folder } from '../../../types';
+
 
 export default function PromptArchive() {
     const navigate = useNavigate();
@@ -38,6 +39,7 @@ export default function PromptArchive() {
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     // Folder State
     const {
@@ -132,7 +134,7 @@ export default function PromptArchive() {
 
     const handleEditStart = (prompt: Prompt) => {
         setEditingPrompt(prompt);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setIsAddModalOpen(true);
     };
 
     const handleDeletePrompt = async (id: string) => {
@@ -391,7 +393,15 @@ export default function PromptArchive() {
                     <button onClick={() => navigate('/hub')} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-lg transition-colors text-sm font-medium" title="Back to Archive Hub">← Hub</button>
                 </div>
 
-                <PromptInput onSave={handleSavePrompt} editingPrompt={editingPrompt} onCancelEdit={() => setEditingPrompt(null)} />
+                <PromptAddModal
+                    isOpen={isAddModalOpen}
+                    onClose={() => {
+                        setIsAddModalOpen(false);
+                        setEditingPrompt(null);
+                    }}
+                    onSave={handleSavePrompt}
+                    editingPrompt={editingPrompt}
+                />
 
                 <div className="mt-12">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -416,32 +426,46 @@ export default function PromptArchive() {
                             onNavigate={setCurrentFolderId}
                             accentColor="blue"
                         />
-                        <FolderActionsDropdown
-                            accentColor="blue"
-                            onAddFolder={() => { setEditingFolder(null); setIsFolderModalOpen(true); }}
-                            onRenameFolder={() => {
-                                if (currentFolderId) {
-                                    const folder = folders.find(f => f.id === currentFolderId);
-                                    if (folder) {
-                                        setEditingFolder(folder);
-                                        setIsFolderModalOpen(true);
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => {
+                                    setEditingPrompt(null);
+                                    setIsAddModalOpen(true);
+                                }}
+                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-semibold transition-all shadow-lg hover:scale-105 active:scale-95"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add New Prompt
+                            </button>
+                            <FolderActionsDropdown
+                                accentColor="blue"
+                                onAddFolder={() => { setEditingFolder(null); setIsFolderModalOpen(true); }}
+                                onRenameFolder={() => {
+                                    if (currentFolderId) {
+                                        const folder = folders.find(f => f.id === currentFolderId);
+                                        if (folder) {
+                                            setEditingFolder(folder);
+                                            setIsFolderModalOpen(true);
+                                        }
+                                    } else {
+                                        alert('Please navigate into a folder to rename it');
                                     }
-                                } else {
-                                    alert('Please navigate into a folder to rename it');
-                                }
-                            }}
-                            onDeleteFolder={() => {
-                                if (currentFolderId) {
-                                    const folder = folders.find(f => f.id === currentFolderId);
-                                    if (folder) {
-                                        setEditingFolder(folder);
-                                        setShowDeleteModal(true);
+                                }}
+                                onDeleteFolder={() => {
+                                    if (currentFolderId) {
+                                        const folder = folders.find(f => f.id === currentFolderId);
+                                        if (folder) {
+                                            setEditingFolder(folder);
+                                            setShowDeleteModal(true);
+                                        }
+                                    } else {
+                                        alert('Please navigate into a folder to delete it');
                                     }
-                                } else {
-                                    alert('Please navigate into a folder to delete it');
-                                }
-                            }}
-                        />
+                                }}
+                            />
+                        </div>
                     </div>
 
                     {/* Folders & Prompts Grid */}

@@ -8,6 +8,9 @@
 - [x] **Archive Hub Refactor Phase 1**: Hook extraction (Search, Export, Drive, Extension Bridge).
 - [x] **Archive Architecture Refactor**: Prompts, Memories, and Chats modularized into feature domains.
 - [x] **v0.5.8.3 Modularization & UI Polish**: Completed component integration and global tactile feedback system.
+- [x] **v0.5.8.6 Unified Rendering & Verification**: Fixed collapsible/thought rendering and synchronized Message Editor with global utility.
+- [x] **v0.5.8.5 Artifact Detail Polish**: Integrated high-fidelity icons and message-level hydration in Chat Preview.
+- [x] **v0.5.8.4 Quick Add Modals**: Implemented popup overlay modals for Memory and Prompt entry with "Zero Scroll" optimization.
 - [x] **Seamless Logo Integration**: Implemented high-fidelity CSS Luminance Masking for the brand logo.
 - [x] **Create Blank Chat**: Introduced "Blank Chat" entry point for manual conversation curation.
 
@@ -19,8 +22,8 @@
 - ✅ **Multi-Platform Extension**: Support for 7 AI platforms (Claude, ChatGPT, Gemini, LeChat, Llamacoder, Grok, AI Studio)
 - ✅ **Rich Parsing Engine**: Basic, AI-powered, and platform-specific parsers
 - ✅ **Export System**: HTML (themed), Markdown, and JSON formats
-- ✅ **Memory Archive**: Dedicated system for storing AI insights and learnings
-- ✅ **Prompt Archive**: New searchable library for saving and organizing reusable prompts by category
+- ✅ **Memory Archive**: Dedicated system for storing AI insights and learnings—now with **Quick Add Modal**.
+- ✅ **Prompt Archive**: New searchable library for saving and organizing reusable prompts by category—now with **Quick Add Modal**.
 - ✅ **Local-First Storage**: IndexedDB (v6) with full data sovereignty
 
 ### Smart Import & Data Integrity (Phase 6.2.5 → Phase 6.3.0) - EXPANDED 🚀

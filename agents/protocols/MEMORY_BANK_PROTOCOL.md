@@ -75,10 +75,7 @@ This documentation serves as a permanent record to inform future sessions, ensur
 - Cover all 5 Ws: What, Where, When, Why, How.
 - Be explicitly clear about what failed before describing what succeeded.
 
-### OUTPUT FORMAT
-Provide the Memory Bank Update in the following Markdown format:
 
-```markdown
 # 🧠 Memory Bank Update: [Session Title/Date]
 
 ## 1. Core Task & Methodology
@@ -104,5 +101,4 @@ Provide the Memory Bank Update in the following Markdown format:
 *   **Derived Meaning:** [What is the deeper significance of this update for the project?]
 
 ## 5. File Updates
-*   [List of files modified or created]
-```
+*   Update memory bank files with the above information.

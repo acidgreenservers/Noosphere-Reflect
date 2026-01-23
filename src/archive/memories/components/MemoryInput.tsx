@@ -65,8 +65,8 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
 
     return (
         <div className={`border rounded-xl p-6 shadow-xl backdrop-blur-sm transition-colors duration-300 ${editingMemory
-                ? `${accentBg} ${accentBorder}`
-                : 'bg-gray-800/50 border-gray-700'
+            ? `${accentBg} ${accentBorder}`
+            : 'bg-gray-800/50 border-gray-700'
             }`}>
             <h2 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${editingMemory ? accentText : 'text-gray-200'
                 }`}>
@@ -85,8 +85,8 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Give this memory a name..."
                         className={`w-full bg-gray-900/50 border rounded-lg px-4 py-2 text-gray-200 focus:ring-2 outline-none transition-all placeholder-gray-600 ${editingMemory
-                                ? 'border-purple-500/30 focus:ring-purple-500'
-                                : 'border-gray-600 focus:ring-purple-500'
+                            ? 'border-purple-500/30 focus:ring-purple-500'
+                            : 'border-gray-600 focus:ring-purple-500'
                             }`}
                     />
                 </div>
@@ -95,9 +95,9 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="Paste memory content here..."
-                    className={`w-full h-32 bg-gray-900/50 border rounded-lg p-4 text-gray-300 font-mono text-sm focus:ring-2 outline-none transition-all resize-y ${editingMemory
-                            ? 'border-purple-500/30 focus:ring-purple-500 focus:border-transparent'
-                            : 'border-gray-600 focus:ring-purple-500 focus:border-transparent'
+                    className={`w-full h-[45vh] bg-gray-900/50 border rounded-lg p-4 text-gray-300 font-mono text-sm focus:ring-2 outline-none transition-all resize-y ${editingMemory
+                        ? 'border-purple-500/30 focus:ring-purple-500 focus:border-transparent'
+                        : 'border-gray-600 focus:ring-purple-500 focus:border-transparent'
                         }`}
                     required
                 />
