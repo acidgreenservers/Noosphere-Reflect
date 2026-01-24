@@ -35,13 +35,24 @@ export const ArchiveSearchBar: React.FC<ArchiveSearchBarProps> = ({
                 <svg className="w-5 h-5 text-gray-500 absolute left-3.5 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
+                {searchTerm && (
+                    <button
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                        title="Clear search"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                )}
             </div>
 
             <div className="flex gap-2">
                 <button
                     onClick={onSelectAll}
                     disabled={filteredCount === 0}
-                    className={`px-4 py-3 backdrop-blur-sm rounded-full border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus:outline-none focus:ring-2
+                    className={`px-4 py-3 backdrop-blur-sm rounded-full border transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus:outline-none focus:ring-2
                         ${areAllSelected
                             ? 'bg-green-600 border-green-500 text-white focus:ring-green-500 active:bg-green-700'
                             : 'bg-gray-800/50 hover:bg-gray-700 border-white/10 text-gray-300 focus:ring-green-500 active:bg-gray-600'}`}
@@ -56,7 +67,7 @@ export const ArchiveSearchBar: React.FC<ArchiveSearchBarProps> = ({
                 <button
                     onClick={onRefresh}
                     disabled={isRefreshing}
-                    className="px-4 py-3 bg-green-600/90 hover:bg-green-600 backdrop-blur-sm rounded-full border border-green-500/50 shadow-lg shadow-green-500/50 transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-105 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600/20"
+                    className="px-4 py-3 bg-green-600/90 hover:bg-green-600 backdrop-blur-sm rounded-full border border-green-500/50 shadow-lg shadow-green-500/50 transition-all flex items-center justify-center gap-2 min-w-[140px] font-medium hover:scale-110 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600/20"
                     title="Refresh page to load imported chats"
                 >
                     <svg

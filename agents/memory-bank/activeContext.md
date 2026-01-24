@@ -1,5 +1,51 @@
 # Active Context
 
+### 🟢 ENHANCED: Artifact Detection & Linkage (January 23, 2026)
+
+#### Problem 1: Linkage Disconnection
+Users attaching artifacts via the *Review & Edit Modal* found that files were "siloed" on the message—visible in the chat card but missing from the global **Artifact Manager**, making management impossible.
+
+#### Problem 2: Detection Fragility
+The auto-detection logic relied purely on Regex extraction (`[a-zA-Z0-9_-]+`), which failed to capture filenames with spaces (e.g., "Kitchen Layout V1.png"). This caused obvious visual matches in the chat text to be ignored during upload.
+
+#### Solution
+1.  **State Synchronization**: Refactored `BasicConverter.tsx` (`handleAttachToMessage`) to fully synchronize message-level attachments with the global `artifacts` pool and persist the updated metadata to IndexedDB immediately.
+2.  **"Direct Search" Strategy**: Implemented a robust fallback in `artifactLinking.ts`. If regex extraction fails, the system now takes the *uploaded filename* and actively scans all message content for a substring match. This guarantees detection of complex filenames (spaces, dots) that regex misses.
+
+#### Verification
+-   **Linkage**: Verified manual attachments now appear instantly in the Artifact Manager library.
+-   **Detection**: Confirmed files like "My Cool File.png" are auto-linked to messages containing that text.
+
+### 🟢 POLISHED: Archive Visuals & Navigation (January 23, 2026)
+
+#### Problem
+Navigation between Archive Hub, Memories, and Prompts was disjointed, requiring a return to Home. Search bars lacked a quick "Clear" action, and button styles were inconsistent with the project's premium "Pill & Glow" aesthetic.
+
+#### Solution
+1.  **Cross-Archive Navigation**: Added "Prompts" (Blue) and "Memories" (Purple) navigation pills to the headers of the Memory and Prompt archives, respectively.
+2.  **Interactive Polish**: Upgraded all search inputs and header buttons to `rounded-full` (pillbox) with the standard "Scale & Glow" feedback (`hover:scale-105`, active states, and theme-colored shadows).
+3.  **Clear Actions**: Added a responsive 'X' button to all 3 archive search bars that appears conditionally when text is present.
+
+#### Verification
+-   **Visuals**: Confirmed consistent pillbox styling across all 3 archives.
+-   **Nav**: Verified rapid switching between archives via new header buttons.
+
+
+### 🟢 FIXED: Folder Persistence in Archive Hub (January 23, 2026)
+
+#### Problem
+User reported that moving chats into folders in `ArchiveHub` appeared to fail. The folder assignment was correctly saved to IndexedDB, but the chats would disappear from the view or fail to show up in the folder after the operation.
+
+#### Root Cause
+The `getAllSessionsMetadata` function in `storageService.ts`, which `ArchiveHub` uses to load the session list, was manually constructing a lightweight metadata object but failed to include the `folderId` property. As a result, the UI always perceived `folderId` as `undefined` for all sessions, causing the filtering logic to misbehave (treating everything as "Root" or "Unfoldered").
+
+#### Solution
+Updated `getAllSessionsMetadata` in `src/services/storageService.ts` to explicitly include `folderId` in the returned `SavedChatSessionMetadata` objects.
+
+#### Verification
+- **Code Audit**: Confirmed `SavedChatSessionMetadata` type expects `folderId`.
+- **Logic Confirmation**: The fix ensures `folderId` flows from IndexedDB -> Service -> UI, enabling correct filtering in `ArchiveHub`.
+
 ### 🟢 FIXED: Message Insertion Logic in Review & Edit Modal (January 22, 2026)
 
 #### Problem
@@ -1117,6 +1163,15 @@ Implemented individual parser classes for all supported AI platforms, restoring 
 - **`src/services/converterService.ts`**: Removed over 1200 lines of platform-specific functions.
 - **Unified Entry Point**: `parseChat` now delegates specialized HTML parsing to the `ParserFactory`.
 - **Preserved Logic**: Kept core regex-based Markdown parsing and JSON export logic within the service as "Basic Mode" fallback.
+
+## Key Design Patterns
+
+### The Governance Layer (Protocol-First)
+- **Modular Sovereignty**: Specific concerns (Design, Data, Security) are managed by dedicated agent files in `.agents/`.
+- **"Escape First" Strategy**: Security baseline where HTML entities are escaped *before* markdown formatting is applied.
+- **Modular Parsing Strategy**: Platform-specific HTML parsing is isolated into dedicated classes (Strategy Pattern) with a `ParserFactory` for orchestration.
+- **"Markdown Firewall" Pattern**: Multi-stage sanitization and validation layer in the parsing utility to prevent XSS and resource exhaustion.
+- **"Direct Search" Detection Strategy**: Artifact auto-linking uses a dual-pass approach: 1) Regex Extraction (for clear patterns), 2) Reverse Direct Search (scanning text for uploaded filenames) to ensure robustness against complex naming conventions (spaces, etc.).
 
 ### 5. Verification & Robustness
 - **`src/services/parsers/__tests__/Parsers.test.ts` (NEW)**: Implemented 11 comprehensive test cases using Vitest/JDOM.

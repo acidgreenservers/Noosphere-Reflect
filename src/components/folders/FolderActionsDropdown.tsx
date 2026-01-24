@@ -57,7 +57,7 @@ const FolderActionsDropdown: React.FC<FolderActionsDropdownProps> = ({
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-4 py-2 border rounded-xl transition-all font-medium text-sm hover:scale-105 active:scale-95 ${accentClasses[accentColor].button}`}
+                className={`flex items-center gap-2 px-4 py-2 border rounded-full transition-all font-medium text-sm hover:scale-105 active:scale-95 ${accentClasses[accentColor].button}`}
             >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />

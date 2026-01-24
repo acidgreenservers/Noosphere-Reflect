@@ -15,18 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.5.8.5] - January 22, 2026
+## [v0.5.8.5] - January 23, 2026
 
 ### Added
-#### High-Fidelity Artifact Integration
-- **Runtime Session Hydration**: Implemented intelligent message-to-artifact mapping in the Chat Preview, ensuring message-linked attachments are visible even in legacy or sync-restricted sessions.
-- **Rich Visual Language (Scale & Glow Icons)**: Integrated the `getFileIcon` utility to replace generic emojis with context-aware, category-specific icons (🖼️, 🎥, 💻, 📝, 📄).
-- **Interactive Conversation Bubbles**: Artifact cards in the chat stream now feature specific actions for viewing (Markdown) or downloading (General files), with rich metadata display.
-- **Standardized Artifact Viewer**: Unified the preview experience by integrating the app-wide `ArtifactViewerModal` into the Archive Hub.
+#### Smart Artifact Management
+- **Direct Search Detection**: New intelligent detection strategy that finds artifacts in chat text even if they have spaces or complex names (e.g., "Architecture Diagram V1.png"), solving a limitation of the old regex engine.
+- **Synchronized Linkage**: Manual attachments in the Message Editor now instantly sync to the global Artifact Library and persist to the database—no more "ghost artifacts."
+- **Deep Artifact Cleaning**: Fixed edge cases where unlinked artifacts could persist as orphans.
+
+#### Global Navigation & Visual Polish
+- **Archive Cross-Navigation**: Added color-coded pill buttons to archive headers for instant switching:
+  - **Memory Archive**: Added Blue "� Prompts" button.
+  - **Prompt Archive**: Added Purple "🧠 Memories" button.
+- **Premium "Pill" Aesthetic**: Upgraded all search bars, header inputs, and action triggers to `rounded-full` styling with unified "Scale & Glow" feedback.
+- **Responsive Clear Actions**: Added conditionally rendered 'X' buttons to all archive search bars for one-click query clearing.
+- **Consistent Breadcrumbs**: Updated folder breadcrumb navigation to match the global rounded-pill and tactile feedback standards.
 
 ### Fixed
-- **Artifact Visibility**: Resolved an issue where message-linked artifacts were not displaying correctly in the Archive Hub's jump list and conversation bubbles.
-- **Type Safety**: Hardened the `ChatPreviewModal` state management with explicit `ConversationArtifact` typing.
+- **Artifact Disappearance**: Solved issue where files attached via "Review & Edit" modal were invisible in the Artifact Manager.
+- **Search Frustration**: Removed the need to manually delete text in search bars; added clear button.
 
 ---
 

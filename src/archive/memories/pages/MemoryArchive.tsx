@@ -21,6 +21,7 @@ import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
 import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
+import { ArchiveBatchActionBar } from '../../chats/components/ArchiveBatchActionBar';
 
 
 export default function MemoryArchive() {
@@ -40,6 +41,15 @@ export default function MemoryArchive() {
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+    const filteredMemories = memories.filter(m =>
+        m.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.metadata.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        m.aiModel.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const areAllSelected = filteredMemories.length > 0 && filteredMemories.every(m => selectedMemories.has(m.id));
 
     // Folder State
     const {
@@ -185,12 +195,15 @@ export default function MemoryArchive() {
         setSelectedMemories(newSelected);
     };
 
+
     const handleSelectAll = () => {
-        if (selectedMemories.size === filteredMemories.length) {
-            setSelectedMemories(new Set());
+        const newSelected = new Set(selectedMemories);
+        if (areAllSelected) {
+            filteredMemories.forEach(m => newSelected.delete(m.id));
         } else {
-            setSelectedMemories(new Set(filteredMemories.map(m => m.id)));
+            filteredMemories.forEach(m => newSelected.add(m.id));
         }
+        setSelectedMemories(newSelected);
     };
 
     const handleBatchDelete = async () => {
@@ -327,12 +340,6 @@ export default function MemoryArchive() {
         }
     };
 
-    const filteredMemories = memories.filter(m =>
-        m.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.metadata.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        m.aiModel.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
@@ -346,7 +353,10 @@ export default function MemoryArchive() {
                         style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
                     />
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-purple-500 to-emerald-600 bg-clip-text text-transparent">🧠 Memory Archive</h1>
-                    <button onClick={() => navigate('/hub')} className="flex items-center gap-1 px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 hover:border-green-500/50 text-green-400 rounded-lg transition-colors text-sm font-medium" title="Back to Archive Hub">← Hub</button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => navigate('/hub')} className="flex items-center gap-1 px-4 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 hover:border-green-500/50 text-green-400 rounded-full transition-all duration-200 text-sm font-medium hover:scale-105 active:scale-95 shadow-lg hover:shadow-green-500/20 focus:outline-none focus:ring-2 focus:ring-green-500" title="Back to Archive Hub">← Hub</button>
+                        <button onClick={() => navigate('/prompt-archive')} className="flex items-center gap-1 px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-full transition-all duration-200 text-sm font-medium hover:scale-105 active:scale-95 shadow-lg hover:shadow-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Go to Prompt Archive">💡 Prompts</button>
+                    </div>
                 </div>
 
                 <MemoryAddModal
@@ -371,7 +381,18 @@ export default function MemoryArchive() {
                                 {selectedMemories.size === filteredMemories.length && filteredMemories.length > 0 ? 'Deselect All' : `Select All (${filteredMemories.length})`}
                             </button>
                             <div className="relative w-full md:w-96">
-                                <input type="text" placeholder="🔍 Search memories, tags, or models..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-4 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all placeholder-gray-500 text-gray-200" />
+                                <input type="text" placeholder="🔍 Search memories, tags, or models..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-4 pr-10 py-2 bg-gray-800/50 border border-gray-700 rounded-full focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all placeholder-gray-500 text-gray-200" />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                                        title="Clear search"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -381,6 +402,16 @@ export default function MemoryArchive() {
                             path={breadcrumbs}
                             onNavigate={setCurrentFolderId}
                             accentColor="purple"
+                            onDrop={async (folderId: string | null, draggedId: string, type: 'item' | 'folder') => {
+                                if (type === 'folder') {
+                                    await moveFolder(draggedId, folderId);
+                                } else {
+                                    const itemsToMove = selectedMemories.has(draggedId) ? Array.from(selectedMemories) : [draggedId];
+                                    await moveItemsToFolder(itemsToMove, folderId);
+                                    if (selectedMemories.has(draggedId)) setSelectedMemories(new Set());
+                                }
+                                await loadMemories();
+                            }}
                         />
                         <div className="flex items-center gap-3">
                             <button
@@ -450,8 +481,14 @@ export default function MemoryArchive() {
                                         e.stopPropagation();
                                         setSearchQuery(tag);
                                     }}
-                                    onDrop={async (folderId: string, draggedId: string) => {
-                                        await moveItemsToFolder([draggedId], folderId);
+                                    onDrop={async (folderId: string, draggedId: string, type: 'item' | 'folder') => {
+                                        if (type === 'folder') {
+                                            await moveFolder(draggedId, folderId);
+                                        } else {
+                                            const itemsToMove = selectedMemories.has(draggedId) ? Array.from(selectedMemories) : [draggedId];
+                                            await moveItemsToFolder(itemsToMove, folderId);
+                                            if (selectedMemories.has(draggedId)) setSelectedMemories(new Set());
+                                        }
                                         await loadMemories();
                                     }}
                                 />
@@ -479,28 +516,15 @@ export default function MemoryArchive() {
                     <MemoryPreviewModal memory={previewMemory} onClose={() => setPreviewMemory(null)} onSave={async (updated) => { await storageService.updateMemory(updated); await loadMemories(); setPreviewMemory(updated); }} />
                 )}
 
-                {selectedMemories.size > 0 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-lg border border-white/10 rounded-full shadow-2xl px-6 py-3 flex items-center gap-4 z-50">
-                        <span className="text-sm font-medium text-gray-300 border-r border-white/10 pr-4">{selectedMemories.size} selected</span>
-                        <button onClick={() => setShowExportDestination(true)} className="flex items-center gap-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors" title="Export selected">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Export <span className="text-xs">▼</span>
-                        </button>
-                        <div className="w-px h-4 bg-white/10 mx-1"></div>
-                        <button onClick={handleBatchMove} className="flex items-center gap-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                            Move
-                        </button>
-                        <div className="w-px h-4 bg-white/10 mx-1"></div>
-                        <button onClick={handleBatchDelete} className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Delete
-                        </button>
-                        <button onClick={() => setSelectedMemories(new Set())} className="ml-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                )}
+                <ArchiveBatchActionBar
+                    selectedCount={selectedMemories.size}
+                    onExport={() => setShowExportDestination(true)}
+                    onDelete={handleBatchDelete}
+                    onMove={handleBatchMove}
+                    onClearSelection={() => setSelectedMemories(new Set())}
+                    accentColor="purple"
+                    itemLabel="memories"
+                />
 
                 <ExportDestinationModal isOpen={showExportDestination} onClose={() => setShowExportDestination(false)} onDestinationSelected={(d) => { setExportDestination(d); setShowExportDestination(false); setExportModalOpen(true); }} isExporting={isSendingToDrive} accentColor="purple" />
                 <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} onExport={handleBatchExport} selectedCount={selectedMemories.size} hasArtifacts={false} exportFormat={exportFormat} setExportFormat={setExportFormat} exportPackage={exportPackage} setExportPackage={setExportPackage} accentColor="purple" exportDestination={exportDestination} onExportDrive={handleBatchExportToDrive} isExportingToDrive={isSendingToDrive} />

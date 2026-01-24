@@ -6,3 +6,4 @@ export { default as FolderActionsDropdown } from './FolderActionsDropdown';
 export { default as DeleteFolderModal } from './DeleteFolderModal';
 export * from './useFolders';
 export * from './folderStats';
+export { Tooltip } from './Tooltip';

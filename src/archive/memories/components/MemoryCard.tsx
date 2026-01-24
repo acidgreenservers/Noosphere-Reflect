@@ -51,9 +51,9 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
             onClick={() => onPreview(memory)}
             draggable
             onDragStart={handleDragStart}
-            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-105 cursor-pointer
+            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-110 active:scale-95 cursor-pointer
             ${isSelected
-                    ? 'bg-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20'
+                    ? 'bg-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20 ring-2 ring-purple-500/50 scale-105'
                     : 'bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 hover:border-purple-500/30 hover:shadow-purple-900/10 hover:shadow-purple-500/20 hover:shadow-lg'
                 }`}>
             {/* Selection Checkbox & Edit Button */}
