@@ -186,7 +186,8 @@ class StorageService {
                         parserMode: session.parserMode,
                         metadata: session.metadata,
                         normalizedTitle: session.normalizedTitle,
-                        exportStatus: session.exportStatus
+                        exportStatus: session.exportStatus,
+                        folderId: session.folderId
                     };
                     sessions.push(metadata);
                     cursor.continue();

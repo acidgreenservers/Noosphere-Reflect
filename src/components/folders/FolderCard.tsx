@@ -1,5 +1,6 @@
 import React from 'react';
 import { Folder } from '../../types';
+import { Tooltip } from './Tooltip';
 
 interface FolderCardProps {
     folder: Folder;
@@ -9,7 +10,7 @@ interface FolderCardProps {
     onTagClick: (tag: string, e: React.MouseEvent) => void;
     accentColor: 'green' | 'purple' | 'blue';
     isSelected?: boolean;
-    onDrop?: (folderId: string, draggedId: string) => void;
+    onDrop?: (targetFolderId: string, draggedId: string, type: 'item' | 'folder') => void;
     stats?: {
         totalItems: number;
         totalFolders: number;
@@ -30,9 +31,22 @@ const FolderCard: React.FC<FolderCardProps> = ({
 }) => {
     const [isDragOver, setIsDragOver] = React.useState(false);
 
+    const handleDragStart = (e: React.DragEvent) => {
+        e.dataTransfer.effectAllowed = 'move';
+        // Use a composite type to distinguish folders from items
+        e.dataTransfer.setData('folder-id', folder.id);
+        // Fallback for generic drop targets
+        e.dataTransfer.setData('text/plain', folder.id);
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        // Prevent dropping a folder onto itself
+        const draggedFolderId = e.dataTransfer.getData('folder-id');
+        if (draggedFolderId === folder.id) return;
+
         setIsDragOver(true);
     };
 
@@ -47,9 +61,15 @@ const FolderCard: React.FC<FolderCardProps> = ({
         e.stopPropagation();
         setIsDragOver(false);
         if (onDrop) {
-            const draggedId = e.dataTransfer.getData('text/plain');
-            if (draggedId) {
-                onDrop(folder.id, draggedId);
+            const folderId = e.dataTransfer.getData('folder-id');
+            const itemId = e.dataTransfer.getData('text/plain');
+
+            if (folderId && folderId !== folder.id) {
+                // It's a folder being moved into another folder
+                onDrop(folder.id, folderId, 'folder');
+            } else if (itemId) {
+                // It's an item being moved into a folder
+                onDrop(folder.id, itemId, 'item');
             }
         }
     };
@@ -72,7 +92,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`group relative p-4 rounded-2xl border backdrop-blur-md transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 ${accentClasses[accentColor]} ${isSelected ? `ring-2 ${ringClasses[accentColor]}` : 'hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]'} ${isDragOver ? 'ring-4 scale-105 brightness-125' : ''}`}
+            className={`group relative p-4 rounded-2xl border backdrop-blur-md transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 ${accentClasses[accentColor]} ${isSelected ? `ring-2 ${ringClasses[accentColor]}` : 'hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]'} ${isDragOver ? 'ring-4 scale-105 brightness-125' : ''}`}
         >
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -109,26 +129,34 @@ const FolderCard: React.FC<FolderCardProps> = ({
             {/* Statistics Badges */}
             {stats && (
                 <div className="flex flex-wrap gap-2 mb-3">
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/60 border border-white/5 rounded-lg text-[11px]" title="Items in this folder (immediate)">
-                        <svg className="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                        </svg>
-                        <span className="font-medium">{stats.immediateItems}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/60 border border-white/5 rounded-lg text-[11px]" title="Total items (including subfolders)">
-                        <svg className="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                        <span className="font-medium">{stats.totalItems}</span>
-                        <span className="opacity-50">total</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/60 border border-white/5 rounded-lg text-[11px]" title="Subfolders (recursive)">
-                        <svg className="w-3.5 h-3.5 opacity-70" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
-                        </svg>
-                        <span className="font-medium">{stats.totalFolders}</span>
-                        <span className="opacity-50">folders</span>
-                    </div>
+                    <Tooltip content="Items in this folder (immediate)" accentColor={accentColor}>
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/60 border border-white/5 rounded-lg text-[11px]">
+                            <svg className="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            </svg>
+                            <span className="font-medium">{stats.immediateItems}</span>
+                        </div>
+                    </Tooltip>
+
+                    <Tooltip content="Total items (including subfolders)" accentColor={accentColor}>
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/60 border border-white/5 rounded-lg text-[11px]">
+                            <svg className="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                            <span className="font-medium">{stats.totalItems}</span>
+                            <span className="opacity-50">total</span>
+                        </div>
+                    </Tooltip>
+
+                    <Tooltip content="Subfolders (recursive)" accentColor={accentColor}>
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/60 border border-white/5 rounded-lg text-[11px]">
+                            <svg className="w-3.5 h-3.5 opacity-70" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+                            </svg>
+                            <span className="font-medium">{stats.totalFolders}</span>
+                            <span className="opacity-50">folders</span>
+                        </div>
+                    </Tooltip>
                 </div>
             )}
 

@@ -811,23 +811,50 @@ const BasicConverter: React.FC = () => {
                         fileSize: file.size,
                         mimeType: file.type || 'application/octet-stream',
                         fileData: fileData,
-                        uploadedAt: new Date().toISOString()
+                        uploadedAt: new Date().toISOString(),
+                        insertedAfterMessageIndex: messageIndex // Explicitly set for manual attachment
                     };
 
                     newArtifacts.push(artifact);
                 }
 
-                // Update message with new artifacts
+                // ---------------------------------------------------------
+                // SYNC FIX: Use processArtifactUpload to handle global pool + message linking
+                // ---------------------------------------------------------
+
+                // Add new artifacts to pool first
+                const tempArtifacts = [...artifacts, ...newArtifacts];
+
+                // Manually link these specific artifacts to the target message
+                // (We do this manually because processArtifactUpload uses auto-detection, 
+                // but here the user *explicitly* clicked "Attach" on a specific message)
                 const updatedMessages = [...chatData.messages];
+                const targetMsg = updatedMessages[messageIndex];
+
                 updatedMessages[messageIndex] = {
-                    ...updatedMessages[messageIndex],
+                    ...targetMsg,
                     artifacts: [
-                        ...(updatedMessages[messageIndex].artifacts || []),
+                        ...(targetMsg.artifacts || []),
                         ...newArtifacts
                     ]
                 };
 
+                // Update Local State
+                setArtifacts(tempArtifacts);
                 setChatData({ ...chatData, messages: updatedMessages });
+
+                // Update Metadata State
+                const newMetadata = {
+                    ...metadata,
+                    artifacts: tempArtifacts
+                };
+                setMetadata(newMetadata);
+
+                // PERSISTENCE: Save changes to DB immediately if session is loaded
+                if (loadedSessionId) {
+                    await handleSaveChat(chatTitle, true, { ...chatData, messages: updatedMessages }, newMetadata);
+                }
+
             } catch (error) {
                 alert('Failed to upload files: ' + (error as Error).message);
             }

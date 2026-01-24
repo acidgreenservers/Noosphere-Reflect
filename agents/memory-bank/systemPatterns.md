@@ -18,6 +18,7 @@
 - **"Escape First" Strategy**: Security baseline where HTML entities are escaped *before* markdown formatting is applied.
 - **Modular Parsing Strategy**: Platform-specific HTML parsing is isolated into dedicated classes (Strategy Pattern) with a `ParserFactory` for orchestration.
 - **"Markdown Firewall" Pattern**: Multi-stage sanitization and validation layer in the parsing utility to prevent XSS and resource exhaustion.
+- **"Direct Search" Detection Strategy**: Artifact auto-linking uses a dual-pass approach: 1) Regex Extraction (for clear patterns), 2) Reverse Direct Search (scanning text for uploaded filenames) to ensure robustness against complex naming conventions (spaces, etc.).
 - **Interface Consistency**: `BaseParser` interface ensures all parsers share a common contract (`parse(html): ChatData`).
   - **Shared Utility Library**: `ParserUtils.ts` centralizes DOM crawling, markdown extraction, and sanitization logic.
 - **Two-Way Artifact Storage**: Support for session-level and message-level artifacts with unified export handling.

@@ -228,20 +228,15 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
-## 🆕 What's New in v0.5.8.3 (Current)
+## 🆕 What's New in v0.5.8.5 (Current)
 
-### Full Modular Refactor & UI Refinement (Jan 20-21)
-- **Blank Chat Entry**: New wizard option to start fresh conversations manually with auto-initializing Edit Mode.
-- **Brand Logo Transparency**: Implemented professional CSS Luminance Masking to eliminate black background artifacts across all application headers.
-- **Full Refactor Core**: Core components now follow a standardized feature-based modular structure (`src/archive/chats/components/`, `src/components/wizard/`, etc.).
-- **Modularized Modules**:
-  - `SettingsModal`: Extracted into components, hooks, and page structure.
-  - `ArtifactManager`: Fully modularized into reusable UI and logic layers.
-  - `ContentImportWizard`: Refactored for better maintainability and performance.
-  - `ChatPreviewModal`: Relocated to its correct modular home within `src/archive/chats/`.
-- **Enhanced Preview Modals**: All preview modals (Chat, Memory, Prompt) now support direct title editing with persistence.
-- **Improved Import Logic**: Refined Google Drive import to filter out metadata files, ensuring a cleaner archive view.
-- **Glassmorphism Consistency**: Unified the purple/blue glassmorphism theme across all archival modules.
+### Artifact Linkage & Visual Polish (Jan 23)
+- **Direct Search Detection**: New intelligent strategy that finds artifact references in chat text even if they have spaces (e.g., "Kitchen Plan.png"), solving regex limitations.
+- **Synchronized Linkage**: Manual attachments in the Message Editor now instantly persist to the global database—no more disappearing files.
+- **Premium "Pill" Aesthetic**: Upgraded all search bars and header buttons to `rounded-full` styling with unified "Scale & Glow" feedback.
+- **Archive Cross-Navigation**: Added color-coded "Memories" and "Prompts" navigation buttons to archive headers for instant switching.
+
+## 🆕 What's New in v0.5.8.3
 
 ## 🆕 What's New in v0.5.8.2
 

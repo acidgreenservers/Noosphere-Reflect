@@ -21,6 +21,7 @@ import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
 import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
+import { ArchiveBatchActionBar } from '../../chats/components/ArchiveBatchActionBar';
 
 
 export default function PromptArchive() {
@@ -40,6 +41,15 @@ export default function PromptArchive() {
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+    const filteredPrompts = prompts.filter(p =>
+        p.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.metadata.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (p.metadata.category?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
+    );
+
+    const areAllSelected = filteredPrompts.length > 0 && filteredPrompts.every(p => selectedPrompts.has(p.id));
 
     // Folder State
     const {
@@ -215,11 +225,13 @@ export default function PromptArchive() {
     };
 
     const handleSelectAll = () => {
-        if (selectedPrompts.size === filteredPrompts.length) {
-            setSelectedPrompts(new Set());
+        const newSelected = new Set(selectedPrompts);
+        if (areAllSelected) {
+            filteredPrompts.forEach(p => newSelected.delete(p.id));
         } else {
-            setSelectedPrompts(new Set(filteredPrompts.map(p => p.id)));
+            filteredPrompts.forEach(p => newSelected.add(p.id));
         }
+        setSelectedPrompts(newSelected);
     };
 
     const handleBatchDelete = async () => {
@@ -371,12 +383,6 @@ export default function PromptArchive() {
         }
     };
 
-    const filteredPrompts = prompts.filter(p =>
-        p.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.metadata.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (p.metadata.category?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
-    );
 
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
@@ -390,7 +396,10 @@ export default function PromptArchive() {
                         style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
                     />
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-cyan-500 to-teal-600 bg-clip-text text-transparent">💡 Prompt Archive</h1>
-                    <button onClick={() => navigate('/hub')} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-lg transition-colors text-sm font-medium" title="Back to Archive Hub">← Hub</button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => navigate('/hub')} className="flex items-center gap-1 px-4 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 hover:border-green-500/50 text-green-400 rounded-full transition-all duration-200 text-sm font-medium hover:scale-105 active:scale-95 shadow-lg hover:shadow-green-500/20 focus:outline-none focus:ring-2 focus:ring-green-500" title="Back to Archive Hub">← Hub</button>
+                        <button onClick={() => navigate('/memory-archive')} className="flex items-center gap-1 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 hover:border-purple-500/50 text-purple-400 rounded-full transition-all duration-200 text-sm font-medium hover:scale-105 active:scale-95 shadow-lg hover:shadow-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-500" title="Go to Memory Archive">🧠 Memories</button>
+                    </div>
                 </div>
 
                 <PromptAddModal
@@ -415,7 +424,18 @@ export default function PromptArchive() {
                                 {selectedPrompts.size === filteredPrompts.length && filteredPrompts.length > 0 ? 'Deselect All' : `Select All (${filteredPrompts.length})`}
                             </button>
                             <div className="relative w-full md:w-96">
-                                <input type="text" placeholder="🔍 Search prompts, tags, or categories..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-4 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-500 text-gray-200" />
+                                <input type="text" placeholder="🔍 Search prompts, tags, or categories..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-4 pr-10 py-2 bg-gray-800/50 border border-gray-700 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-500 text-gray-200" />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                                        title="Clear search"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -425,6 +445,16 @@ export default function PromptArchive() {
                             path={breadcrumbs}
                             onNavigate={setCurrentFolderId}
                             accentColor="blue"
+                            onDrop={async (folderId: string | null, draggedId: string, type: 'item' | 'folder') => {
+                                if (type === 'folder') {
+                                    await moveFolder(draggedId, folderId);
+                                } else {
+                                    const itemsToMove = selectedPrompts.has(draggedId) ? Array.from(selectedPrompts) : [draggedId];
+                                    await moveItemsToFolder(itemsToMove, folderId);
+                                    if (selectedPrompts.has(draggedId)) setSelectedPrompts(new Set());
+                                }
+                                await loadPrompts();
+                            }}
                         />
                         <div className="flex items-center gap-3">
                             <button
@@ -494,8 +524,14 @@ export default function PromptArchive() {
                                         e.stopPropagation();
                                         setSearchQuery(tag);
                                     }}
-                                    onDrop={async (folderId: string, draggedId: string) => {
-                                        await moveItemsToFolder([draggedId], folderId);
+                                    onDrop={async (folderId: string, draggedId: string, type: 'item' | 'folder') => {
+                                        if (type === 'folder') {
+                                            await moveFolder(draggedId, folderId);
+                                        } else {
+                                            const itemsToMove = selectedPrompts.has(draggedId) ? Array.from(selectedPrompts) : [draggedId];
+                                            await moveItemsToFolder(itemsToMove, folderId);
+                                            if (selectedPrompts.has(draggedId)) setSelectedPrompts(new Set());
+                                        }
                                         await loadPrompts();
                                     }}
                                 />
@@ -523,28 +559,15 @@ export default function PromptArchive() {
                     <PromptPreviewModal prompt={previewPrompt} onClose={() => setPreviewPrompt(null)} onSave={async (updated) => { await storageService.updatePrompt(updated); await loadPrompts(); setPreviewPrompt(updated); }} />
                 )}
 
-                {selectedPrompts.size > 0 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-lg border border-white/10 rounded-full shadow-2xl px-6 py-3 flex items-center gap-4 z-50">
-                        <span className="text-sm font-medium text-gray-300 border-r border-white/10 pr-4">{selectedPrompts.size} selected</span>
-                        <button onClick={() => setShowExportDestination(true)} className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors" title="Export selected">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Export <span className="text-xs">▼</span>
-                        </button>
-                        <div className="w-px h-4 bg-white/10 mx-1"></div>
-                        <button onClick={handleBatchMove} className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                            Move
-                        </button>
-                        <div className="w-px h-4 bg-white/10 mx-1"></div>
-                        <button onClick={handleBatchDelete} className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Delete
-                        </button>
-                        <button onClick={() => setSelectedPrompts(new Set())} className="ml-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                )}
+                <ArchiveBatchActionBar
+                    selectedCount={selectedPrompts.size}
+                    onExport={() => setShowExportDestination(true)}
+                    onDelete={handleBatchDelete}
+                    onMove={handleBatchMove}
+                    onClearSelection={() => setSelectedPrompts(new Set())}
+                    accentColor="blue"
+                    itemLabel="prompts"
+                />
 
                 <ExportDestinationModal isOpen={showExportDestination} onClose={() => setShowExportDestination(false)} onDestinationSelected={(d) => { setExportDestination(d); setShowExportDestination(false); setExportModalOpen(true); }} isExporting={isSendingToDrive} accentColor="blue" />
                 <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} onExport={handleBatchExport} selectedCount={selectedPrompts.size} hasArtifacts={false} exportFormat={exportFormat} setExportFormat={setExportFormat} exportPackage={exportPackage} setExportPackage={setExportPackage} accentColor="blue" exportDestination={exportDestination} onExportDrive={handleBatchExportToDrive} isExportingToDrive={isSendingToDrive} />

@@ -14,13 +14,13 @@ const Changelog: React.FC = () => {
     const changes: Release[] = [
         {
             version: 'v0.5.8.5',
-            date: 'Jan 22, 2026',
-            title: 'High-Fidelity Artifact Integration',
+            date: 'Jan 23, 2026',
+            title: 'Artifact Linkage & Visual Polish',
             items: [
-                'Runtime Session Hydration: Implemented intelligent message-to-artifact mapping in the Chat Preview, ensuring message-linked attachments are visible even in legacy or sync-restricted sessions.',
-                'Rich Visual Language: Integrated getFileIcon utility to replace generic emojis with context-aware, category-specific icons (Images, Videos, Code, etc.).',
-                'Interactive Conversation Bubbles: Artifact cards in the chat stream now feature specific actions for viewing (Markdown) or downloading, with rich metadata display.',
-                'Standardized Artifact Viewer: Unified the preview experience by integrating the app-wide ArtifactViewerModal into the Archive Hub.',
+                'Direct Search Detection: New intelligent detection strategy that finds artifacts in chat text even if they have spaces or complex names.',
+                'Synchronized Linkage: Manual attachments in the Message Editor now instantly sync to the global Artifact Library and persist to the database.',
+                'Archive Cross-Navigation: Added color-coded "Memories" and "Prompts" navigation pills to archive headers for instant switching.',
+                'Premium "Pill" Aesthetic: Upgraded search bars, inputs, and breadcrumbs to rounded-full styling with unified "Scale & Glow" feedback.',
             ]
         },
         {

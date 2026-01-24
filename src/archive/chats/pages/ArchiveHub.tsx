@@ -155,7 +155,7 @@ const ArchiveHub: React.FC = () => {
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (confirm('Are you sure you want to delete this archive?')) {
+        if (confirm('Delete this archive? This action cannot be undone.')) {
             await storageService.deleteSession(id);
             await loadSessions();
             if (selectedIds.has(id)) {
@@ -179,7 +179,7 @@ const ArchiveHub: React.FC = () => {
     };
 
     const handleBatchDelete = async () => {
-        if (confirm(`Are you sure you want to delete ${selectedIds.size} selected archives?`)) {
+        if (confirm(`Permanently delete ${selectedIds.size} selected archives? This action cannot be undone.`)) {
             for (const id of selectedIds) {
                 await storageService.deleteSession(id);
             }
@@ -214,6 +214,13 @@ const ArchiveHub: React.FC = () => {
         }
         // Show destination modal first instead of format modal
         setShowExportDestination(true);
+    };
+
+    const handleBatchMove = () => {
+        if (selectedIds.size === 0) return;
+        setMovingItemIds(Array.from(selectedIds));
+        setMovingFolderId(null);
+        setMoveModalOpen(true);
     };
 
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType?: 'directory' | 'zip' | 'single') => {
@@ -726,7 +733,7 @@ const ArchiveHub: React.FC = () => {
             exportDate: new Date().toISOString(),
             exportedBy: {
                 tool: 'Noosphere Reflect',
-                        version: '0.5.8.5'
+                version: '0.5.8.5'
             },
             chats: [{
                 filename: baseFilename,
@@ -1283,6 +1290,16 @@ const ArchiveHub: React.FC = () => {
                         path={breadcrumbs}
                         onNavigate={setCurrentFolderId}
                         accentColor="green"
+                        onDrop={async (folderId: string | null, draggedId: string, type: 'item' | 'folder') => {
+                            if (type === 'folder') {
+                                await moveFolder(draggedId, folderId);
+                            } else {
+                                const itemsToMove = selectedIds.has(draggedId) ? Array.from(selectedIds) : [draggedId];
+                                await moveItemsToFolder(itemsToMove, folderId);
+                                if (selectedIds.has(draggedId)) setSelectedIds(new Set());
+                                await loadSessions();
+                            }
+                        }}
                     />
                     <FolderActionsDropdown
                         accentColor="green"
@@ -1346,9 +1363,15 @@ const ArchiveHub: React.FC = () => {
                                             e.stopPropagation();
                                             setSearchTerm(tag);
                                         }}
-                                        onDrop={async (folderId: string, draggedId: string) => {
-                                            await moveItemsToFolder([draggedId], folderId);
-                                            await loadSessions();
+                                        onDrop={async (folderId: string, draggedId: string, type: 'item' | 'folder') => {
+                                            if (type === 'folder') {
+                                                await moveFolder(draggedId, folderId);
+                                            } else {
+                                                const itemsToMove = selectedIds.has(draggedId) ? Array.from(selectedIds) : [draggedId];
+                                                await moveItemsToFolder(itemsToMove, folderId);
+                                                if (selectedIds.has(draggedId)) setSelectedIds(new Set());
+                                                await loadSessions();
+                                            }
                                         }}
                                     />
                                 );
@@ -1403,6 +1426,7 @@ const ArchiveHub: React.FC = () => {
                 selectedCount={selectedIds.size}
                 onExport={handleExportStart}
                 onDelete={handleBatchDelete}
+                onMove={handleBatchMove}
                 onClearSelection={() => setSelectedIds(new Set())}
             />
 

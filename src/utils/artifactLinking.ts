@@ -64,7 +64,7 @@ export const processArtifactUpload = (
         let matchedToMessage = false;
         const normalizedFileName = artifact.fileName.toLowerCase();
 
-        // Check if this filename matches any extracted names
+        // Check if this filename matches any extracted names OR appears directly in text
         for (const [extractedName, messageIndices] of filenameToMessageIndices.entries()) {
             if (matchFileName(artifact.fileName, extractedName)) {
                 // Link to all matching messages
@@ -78,17 +78,48 @@ export const processArtifactUpload = (
                             ...msg,
                             artifacts: [...msgArtifacts, artifact]
                         };
-                        matches.push(`${artifact.fileName} → Message #${msgIndex + 1}`);
+                        matches.push(`${artifact.fileName} → Message #${msgIndex + 1} (Extracted)`);
                         matchedToMessage = true;
 
-                        // Set insertedAfterMessageIndex to the first match (for legacy export support)
+                        // Set insertedAfterMessageIndex to the first match
                         if (artifact.insertedAfterMessageIndex === undefined) {
                             artifact.insertedAfterMessageIndex = msgIndex;
                         }
                     }
                 });
-                break; // Found a match, no need to check other extracted names
+                break; // Found a match via extraction, stop
             }
+        }
+
+        // STRATEGY 2: Direct Search (If not matched by extraction)
+        // If the filename has spaces (e.g. "My Report.pdf"), regex extraction often fails.
+        // We explicitly search the message content for the normalized filename.
+        if (!matchedToMessage) {
+            const normalizedFileName = artifact.fileName.toLowerCase();
+            const searchableName = normalizedFileName.replace(/\.[^/.]+$/, ""); // name without extension
+
+            updatedMessages.forEach((msg, idx) => {
+                const content = msg.content.toLowerCase();
+                // We check for the full filename OR the base name (if unique enough > 4 chars)
+                const hasFullMatch = content.includes(normalizedFileName);
+                const hasBaseMatch = searchableName.length > 4 && content.includes(searchableName);
+
+                if (hasFullMatch || hasBaseMatch) {
+                    const msgArtifacts = msg.artifacts || [];
+                    if (!msgArtifacts.some(a => a.id === artifact.id)) {
+                        updatedMessages[idx] = {
+                            ...msg,
+                            artifacts: [...msgArtifacts, artifact]
+                        };
+                        matches.push(`${artifact.fileName} → Message #${idx + 1} (Direct Search)`);
+                        matchedToMessage = true;
+
+                        if (artifact.insertedAfterMessageIndex === undefined) {
+                            artifact.insertedAfterMessageIndex = idx;
+                        }
+                    }
+                }
+            });
         }
     }
 
