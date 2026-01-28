@@ -86,7 +86,7 @@ function parseAiStudioHtml(doc) {
           }
         }
         if (thinkingContent && thinkingContent.trim()) {
-          blockContent += `<thought>\n${thinkingContent.trim()}\n</thought>\n\n`;
+          blockContent += `<thoughts>\n${thinkingContent.trim()}\n</thoughts>\n\n`;
         }
       }
 

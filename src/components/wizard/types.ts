@@ -1,6 +1,6 @@
 import { ParserMode } from '../../types';
 
-export type WizardStep = 1 | 1.5 | 2 | 3;
+export type WizardStep = 1 | 2 | 3 | 4 | 'extension-info';
 export type InputMethod = 'paste' | 'upload' | 'extension' | 'blank';
 
 export interface PlatformOption {
@@ -10,6 +10,7 @@ export interface PlatformOption {
     icon: string;
     color: string;
     category: string;
+    format: 'markdown' | 'html' | 'json';
 }
 
 export interface ContentImportWizardProps {

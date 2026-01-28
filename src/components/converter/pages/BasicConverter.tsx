@@ -42,7 +42,8 @@ import {
     ConverterPreview,
     ConverterSidebar,
     ConverterSetup,
-    ConverterReviewManage
+    ConverterReviewManage,
+    CreativeEntry
 } from '../components';
 // @ts-ignore
 import readmeContent from '../../../assets/docs/README.md?raw';
@@ -127,7 +128,7 @@ const BasicConverter: React.FC = () => {
     const [selectedStyle, setSelectedStyle] = useState<ChatStyle>(ChatStyle.Default);
     const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
     const [showSavedSessions, setShowSavedSessions] = useState<boolean>(false);
-    const [isConversing, setIsConverting] = useState<boolean>(false);
+    const [isConverting, setIsConverting] = useState<boolean>(false);
     const [parserMode, setParserMode] = useState<ParserMode>(ParserMode.Basic);
     const [chatData, setChatData] = useState<ChatData | null>(null);
     const [metadata, setMetadata] = useState<ChatMetadata>({
@@ -152,7 +153,7 @@ const BasicConverter: React.FC = () => {
     const [showChatContentModal, setShowChatContentModal] = useState<boolean>(false);
     const [showReviewEditModal, setShowReviewEditModal] = useState<boolean>(false);
     // Move loadSession before useEffect to avoid TDZ
-    const loadSession = useCallback((session: SavedChatSession) => {
+    const loadSession = useCallback(async (session: SavedChatSession) => {
         setLoadedSessionId(session.id); // Track loaded session for database mode
         setInputContent(session.inputContent);
         setChatTitle(session.chatTitle);
@@ -212,7 +213,7 @@ const BasicConverter: React.FC = () => {
             }
 
             setChatData(loadedChatData);
-            const html = exportService.generate(
+            const html = await exportService.generate(
                 'html',
                 loadedChatData,
                 session.chatTitle,
@@ -361,7 +362,13 @@ const BasicConverter: React.FC = () => {
             // Determine parsing mode
             let detectedMode = modeToUse;
 
+            console.log('[BasicConverter] Converting with mode:', detectedMode);
+            console.log('[BasicConverter] Content to convert (first 200):', contentToConvert.substring(0, 200));
+
             const data: ChatData = await parseChat(contentToConvert, 'auto', detectedMode);
+
+            console.log('[BasicConverter] Parsed data:', data);
+            console.log('[BasicConverter] Messages count:', data.messages?.length || 0);
 
             // Smart Metadata Enrichment
             const enrichedMetadata = enrichMetadata(data, detectedMode); // Fix: pass detectedMode
@@ -379,7 +386,7 @@ const BasicConverter: React.FC = () => {
                 // Does ChatData include metadata? Yes: messages: [], metadata?: { ... }
                 // So mergedData.metadata should be the final metadata.
 
-                const html = exportService.generate(
+                const html = await exportService.generate(
                     'html',
                     finalData,
                     chatTitle, // Keep existing title
@@ -393,10 +400,6 @@ const BasicConverter: React.FC = () => {
                 );
                 setGeneratedHtml(html);
 
-                // AUTO-SAVE merged result
-                setTimeout(async () => {
-                    await handleSaveChat(chatTitle, true, finalData, finalData.metadata || enrichedMetadata);
-                }, 100);
 
             } else {
                 // New Load Mode OR "Smart Resume" Mode
@@ -472,7 +475,7 @@ const BasicConverter: React.FC = () => {
                     setInputContent(previousContent + '\n\n' + contentToConvert);
 
                     // Generate HTML
-                    const html = exportService.generate(
+                    const html = await exportService.generate(
                         'html',
                         mergedData,
                         mergedMetadata.title || enrichedMetadata.title,
@@ -486,10 +489,6 @@ const BasicConverter: React.FC = () => {
                     );
                     setGeneratedHtml(html);
 
-                    // Save
-                    setTimeout(async () => {
-                        await handleSaveChat(mergedMetadata.title, true, mergedData, mergedMetadata);
-                    }, 100);
 
                 } else {
                     // Truly New Session
@@ -530,7 +529,7 @@ const BasicConverter: React.FC = () => {
                         }
                     }
 
-                    const html = exportService.generate(
+                    const html = await exportService.generate(
                         'html',
                         data,
                         enrichedMetadata.title,
@@ -544,10 +543,6 @@ const BasicConverter: React.FC = () => {
                     );
                     setGeneratedHtml(html);
 
-                    // AUTO-SAVE on first conversion
-                    setTimeout(async () => {
-                        await handleSaveChat(enrichedMetadata.title, true, data, enrichedMetadata);
-                    }, 100);
                 }
             }
 
@@ -592,6 +587,11 @@ const BasicConverter: React.FC = () => {
 
 
     const handleWizardImport = (content: string, type: 'html' | 'json', mode: ParserMode, attachments?: File[]) => {
+        console.log('[BasicConverter] handleWizardImport called');
+        console.log('[BasicConverter] Mode:', mode);
+        console.log('[BasicConverter] Content length:', content.length);
+        console.log('[BasicConverter] First 200 chars:', content.substring(0, 200));
+
         setInputContent(content);
         setParserMode(mode);
         // Handle attachments if provided
@@ -665,16 +665,13 @@ const BasicConverter: React.FC = () => {
         }
     }, [chatData, chatTitle, userName, aiName, selectedTheme, parserMode, metadata, artifacts, loadedSessionId, inputContent]);
 
-    // AUTO-SAVE EFFECT: Persist form changes automatically
-    useEffect(() => {
-        if (!loadedSessionId || !chatData) return;
-
-        const timer = setTimeout(() => {
-            handleSaveChat(chatTitle, true);
-        }, 1500); // 1.5s debounce for form changes
-
-        return () => clearTimeout(timer);
-    }, [chatTitle, userName, aiName, selectedTheme, metadata, artifacts, loadedSessionId, chatData, handleSaveChat]);
+    // MANUAL SAVE HANDLER: Triggered by user button
+    const handleSaveManual = async () => {
+        if (!chatData) return;
+        setIsConverting(true); // Show loading state on button
+        await handleSaveChat(chatTitle, false);
+        setIsConverting(false);
+    };
 
     const handlePreviewSave = async (updatedSession: SavedChatSession) => {
         // Update local state from the preview edit
@@ -682,7 +679,7 @@ const BasicConverter: React.FC = () => {
             setChatData(updatedSession.chatData);
 
             // Regenerate HTML
-            const html = exportService.generate(
+            const html = await exportService.generate(
                 'html',
                 updatedSession.chatData,
                 updatedSession.chatTitle,
@@ -748,7 +745,7 @@ const BasicConverter: React.FC = () => {
         setChatData(newData);
 
         // Re-generate HTML
-        const html = exportService.generate(
+        const html = await exportService.generate(
             'html',
             newData,
             chatTitle,
@@ -863,6 +860,57 @@ const BasicConverter: React.FC = () => {
         input.click();
     };
 
+    const handleAttachToMessageWithArtifact = async (messageIndex: number, artifact: ConversationArtifact) => {
+        if (!chatData) return;
+
+        // Add to global pool
+        const tempArtifacts = [...artifacts, artifact];
+
+        // Link to message
+        const updatedMessages = [...chatData.messages];
+        const targetMsg = updatedMessages[messageIndex];
+
+        updatedMessages[messageIndex] = {
+            ...targetMsg,
+            artifacts: [
+                ...(targetMsg.artifacts || []),
+                artifact
+            ]
+        };
+
+        // Update Local State
+        setArtifacts(tempArtifacts);
+        setChatData({ ...chatData, messages: updatedMessages });
+
+        // Update Metadata State
+        const newMetadata = {
+            ...metadata,
+            artifacts: tempArtifacts
+        };
+        setMetadata(newMetadata);
+
+        // PERSISTENCE
+        if (loadedSessionId) {
+            await handleSaveChat(chatTitle, true, { ...chatData, messages: updatedMessages }, newMetadata);
+        }
+
+        // Regenerate HTML
+        const html = await exportService.generate(
+            'html',
+            { ...chatData, messages: updatedMessages },
+            chatTitle,
+            selectedTheme,
+            userName,
+            aiName,
+            parserMode,
+            newMetadata,
+            false,
+            true // isPreview
+        );
+        setGeneratedHtml(html);
+    };
+
+
     const handleRemoveMessageArtifact = (messageIndex: number, artifactId: string) => {
         if (!chatData) return;
 
@@ -925,7 +973,7 @@ const BasicConverter: React.FC = () => {
             setChatData(updatedChatData);
 
             // Re-generate HTML Preview immediately
-            const html = exportService.generate(
+            const html = await exportService.generate(
                 'html',
                 updatedChatData,
                 chatTitle,
@@ -982,7 +1030,7 @@ const BasicConverter: React.FC = () => {
             setChatData(updatedChatData);
 
             // Regenerate HTML
-            const html = exportService.generate(
+            const html = await exportService.generate(
                 'html',
                 updatedChatData,
                 chatTitle,
@@ -1075,6 +1123,40 @@ const BasicConverter: React.FC = () => {
                             setShowImportWizard(true);
                         }}
                     />
+
+                    {/* MANUAL SAVE ACTION */}
+                    {chatData && (
+                        <div className="flex justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            <button
+                                onClick={handleSaveManual}
+                                disabled={isConverting}
+                                className="group relative px-12 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-2xl font-black text-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-2xl shadow-green-500/20 ring-2 ring-white/10 flex items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                    {isConverting ? (
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    ) : (
+                                        <span className="text-xl">💾</span>
+                                    )}
+                                </div>
+                                <div className="flex flex-col items-start leading-tight">
+                                    <span className="uppercase tracking-widest text-[10px] opacity-70">Archive Synchronization</span>
+                                    <span>Save to Local Archive</span>
+                                </div>
+                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 2. CREATIVE ENTRY (Manual) */}
+                    {!chatData && (
+                        <CreativeEntry
+                            onNewBlankChat={() => handleWizardImport('', 'html', ParserMode.Blank)}
+                        />
+                    )}
 
                     {/* Review & Manage Section */}
                     <ConverterReviewManage
@@ -1171,6 +1253,22 @@ const BasicConverter: React.FC = () => {
                         isOpen={editingMessageIndex !== null}
                         onClose={() => setEditingMessageIndex(null)}
                         onSave={handleSaveMessage}
+                        onCreateDocument={(fileName, content) => {
+                            // Create a new artifact from the document content
+                            const artifact: ConversationArtifact = {
+                                id: crypto.randomUUID(),
+                                fileName: fileName,
+                                fileSize: content.length,
+                                mimeType: 'text/markdown',
+                                fileData: btoa(content), // Base64 encode the content
+                                uploadedAt: new Date().toISOString(),
+                                insertedAfterMessageIndex: editingMessageIndex
+                            };
+
+                            // Attach the artifact to the message
+                            handleAttachToMessageWithArtifact(editingMessageIndex!, artifact);
+                        }}
+                        onRemoveArtifact={(artifactId) => handleRemoveMessageArtifact(editingMessageIndex!, artifactId)}
                     />
                 )
             }

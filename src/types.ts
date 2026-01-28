@@ -102,6 +102,15 @@ export enum ParserMode {
   KimiHtml = 'kimi-html',
   KimiShareCopy = 'kimi-share-copy',
   GrokHtml = 'grok-html',
+  // New Service-Specific Markdown Modes
+  ClaudeMarkdown = 'claude-md',
+  GeminiMarkdown = 'gemini-md',
+  ChatGptMarkdown = 'gpt-md',
+  GrokMarkdown = 'grok-md',
+  KimiMarkdown = 'kimi-md',
+  LeChatMarkdown = 'lechat-md',
+  AiStudioMarkdown = 'aistudio-md',
+  LlamacoderMarkdown = 'llamacoder-md',
   ThirdPartyMarkdown = 'third-party-markdown',
   ThirdPartyJson = 'third-party-json',
   Blank = 'blank',
@@ -130,11 +139,17 @@ export type SavedChatSessionMetadata = Omit<SavedChatSession, 'inputContent' | '
 export interface AppSettings {
   defaultUserName: string;
   fileNamingCase: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase';
+  markdownLayout: 'universal' | 'fancy';
+  exportRootMetadata: boolean;
+  exportChatMetadata: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   defaultUserName: 'User',
-  fileNamingCase: 'kebab-case'
+  fileNamingCase: 'kebab-case',
+  markdownLayout: 'universal',
+  exportRootMetadata: true,
+  exportChatMetadata: true
 };
 
 // Memory Archive Types

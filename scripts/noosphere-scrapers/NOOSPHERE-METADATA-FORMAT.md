@@ -22,12 +22,14 @@ Used to identify AI/assistant response messages in exported content.
 
 ### Thought Block Markers
 ```
-<thought>
+<thoughts>
+
 ... thinking content ...
-</thought>
+
+</thoughts>
 ```
 
-Used to wrap Claude or Gemini thinking/reasoning processes.
+Used to wrap Claude or Gemini thinking/reasoning processes in the User interface for previews.
 
 ### Attribution Footer
 ```
@@ -47,7 +49,7 @@ Identifies the export source and tool version.
 # Chat Title
 
 **Platform:** Claude | **Date:** Jan 12, 2026
-**Source:** [https://claude.ai/chat/...](https://...)
+**Source:** [Source Chat](https://...)
 **Tags:** claude, export
 
 ---
@@ -58,9 +60,11 @@ What is machine learning?
 ---
 
 ## Response:
-<thought>
+<thoughts>
+
 The user is asking for an explanation of machine learning. I should provide a clear, comprehensive answer covering the basics.
-</thought>
+
+</thoughts>
 
 Machine learning is a subset of artificial intelligence that...
 
@@ -96,7 +100,7 @@ Sure! Here's a practical example...
     {
       "type": "response",
       "marker": "## Response:",
-      "content": "<thought>\nThe user is asking...\n</thought>\n\nMachine learning is a subset...",
+      "content": "<thoughts>\nThe user is asking...\n</thoughts>\n\nMachine learning is a subset...",
       "timestamp": "2026-01-12T22:30:05Z",
       "isEdited": false,
       "platform": "claude"
@@ -115,10 +119,10 @@ Sure! Here's a practical example...
     "version": "Universal Native Scraper v2.0",
     "method": "native-copy-button-intercept",
     "noosphereMetadata": {
-      "userMarker": "## Prompt:",
-      "aiMarker": "## Response:",
-      "thoughtMarker": "<thought>",
-      "thoughtMarkerEnd": "</thought>"
+      "userMarker": "## Prompt - [Username]:",
+      "aiMarker": "## Response - [Model]:",
+      "thoughtMarker": "<thoughts>",
+      "thoughtMarkerEnd": "</thoughts>"
     }
   }
 }
@@ -196,12 +200,14 @@ When a message contains thinking/reasoning:
 
 ```markdown
 ## Response:
-<thought>
+<thoughts>
+
 This is my reasoning process for solving this problem...
 - First I considered...
 - Then I realized...
 - Finally I concluded...
-</thought>
+
+</thoughts>
 
 Here's my actual response based on that thinking...
 ```
@@ -346,9 +352,11 @@ exported.messages.forEach(msg => {
 First user message
 
 ## Response:
-<thought>
+<thoughts>
+
 Thinking about the user's question...
-</thought>
+
+</thoughts>
 
 First AI response
 

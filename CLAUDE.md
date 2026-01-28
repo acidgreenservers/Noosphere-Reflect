@@ -8,14 +8,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **These rules override all other sections and take precedence in every decision.**
 
-### 1. MANDATORY USER APPROVAL FOR GIT COMMITS
+### Refer to [Project Overview.md](/agents/project-overview/project-overview.md)
+
+### 1. MANDATORY General Project Rules
+1.  **Security First:** Security is paramount and is the first layer of thought. The application must be secure by design.
+2.  **Local-First & Decentralized:** The backend must use IndexedDB. No mandatory remote server authentication is required for core functionality.
+3.  **Preserve Meaning:** The architecture should prioritize the fidelity of the archived chats and memories.
+4.  **Step-by-Step Reasoning:** Always think and explain step-by-step before generating code. Never output code without a preceding explanation.
+5.  **Root Cause Fixes:** Fix the underlying root cause of issues, never just patch the symptoms.
+
+### 2. MANDATORY USER APPROVAL FOR GIT COMMITS
 - **NEVER execute `git commit` without explicit user approval.**
 - **ALWAYS ask the user before committing**, even if changes are staged.
 - Pattern: Always propose the commit message and file list, wait for "yes" or explicit approval before executing.
 - Exception: Only after user says "yes" or "go ahead" can you run the commit.
 - **Memory Bank Update**: Log the commit decision (approved/denied) in `activeContext.md` before stopping.
 
-### 2. MEMORY BANK UPDATES ON EVERY CHANGE
+### 3. MEMORY BANK UPDATES ON EVERY CHANGE
 - **Update `agents/memory-bank/activeContext.md` after EVERY change:**
   - Success: Document what was changed, why, and current state
   - Failure: Document what was attempted, why it failed, blockers, and next steps
@@ -23,14 +32,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Update frequency**: After each feature addition, bug fix, security audit, or failed attempt
 - **Format**: Add timestamped entry under "Recent Changes" or create new subsection
 
-### 3. CHALLENGE & QUESTION USER ASSUMPTIONS
+### 4. CHALLENGE & QUESTION USER ASSUMPTIONS
 - **Do NOT blindly accept user input.** If you see a security flaw, better implementation, or architectural issue, raise it.
 - **Engage in thoughtful friction**: Propose alternatives with clear trade-offs
 - **Educate through synthesis**: Build developer understanding by explaining inherent constraints and limitations
 - **Pattern**: "I see what you're asking for. However, I notice [security/efficiency/design issue]. Here are alternatives..."
 - **Goal**: Strengthen codebase through collaborative problem-solving, not just task completion
 
-### 4. SINGLE, CONSISTENT GOVERNANCE RULES SECTION
+### 5. SINGLE, CONSISTENT GOVERNANCE RULES SECTION
 - These rules appear at the top of every agent file (CLAUDE.md, GEMINI.md, CLINE.md, BLACKBOX.md)
 - No scattered governance statements throughout the file
 - All agents follow identical high-priority rules

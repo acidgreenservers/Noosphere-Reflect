@@ -1,6 +1,6 @@
-import { ChatData, ChatMessageType, ChatMetadata } from '../../types';
-import { BaseParser } from './BaseParser';
-import { extractMarkdownFromHtml, validateMarkdownOutput } from './ParserUtils';
+import { ChatData, ChatMessageType, ChatMetadata } from '../../../types';
+import { BaseParser } from '../BaseParser';
+import { extractMarkdownFromHtml, validateMarkdownOutput } from '../ParserUtils';
 
 export class AiStudioParser implements BaseParser {
     parse(html: string): ChatData {
@@ -49,7 +49,7 @@ export class AiStudioParser implements BaseParser {
                         const rawThoughtText = extractMarkdownFromHtml(content as HTMLElement);
                         const thoughtText = validateMarkdownOutput(rawThoughtText);
                         if (thoughtText) {
-                            fullContent += `\n---\n<thought>\n> ⏱️ *${header}*\n\n${thoughtText}\n</thought>\n---\n\n`;
+                            fullContent += `\n---\n<thoughts>\n\n> ⏱️ *${header}*\n\n${thoughtText}\n\n</thoughts>\n---\n\n`;
                         }
                     }
                     // Remove from turn content before main extraction
@@ -96,7 +96,7 @@ export class AiStudioParser implements BaseParser {
 
                 if (thoughtChunk) {
                     const content = extractMarkdownFromHtml(thoughtChunk as HTMLElement);
-                    if (content) messages.push({ type: ChatMessageType.Response, content: `\n---\n<thought>\n${content}\n</thought>\n---\n` });
+                    if (content) messages.push({ type: ChatMessageType.Response, content: `\n---\n<thoughts>\n\n${content}\n\n</thoughts>\n---\n` });
                 }
 
                 if (modelPrompt) {
@@ -105,7 +105,7 @@ export class AiStudioParser implements BaseParser {
                     if (content) {
                         // Check if last message was thought, merge if so
                         const last = messages[messages.length - 1];
-                        if (last && last.type === ChatMessageType.Response && last.content.includes('<thought>')) {
+                        if (last && last.type === ChatMessageType.Response && last.content.includes('<thoughts>')) {
                             last.content += `\n\n${content}`;
                         } else {
                             messages.push({ type: ChatMessageType.Response, content });

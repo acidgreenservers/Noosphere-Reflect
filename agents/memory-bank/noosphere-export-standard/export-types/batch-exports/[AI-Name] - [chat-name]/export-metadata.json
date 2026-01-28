@@ -1,0 +1,24 @@
+{
+  "exportDate": "[ISO Date Timestamp]",
+  "originalDate": "[ISO Date Timestamp]",
+  "exportedBy": {
+    "tool": "Noosphere Reflect",
+    "version": "[Current-Version]",
+    "tagline": "Meaning Through Memory"
+  },
+  "chats": [
+    {
+      "filename": "[Name] - chat-name",
+      "originalTitle": "[Original File Name]",
+      "service": "[Model/Service]",
+      "tags": [
+        "Tags"
+      ]
+    }
+  ],
+  "summary": {
+    "totalExchanges": 0,
+    "totalMessages": 0,
+    "totalArtifacts": 0
+  }
+}

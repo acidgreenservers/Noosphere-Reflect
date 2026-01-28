@@ -29,27 +29,30 @@ export const WizardFooter: React.FC<WizardFooterProps> = ({
             {stepHistory.length > 1 && (
                 <button
                     onClick={onBack}
-                    className="px-4 py-2 text-gray-400 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 hover:bg-gray-800 rounded-lg hover:ring-1 hover:ring-white/20"
+                    className="px-6 py-2 text-gray-400 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 hover:bg-gray-800 rounded-xl hover:ring-1 hover:ring-white/20 font-bold text-sm"
                 >
-                    Back
+                    ← Back
                 </button>
             )}
             <div className="ml-auto">
-                {step === 2 && inputMethod !== 'extension' && (
+                {/* Step 4: Content Input - Show Verify & Import */}
+                {step === 4 && inputMethod !== 'extension' && (
                     <button
                         onClick={onVerify}
                         disabled={!content || isParsing}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-blue-400/50 shadow-lg shadow-blue-500/20"
+                        className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-green-400/50 shadow-lg shadow-green-500/20"
                     >
-                        {isParsing ? 'Verifying...' : 'Verify Content ->'}
+                        {isParsing ? 'Verifying...' : '✓ Verify & Import'}
                     </button>
                 )}
-                {step === 3 && verificationData && (
+
+                {/* Info Step for Extension */}
+                {step === 'extension-info' && (
                     <button
-                        onClick={onFinalImport}
-                        className="px-8 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold shadow-lg shadow-green-500/20 transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-green-400/50"
+                        onClick={onBack}
+                        className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/20"
                     >
-                        {inputMethod === 'blank' ? 'Create Blank Chat' : 'Import Chat'}
+                        Choose Manual Method
                     </button>
                 )}
             </div>

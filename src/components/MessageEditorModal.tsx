@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from '../types';
 import { renderMarkdownToHtml } from '../utils/markdownUtils';
+import { CreateMarkdownAttachmentModal } from './CreateMarkdownAttachmentModal';
 
 interface MessageEditorModalProps {
     message: ChatMessage;
@@ -8,6 +9,8 @@ interface MessageEditorModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (updatedContent: string) => Promise<void>;
+    onCreateDocument?: (fileName: string, content: string) => void;
+    onRemoveArtifact?: (artifactId: string) => void;
     isMobile?: boolean;
 }
 
@@ -17,10 +20,13 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
     isOpen,
     onClose,
     onSave,
+    onCreateDocument,
+    onRemoveArtifact,
     isMobile = false
 }) => {
     const [editedContent, setEditedContent] = useState(message.content);
     const [isSaving, setIsSaving] = useState(false);
+    const [isCreateDocModalOpen, setIsCreateDocModalOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Reset content when modal opens with a new message
@@ -89,10 +95,6 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         if (e.key === "Escape") {
             onClose();
         }
-        if ((e.ctrlKey || e.metaKey) && (e.key === "t" || e.key === "T")) {
-            e.preventDefault();
-            handleInsertCollapsible();
-        }
     };
 
     // Use centralized markdown-to-HTML utility
@@ -159,34 +161,41 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                     {/* Save Button */}
                                     <button
                                         onClick={handleSave}
-                                        title="Save changes (Ctrl+Enter)"
+                                        title="Save changes"
                                         className="flex items-center gap-1 px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-600/30 rounded text-[10px] uppercase font-bold transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-green-500/50 hover:shadow-lg hover:shadow-green-500/10"
                                         disabled={isSaving || !hasChanges}
                                     >
-                                        <kbd className="bg-green-900/40 px-1 rounded border border-green-500/30">Ctrl+Enter</kbd>
                                         Save
                                     </button>
 
                                     {/* Cancel Button */}
                                     <button
                                         onClick={onClose}
-                                        title="Cancel editing (Esc)"
+                                        title="Cancel editing"
                                         className="flex items-center gap-1 px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 rounded text-[10px] uppercase font-bold transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-red-500/50 hover:shadow-lg hover:shadow-red-500/10"
                                         disabled={isSaving}
                                     >
-                                        <kbd className="bg-red-900/40 px-1 rounded border border-red-500/30">Esc</kbd>
                                         Close
                                     </button>
 
                                     {/* Collapsible Button */}
                                     <button
                                         onClick={handleInsertCollapsible}
-                                        title="Insert or wrap selection in <collapsible> tags (Ctrl+T)"
+                                        title="Insert or wrap selection in <collapsible> tags"
                                         className="flex items-center gap-1 px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/30 rounded text-[10px] uppercase font-bold transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10"
                                         disabled={isSaving}
                                     >
-                                        <kbd className="bg-purple-900/40 px-1 rounded border border-purple-500/30">Ctrl+T</kbd>
                                         Collapsible
+                                    </button>
+
+                                    {/* Create Document Button */}
+                                    <button
+                                        onClick={() => setIsCreateDocModalOpen(true)}
+                                        title="Create and attach a markdown document"
+                                        className="flex items-center gap-1 px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-600/30 rounded text-[10px] uppercase font-bold transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10"
+                                        disabled={isSaving}
+                                    >
+                                        Create Document
                                     </button>
                                 </div>
 
@@ -202,17 +211,33 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                             {/* Artifact Insertion Toolbar */}
                             {message.artifacts && message.artifacts.length > 0 && (
                                 <div className="pt-2 border-t border-gray-700 flex flex-wrap gap-2 items-center">
-                                    <span className="text-[10px] uppercase font-bold text-gray-500">Insert Artifact:</span>
+                                    <span className="text-[10px] uppercase font-bold text-gray-500">Attached Files:</span>
                                     {message.artifacts.map(art => (
-                                        <button
-                                            key={art.id}
-                                            onClick={() => handleInsertArtifactTag(art.id)}
-                                            className="text-[10px] px-2 py-1 bg-gray-700 hover:bg-purple-900/40 text-gray-300 hover:text-purple-300 border border-gray-600 rounded flex items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-purple-500/30 hover:shadow-md group"
-                                            title="Insert artifact reference tag"
-                                        >
-                                            <span className="group-hover:text-purple-400">📄</span>
-                                            <span className="truncate max-w-[100px]">{art.fileName}</span>
-                                        </button>
+                                        <div key={art.id} className="flex items-center gap-1 bg-gray-700 border border-gray-600 rounded group/artifact">
+                                            <button
+                                                onClick={() => handleInsertArtifactTag(art.id)}
+                                                className="text-[10px] px-2 py-1 hover:bg-purple-900/40 text-gray-300 hover:text-purple-300 rounded-l flex items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 hover:ring-1 hover:ring-purple-500/30 hover:shadow-md"
+                                                title="Insert artifact reference tag"
+                                            >
+                                                <span className="group-hover/artifact:text-purple-400">📄</span>
+                                                <span className="truncate max-w-[100px]">{art.fileName}</span>
+                                            </button>
+                                            {onRemoveArtifact && (
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm(`Delete ${art.fileName}?`)) {
+                                                            onRemoveArtifact(art.id);
+                                                        }
+                                                    }}
+                                                    className="px-1.5 py-1 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded-r transition-all duration-200 hover:scale-110 active:scale-95"
+                                                    title={`Delete ${art.fileName}`}
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             )}
@@ -278,6 +303,17 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Create Markdown Attachment Modal */}
+            <CreateMarkdownAttachmentModal
+                isOpen={isCreateDocModalOpen}
+                onClose={() => setIsCreateDocModalOpen(false)}
+                onSave={(fileName, content) => {
+                    if (onCreateDocument) {
+                        onCreateDocument(fileName, content);
+                    }
+                }}
+            />
         </div>
     );
 };

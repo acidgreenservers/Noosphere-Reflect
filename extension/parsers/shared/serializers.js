@@ -22,44 +22,102 @@ function serializeAsJson(chatData) {
 function serializeAsMarkdown(chatData, metadata = null) {
     const lines = [];
     const title = metadata?.title || 'AI Chat Export';
-    const userName = 'User'; // Could be configurable
-    const aiName = metadata?.model || 'AI';
+    const dateStr = metadata?.date ? new Date(metadata.date).toLocaleString() : new Date().toLocaleString();
+    const sourceUrl = metadata?.sourceUrl || '';
+    const model = metadata?.model || 'AI';
+    const tags = metadata?.tags ? metadata.tags.join(', ') : '';
 
-    // Header section
-    lines.push(`# ${title}\n`);
+    // Calculate stats
+    const messages = chatData.messages || [];
+    const totalMessages = messages.length;
+    const userMessages = messages.filter(m => m.type === 'prompt').length;
+    const aiMessages = messages.filter(m => m.type === 'response').length;
+    // Approximation: Exchanges = User Messages (assuming pairs)
+    const totalExchanges = userMessages;
+    // Artifacts count not easily available in current chatData structure, defaulting to 0 or N/A
 
-    if (metadata) {
-        if (metadata.model) lines.push(`**Model:** ${metadata.model}`);
-        if (metadata.date) lines.push(`**Date:** ${new Date(metadata.date).toLocaleString()}`);
-        if (metadata.sourceUrl) lines.push(`**Source:** [${metadata.sourceUrl}](${metadata.sourceUrl})`);
-        if (metadata.tags && metadata.tags.length > 0) lines.push(`**Tags:** ${metadata.tags.join(', ')}`);
-        if (lines.length > 1) lines.push('');
-        lines.push('---\n');
+    // 1. Metadata Header (Blockquote style)
+    lines.push('---');
+    lines.push(`> **Model:** ${model}`);
+    lines.push('>');
+    lines.push(`> **Date:** ${dateStr}`);
+    lines.push('>');
+    if (sourceUrl) {
+        lines.push(`> **Source:** [Source](${sourceUrl})`);
+        lines.push('>');
     }
+    if (tags) {
+        lines.push(`> **Tags:** ${tags}`);
+        lines.push('>');
+    }
+    // lines.push(`> **Artifacts:** [Source](URL)`); // Placeholder as we don't track artifacts yet
+    // lines.push('>');
+    lines.push('> **Metadata:**');
+    lines.push(`>> Total Exchanges: ${totalExchanges}`);
+    lines.push('>>');
+    lines.push(`>> Total Chat Messages: ${totalMessages}`);
+    lines.push('>>');
+    lines.push(`>> Total User Messages: ${userMessages}`);
+    lines.push('>>');
+    lines.push(`>> Total AI Messages: ${aiMessages}`);
+    lines.push('---');
+    lines.push('');
 
-    // Messages
-    if (chatData.messages) {
-        chatData.messages.forEach((message) => {
-            const speakerName = message.type === 'prompt' ? userName : aiName;
-            lines.push(`## ${speakerName}:\n`);
+    // 2. Title
+    lines.push('## Title:');
+    lines.push('');
+    lines.push(`> ${title}`);
+    lines.push('');
+    lines.push('---');
+    lines.push('');
 
-            // Convert thought blocks to markdown code blocks
-            let content = message.content;
-            // Replace <thought> tags with ```thought blocks
-            content = content.replace(
-                /<thought>([\s\S]*?)<\/thought>/g,
-                '\n```thought\n$1\n```\n'
-            );
+    // 3. Messages
+    messages.forEach((message) => {
+        const isUser = message.type === 'prompt';
+        // Header
+        if (isUser) {
+            lines.push('#### Prompt - User:');
+        } else {
+            lines.push(`#### Response - ${model}:`);
+        }
+        lines.push('');
 
-            lines.push(content);
+        // Content
+        let content = message.content;
+
+        // Ensure content is treated as string
+        if (typeof content !== 'string') {
+            content = String(content);
+        }
+
+        // If it's a model response, handle nested thought blocks if present (legacy support)
+        // But our parser now gives clean Markdown, so we just push it.
+        // We'll indent the content slightly for better readability if desired, 
+        // but the template shows standard text (except for thoughts which are blockquoted).
+
+        // The template shows User Prompt as plain text, Response as plain text (with thoughts blockquoted).
+
+        // Handle specific blockquote formatting for response if needed? 
+        // No, parser handles it.
+
+        lines.push(content);
+        lines.push('');
+
+        // Exchange Separator (#)
+        // Strictly added AFTER a Model Response to separate this exchange from the next Prompt
+        if (!isUser && message !== messages[messages.length - 1]) {
+            lines.push('#');
             lines.push('');
-        });
-    }
+        }
+    });
 
-    // Footer
-    lines.push('---\n');
-    lines.push('# Noosphere Reflect');
-    lines.push('*Meaning Through Memory*');
+    // 4. Footer
+    lines.push('---');
+    lines.push('');
+    lines.push('###### Noosphere Reflect');
+    lines.push('###### ***Meaning Through Memory***');
+    lines.push('');
+    lines.push('###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***');
 
     return lines.join('\n');
 }

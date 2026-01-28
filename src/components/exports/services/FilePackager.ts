@@ -47,11 +47,11 @@ export class FilePackager {
    * @param generateContent - Function to generate the conversation content
    * @returns Object with files: { filename: content }
    */
-  static generateDirectoryExport(
+  static async generateDirectoryExport(
     session: SavedChatSession,
     format: 'html' | 'markdown' | 'json',
-    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => string
-  ): Record<string, string | Blob> {
+    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => Promise<string>
+  ): Promise<Record<string, string | Blob>> {
     const files: Record<string, string | Blob> = {};
 
     // Collect artifacts from BOTH sources
@@ -70,7 +70,7 @@ export class FilePackager {
     // Generate conversation file
     const contentKey = format === 'html' ? 'conversation.html' :
       format === 'markdown' ? 'conversation.md' : 'conversation.json';
-    files[contentKey] = generateContent(session, format);
+    files[contentKey] = await generateContent(session, format);
 
     // Generate manifest if artifacts exist
     if (uniqueArtifacts.length > 0) {
@@ -144,10 +144,10 @@ export class FilePackager {
   static async generateZipExport(
     session: SavedChatSession,
     format: 'html' | 'markdown' | 'json',
-    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => string
+    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => Promise<string>
   ): Promise<Blob> {
     const zip = new JSZip();
-    const files = this.generateDirectoryExport(session, format, generateContent);
+    const files = await this.generateDirectoryExport(session, format, generateContent);
 
     // Generate folder name with service prefix: [Service] - title
     const serviceName = session.aiName || 'AI';
@@ -183,12 +183,12 @@ export class FilePackager {
   static async generateBatchZipExport(
     sessions: SavedChatSession[],
     format: 'html' | 'markdown' | 'json',
-    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => string
+    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => Promise<string>
   ): Promise<Blob> {
     const zip = new JSZip();
 
     for (const session of sessions) {
-      const files = this.generateDirectoryExport(session, format, generateContent);
+      const files = await this.generateDirectoryExport(session, format, generateContent);
 
       // Generate folder name with service prefix: [Service] - title
       const serviceName = session.aiName || 'AI';
@@ -229,7 +229,7 @@ export class FilePackager {
   static async generateDirectoryExportWithPicker(
     session: SavedChatSession,
     format: 'html' | 'markdown' | 'json',
-    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => string
+    generateContent: (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => Promise<string>
   ) {
     try {
       // Check if File System Access API is supported
@@ -260,7 +260,7 @@ export class FilePackager {
       const chatDirHandle = await dirHandle.getDirectoryHandle(baseFilename, { create: true });
 
       // Generate conversation content
-      const content = generateContent(session, format);
+      const content = await generateContent(session, format);
       const extension = format === 'html' ? 'html' : format === 'markdown' ? 'md' : 'json';
 
       // Write conversation file to selected directory

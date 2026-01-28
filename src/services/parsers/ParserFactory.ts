@@ -1,13 +1,26 @@
 import { ParserMode } from '../../types';
 import { BaseParser } from './BaseParser';
-import { ChatGptParser } from './ChatGptParser';
-import { ClaudeParser } from './ClaudeParser';
-import { GeminiParser } from './GeminiParser';
-import { AiStudioParser } from './AiStudioParser';
-import { GrokParser } from './GrokParser';
-import { LeChatParser } from './LeChatParser';
-import { LlamacoderParser } from './LlamacoderParser';
-import { KimiParser } from './KimiParser';
+
+// HTML Parsers
+import { ChatGptParser as ChatGptHtmlParser } from './html/ChatGptHtmlParser';
+import { ClaudeParser as ClaudeHtmlParser } from './html/ClaudeHtmlParser';
+import { GeminiParser as GeminiHtmlParser } from './html/GeminiHtmlParser';
+import { AiStudioParser as AiStudioHtmlParser } from './html/AiStudioHtmlParser';
+import { GrokParser as GrokHtmlParser } from './html/GrokHtmlParser';
+import { LeChatParser as LeChatHtmlParser } from './html/LeChatHtmlParser';
+import { LlamacoderParser as LlamacoderHtmlParser } from './html/LlamacoderHtmlParser';
+import { KimiParser as KimiHtmlParser } from './html/KimiHtmlParser';
+
+// Markdown Parsers
+import { GeminiMarkdownParser } from './markdown/GeminiMarkdownParser';
+import { ClaudeMarkdownParser } from './markdown/ClaudeMarkdownParser';
+import { ChatGptMarkdownParser } from './markdown/ChatGptMarkdownParser';
+import { GrokMarkdownParser } from './markdown/GrokMarkdownParser';
+import { LeChatMarkdownParser } from './markdown/LeChatMarkdownParser';
+import { AiStudioMarkdownParser } from './markdown/AiStudioMarkdownParser';
+import { KimiMarkdownParser } from './markdown/KimiMarkdownParser';
+
+// Generic & Special
 import { NoosphereParser } from './NoosphereParser';
 import { ThirdPartyParser } from './ThirdPartyParser';
 import { BlankParser } from './BlankParser';
@@ -15,26 +28,49 @@ import { BlankParser } from './BlankParser';
 export class ParserFactory {
     static getParser(mode: ParserMode): BaseParser | null {
         switch (mode) {
+            // HTML Modes
             case ParserMode.ChatGptHtml:
-                return new ChatGptParser();
+                return new ChatGptHtmlParser();
             case ParserMode.ClaudeHtml:
-                return new ClaudeParser();
+                return new ClaudeHtmlParser();
             case ParserMode.GeminiHtml:
-                return new GeminiParser();
+                return new GeminiHtmlParser();
             case ParserMode.AiStudioHtml:
-                return new AiStudioParser();
+                return new AiStudioHtmlParser();
             case ParserMode.GrokHtml:
-                return new GrokParser();
+                return new GrokHtmlParser();
             case ParserMode.LeChatHtml:
-                return new LeChatParser();
+                return new LeChatHtmlParser();
             case ParserMode.LlamacoderHtml:
-                return new LlamacoderParser();
+                return new LlamacoderHtmlParser();
             case ParserMode.KimiHtml:
             case ParserMode.KimiShareCopy:
-                return new KimiParser();
+                return new KimiHtmlParser();
+
+            // Markdown Modes
+            case ParserMode.GeminiMarkdown:
+                return new GeminiMarkdownParser();
+            case ParserMode.ClaudeMarkdown:
+                return new ClaudeMarkdownParser();
+            case ParserMode.ChatGptMarkdown:
+                return new ChatGptMarkdownParser();
+            case ParserMode.GrokMarkdown:
+                return new GrokMarkdownParser();
+            case ParserMode.LeChatMarkdown:
+                return new LeChatMarkdownParser();
+            case ParserMode.AiStudioMarkdown:
+                return new AiStudioMarkdownParser();
+            case ParserMode.KimiMarkdown:
+                return new KimiMarkdownParser();
+
+            // Generic fallback for others
+            case ParserMode.LlamacoderMarkdown:
+            case ParserMode.ThirdPartyMarkdown:
+                return new ThirdPartyParser();
+
+            // Special
             case ParserMode.Basic:
                 return new NoosphereParser();
-            case ParserMode.ThirdPartyMarkdown:
             case ParserMode.ThirdPartyJson:
                 return new ThirdPartyParser();
             case ParserMode.Blank:

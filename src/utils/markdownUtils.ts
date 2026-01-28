@@ -54,9 +54,9 @@ export function renderMarkdownToHtml(text: string, onArtifactClick?: (artifactId
         .replace(/^\s*\d+\.\s+(.*$)/gm, '<li class="ml-4 list-decimal text-gray-300">$1</li>') // Numbered list
         .replace(/\n/g, '<br/>'); // Line breaks
 
-    // 6. Thought & Collapsible Support (Handling the escaped tags <thought> and <collapsible>)
+    // 6. Thought & Collapsible Support (Handling the escaped tags <thoughts> and <collapsible>)
     // Process thoughts - Handle both raw and escaped tags for robustness
-    html = html.replace(/(?:<thought>|&lt;thought&gt;)([\s\S]*?)(?:<\/thought>|&lt;\/thought&gt;)/g, (match, content) => {
+    html = html.replace(/(?:<thoughts>|&lt;thoughts&gt;)([\s\S]*?)(?:<\/thoughts>|&lt;\/thoughts&gt;)/g, (match, content) => {
         return `
             <details class="markdown-thought-block my-4 group/thought">
                 <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold group-hover/thought:text-purple-300">

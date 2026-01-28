@@ -357,15 +357,15 @@ export default function PromptArchive() {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = exportService.generate('html', promptAsChat, prompt.metadata.title, ChatTheme.DarkDefault, 'User', 'Prompt', undefined, promptAsChat.metadata);
+                    content = await exportService.generate('html', promptAsChat, prompt.metadata.title, ChatTheme.DarkDefault, 'User', 'Prompt', undefined, promptAsChat.metadata);
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = exportService.generate('markdown', promptAsChat, prompt.metadata.title, undefined, 'User', 'Prompt', undefined, promptAsChat.metadata);
+                    content = await exportService.generate('markdown', promptAsChat, prompt.metadata.title, undefined, 'User', 'Prompt', undefined, promptAsChat.metadata);
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = exportService.generate('json', promptAsChat, undefined, undefined, undefined, undefined, undefined, promptAsChat.metadata);
+                    content = await exportService.generate('json', promptAsChat, undefined, undefined, undefined, undefined, undefined, promptAsChat.metadata);
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }

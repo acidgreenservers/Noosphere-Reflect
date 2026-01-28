@@ -1,7 +1,7 @@
 /**
  * Kimi AI HTML Parser for Chrome Extension
  * Extracts chat messages from Kimi's DOM structure
- * Supports thought process extraction with <thought> tags
+ * Supports thought process extraction with <thoughts> tags
  */
 
 /**
@@ -44,7 +44,7 @@ function parseKimiHtml(html) {
                 const thoughtText = extractMarkdownFromHtml(thinkingContainer);
                 if (thoughtText && thoughtText.trim().length > 0) {
                     // Wrap in thought tags
-                    thoughtContent = `<thought>\n${thoughtText.trim()}\n</thought>\n\n`;
+                    thoughtContent = `<thoughts>\n${thoughtText.trim()}\n</thoughts>\n\n`;
                 }
             }
 

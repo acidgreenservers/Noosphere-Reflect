@@ -11,6 +11,7 @@ import {
     CloudSync,
     UserPreferences,
     FileNamingFormat,
+    ExportPreferences,
 } from '../components';
 
 interface SettingsModalProps {
@@ -135,6 +136,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
                         {/* File Naming Format */}
                         <FileNamingFormat settings={localSettings} onSettingsChange={setLocalSettings} />
+
+                        {/* Export Preferences */}
+                        <ExportPreferences settings={localSettings} onSettingsChange={setLocalSettings} />
 
                         {/* Error Message */}
                         {error && (

@@ -110,7 +110,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                 let mimeType: string;
 
                 if (format === 'html') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'html',
                         session.chatData!,
                         session.metadata?.title || session.chatTitle,
@@ -126,7 +126,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                     extension = 'html';
                     mimeType = 'text/html';
                 } else if (format === 'markdown') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'markdown',
                         session.chatData!,
                         session.metadata?.title || session.chatTitle,
@@ -139,7 +139,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                     extension = 'md';
                     mimeType = 'text/markdown';
                 } else {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'json',
                         session.chatData!,
                         undefined,
@@ -217,7 +217,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                 let extension: string;
 
                 if (format === 'html') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'html',
                         session.chatData!,
                         title,
@@ -232,7 +232,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                     );
                     extension = 'html';
                 } else if (format === 'markdown') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'markdown',
                         session.chatData!,
                         title,
@@ -244,7 +244,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                     );
                     extension = 'md';
                 } else {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'json',
                         session.chatData!,
                         undefined,
@@ -341,7 +341,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
 
         let content = '';
         if (format === 'markdown') {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'markdown',
                 session.chatData,
                 title,
@@ -352,7 +352,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                 session.metadata
             );
         } else {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'json',
                 session.chatData,
                 undefined,

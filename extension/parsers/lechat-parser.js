@@ -63,7 +63,7 @@ function parseLeChatHtml(input) {
             // Wrap in thought tag if strictly identified as reasoning
             // Remove any existing thought tags to avoid double wrapping
             partContent = partContent.replace(/<\/?thought>/g, '');
-            partContent = `\n<thought>\n${partContent}\n</thought>\n`;
+            partContent = `\n<thoughts>\n${partContent}\n</thoughts>\n`;
           }
 
           fullContent += partContent + '\n\n';

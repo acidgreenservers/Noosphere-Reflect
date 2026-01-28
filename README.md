@@ -228,6 +228,49 @@ npm run dev
 # All artifacts are automatically included in exports
 ```
 
+
+
+## 🆕 What's New in v0.5.8.6 (Staged - Next Release)
+
+### Modular Parser Architecture & Wizard Overhaul (Jan 25)
+- **Format-First Architecture**: Refactored parsers into modular directory structure (`html/`, `markdown/`, `json/`) for better maintainability.
+- **Specialized Markdown Parsers**: Dedicated parsers for Gemini, Claude, ChatGPT, Grok, LeChat, and AI Studio using shared `BaseMarkdownParser`.
+- **4-Step Wizard Flow**: Completely redesigned import wizard: Method → Format → Platform → Input for clearer user guidance.
+- **Extension Guidance**: New informational step for extension setup with download links and instructions.
+- **Auto-Detection**: Smart format detection automatically categorizes imports by structure.
+
+### Gemini Enhancements (Jan 25)
+- **Thought Extraction**: Blockquote detection for `> Thinking:` patterns with support for nested quotes.
+- **Standardized Formatting**: Consistent whitespace padding (`<thoughts>\n\n[Text]\n\n</thoughts>`) across all parsers.
+- **Footer Cleanup**: Automatic removal of "Powered by Gemini Exporter" footers from imports.
+- **Extension Reliability**: ReliabilityManager with unthrottled timers and focus spoofing to prevent tab throttling.
+- **Double Vision Fix**: Eliminated duplicate messages and ghost content from Gemini exports.
+
+### Import & Parsing Improvements (Jan 25)
+- **Generic Markdown Support**: New "Paste Markdown Export" option for non-platform-specific imports.
+- **Universal Metadata Detection**: Flexible regex engine detects Model, User, Title, and Date from various header styles.
+- **Import References**: Gold standard reference library (`gemini-export.md`, `gpt-export.md`, `kimi-export.md`) for parser testing.
+- **Third-Party Parser**: Enhanced support for legacy formats and custom chat headers.
+
+### Basic Converter Workflow (Jan 25)
+- **Manual Save**: Removed auto-save flicker, added prominent green "Save to Local Archive" button.
+- **State Feedback**: Integrated loading states and success messaging for save operations.
+- **Creative Entry Component**: New UI component for enhanced content creation.
+- **Markdown Attachment Modal**: Dedicated modal for creating and editing markdown files.
+
+### Extension Improvements (Jan 23-25)
+- **Locus Positioning**: Anchor-based button positioning that moves naturally with platform UI.
+- **Claude Refinement**: Narrowed expand selector to prevent clicking global UI elements.
+- **Reliability Manager**: Web Worker-based heartbeat system bypassing Chrome's background tab throttling.
+- **Focus Spoofing**: Tricks Gemini into thinking tab is always focused for uninterrupted scraping.
+
+### Bug Fixes & Polish (Jan 22-23)
+- **Folder Persistence**: Fixed `folderId` missing from metadata causing folder assignment failures.
+- **Message Insertion**: Resolved dropdown state collision and ref trapping in Review & Edit Modal.
+- **Artifact Linkage**: Direct search strategy finds filenames with spaces; synchronized state across modals.
+- **Archive Navigation**: Cross-archive pills, rounded-full styling, and clear buttons for search bars.
+- **UI Consistency**: Unified "Scale & Glow" feedback across all interactive elements.
+
 ## 🆕 What's New in v0.5.8.5 (Current)
 
 ### Artifact Linkage & Visual Polish (Jan 23)
@@ -237,6 +280,19 @@ npm run dev
 - **Archive Cross-Navigation**: Added color-coded "Memories" and "Prompts" navigation buttons to archive headers for instant switching.
 
 ## 🆕 What's New in v0.5.8.3
+
+### Artifact Delete Buttons (Jan 26)
+- **Unified Delete Functionality**: Added delete buttons for artifacts across all three message editing modals (ChatPreviewModal, MessageEditorModal, ReviewEditModal).
+- **Consistent UX**: Delete buttons follow the "Scale & Glow" design system with red danger theming and smooth hover transitions.
+- **Smart Display**: Delete buttons appear contextually (edit mode in ChatPreviewModal, always in MessageEditorModal toolbar).
+- **Data Integrity**: Proper removal from both message-level and metadata-level artifact arrays with IndexedDB synchronization.
+- **Visual Feedback**: Trash icon in ChatPreviewModal, compact X icon in MessageEditorModal, confirmation dialogs prevent accidental deletion.
+
+### Create Blank Chat Feature (Jan 21)
+- **New Import Method**: Added "Create Blank Chat" option in the Content Import Wizard for starting fresh conversations.
+- **Auto-Edit Mode**: Automatically opens Review & Edit modal with edit mode enabled for immediate message addition.
+- **Seamless Integration**: Bypasses parsing steps and initializes clean chat structure with "Manual Entry" metadata.
+
 
 ## 🆕 What's New in v0.5.8.2
 

@@ -175,8 +175,8 @@ export class MarkdownProcessor {
     // Pre-process: Ensure thought and collapsible tags are on their own lines for detection
     if (enableThoughts) {
       markdown = markdown
-        .replace(/<thought>/g, '\n<thought>\n')
-        .replace(/<\/thought>/g, '\n</thought>\n')
+        .replace(/<thoughts>/g, '\n<thoughts>\n')
+        .replace(/<\/thought>/g, '\n</thoughts>\n')
         .replace(/<collapsible>/g, '\n<collapsible>\n')
         .replace(/<\/collapsible>/g, '\n</collapsible>\n');
     }
@@ -189,14 +189,14 @@ export class MarkdownProcessor {
       const line = lines[i];
       const trimmedLine = line.trim();
 
-      // 0. Collapsible blocks (four backticks, <thought>, or <collapsible> tags) - Highest precedence
-      if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thought>') || trimmedLine.startsWith('<collapsible>')) {
+      // 0. Collapsible blocks (four backticks, <thoughts>, or <collapsible> tags) - Highest precedence
+      if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thoughts>') || trimmedLine.startsWith('<collapsible>')) {
         let blockContent = '';
         let j = i + 1;
-        const isThought = trimmedLine.startsWith('<thought>');
+        const isThought = trimmedLine.startsWith('<thoughts>');
         const isCollapsible = trimmedLine.startsWith('<collapsible>');
 
-        const endMarker = isThought ? '</thought>' : (isCollapsible ? '</collapsible>' : '````');
+        const endMarker = isThought ? '</thoughts>' : (isCollapsible ? '</collapsible>' : '````');
         const blockTitle = isCollapsible ? 'Collapsible Section' : 'Thought process';
         const blockClass = isCollapsible ? 'markdown-collapsible-block' : 'markdown-thought-block';
         const summaryClass = isCollapsible ? 'markdown-collapsible-summary' : 'markdown-thought-summary';
@@ -351,13 +351,40 @@ export class MarkdownProcessor {
           blockquoteContent += contentLine + '\n';
           j++;
         }
-        // Apply inline formatting and handle potential paragraph breaks within a blockquote
-        // Split by empty lines to create paragraphs within the blockquote
-        const blockquoteParagraphs = blockquoteContent.trim().split(/\n\s*\n/).map(p => {
-          // Replace remaining single newlines with <br/> within each paragraph
-          return `<p>${this.applyInlineFormatting(p).replace(/\n/g, '<br/>')}</p>`;
-        }).join('');
-        htmlOutput.push(`<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">${blockquoteParagraphs}</blockquote>`);
+
+        // Check for Thought Block pattern (Thinking: ...)
+        const thinkingMatch = blockquoteContent.trim().match(/^Thinking:\s*([\s\S]*)/i);
+
+        if (thinkingMatch) {
+          // Render as Collapsible Thought Block
+          const thoughtBody = thinkingMatch[1].trim(); // Content after "Thinking:"
+
+          // Split content by paragraphs
+          const thoughtParagraphs = thoughtBody.split(/\n\s*\n/).map(p => {
+            return `<p>${this.applyInlineFormatting(p).replace(/\n/g, '<br/>')}</p>`;
+          }).join('');
+
+          htmlOutput.push(`
+                <details class="markdown-thought-block my-4">
+                  <summary class="markdown-thought-summary cursor-pointer p-2 rounded-md flex items-center justify-between text-lg font-semibold">
+                    Thought process: <span class="text-xs ml-2 opacity-70">(Click to expand/collapse)</span>
+                  </summary>
+                  <div class="markdown-thought-content p-3 border rounded-b-md">
+                    ${thoughtParagraphs}
+                  </div>
+                </details>
+            `);
+        } else {
+          // Standard Blockquote
+          // Apply inline formatting and handle potential paragraph breaks within a blockquote
+          // Split by empty lines to create paragraphs within the blockquote
+          const blockquoteParagraphs = blockquoteContent.trim().split(/\n\s*\n/).map(p => {
+            // Replace remaining single newlines with <br/> within each paragraph
+            return `<p>${this.applyInlineFormatting(p).replace(/\n/g, '<br/>')}</p>`;
+          }).join('');
+          htmlOutput.push(`<blockquote class="border-l-4 border-gray-500 pl-4 italic my-2">${blockquoteParagraphs}</blockquote>`);
+        }
+
         i = j;
         continue;
       }

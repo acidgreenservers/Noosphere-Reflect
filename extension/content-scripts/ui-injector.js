@@ -138,104 +138,130 @@
   // UI CONFIGURATION OVERRIDES
   // ============================================================================
   // Custom positioning and behavior for export button on specific platforms
+  // anchorSelector: Place the button inside a specific UI element (relative locus)
+  // parentSelector: Fallback parent if anchor is not found
   const UI_OVERRIDES = {
     // Google AI Studio
     aistudio: {
       parentSelector: 'header, [role="banner"], body',
+      anchorSelector: '.header-right-container', // Native header right section
       menuDirection: 'down',
       style: {
         position: 'absolute',
-        top: '14px',
-        left: '150px',
+        top: '12px',
+        right: '180px',
         bottom: 'auto',
-        right: 'auto'
-      },
-      className: 'nr-fixed'
+        left: 'auto',
+        zIndex: '9999'
+      }
     },
-    // Claude.ai
+    // Claude.ai - Anchor near the paperclip/upload button row
     claude: {
+      anchorSelector: 'div.flex.items-center.gap-2:has(button[aria-label="Upload files"]), fieldset .flex.items-center.gap-2',
       parentSelector: 'body',
       menuDirection: 'up',
       style: {
+        position: 'relative',
+        marginRight: '8px',
+        marginBottom: '4px',
+        zIndex: '999'
+      },
+      // Fixed fallback if anchor not found
+      fixedStyle: {
         position: 'fixed !important',
         bottom: '65px !important',
         right: '330px !important',
-        left: 'auto !important',
-        top: 'auto !important',
         zIndex: '999999 !important'
-      },
-      // No 'nr-fixed' class needed as we use custom fixed positioning
-      className: ''
+      }
     },
-    // Gemini
+    // Gemini - Anchor inside the rich-textarea container
     gemini: {
+      anchorSelector: '.input-area-container .right-container, .input-area-container',
       parentSelector: 'body',
       menuDirection: 'up',
       style: {
+        position: 'absolute',
+        bottom: '12px',
+        right: '160px',
+        zIndex: '999'
+      },
+      fixedStyle: {
         position: 'fixed !important',
         bottom: '85px !important',
         right: '195px !important',
-        left: 'auto !important',
-        top: 'auto !important',
         zIndex: '999999 !important'
-      },
-      className: ''
+      }
     },
-    // ChatGPT
+    // ChatGPT - Anchor inside the button row of the form
     chatgpt: {
+      anchorSelector: 'div.flex.w-full.items-center.justify-between, form .flex.items-center.gap-2',
       parentSelector: 'body',
       menuDirection: 'up',
       style: {
+        position: 'relative',
+        marginRight: '8px',
+        zIndex: '999'
+      },
+      fixedStyle: {
         position: 'fixed !important',
         bottom: '46px !important',
         right: '210px !important',
-        left: 'auto !important',
-        top: 'auto !important',
         zIndex: '999999 !important'
-      },
-      className: ''
+      }
     },
-    // Grok
+    // Grok - Anchor next to the send button
     grok: {
+      anchorSelector: 'div.flex.items-center.gap-3:has(button[aria-label="Grok something"]), .relative.w-full:has(textarea) .flex.items-center',
       parentSelector: 'body',
       menuDirection: 'up',
       style: {
+        position: 'relative',
+        marginRight: '12px',
+        zIndex: '999'
+      },
+      fixedStyle: {
         position: 'fixed !important',
         bottom: '44px !important',
         right: '200px !important',
-        left: 'auto !important',
-        top: 'auto !important',
         zIndex: '999999 !important'
-      },
-      className: ''
+      }
     },
     // Le Chat
     lechat: {
+      anchorSelector: 'form .flex.items-center.justify-between',
       parentSelector: 'body',
       menuDirection: 'up',
       style: {
+        position: 'absolute',
+        bottom: '12px',
+        right: '180px',
+        zIndex: '999'
+      },
+      fixedStyle: {
         position: 'fixed !important',
         bottom: '85px !important',
         right: '210px !important',
-        left: 'auto !important',
-        top: 'auto !important',
         zIndex: '999999 !important'
-      },
-      className: ''
+      }
     },
     // Llamacoder
     llamacoder: {
+      anchorSelector: 'header .flex.items-center.gap-2',
       parentSelector: 'body',
       menuDirection: 'down',
       style: {
+        position: 'relative',
+        marginRight: '10px',
+        zIndex: '999'
+      },
+      fixedStyle: {
         position: 'fixed !important',
         bottom: 'auto !important',
         right: 'auto !important',
         left: '285px',
         top: '12px',
         zIndex: '999999 !important'
-      },
-      className: ''
+      }
     }
   };
 
@@ -276,9 +302,11 @@
     }
 
     .nr-export-btn:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transform: scale(1.1);
+      filter: brightness(1.1);
+      box-shadow: 0 0 15px ${platform.color}40, 0 4px 12px rgba(0,0,0,0.2);
+      outline: 2px solid ${platform.color};
+      outline-offset: 2px;
     }
 
     .nr-export-btn.nr-loading {
@@ -783,25 +811,41 @@
 
     // Apply positioning logic
     if (overrideConfig) {
-      console.log(`UI Injector: Applying custom positioning for ${platform.name}`);
+      console.log(`UI Injector: Applying optimized locus positioning for ${platform.name}`);
 
-      // 1. Find parent
-      let parent = document.body;
-      if (overrideConfig.parentSelector && overrideConfig.parentSelector !== 'body') {
-        const found = document.querySelector(overrideConfig.parentSelector);
-        if (found) parent = found;
+      // 1. Try Anchor First (Native Locus)
+      let parent = null;
+      let isAnchored = false;
+
+      if (overrideConfig.anchorSelector) {
+        parent = document.querySelector(overrideConfig.anchorSelector);
+        if (parent) {
+          isAnchored = true;
+          console.log('UI Injector: Found native anchor locus');
+        }
       }
 
-      // 2. Apply classes
+      // 2. Fallback to Parent Selector or Body
+      if (!parent) {
+        if (overrideConfig.parentSelector && overrideConfig.parentSelector !== 'body') {
+          parent = document.querySelector(overrideConfig.parentSelector);
+        }
+        parent = parent || document.body;
+      }
+
+      // 3. Apply classes
       container.className = 'nr-export-container';
-      if (overrideConfig.className) {
+      if (isAnchored) {
+        container.classList.add('nr-anchored');
+      } else if (overrideConfig.className) {
         container.classList.add(overrideConfig.className);
       }
 
-      // 3. Apply styles
-      if (overrideConfig.style) {
+      // 4. Apply Styles
+      const finalStyle = isAnchored ? overrideConfig.style : (overrideConfig.fixedStyle || overrideConfig.style);
+      if (finalStyle) {
         // Convert style object to string for setAttribute to handle !important
-        const styleString = Object.entries(overrideConfig.style)
+        const styleString = Object.entries(finalStyle)
           .map(([k, v]) => {
             // Convert camelCase to kebap-case (e.g. zIndex -> z-index)
             const key = k.replace(/([A-Z])/g, '-$1').toLowerCase();
@@ -812,14 +856,17 @@
         container.setAttribute('style', styleString);
       }
 
-      // Extra: Handle AI Studio specific parent relative positioning
-      if (platform.key === 'aistudio' && parent !== document.body) {
-        parent.style.position = parent.style.position === 'static' ? 'relative' : parent.style.position;
+      // Extra: Ensure parent is relative for absolute positioning
+      if (isAnchored || (overrideConfig.parentSelector && overrideConfig.parentSelector !== 'body')) {
+        const currentPos = window.getComputedStyle(parent).position;
+        if (currentPos === 'static') {
+          parent.style.position = 'relative';
+        }
       }
 
       parent.appendChild(container);
     } else {
-      // Default positioning (others)
+      // Default positioning (others) fallback
       container.classList.add('nr-fixed');
       document.body.appendChild(container);
     }

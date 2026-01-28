@@ -7,7 +7,9 @@ import {
     StepMethodSelection,
     StepPlatformSelection,
     StepContentInput,
-    StepVerification
+    StepVerification,
+    StepFormatSelection,
+    StepExtensionInfo
 } from '../components';
 
 export const ContentImportWizard: React.FC<ContentImportWizardProps> = (props) => {
@@ -16,6 +18,8 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = (props) =
         stepHistory,
         inputMethod,
         selectedPlatform,
+        selectedFormat,
+        detectedSignal,
         content,
         fileName,
         isParsing,
@@ -23,8 +27,10 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = (props) =
         error,
         attachments,
         fileInputRef,
+        attachmentInputRef,
         setContent,
         handleMethodSelect,
+        handleFormatSelect,
         handlePlatformSelect,
         handleFileUpload,
         handleVerify,
@@ -37,39 +43,57 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = (props) =
     if (!props.isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-            <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl border border-gray-700 flex flex-col h-[600px] overflow-hidden">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10 transition-all duration-500">
+            <div className="bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl border border-white/10 flex flex-col h-full max-h-[850px] overflow-hidden animate-in zoom-in-95 duration-300">
                 <WizardHeader step={step} onClose={props.onClose} />
 
-                <div className="flex-1 p-8 overflow-y-auto bg-gray-900/50">
+                <div className="flex-1 p-6 md:p-10 overflow-hidden flex flex-col bg-gray-900/50">
+                    {/* Step 1: Method Selection */}
                     {step === 1 && (
                         <StepMethodSelection onSelect={handleMethodSelect} />
                     )}
-                    {step === 1.5 && (
+
+                    {/* Step: Extension Info (Informational Only) */}
+                    {step === 'extension-info' && (
+                        <StepExtensionInfo />
+                    )}
+
+                    {/* Step 2: Format Selection */}
+                    {step === 2 && (
+                        <StepFormatSelection onSelect={handleFormatSelect} />
+                    )}
+
+                    {/* Step 3: Platform Selection */}
+                    {step === 3 && (
                         <StepPlatformSelection
                             selectedPlatform={selectedPlatform}
+                            selectedFormat={selectedFormat}
                             onSelect={handlePlatformSelect}
                         />
                     )}
-                    {step === 2 && (
+
+                    {/* Step 4: Content Input */}
+                    {step === 4 && (
                         <StepContentInput
                             inputMethod={inputMethod}
+                            selectedPlatform={selectedPlatform}
+                            detectedSignal={detectedSignal}
+                            onPlatformSelect={handlePlatformSelect}
                             content={content}
                             fileName={fileName}
                             attachments={attachments}
                             fileInputRef={fileInputRef}
+                            attachmentInputRef={attachmentInputRef}
                             onContentChange={setContent}
                             onFileUpload={handleFileUpload}
                             onAttachmentUpload={handleAttachmentUpload}
                             onRemoveAttachment={removeAttachment}
                         />
                     )}
-                    {step === 3 && (
-                        <StepVerification verificationData={verificationData} />
-                    )}
 
                     {error && (
-                        <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm">
+                        <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm flex items-center gap-3">
+                            <span className="text-xl">⚠️</span>
                             {error}
                         </div>
                     )}

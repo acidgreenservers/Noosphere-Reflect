@@ -1,11 +1,6 @@
 /**
  * Gemini HTML Parser for Extension
  * Extracts conversation data from Google Gemini HTML exports
- */
-
-/**
- * Gemini HTML Parser for Extension
- * Extracts conversation data from Google Gemini HTML exports
  * Dependencies: types.js (loaded before this script)
  */
 
@@ -41,103 +36,106 @@ function parseGeminiHtml(html) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   const messages = [];
-  const visited = new Set();
 
-  // Find all elements and process them in document order
-  const allElements = doc.querySelectorAll('*');
+  // 1. GHOST-BUSTER: Clean DOM of all accessibility/hidden duplicates before processing
+  const hiddenSelectors = [
+    '.screen-reader-only',
+    '.visually-hidden',
+    '[aria-hidden="true"]',
+    '.show-on-focus',
+    'ms-conversation-actions',
+    'ms-feedback-buttons',
+    '.voice-input-container'
+  ];
+  doc.querySelectorAll(hiddenSelectors.join(',')).forEach(el => el.remove());
 
-  allElements.forEach(el => {
-    if (visited.has(el)) return;
-    const htmlEl = el;
+  // 2. Identify potential turn containers
+  const allPotential = Array.from(doc.querySelectorAll('user-query, model-response, .query-text, .message-content, .model-response-text'));
 
-    // Skip navigation and UI elements
-    if (htmlEl.closest('.sidebar, nav, [role="navigation"]')) {
+  // 3. Filter for TOP-LEVEL turns only
+  const turns = allPotential.filter(turn => {
+    return !allPotential.some(other => other !== turn && other.contains(turn));
+  });
+
+  const processed = new Set();
+
+  turns.forEach(turn => {
+    if (processed.has(turn)) return;
+
+    const tagName = turn.tagName.toLowerCase();
+    const isUser = turn.classList.contains('query-text') || tagName === 'user-query' || (turn.getAttribute('role') === 'heading' && turn.getAttribute('aria-level') === '2');
+
+    if (isUser) {
+      // Prioritize the inner text container to avoid header duplicates
+      const textEl = turn.querySelector('.query-text') || turn;
+      let content = extractMarkdownFromHtml(textEl);
+      if (content && content.trim()) {
+        content = content.trim();
+        const lines = content.split('\n\n');
+        const uniqueLines = lines.filter((line, i) => line !== lines[i - 1]);
+        messages.push(new ChatMessage(ChatMessageType.Prompt, uniqueLines.join('\n\n').trim()));
+      }
+      processed.add(turn);
       return;
     }
 
-    // User message patterns
-    const isUserQuery = htmlEl.classList.contains('query-text') ||
-      (htmlEl.getAttribute('role') === 'heading' && htmlEl.getAttribute('aria-level') === '2');
+    const isResponse = tagName === 'model-response' || turn.classList.contains('message-content') || turn.classList.contains('model-response-text');
 
-    // Assistant message patterns
-    // CRITICAL: Skip message-content that's inside thinking blocks
-    // Check multiple patterns because DOMParser may not properly nest custom elements
-    let isInsideThinking = false;
+    if (isResponse) {
+      const turnContainer = turn;
+      let fullContent = "";
 
-    // Direct ancestor check
-    if (htmlEl.closest('.thoughts-container, .model-thoughts, model-thoughts')) {
-      isInsideThinking = true;
-    }
+      // 1. Extract Thoughts
+      const thoughts = turnContainer.querySelector('model-thoughts, .thoughts-container');
+      if (thoughts) {
+        // Target the actual markdown container inside thoughts if it exists
+        const thoughtContentEl = thoughts.querySelector('.markdown') || thoughts.querySelector('[data-test-id="thoughts-content"]') || thoughts;
+        let thoughtText = extractMarkdownFromHtml(thoughtContentEl);
 
-    // Fallback: Check if any ancestor has data-test-id="model-thoughts" attribute
-    // (more specific than checking text content which could match elsewhere)
-    if (!isInsideThinking) {
-      let parent = htmlEl.parentElement;
-      while (parent && !isInsideThinking) {
-        if (parent.getAttribute && (
-          parent.getAttribute('data-test-id') === 'model-thoughts' ||
-          parent.classList.contains('thoughts-content')
-        )) {
-          isInsideThinking = true;
+        if (thoughtText && thoughtText.trim()) {
+          thoughtText = thoughtText.trim()
+            .replace(/^N\s+.*?\s+Custom Gem\s*/i, '')
+            .replace(/(\*\*.*?\*\*)/g, '\n\n$1\n\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+          const nestedBody = thoughtText.split('\n').map(line => {
+            const cleanLine = line.replace(/^(?:> ?)+/, '').trim();
+            return `> > ${cleanLine}`;
+          }).join('\n');
+
+          fullContent += `\n> Thinking:\n> \n> > Thinking:\n> > \n${nestedBody}\n\n`;
         }
-        parent = parent.parentElement;
+        processed.add(thoughts);
       }
-    }
 
-    const isAssistantResponse = !isInsideThinking && (
-      htmlEl.classList.contains('response-container') ||
-      htmlEl.classList.contains('message-content') ||
-      htmlEl.classList.contains('structured-content-container')
-    );
+      // 2. Extract Response (Prioritize the .markdown or .message-content blocks)
+      const responseEl = turnContainer.querySelector('.markdown') ||
+        turnContainer.querySelector('.message-content') ||
+        turnContainer.querySelector('.model-response-text') ||
+        turnContainer;
 
-    // Extract user message
-    if (isUserQuery) {
-      const content = extractMarkdownFromHtml(htmlEl);
-      if (content && content.trim().length > 0) {
-        messages.push(new ChatMessage(ChatMessageType.Prompt, content.trim()));
-        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-        visited.add(htmlEl);
+      const contentClone = responseEl.cloneNode(true);
+      contentClone.querySelectorAll('model-thoughts, .thoughts-container, .screen-reader-only').forEach(t => t.remove());
+
+      let responseText = extractMarkdownFromHtml(contentClone);
+      if (responseText) {
+        responseText = responseText.trim()
+          .replace(/^N\s+.*?\s+Custom Gem\s*/i, '')
+          .replace(/Analysis\s*Analysis/gi, 'Analysis')
+          .trim();
+
+        fullContent += responseText;
       }
-    }
 
-    // Extract assistant message
-    if (isAssistantResponse) {
-      const content = extractMarkdownFromHtml(htmlEl);
-      if (content && content.trim().length > 0) {
-        messages.push(new ChatMessage(ChatMessageType.Response, content.trim()));
-        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-        visited.add(htmlEl);
+      if (fullContent.trim()) {
+        const finalContent = fullContent.trim();
+        const lines = finalContent.split('\n\n');
+        const uniqueLines = lines.filter((line, i) => line !== lines[i - 1]);
+        messages.push(new ChatMessage(ChatMessageType.Response, uniqueLines.join('\n\n').trim()));
       }
-    }
 
-    // Extract thought/reasoning blocks (DESTRUCTIVE READ PATTERN)
-    // Check both class names AND tag name since DOMParser may not preserve classes on custom elements
-    if (htmlEl.classList.contains('model-thoughts') ||
-        htmlEl.classList.contains('thoughts-container') ||
-        htmlEl.tagName.toLowerCase() === 'model-thoughts') {
-      // CRITICAL: Gemini has TWO elements with class "thoughts-content":
-      // 1. Outer wrapper (includes "Show thinking" button)
-      // 2. Inner content div with data-test-id="thoughts-content" (actual content)
-      // We must target the inner one using the data-test-id attribute
-      const contentEl = htmlEl.querySelector('[data-test-id="thoughts-content"] .markdown') ||
-        htmlEl.querySelector('[data-test-id="thoughts-content"]') ||
-        htmlEl.querySelector('.thoughts-content[data-test-id] .markdown') ||
-        htmlEl.querySelector('.thoughts-content[data-test-id]') ||
-        htmlEl.querySelector('.markdown') ||
-        htmlEl;
-
-      const thoughtContent = extractMarkdownFromHtml(contentEl);
-      if (thoughtContent && thoughtContent.trim().length > 0) {
-        const wrappedContent = `\n<thought>\n${thoughtContent.trim()}\n</thought>\n`;
-        messages.push(new ChatMessage(ChatMessageType.Response, wrappedContent));
-
-        // DESTRUCTIVE READ: Remove the thinking element immediately to prevent bleed
-        // into subsequent response extraction
-        htmlEl.remove();
-
-        htmlEl.querySelectorAll('*').forEach(child => visited.add(child));
-        visited.add(htmlEl);
-      }
+      processed.add(turn);
     }
   });
 

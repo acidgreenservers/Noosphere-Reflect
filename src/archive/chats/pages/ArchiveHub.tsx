@@ -291,7 +291,7 @@ const ArchiveHub: React.FC = () => {
                 let mimeType: string;
 
                 if (format === 'html') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'html',
                         session.chatData!,
                         session.metadata?.title || session.chatTitle,
@@ -307,7 +307,7 @@ const ArchiveHub: React.FC = () => {
                     extension = 'html';
                     mimeType = 'text/html';
                 } else if (format === 'markdown') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'markdown',
                         session.chatData!,
                         session.metadata?.title || session.chatTitle,
@@ -320,7 +320,7 @@ const ArchiveHub: React.FC = () => {
                     extension = 'md';
                     mimeType = 'text/markdown';
                 } else {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'json',
                         session.chatData!,
                         undefined,
@@ -415,7 +415,7 @@ const ArchiveHub: React.FC = () => {
                     let extension: string;
 
                     if (format === 'html') {
-                        content = exportService.generate(
+                        content = await exportService.generate(
                             'html',
                             session.chatData!,
                             title,
@@ -430,7 +430,7 @@ const ArchiveHub: React.FC = () => {
                         );
                         extension = 'html';
                     } else if (format === 'markdown') {
-                        content = exportService.generate(
+                        content = await exportService.generate(
                             'markdown',
                             session.chatData!,
                             title,
@@ -442,7 +442,7 @@ const ArchiveHub: React.FC = () => {
                         );
                         extension = 'md';
                     } else {
-                        content = exportService.generate(
+                        content = await exportService.generate(
                             'json',
                             session.chatData!,
                             undefined,
@@ -561,7 +561,7 @@ const ArchiveHub: React.FC = () => {
         let content = '';
 
         if (format === 'markdown') {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'markdown',
                 session.chatData,
                 title,
@@ -572,7 +572,7 @@ const ArchiveHub: React.FC = () => {
                 session.metadata
             );
         } else if (format === 'json') {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'json',
                 session.chatData,
                 undefined,
@@ -616,7 +616,7 @@ const ArchiveHub: React.FC = () => {
         let mimeType: string;
 
         if (format === 'html') {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'html',
                 session.chatData!,
                 title,
@@ -632,7 +632,7 @@ const ArchiveHub: React.FC = () => {
             extension = 'html';
             mimeType = 'text/html';
         } else if (format === 'markdown') {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'markdown',
                 session.chatData!,
                 title,
@@ -645,7 +645,7 @@ const ArchiveHub: React.FC = () => {
             extension = 'md';
             mimeType = 'text/markdown';
         } else {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'json',
                 session.chatData!,
                 undefined,
@@ -809,7 +809,7 @@ const ArchiveHub: React.FC = () => {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'html',
                         session.chatData!,
                         title,
@@ -822,7 +822,7 @@ const ArchiveHub: React.FC = () => {
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'markdown',
                         session.chatData!,
                         title,
@@ -835,7 +835,7 @@ const ArchiveHub: React.FC = () => {
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'json',
                         session.chatData!,
                         undefined, // title
@@ -1064,7 +1064,7 @@ const ArchiveHub: React.FC = () => {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'html',
                         session.chatData!,
                         title,
@@ -1080,7 +1080,7 @@ const ArchiveHub: React.FC = () => {
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'markdown',
                         session.chatData!,
                         title,
@@ -1093,7 +1093,7 @@ const ArchiveHub: React.FC = () => {
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = exportService.generate(
+                    content = await exportService.generate(
                         'json',
                         session.chatData!,
                         undefined,
@@ -1162,7 +1162,7 @@ const ArchiveHub: React.FC = () => {
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
 
-                const content = exportService.generate(
+                const content = await exportService.generate(
                     'html',
                     session.chatData!,
                     title,

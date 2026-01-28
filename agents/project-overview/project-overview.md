@@ -19,14 +19,6 @@ The vision of Noosphere-Reflect is to provide an easy, seamless method for archi
 
 # Project Standards & Roles
 
-## Team Roles & Responsibilities
-*Specific developer roles were not assigned in the brief, so the following are implied based on the architecture:*
-
-- **Frontend Engineer:** Responsible for the React/Vite implementation, ensuring the IndexedDB integration works seamlessly for a local-first experience. Handles the logic for importing and exporting data.
-- **UI/UX Designer:** Enforces Material Design principles. Responsible for ensuring that button placements, fonts, and UI elements are consistent across every page to maintain user-friendliness.
-- **Security/Privacy Lead:** Ensures that the "security first" rule is adhered to, verifying that local assets (fonts, etc.) are used instead of CDNs and that data remains decentralized.
-- **QA/Release Manager:** Verifies that code is tested before staging and manages the commit process, ensuring user acknowledgement is received before finalizing changes.
-
 ## Development Standards
 - **Tech Stack:** React, Vite, IndexedDB.
 - **Privacy Standard:** All assets (fonts, icons, libraries) must be installed locally. No external CDNs should be used to track user activity or leak IP addresses.

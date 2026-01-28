@@ -54,7 +54,7 @@ export class ExportService {
    * Unified export method that delegates to the appropriate generator
    * Now supports both theme (color) and style (layout) parameters
    */
-  generate(
+  async generate(
     format: ExportFormat,
     chatData: ChatData,
     title: string = 'AI Chat Export',
@@ -66,7 +66,7 @@ export class ExportService {
     includeFooter: boolean = true,
     isPreview: boolean = false,
     style?: ChatStyle // New: Layout style parameter
-  ): string {
+  ): Promise<string> {
     const generator = this.generators.get(format);
     if (!generator) {
       throw new Error(`Unsupported export format: ${format}`);
@@ -106,12 +106,18 @@ export class ExportService {
         );
 
       case 'markdown':
+        // Fetch app settings to get layout and metadata preferences
+        const { storageService } = await import('../../../services/storageService');
+        const settings = await storageService.getSettings();
+
         return (generator as MarkdownGenerator).generateMarkdown(
           chatData,
           title,
           userName,
           aiName,
-          metadata
+          metadata,
+          settings.markdownLayout,
+          settings.exportChatMetadata
         );
 
       case 'json':

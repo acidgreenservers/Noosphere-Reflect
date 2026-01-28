@@ -1,52 +1,76 @@
-# Release Documentation v0.5.8.4
-**Release Date**: January 22, 2026
+# Release Documentation v0.5.8.3
+**Release Date**: January 26, 2026
 **Status**: Stable
 
 ## 🚀 Overview
-Version 0.5.8.4 introduces a comprehensive **Folder Management System** that enables hierarchical organization of chats, memories, and prompts. This release adds nested folder structures, breadcrumb navigation, drag-and-drop organization, and cross-archive folder support with full CRUD operations and persistent storage.
+Version 0.5.8.3 enhances artifact management with **Unified Delete Functionality** across all message editing modals and introduces a **Create Blank Chat** feature for starting fresh conversations. This release focuses on completing the artifact lifecycle management UX and improving the import workflow with better manual entry support.
 
 ## ✨ New Features & Improvements
 
-### 1. Folder Management System (New!)
-- **Hierarchical Organization**: Complete nested folder system for organizing chats, memories, and prompts with unlimited depth.
-- **Cross-Archive Support**: Unified folder system working seamlessly across Chat Archive, Memory Archive, and Prompt Archive.
-- **Breadcrumb Navigation**: Visual breadcrumb trail showing current folder path with clickable navigation back to parent folders.
-- **Folder CRUD Operations**: Create, rename, move, and delete folders with full persistence in IndexedDB.
-- **Drag & Drop Organization**: Intuitive selection and batch moving of items between folders.
-- **Visual Folder Cards**: Dedicated folder cards with distinct styling, action menus, and item count displays.
-- **Move Selection Modal**: Batch move multiple items to different folders with confirmation dialog and preview.
-- **Database Schema Extension**: Added `folders` object store with parent-child relationships and type-specific organization.
+### 1. Artifact Delete Buttons (January 26, 2026)
+- **Unified Delete Functionality**: Comprehensive delete button implementation across all three message editing modals:
+  - **ChatPreviewModal**: Red-themed trash icon button appearing in edit mode next to download buttons
+  - **MessageEditorModal**: Compact X icon in split-button design within the artifact toolbar
+  - **ReviewEditModal**: Existing delete functionality verified and confirmed
+- **Consistent Design System**: All delete buttons follow the "Scale & Glow" design pattern with:
+  - Red danger theming (`hover:border-red-500`, `hover:bg-red-900/20`, `hover:text-red-400`)
+  - Smooth transitions (`transition-all duration-200`)
+  - Scale effects (`hover:scale-110`, `active:scale-95`)
+  - Theme-appropriate ring effects on hover
+- **Smart Contextual Display**: 
+  - ChatPreviewModal: Delete buttons only appear when in edit mode
+  - MessageEditorModal: Delete buttons always visible in toolbar for quick access
+  - Confirmation dialogs prevent accidental deletion
+- **Data Integrity**: Proper artifact removal with:
+  - Deletion from message-level `artifacts` array
+  - Deletion from session-level `metadata.artifacts` array
+  - Automatic IndexedDB synchronization
+  - State consistency across all components
 
-### 2. Enhanced Archive Organization
-- **Folder Statistics**: Real-time counts of items within folders and subfolders.
-- **Smart Folder Filtering**: Folders are filtered by archive type (chats, memories, prompts) for clean organization.
-- **Nested Folder Support**: Create subfolders within folders for granular organization.
-- **Folder Path Display**: Full path visualization in folder cards and navigation elements.
+### 2. Create Blank Chat Feature (January 21, 2026)
+- **New Import Method**: Added "Create Blank Chat" option in the Content Import Wizard
+- **Streamlined Workflow**: 
+  - Bypasses all parsing steps for immediate chat creation
+  - Initializes clean chat structure with "Manual Entry" metadata
+  - Automatically opens Review & Edit modal
+  - Pre-enables edit mode for instant message addition
+- **User Experience**: Perfect for users who want to:
+  - Start a fresh conversation record from scratch
+  - Manually compose chat sessions without importing
+  - Create structured conversations with full control
 
-### 3. UI/UX Improvements
-- **Consistent Folder Theming**: Folder cards use neutral gray theming to distinguish from content cards.
-- **Action Menu Integration**: Folder-specific actions (Create Subfolder, Rename, Move, Delete) in dropdown menus.
-- **Loading States**: Proper loading indicators during folder operations and data fetching.
-- **Error Handling**: User-friendly error messages for folder operations with recovery options.
+### 3. Enhanced Artifact Management UX
+- **Complete Lifecycle**: Users can now add, view, download, AND delete artifacts from any modal
+- **Toolbar Restructure**: MessageEditorModal artifact toolbar redesigned with:
+  - Label change from "Insert Artifact:" to "Attached Files:" for clarity
+  - Split-button design: Insert (left, purple) + Delete (right, red)
+  - Improved visual hierarchy and usability
+- **Parent Integration**: Proper handler wiring in both ChatPreviewModal and BasicConverter
+- **Type Safety**: Updated TypeScript interfaces with `onRemoveArtifact` prop
 
 ## 🛠️ Technical Details
-- **Database Migration**: Automatic IndexedDB schema upgrade with backward compatibility.
-- **React Hooks Architecture**: Custom `useFolders` hook managing folder state and operations.
-- **Type Safety**: Full TypeScript interfaces for Folder entities and operations.
-- **Performance Optimization**: Efficient folder queries with indexed database lookups.
-- **Cross-Component Communication**: Seamless integration between folder components and archive views.
+- **Component Architecture**: Clean separation of concerns with prop-based delete handlers
+- **State Management**: 
+  - ChatPreviewModal: Self-contained `handleDeleteArtifact` function
+  - MessageEditorModal: Receives `onRemoveArtifact` from parent components
+  - BasicConverter: Leverages existing `handleRemoveMessageArtifact` utility
+- **Data Flow**: Consistent artifact removal across message arrays and metadata pools
+- **Type Safety**: Full TypeScript interfaces for all new props and handlers
+- **Design Consistency**: All implementations follow established "Scale & Glow" patterns
 
 ## 📦 Migration Notes
-- **Database Upgrade**: Automatic migration to IndexedDB v7 with new `folders` object store.
-- **Zero Data Loss**: Existing chats, memories, and prompts remain unchanged.
-- **Backward Compatibility**: All existing functionality preserved with new folder capabilities.
-- **Optional Adoption**: Users can continue using flat organization or adopt folders gradually.
+- **Zero Breaking Changes**: All existing functionality preserved
+- **Backward Compatibility**: Existing artifact attachments work seamlessly with new delete functionality
+- **Optional Feature**: Delete buttons appear contextually based on edit mode and component state
+- **No Database Changes**: Uses existing IndexedDB schema without migration
 
 ## 🎨 Visual Enhancements
-- **Clean Folder Design**: Neutral gray cards with folder icons and item counts.
-- **Breadcrumb Styling**: Subtle navigation elements with hover states and clear hierarchy.
-- **Consistent Interactions**: Folder operations follow established UI patterns.
-- **Responsive Layout**: Folder grids adapt to different screen sizes and content densities.
+- **Red Danger Theming**: Delete buttons use consistent red color scheme across all modals
+- **Icon Variety**: 
+  - Trash can SVG icon in ChatPreviewModal for detailed visual feedback
+  - Compact X icon in MessageEditorModal for space efficiency
+- **Smooth Interactions**: All buttons feature smooth scale transitions and hover effects
+- **Confirmation Dialogs**: Browser-native confirmation prevents accidental deletions
 
 ---
 *Preserving Meaning Through Memory.*

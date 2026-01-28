@@ -25,6 +25,7 @@ dist-ssr
 .claude
 .blackboxcli
 .clinerules
-html-doms
 agents/implementation-plans
 .env
+
+reference-html-dom

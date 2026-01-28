@@ -1,6 +1,6 @@
-import { ChatData, ChatMessageType, ChatMetadata } from '../../types';
-import { BaseParser } from './BaseParser';
-import { extractMarkdownFromHtml, isInsideThinkingBlock, validateMarkdownOutput } from './ParserUtils';
+import { ChatData, ChatMessageType, ChatMetadata } from '../../../types';
+import { BaseParser } from '../BaseParser';
+import { extractMarkdownFromHtml, isInsideThinkingBlock, validateMarkdownOutput } from '../ParserUtils';
 
 export class GeminiParser implements BaseParser {
     parse(html: string): ChatData {
@@ -34,7 +34,28 @@ export class GeminiParser implements BaseParser {
             if (currentTurn.response || currentTurn.thoughts) {
                 let fullContent = '';
                 if (currentTurn.thoughts) {
-                    fullContent += `\n---\n<thought>\n${currentTurn.thoughts}\n</thought>\n---\n\n`;
+                    let thoughtBody = currentTurn.thoughts.trim();
+
+                    // Aggressively isolate bold headers in thoughts
+                    // Wrap ALL bold blocks in newlines to ensure separation
+                    thoughtBody = thoughtBody.replace(/(\*\*.*?\*\*)/g, '\n\n$1\n\n');
+
+                    // Cleanup excessive newlines created by the above
+                    thoughtBody = thoughtBody.replace(/\n{3,}/g, '\n\n');
+
+                    // Double-Nested Formatting:
+                    // > Thinking:
+                    // > 
+                    // > > Thinking:
+                    // > > 
+                    // > > [Content]
+                    const nestedBody = thoughtBody.split('\n').map(line => {
+                        const cleanLine = line.replace(/^(?:> ?)+/, '').trim();
+                        return `> > ${cleanLine}`;
+                    }).join('\n');
+
+                    const formattedThoughts = `<thoughts>\n\n${nestedBody}\n\n</thoughts>\n\n`;
+                    fullContent += formattedThoughts;
                 }
                 if (currentTurn.response) {
                     fullContent += currentTurn.response;

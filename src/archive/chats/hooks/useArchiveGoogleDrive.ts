@@ -97,20 +97,20 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
         let mimeType: string;
 
         if (format === 'html') {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'html', session.chatData!, title, theme, userName, aiName,
                 session.parserMode, session.metadata, true, false, session.selectedStyle
             );
             extension = 'html';
             mimeType = 'text/html';
         } else if (format === 'markdown') {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'markdown', session.chatData!, title, undefined, userName, aiName, undefined, session.metadata
             );
             extension = 'md';
             mimeType = 'text/markdown';
         } else {
-            content = exportService.generate(
+            content = await exportService.generate(
                 'json', session.chatData!, undefined, undefined, undefined, undefined, undefined, session.metadata
             );
             extension = 'json';
@@ -304,7 +304,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
 
-                const content = exportService.generate(
+                const content = await exportService.generate(
                     'html', session.chatData!, title, theme, userName, aiName,
                     session.parserMode, session.metadata, true, false, session.selectedStyle
                 );
@@ -353,15 +353,15 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
 
                 let content: string, mimeType: string, uploadFilename: string;
                 if (format === 'html') {
-                    content = exportService.generate('html', session.chatData!, title, theme, userName, aiName, session.parserMode, session.metadata);
+                    content = await exportService.generate('html', session.chatData!, title, theme, userName, aiName, session.parserMode, session.metadata);
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = exportService.generate('markdown', session.chatData!, title, undefined, userName, aiName, undefined, session.metadata);
+                    content = await exportService.generate('markdown', session.chatData!, title, undefined, userName, aiName, undefined, session.metadata);
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = exportService.generate('json', session.chatData!, undefined, undefined, undefined, undefined, undefined, session.metadata);
+                    content = await exportService.generate('json', session.chatData!, undefined, undefined, undefined, undefined, undefined, session.metadata);
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }
@@ -405,15 +405,15 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
 
                 let content: string, mimeType: string, uploadFilename: string;
                 if (format === 'html') {
-                    content = exportService.generate('html', session.chatData!, title, theme, userName, aiName, session.parserMode, session.metadata, true, false, session.selectedStyle);
+                    content = await exportService.generate('html', session.chatData!, title, theme, userName, aiName, session.parserMode, session.metadata, true, false, session.selectedStyle);
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = exportService.generate('markdown', session.chatData!, title, undefined, userName, aiName, undefined, session.metadata);
+                    content = await exportService.generate('markdown', session.chatData!, title, undefined, userName, aiName, undefined, session.metadata);
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = exportService.generate('json', session.chatData!, undefined, undefined, undefined, undefined, undefined, session.metadata);
+                    content = await exportService.generate('json', session.chatData!, undefined, undefined, undefined, undefined, undefined, session.metadata);
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }

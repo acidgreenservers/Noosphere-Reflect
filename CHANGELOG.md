@@ -15,6 +15,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.8.6] - January 27, 2026
+
+### Added
+#### Modular Parser Architecture & Wizard Overhaul (January 25, 2026)
+- **Format-First Directory Structure**: Complete refactoring of `src/services/parsers/` into modular subdirectories (`html/`, `markdown/`, `json/`).
+- **Specialized Markdown Parsers**: Dedicated parsers for Gemini, Claude, ChatGPT, Grok, LeChat, and AI Studio using shared `BaseMarkdownParser`.
+- **4-Step Import Wizard**: Redesigned wizard flow (Method → Format → Platform → Input) for clearer user guidance.
+- **Extension Guidance Step**: New informational page with setup instructions, download links, and compatibility matrix.
+- **Smart Format Filtering**: Platform list automatically filters based on selected format compatibility.
+- **Visual Wizard Redesign**: Modern card-based UI with icons, descriptions, and improved navigation.
+
+#### Gemini Enhancements (January 25, 2026)
+- **Thought Extraction System**: Blockquote detection for `> Thinking:` patterns with support for single and double nested quotes.
+- **Standardized Formatting**: Consistent whitespace padding (`<thoughts>\n\n[Content]\n\n</thoughts>`) across all parsers.
+- **Footer Cleanup**: Automatic removal of "Powered by Gemini Exporter" attribution from imports.
+- **Extension Reliability Manager**: Web Worker-based heartbeat system with unthrottled timers bypassing Chrome's background tab throttling.
+- **Focus Spoofing**: MAIN world script injection overriding `document.hidden`, `visibilityState`, and `document.hasFocus()` to prevent Gemini tab throttling.
+- **Double Vision Fix**: Eliminated duplicate message rendering and ghost content from screen-reader-only elements.
+
+#### Import & Parsing Improvements (January 25, 2026)
+- **Generic Markdown Support**: New "Paste Markdown Export" option for non-platform-specific imports with universal metadata detection.
+- **Import Reference Library**: Gold standard reference exports (`gemini-export.md`, `gpt-export.md`, `kimi-export.md`, `claude-export.md`, `grok-export.md`) for parser testing.
+- **Noosphere Export Standard**: Universal export templates, platform-specific templates, and standardized directory structures in `agents/memory-bank/noosphere-export-standard/`.
+- **Enhanced Third-Party Parser**: Improved detection for legacy formats and custom chat headers with robust name detection.
+
+#### Basic Converter Workflow (January 25, 2026)
+- **Manual Save System**: Removed auto-save flicker, added prominent green "Save to Local Archive" button with loading states.
+- **Creative Entry Component**: New `CreativeEntry.tsx` UI component for enhanced content creation.
+- **Markdown Attachment Modal**: New `CreateMarkdownAttachmentModal.tsx` for creating and editing markdown files with live preview.
+
+#### Extension Improvements (January 23-25, 2026)
+- **Locus Positioning System**: Anchor-based button positioning using `anchorSelector` that moves naturally with platform UI.
+- **Claude Capture Refinement**: Narrowed `expandSelector` to prevent accidental clicks on global UI elements.
+- **Reliability Manager Integration**: Unthrottled timers during scroll-to-load phases with Blob-based worker persistence.
+
+### Fixed
+#### Bug Fixes & Polish (January 22-23, 2026)
+- **Folder Persistence**: Added `folderId` to `getAllSessionsMetadata` return objects, fixing folder assignment failures in Archive Hub.
+- **Message Insertion Logic**: Refactored `dropdownOpen` state to object `{ index, type }` and fixed ref collision in Review & Edit Modal.
+- **Artifact Linkage**: Implemented direct search strategy for filenames with spaces and synchronized state across modals.
+- **Archive Navigation**: Added cross-archive navigation pills, rounded-full pillbox styling, and conditional clear buttons.
+- **UI Consistency**: Unified "Scale & Glow" feedback system across all interactive elements.
+
+---
+
 ## [v0.5.8.5] - January 23, 2026
 
 ### Added
@@ -59,9 +104,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.5.8.3] - January 21, 2026
+## [v0.5.8.3] - January 26, 2026
 
 ### Added
+#### Artifact Delete Buttons (January 26, 2026)
+- **Unified Delete Functionality**: Comprehensive delete button implementation across all three message editing modals:
+  - **ChatPreviewModal**: Red-themed trash icon button appearing in edit mode next to download buttons
+  - **MessageEditorModal**: Compact X icon in split-button design within the artifact toolbar
+  - **ReviewEditModal**: Existing delete functionality verified and confirmed
+- **Consistent Design System**: All delete buttons follow the "Scale & Glow" design pattern with red danger theming, smooth transitions, and scale effects
+- **Smart Contextual Display**: Delete buttons appear contextually based on edit mode and component state with confirmation dialogs to prevent accidental deletion
+- **Data Integrity**: Proper artifact removal from both message-level `artifacts` array and session-level `metadata.artifacts` array with automatic IndexedDB synchronization
+- **Enhanced Artifact Management UX**: Complete lifecycle support (add, view, download, delete) from any modal with improved toolbar design and visual hierarchy
+
 #### Global Archive & Converter UI Polish
 - **Create Blank Chat**: Added a new pink-themed "Blank Chat" option to the Content Import Wizard, allowing users to start new conversations from scratch.
 - **Auto-Edit Entry**: Initiating a blank chat automatically opens the Review & Edit modal with Edit Mode pre-enabled for immediate manual entry.

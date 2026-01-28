@@ -1,6 +1,6 @@
-import { ChatData, ChatMessageType, ChatMetadata } from '../../types';
-import { BaseParser } from './BaseParser';
-import { extractMarkdownFromHtml, validateMarkdownOutput } from './ParserUtils';
+import { ChatData, ChatMessageType, ChatMetadata } from '../../../types';
+import { BaseParser } from '../BaseParser';
+import { extractMarkdownFromHtml, validateMarkdownOutput } from '../ParserUtils';
 
 export class ClaudeParser implements BaseParser {
     parse(html: string): ChatData {

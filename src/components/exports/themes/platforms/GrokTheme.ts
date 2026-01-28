@@ -134,10 +134,10 @@ export class GrokThemeRenderer implements ThemeRenderer {
             : this.classes.getAssistantMessageClasses(message, index);
 
         // Handle thought blocks for Grok
-        if (!isPrompt && message.content.includes('<thought>')) {
-            const parts = message.content.split(/(<thought>[\s\S]*?<\/thought>)/);
+        if (!isPrompt && message.content.includes('<thoughts>')) {
+            const parts = message.content.split(/(<thoughts>[\s\S]*?<\/thought>)/);
             const contentHtml = parts.map(part => {
-                if (part.startsWith('<thought>') && part.endsWith('</thought>')) {
+                if (part.startsWith('<thoughts>') && part.endsWith('</thoughts>')) {
                     const thoughtContent = part.replace(/<\/?thought>/g, '').trim();
                     return this.generateThoughtBlockHtml(thoughtContent);
                 }

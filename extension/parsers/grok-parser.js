@@ -107,7 +107,7 @@ function parseGrokHtml(html) {
                 // Decode entities because innerHTML gives us &lt; for <
                 const encodedThought = thoughtMatch[1].trim();
                 const thoughtContent = decodeHtmlEntities(encodedThought);
-                content += `<thought>\n${thoughtContent}\n</thought>\n\n`;
+                content += `<thoughts>\n${thoughtContent}\n</thoughts>\n\n`;
             }
         }
 

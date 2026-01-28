@@ -122,15 +122,15 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
       let mimeType: string;
 
       if (format === 'html') {
-        content = exportService.generate('html', chatData, chatTitle, selectedTheme, userName, aiName, parserMode, metadata);
+        content = await exportService.generate('html', chatData, chatTitle, selectedTheme, userName, aiName, parserMode, metadata);
         extension = 'html';
         mimeType = 'text/html';
       } else if (format === 'markdown') {
-        content = exportService.generate('markdown', chatData, chatTitle, undefined, userName, aiName, undefined, metadata);
+        content = await exportService.generate('markdown', chatData, chatTitle, undefined, userName, aiName, undefined, metadata);
         extension = 'md';
         mimeType = 'text/markdown';
       } else {
-        content = exportService.generate('json', chatData, undefined, undefined, undefined, undefined, undefined, metadata);
+        content = await exportService.generate('json', chatData, undefined, undefined, undefined, undefined, undefined, metadata);
         extension = 'json';
         mimeType = 'application/json';
       }

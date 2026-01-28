@@ -1,6 +1,6 @@
-import { ChatData, ChatMessageType, ChatMetadata } from '../../types';
-import { BaseParser } from './BaseParser';
-import { extractMarkdownFromHtml, validateMarkdownOutput } from './ParserUtils';
+import { ChatData, ChatMessageType, ChatMetadata } from '../../../types';
+import { BaseParser } from '../BaseParser';
+import { extractMarkdownFromHtml, validateMarkdownOutput } from '../ParserUtils';
 
 export class LeChatParser implements BaseParser {
     parse(html: string): ChatData {
@@ -39,7 +39,7 @@ export class LeChatParser implements BaseParser {
                 const rawReasoningText = extractMarkdownFromHtml(reasoning as HTMLElement);
                 const reasoningText = validateMarkdownOutput(rawReasoningText);
                 if (reasoningText) {
-                    content += `\n---\n<thought>\n${reasoningText}\n</thought>\n---\n\n`;
+                    content += `\n---\n<thoughts>\n${reasoningText}\n</thoughts>\n---\n\n`;
                 }
             }
 

@@ -1,0 +1,28 @@
+{
+  "exportManifest": {
+    "created": "[ISO Date Timestamp]",
+    "tool": {
+      "name": "Noosphere Reflect",
+      "version": "[Current-Version]",
+      "tagline": "Meaning Through Memory"
+    }
+  },
+  "batchSummary": {
+    "totalChats": 0,
+    "totalMessages": 0,
+    "totalArtifacts": 0,
+    "exportNotes": "Batch export containing multiple conversation directories."
+  },
+  "inventory": [
+    {
+      "directory": "[AI-Name] - [Chat-Title]/",
+      "title": "[Original Chat Title]",
+      "service": "[AI Model/Service Name]",
+      "stats": {
+        "messages": 0,
+        "artifacts": 0
+      },
+      "originalDate": "[ISO Date Conversation Started]"
+    }
+  ]
+}

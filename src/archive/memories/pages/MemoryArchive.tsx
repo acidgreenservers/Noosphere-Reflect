@@ -314,15 +314,15 @@ export default function MemoryArchive() {
                 let uploadFilename: string;
 
                 if (format === 'html') {
-                    content = exportService.generate('html', memoryAsChat, memory.metadata.title, ChatTheme.DarkDefault, 'User', 'Memory', undefined, memoryAsChat.metadata);
+                    content = await exportService.generate('html', memoryAsChat, memory.metadata.title, ChatTheme.DarkDefault, 'User', 'Memory', undefined, memoryAsChat.metadata);
                     mimeType = 'text/html';
                     uploadFilename = `${filename}.html`;
                 } else if (format === 'markdown') {
-                    content = exportService.generate('markdown', memoryAsChat, memory.metadata.title, undefined, 'User', 'Memory', undefined, memoryAsChat.metadata);
+                    content = await exportService.generate('markdown', memoryAsChat, memory.metadata.title, undefined, 'User', 'Memory', undefined, memoryAsChat.metadata);
                     mimeType = 'text/markdown';
                     uploadFilename = `${filename}.md`;
                 } else {
-                    content = exportService.generate('json', memoryAsChat, undefined, undefined, undefined, undefined, undefined, memoryAsChat.metadata);
+                    content = await exportService.generate('json', memoryAsChat, undefined, undefined, undefined, undefined, undefined, memoryAsChat.metadata);
                     mimeType = 'application/json';
                     uploadFilename = `${filename}.json`;
                 }

@@ -4,7 +4,7 @@ import { isJson } from './ParserUtils';
 
 /**
  * ThirdPartyParser handles a wide variety of 3rd-party and legacy formats.
- * It is designed to be "best-effort" and flexible.
+ * It uses a flexible regex-based engine to detect Model, User, Title, and Date.
  */
 export class ThirdPartyParser implements BaseParser {
     parse(input: string): ChatData {
@@ -28,7 +28,7 @@ export class ThirdPartyParser implements BaseParser {
                 const content = (msg.content || msg.text || msg.body || '').toString();
 
                 let messageType = ChatMessageType.Response;
-                if (['prompt', 'user', 'human', 'input'].includes(type)) {
+                if (['prompt', 'user', 'human', 'input', 'me', 'question'].includes(type)) {
                     messageType = ChatMessageType.Prompt;
                 }
 
@@ -45,77 +45,87 @@ export class ThirdPartyParser implements BaseParser {
     }
 
     private parseMarkdown(input: string): ChatData {
-        const lines = input.split('\n');
         const messages: ChatMessage[] = [];
-        let currentMessage: ChatMessage | null = null;
-        let metadata: ChatMetadata | undefined;
+        const metadata: ChatMetadata = {
+            title: 'Markdown Conversation',
+            model: 'AI Assistant',
+            date: new Date().toISOString(),
+            tags: ['imported', '3rd-party']
+        };
 
-        let i = 0;
-        if (lines.length > 0) {
-            const firstLine = lines[0].trim();
-            const titleMatch = firstLine.match(/^#\s+(.+)/);
-            if (titleMatch) {
-                metadata = {
-                    title: titleMatch[1].trim(),
-                    model: '',
-                    date: new Date().toISOString(),
-                    tags: []
-                };
-                i++;
+        // 1. Meta Detection Phase
+        const modelMatch = input.match(/(?:\*\*|#\s*)?Model(?:\*\*|:)\s*(.+)/i);
+        const userMatch = input.match(/(?:\*\*|#\s*)?User(?:\*\*|:)\s*(.+)/i);
+        const dateMatch = input.match(/(?:\*\*|#\s*)?Date(?:\*\*|:)\s*(.+)/i) || input.match(/(?:\*\*|#\s*)?Created(?:\*\*|:)\s*(.+)/i);
+        const titleMatch = input.match(/^#\s+(.+)/m);
+        const linkMatch = input.match(/(?:\*\*|#\s*)?Link(?:\*\*|:)\s*(.+)/i) || input.match(/(?:\*\*|#\s*)?Source(?:\*\*|:)\s*(.+)/i);
+
+        if (modelMatch) metadata.model = modelMatch[1].trim();
+        if (userMatch) metadata.author = userMatch[1].trim();
+        if (dateMatch) metadata.date = dateMatch[1].trim();
+        if (titleMatch) metadata.title = titleMatch[1].trim();
+        if (linkMatch) metadata.sourceUrl = linkMatch[1].trim();
+        if (metadata.model) metadata.tags?.push(metadata.model.toLowerCase());
+
+        // 2. Turn Parsing Phase (Flexible Headers)
+        const headerPattern = /##\s+(Prompt|User|Human|Question|Me|Response|AI|Assistant|Model|Answer|Kimi|Claude|GPT|Gemini):/gi;
+        const matches = Array.from(input.matchAll(headerPattern));
+
+        if (matches.length > 0) {
+            for (let i = 0; i < matches.length; i++) {
+                const headerType = matches[i][1].toLowerCase();
+                const contentStart = matches[i].index! + matches[i][0].length;
+                const contentEnd = (i + 1 < matches.length) ? matches[i + 1].index : input.length;
+
+                let rawContent = input.substring(contentStart, contentEnd).trim();
+                let cleanContent = rawContent;
+
+                // Extract thoughts/thinking blocks if present
+                let thoughts: string | undefined;
+                const thoughtsMatch = rawContent.match(/> Thinking:\s*\n\s*>[\s\S]*?\n(?=>|$)/i) ||
+                    rawContent.match(/```\s*Thoughts:\n([\s\S]*?)```/i);
+
+                if (thoughtsMatch) {
+                    thoughts = thoughtsMatch[1] || thoughtsMatch[0].replace(/^>\s*/gm, '').replace('> Thinking:', '').trim();
+                    cleanContent = rawContent.replace(thoughtsMatch[0], '').trim();
+                }
+
+                const isPrompt = ['prompt', 'user', 'human', 'question', 'me'].includes(headerType);
+
+                // If it's a response and we have thoughts, prepend them in Noosphere standard format
+                let finalContent = cleanContent;
+                if (!isPrompt && thoughts) {
+                    finalContent = `<thoughts>\n\n${thoughts}\n\n</thoughts>\n\n${cleanContent}`;
+                }
+
+                messages.push({
+                    type: isPrompt ? ChatMessageType.Prompt : ChatMessageType.Response,
+                    content: finalContent
+                });
             }
         }
 
-        for (; i < lines.length; i++) {
-            const line = lines[i];
-            const trimmedLine = line.trim();
-
-            // Flexible regex: "## Name:" or "## Name"
-            // Captures names with spaces if followed by a colon, or single-word names without.
-            // Priority: "## Word:" > "## Multiple Words:" > "## User"
-            const headerMatch = trimmedLine.match(/^##\s+([^:\n]+):?\s*(.*)/);
-
-            if (headerMatch) {
-                const rawLabel = headerMatch[1].trim();
-                const inlineContent = headerMatch[2].trim();
-
-                if (currentMessage) messages.push(currentMessage);
-
-                const labelLower = rawLabel.toLowerCase();
-                let type = ChatMessageType.Response;
-
-                const promptKeywords = ['prompt', 'user', 'human', 'input', 'me', 'question'];
-                const responseKeywords = ['response', 'ai', 'assistant', 'model', 'bot', 'answer'];
-
-                if (promptKeywords.some(k => labelLower.includes(k))) {
-                    type = ChatMessageType.Prompt;
-                } else if (responseKeywords.some(k => labelLower.includes(k))) {
-                    type = ChatMessageType.Response;
-                } else {
-                    if (messages.length === 0) {
-                        type = ChatMessageType.Prompt;
-                    } else {
-                        const lastType = messages[messages.length - 1].type;
-                        type = lastType === ChatMessageType.Prompt ? ChatMessageType.Response : ChatMessageType.Prompt;
-                    }
-                }
-
-                currentMessage = { type, content: inlineContent };
-            } else {
-                if (currentMessage) {
-                    currentMessage.content += (currentMessage.content === '' ? '' : '\n') + line;
-                }
+        // 3. Fallback: If no headers found, try to split by simple lines
+        if (messages.length === 0) {
+            const altPattern = /^(?:User|Assistant|Human|AI|Me):\s*(.+)/gm;
+            let altMatch;
+            while ((altMatch = altPattern.exec(input)) !== null) {
+                const label = altMatch[0].split(':')[0].toLowerCase();
+                const isPrompt = ['user', 'human', 'me'].some(k => label.includes(k));
+                messages.push({
+                    type: isPrompt ? ChatMessageType.Prompt : ChatMessageType.Response,
+                    content: altMatch[1].trim()
+                });
             }
         }
 
-        if (currentMessage) messages.push(currentMessage);
+        const validMessages = messages.filter(msg => msg.content && msg.content.trim() !== '');
 
-        const validMessages = messages.map(msg => ({
-            ...msg,
-            content: msg.content.trim()
-        })).filter(msg => msg.content !== '');
+        console.log('[ThirdPartyParser] Valid messages:', validMessages.length);
+        console.log('[ThirdPartyParser] Messages:', validMessages);
 
         if (validMessages.length === 0) {
-            throw new Error('No valid 3rd-party messages detected. Ensure messages start with "## Name:" headers.');
+            throw new Error('No valid conversation turns detected. Ensure headers like "## Prompt:" are present.');
         }
 
         return { messages: validMessages, metadata };

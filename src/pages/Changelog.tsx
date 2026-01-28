@@ -13,6 +13,33 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8.6',
+            date: 'Jan 27, 2026',
+            title: 'Modular Parser Architecture & Wizard Overhaul',
+            items: [
+                'Format-First Architecture: Complete refactoring of parsers into modular directory structure (html/, markdown/, json/).',
+                'Specialized Markdown Parsers: Dedicated parsers for Gemini, Claude, ChatGPT, Grok, LeChat, and AI Studio with shared BaseMarkdownParser.',
+                '4-Step Import Wizard: Redesigned wizard flow (Method → Format → Platform → Input) for clearer user guidance.',
+                'Extension Guidance: New informational step with setup instructions, download links, and compatibility matrix.',
+                'Gemini Thought Extraction: Blockquote detection for "> Thinking:" patterns with nested quote support.',
+                'Standardized Formatting: Consistent whitespace padding across all parsers for thoughts and collapsible sections.',
+                'Extension Reliability Manager: Web Worker-based heartbeat system with unthrottled timers bypassing Chrome throttling.',
+                'Focus Spoofing: MAIN world script injection preventing Gemini tab throttling during scraping.',
+                'Double Vision Fix: Eliminated duplicate messages and ghost content from Gemini exports.',
+                'Generic Markdown Support: New "Paste Markdown Export" option with universal metadata detection.',
+                'Import Reference Library: Gold standard exports (gemini, gpt, kimi, claude, grok) for parser testing.',
+                'Noosphere Export Standard: Universal templates and standardized directory structures for exports.',
+                'Manual Save System: Removed auto-save flicker, added green "Save to Local Archive" button.',
+                'Creative Entry Component: New UI component for enhanced content creation.',
+                'Markdown Attachment Modal: Dedicated modal for creating and editing markdown files with live preview.',
+                'Locus Positioning: Anchor-based button positioning that moves naturally with platform UI.',
+                'Folder Persistence Fix: Added folderId to metadata, fixing folder assignment failures.',
+                'Message Insertion Fix: Refactored dropdown state and fixed ref collision in Review & Edit Modal.',
+                'Artifact Linkage: Direct search strategy for filenames with spaces and synchronized state.',
+                'Archive Navigation: Cross-archive pills, pillbox styling, and clear buttons for search bars.',
+            ]
+        },
+        {
             version: 'v0.5.8.5',
             date: 'Jan 23, 2026',
             title: 'Artifact Linkage & Visual Polish',
@@ -42,9 +69,15 @@ const Changelog: React.FC = () => {
         },
         {
             version: 'v0.5.8.3',
-            date: 'Jan 21, 2026',
-            title: 'Full Modular Refactor & UI Refinement',
+            date: 'Jan 26, 2026',
+            title: 'Artifact Delete Buttons & UI Refinement',
             items: [
+                'Artifact Delete Buttons: Unified delete functionality across all three message editing modals (ChatPreviewModal, MessageEditorModal, ReviewEditModal).',
+                'Consistent Design System: All delete buttons follow "Scale & Glow" pattern with red danger theming, smooth transitions, and scale effects.',
+                'Smart Contextual Display: Delete buttons appear in edit mode (ChatPreviewModal) or always visible (MessageEditorModal toolbar) with confirmation dialogs.',
+                'Data Integrity: Proper removal from both message-level and session-level artifact arrays with automatic IndexedDB synchronization.',
+                'Enhanced Toolbar: MessageEditorModal artifact toolbar redesigned with split-button design (Insert left/purple, Delete right/red).',
+                'Complete Lifecycle: Users can now add, view, download, AND delete artifacts from any modal for full artifact management.',
                 'Create Blank Chat: Introduced a new entry point in the Content Import Wizard to start fresh conversations manually with auto-initializing Edit Mode.',
                 'Seamless Logo Integration: Implemented CSS Luminance Masking to remove black backgrounds from the brand logo across all pages, ensuring high color fidelity and transparency.',
                 'Global "Scale & Glow" System: Implemented comprehensive hover:scale (110%), active:scale (95%), and dynamic glow effects for all header and navigation buttons.',

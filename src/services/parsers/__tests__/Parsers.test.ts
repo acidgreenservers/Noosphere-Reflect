@@ -65,7 +65,7 @@ describe('AI Chat Parsers - Robustness Suite', () => {
       expect(result.messages).toHaveLength(2);
       expect(result.messages[0].type).toBe(ChatMessageType.Prompt);
       expect(result.messages[1].type).toBe(ChatMessageType.Response);
-      expect(result.messages[1].content).toContain('<thought>');
+      expect(result.messages[1].content).toContain('<thoughts>');
       expect(result.messages[1].content).toContain('Initializing Project Setup');
       expect(result.messages[1].content).toContain('📦 **Generated Files**');
       expect(result.messages[1].content).toContain('metadata.json');
@@ -86,7 +86,7 @@ describe('AI Chat Parsers - Robustness Suite', () => {
        `;
       const result = parser.parse(html);
       expect(result.messages).toHaveLength(2);
-      expect(result.messages[1].content).toContain('<thought>');
+      expect(result.messages[1].content).toContain('<thoughts>');
       expect(result.messages[1].content).toContain('Kimi');
     });
   });
@@ -169,11 +169,11 @@ describe('AI Chat Parsers - Robustness Suite', () => {
       expect(() => validateMarkdownOutput(event)).toThrow(/Dangerous content/);
     });
 
-    it('should escape HTML tags but allow <thought>', () => {
-      const mixed = 'Hello <tag> but keep <thought>process</thought>';
+    it('should escape HTML tags but allow <thoughts>', () => {
+      const mixed = 'Hello <tag> but keep <thoughts>process</thoughts>';
       const result = validateMarkdownOutput(mixed);
       expect(result).toContain('&lt;tag&gt;');
-      expect(result).toContain('<thought>process</thought>');
+      expect(result).toContain('<thoughts>process</thoughts>');
     });
 
     it('should throw for suspicious entities', () => {

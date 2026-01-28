@@ -1,6 +1,6 @@
-import { ChatData, ChatMessageType } from '../../types';
-import { BaseParser } from './BaseParser';
-import { extractMarkdownFromHtml, validateMarkdownOutput } from './ParserUtils';
+import { ChatData, ChatMessageType } from '../../../types';
+import { BaseParser } from '../BaseParser';
+import { extractMarkdownFromHtml, validateMarkdownOutput } from '../ParserUtils';
 
 export class KimiParser implements BaseParser {
     parse(input: string): ChatData {
@@ -40,7 +40,7 @@ export class KimiParser implements BaseParser {
                     const rawThoughtText = extractMarkdownFromHtml(thinkingContainer as HTMLElement);
                     const thoughtText = validateMarkdownOutput(rawThoughtText);
                     if (thoughtText && thoughtText.trim()) {
-                        thoughtContent = `\n---\n<thought>\n${thoughtText.trim()}\n</thought>\n---\n\n`;
+                        thoughtContent = `\n---\n<thoughts>\n${thoughtText.trim()}\n</thoughts>\n---\n\n`;
                     }
                 }
 

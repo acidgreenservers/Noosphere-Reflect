@@ -1,13 +1,15 @@
 # Project Progress
 
-## Current Status: v0.5.8.1 - **Goal**: Formalizing infrastructure and syncing documentation.
+## Current Status: v0.5.8.3 - **Goal**: Universal Parity & Import Reference Hardening.
 
 ## Recent Milestones
+- [x] **Phase 6.5.0: Universal Import Reference Library** (Captured & Stored 1:1 Snapshots)
 - [x] **Phase 6.4.0: Modular AI Chat Parsers** (Formalized Noosphere Standard vs 3rd Party)
 - [x] **Phase 6.5.0: Google Drive Integration & Backup System**
 - [x] **Archive Hub Refactor Phase 1**: Hook extraction (Search, Export, Drive, Extension Bridge).
 - [x] **Archive Architecture Refactor**: Prompts, Memories, and Chats modularized into feature domains.
 - [x] **v0.5.8.3 Modularization & UI Polish**: Completed component integration and global tactile feedback system.
+- [x] **v0.5.8.7 Semantic Gemini Alignment**: Vaporized the "Double Vision" doubling bug via Serializer De-Duplication and Ghost-Buster DOM hardening.
 - [x] **v0.5.8.6 Unified Rendering & Verification**: Fixed collapsible/thought rendering and synchronized Message Editor with global utility.
 - [x] **v0.5.8.5 Artifact Detail Polish**: Integrated high-fidelity icons and message-level hydration in Chat Preview.
 - [x] **v0.5.8.4 Quick Add Modals**: Implemented popup overlay modals for Memory and Prompt entry with "Zero Scroll" optimization.
@@ -209,6 +211,18 @@
   - ✅ **Dynamic Theming**: Added theme-aware hover backgrounds and glow effects for various action types (Sync, Settings, Archive Links).
   - ✅ **Unified Accessibility**: Standardized focus rings (`focus:ring-2`) and high-contrast active states for all interactive icons and links.
   - ✅ **Cross-Page Parity**: Successfully synchronized the UI refinement between `ArchiveHub` and `BasicConverter` modules.
+
+- **January 25, 2026 - Universal Import Reference Integration ✅**:
+  - ✅ **Reference Captures**: Stored `gemini-export.md`, `gpt-export.md`, and `kimi-export.md` as "Gold Standard" baselines in `import-references/`.
+  - ✅ **DOM Hardening**: Verified `gemini-parser.js` against complex "Thinking" block nesting and accessibility debris.
+  - ✅ **Git Hygiene**: Updated `.gitignore` to protect `reference-html-dom` and other diagnostic assets.
+  - **Files Modified**: `agents/memory-bank/import-references/*`, `extension/parsers/gemini-parser.js`, `.gitignore`.
+
+- **January 24, 2026 - Gemini "Double Vision" & UI Injector Fixes ✅**:
+  - ✅ **DOUBLING VAPORIZED**: Fixed `serializeAsMarkdown` logic that was pushing content twice.
+  - ✅ **GHOST-BUSTER Implementation**: Added broad selector rejection (`.screen-reader-only`, `aria-hidden`) to Gemini parser.
+  - ✅ **Locus Anchoring**: Re-implemented UI Injector to anchor to native action rows instead of window-fixed positioning.
+  - **Files Modified**: `extension/parsers/shared/serializers.js`, `extension/parsers/gemini-parser.js`, `extension/content-scripts/ui-injector.js`.
 
 - ✅ **UI Copy Button & Styling Refactor (January 21, 2026)**: Added copy buttons to `PromptPreviewModal`, `MemoryPreviewModal`, and `ChatPreviewModal` with theme‑specific focus‑ring and active‑background styling. Ran the **SECURITY_ADVERSARY_AGENT** audit; no new security issues detected.
 

@@ -76,7 +76,7 @@ const Features: React.FC = () => {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <span className="text-green-400 text-xl">✓</span>
-                                    <span>Thought process preservation with dedicated {`<thought>`} tag support</span>
+                                    <span>Thought process preservation with dedicated {`<thoughts>`} tag support</span>
                                 </li>
                             </ul>
                         </div>

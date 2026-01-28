@@ -1,21 +1,36 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { WizardStep, InputMethod, ContentImportWizardProps } from '../types';
-import { ParserMode, ChatData } from '../../../types';
+import { ParserMode, ChatData, ChatMessage } from '../../../types';
 import { isJson, parseChat } from '../../../services/converterService';
+import { detectImportSignal, DetectionResult, ConfidenceLevel } from '../utils/AutoDetection';
+
+export interface VerificationData {
+    count: number;
+    title?: string;
+    model?: string;
+    previews: ChatMessage[];
+    hasThoughts: boolean;
+    signalName?: string;
+    confidence?: ConfidenceLevel;
+    reason?: string;
+}
 
 export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWizardProps) => {
     const [step, setStep] = useState<WizardStep>(1);
     const [stepHistory, setStepHistory] = useState<WizardStep[]>([1]);
     const [inputMethod, setInputMethod] = useState<InputMethod | null>(null);
     const [selectedPlatform, setSelectedPlatform] = useState<ParserMode | null>(null);
+    const [selectedFormat, setSelectedFormat] = useState<'markdown' | 'html' | 'json' | null>(null);
+    const [detectedSignal, setDetectedSignal] = useState<DetectionResult | null>(null);
     const [content, setContent] = useState('');
     const [fileName, setFileName] = useState<string | null>(null);
     const [isParsing, setIsParsing] = useState(false);
-    const [verificationData, setVerificationData] = useState<{ count: number; title?: string; model?: string } | null>(null);
+    const [verificationData, setVerificationData] = useState<VerificationData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const attachmentInputRef = useRef<HTMLInputElement>(null);
 
     // Reset state when opening
     useEffect(() => {
@@ -24,39 +39,38 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
             setStepHistory([1]);
             setInputMethod(null);
             setSelectedPlatform(null);
+            setSelectedFormat(null);
+            setDetectedSignal(null);
             setContent('');
             setFileName(null);
             setVerificationData(null);
             setError(null);
             setAttachments([]);
         }
-    }, [isOpen]);
+    }, [isOpen, onClose]);
 
     const handleMethodSelect = (method: InputMethod) => {
         setInputMethod(method);
-        let nextStep: WizardStep;
         if (method === 'extension') {
-            nextStep = 2; // Skip platform selection for extension
-        } else if (method === 'blank') {
-            setSelectedPlatform(ParserMode.Blank);
-            setVerificationData({
-                count: 0,
-                title: 'New Blank Chat',
-                model: 'Manual Entry'
-            });
-            nextStep = 3; // Go straight to verification
+            setStepHistory(prev => [...prev, 'extension-info']);
+            setStep('extension-info');
         } else {
-            nextStep = 1.5; // Show platform selection for paste/upload
+            setStepHistory(prev => [...prev, 2]);
+            setStep(2); // Go to Format Selection
         }
-        setStepHistory(prev => [...prev, nextStep]);
-        setStep(nextStep);
         setError(null);
+    };
+
+    const handleFormatSelect = (format: 'markdown' | 'html' | 'json') => {
+        setSelectedFormat(format);
+        setStepHistory(prev => [...prev, 3]);
+        setStep(3); // Go to Platform Selection
     };
 
     const handlePlatformSelect = (platform: ParserMode) => {
         setSelectedPlatform(platform);
-        setStepHistory(prev => [...prev, 2]);
-        setStep(2);
+        setStepHistory(prev => [...prev, 4]);
+        setStep(4); // Go to Content Input
     };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,29 +89,33 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
     };
 
     const handleVerify = async () => {
+        if (!content.trim()) {
+            setError('Please provide content to verify.');
+            return;
+        }
+
         setIsParsing(true);
         setError(null);
 
         try {
-            // Use the selected platform parser only
-            const data: ChatData = await parseChat(content, 'auto', selectedPlatform!);
+            const modeToUse = selectedPlatform || ParserMode.ThirdPartyMarkdown;
+            const data: ChatData = await parseChat(content, 'auto', modeToUse);
 
-            setVerificationData({
-                count: data.messages.length,
-                title: data.metadata?.title,
-                model: data.metadata?.model
-            });
-            setStepHistory(prev => [...prev, 3]);
-            setStep(3);
+            // Validation successful - import directly
+            const type = isJson(content) ? 'json' : 'html';
+            onImport(content, type, modeToUse, attachments);
+            onClose();
         } catch (err: any) {
-            setError(`Parsing failed: ${err.message}`);
+            setError(`Validation Failed: ${err.message}`);
         } finally {
             setIsParsing(false);
         }
     };
 
     const handleFinalImport = () => {
-        onImport(content, isJson(content) ? 'json' : 'html', selectedPlatform!, attachments);
+        const type = isJson(content) ? 'json' : 'html';
+        const mode = selectedPlatform || ParserMode.ThirdPartyMarkdown;
+        onImport(content, type, mode, attachments);
         onClose();
     };
 
@@ -116,6 +134,13 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
             const nextHistory = stepHistory.slice(0, -1);
             setStepHistory(nextHistory);
             setStep(nextHistory[nextHistory.length - 1]);
+        } else if (inputMethod) {
+            // If on first step but method selected, "back" just clears method
+            setInputMethod(null);
+            setDetectedSignal(null);
+            setSelectedPlatform(null);
+            setContent('');
+            setFileName(null);
         }
     };
 
@@ -124,6 +149,8 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
         stepHistory,
         inputMethod,
         selectedPlatform,
+        selectedFormat,
+        detectedSignal,
         content,
         fileName,
         isParsing,
@@ -131,8 +158,10 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
         error,
         attachments,
         fileInputRef,
+        attachmentInputRef,
         setContent,
         handleMethodSelect,
+        handleFormatSelect,
         handlePlatformSelect,
         handleFileUpload,
         handleVerify,

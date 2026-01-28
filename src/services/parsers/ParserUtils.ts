@@ -146,7 +146,7 @@ export const extractMarkdownFromHtml = (element: HTMLElement): string => {
                     // Verify we aren't just capturing the button text again
                     if (thoughtText && !thoughtText.toLowerCase().includes('thought process') && !thoughtText.toLowerCase().includes('viewed memory')) {
                         // Replace the ENTIRE container with the thought tag
-                        container.replaceWith(document.createTextNode(`\n\n---\n<thought>\n${thoughtText}\n</thought>\n---\n\n`));
+                        container.replaceWith(document.createTextNode(`\n\n---\n<thoughts>\n\n${thoughtText}\n\n</thoughts>\n---\n\n`));
                         return;
                     }
                 }
@@ -367,7 +367,13 @@ export const extractMarkdownFromHtml = (element: HTMLElement): string => {
         table.replaceWith(document.createTextNode(mdTable));
     });
 
-    // 11. Clean up extra buttons/SVGs
+    // 11. Handle Paragraphs explicitly to ensure separation
+    clone.querySelectorAll('p').forEach(p => {
+        // replaceWith text node of content surrounded by newlines
+        p.replaceWith(document.createTextNode(`\n\n${(p as HTMLElement).innerText || (p as HTMLElement).textContent || ''}\n\n`));
+    });
+
+    // 12. Clean up extra buttons/SVGs
     clone.querySelectorAll('button, svg, [aria-label*="Copy"], [aria-label*="Retry"], [aria-label*="Edit"], [aria-label*="Delete"], [data-testid*="action-bar"]').forEach(el => {
         if (document.contains(el) || clone.contains(el)) {
             el.remove();
@@ -423,8 +429,8 @@ export const validateMarkdownOutput = (markdown: string): string => {
     if (htmlTagPattern.test(markdown)) {
         // If HTML tags are found, escape them to be safe
         markdown = markdown.replace(htmlTagPattern, (match) => {
-            // Allow safe markdown-like tags (like <thought> which is used in the system)
-            if (match === '<thought>' || match === '</thought>') {
+            // Allow safe markdown-like tags (like <thoughts> which is used in the system)
+            if (match === '<thoughts>' || match === '</thoughts>') {
                 return match;
             }
             // Escape dangerous tags

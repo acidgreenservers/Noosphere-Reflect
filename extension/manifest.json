@@ -112,6 +112,7 @@
         "storage/bridge-storage.js",
         "storage/settings-sync.js",
         "content-scripts/shared/toast-manager.js",
+        "content-scripts/shared/reliability-manager.js",
         "content-scripts/gemini-capture.js",
         "content-scripts/ui-injector.js"
       ],

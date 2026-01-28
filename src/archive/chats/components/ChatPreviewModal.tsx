@@ -154,6 +154,85 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         }
     };
 
+    const handleCreateDocument = (fileName: string, content: string) => {
+        if (editingMessageIndex === null || !session.chatData) return;
+
+        // Create new artifact
+        const newArtifact: ConversationArtifact = {
+            id: `artifact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            fileName,
+            fileSize: new Blob([content]).size,
+            mimeType: 'text/markdown',
+            fileData: btoa(unescape(encodeURIComponent(content))), // Base64 encode
+            uploadedAt: new Date().toISOString(),
+            insertedAfterMessageIndex: editingMessageIndex
+        };
+
+        // Update the message with the new artifact
+        const updatedMessages = [...session.chatData.messages];
+        const currentMessage = updatedMessages[editingMessageIndex];
+        updatedMessages[editingMessageIndex] = {
+            ...currentMessage,
+            artifacts: [...(currentMessage.artifacts || []), newArtifact]
+        };
+
+        // Also add to metadata.artifacts
+        const updatedMetadata = {
+            ...(session.metadata || {
+                title: session.chatTitle,
+                model: 'Unknown',
+                date: session.date,
+                tags: []
+            }),
+            artifacts: [...(session.metadata?.artifacts || []), newArtifact]
+        };
+
+        const updatedSession: SavedChatSession = {
+            ...session,
+            chatData: {
+                ...session.chatData,
+                messages: updatedMessages
+            },
+            metadata: updatedMetadata
+        };
+
+        onSave(updatedSession);
+    };
+
+    const handleDeleteArtifact = async (messageIndex: number, artifactId: string) => {
+        if (!session.chatData) return;
+
+        // Remove from message artifacts
+        const updatedMessages = [...session.chatData.messages];
+        const currentMessage = updatedMessages[messageIndex];
+        updatedMessages[messageIndex] = {
+            ...currentMessage,
+            artifacts: (currentMessage.artifacts || []).filter(art => art.id !== artifactId)
+        };
+
+        // Remove from metadata.artifacts
+        const updatedMetadata = {
+            ...(session.metadata || {
+                title: session.chatTitle,
+                model: 'Unknown',
+                date: session.date,
+                tags: []
+            }),
+            artifacts: (session.metadata?.artifacts || []).filter(art => art.id !== artifactId)
+        };
+
+        const updatedSession: SavedChatSession = {
+            ...session,
+            chatData: {
+                ...session.chatData,
+                messages: updatedMessages
+            },
+            metadata: updatedMetadata
+        };
+
+        await onSave(updatedSession);
+    };
+
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
             <div className="bg-gray-900 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
@@ -397,6 +476,23 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                             </svg>
                                                                         </button>
                                                                     )}
+                                                                    {/* Delete Button - Always visible in edit mode */}
+                                                                    {isEditing && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                if (confirm(`Delete ${art.fileName}?`)) {
+                                                                                    handleDeleteArtifact(idx, art.id);
+                                                                                }
+                                                                            }}
+                                                                            className="p-2 bg-gray-900/80 border border-gray-700 hover:border-red-500 hover:bg-red-900/20 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 group cursor-pointer hover:ring-2 hover:ring-red-500/50"
+                                                                            title={`Delete ${art.fileName}`}
+                                                                        >
+                                                                            <svg className="w-4 h-4 text-gray-600 group-hover:text-red-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })}
@@ -427,6 +523,8 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                         isOpen={true}
                         onClose={() => setEditingMessageIndex(null)}
                         onSave={handleSaveMessage}
+                        onCreateDocument={handleCreateDocument}
+                        onRemoveArtifact={(artifactId) => handleDeleteArtifact(editingMessageIndex, artifactId)}
                     />
                 </div>
             )}

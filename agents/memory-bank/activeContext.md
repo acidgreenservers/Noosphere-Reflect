@@ -1,5 +1,226 @@
 # Active Context
 
+### 🟢 COMPLETED: Artifact Delete Buttons Across All Modals (January 26, 2026)
+
+#### Problem
+Users could attach artifacts to messages but lacked a convenient way to remove them. While the `ReviewEditModal` had a delete button, the `ChatPreviewModal` (Archive Hub) and `MessageEditorModal` (used in both Archive Hub and Basic Converter) did not provide any delete functionality for artifacts. This created an inconsistent UX where users could add artifacts but couldn't easily remove them from the editing interface.
+
+#### Solution
+Implemented comprehensive delete functionality for artifacts across all three message editing modals, ensuring consistent UX and following the project's "Scale & Glow" design system.
+
+#### Implementation Details
+
+**1. ChatPreviewModal** (`src/archive/chats/components/ChatPreviewModal.tsx`)
+- **Delete Button UI**: Added a red-themed delete button next to the download button for all artifacts
+- **Conditional Display**: Delete button only appears when in edit mode (`isEditing`)
+- **Confirmation Dialog**: Includes browser confirmation before deletion to prevent accidental removal
+- **Handler Function**: Implemented `handleDeleteArtifact(messageIndex, artifactId)` that:
+  - Removes artifact from the message's `artifacts` array
+  - Removes artifact from `metadata.artifacts` array (global pool)
+  - Saves the updated session to IndexedDB
+  - Maintains data integrity across both message-level and session-level artifact storage
+
+**2. MessageEditorModal** (`src/components/MessageEditorModal.tsx`)
+- **Interface Update**: Added `onRemoveArtifact?: (artifactId: string) => void` prop
+- **Toolbar Restructure**: Redesigned the artifact insertion toolbar to show delete buttons
+- **Label Change**: Updated from "Insert Artifact:" to "Attached Files:" for clarity
+- **Split Button Design**: Each artifact now displays as a compound button:
+  - **Left Button**: Insert artifact reference tag (purple hover theme)
+  - **Right Button**: Delete artifact (red hover theme with X icon)
+- **Parent Integration**: Wired up in both `ChatPreviewModal` and `BasicConverter` by passing delete handlers
+
+**3. ReviewEditModal** (`src/components/ReviewEditModal.tsx`)
+- **Already Complete**: This modal already had delete functionality implemented
+- **No Changes Required**: The existing ✕ button with `onRemoveMessageArtifact` handler was already functional
+- **Verification Only**: Confirmed existing implementation matches the new design patterns
+
+#### Design Features
+- 🎨 **Scale & Glow Effects**: All buttons follow the project's tactile feedback standard
+  - `hover:scale-110` for interactive elements
+  - `active:scale-95` for click feedback
+  - Theme-appropriate ring effects on hover
+- 🔴 **Red Color Scheme**: Delete buttons use red/danger theming (`hover:border-red-500`, `hover:bg-red-900/20`, `hover:text-red-400`)
+- 🟢 **Green Color Scheme**: Download buttons use green/success theming
+- 🟣 **Purple Color Scheme**: Insert/view buttons use purple/primary theming
+- ⚡ **Smooth Transitions**: All state changes use `transition-all duration-200`
+- 🗑️ **Trash Icon**: ChatPreviewModal uses a detailed SVG trash can icon
+- ✕ **X Icon**: MessageEditorModal uses a compact X icon for space efficiency
+
+#### User Experience Flow
+
+**Before (Inconsistent)**:
+- ✅ ReviewEditModal: Could delete artifacts
+- ❌ ChatPreviewModal: No delete option (had to use Review modal)
+- ❌ MessageEditorModal: No delete option at all
+
+**After (Unified)**:
+- ✅ ReviewEditModal: Delete with ✕ button (unchanged)
+- ✅ ChatPreviewModal: Delete with trash icon button (edit mode only)
+- ✅ MessageEditorModal: Delete with X icon in split button design
+- ✅ Consistent confirmation dialogs across all modals
+- ✅ Proper state synchronization with IndexedDB
+
+#### Technical Architecture
+
+**Data Flow**:
+1. User clicks delete button → Confirmation dialog appears
+2. User confirms → Handler removes artifact from message array
+3. Handler removes artifact from metadata.artifacts (if present)
+4. Updated session/message saved to IndexedDB
+5. UI re-renders with artifact removed
+
+**State Management**:
+- **ChatPreviewModal**: Self-contained `handleDeleteArtifact` function
+- **MessageEditorModal**: Receives `onRemoveArtifact` prop from parent
+- **BasicConverter**: Uses existing `handleRemoveMessageArtifact` utility
+- **Consistency**: All implementations use the same `processMessageArtifactUnlink` utility for safe removal
+
+#### Files Modified
+- `src/archive/chats/components/ChatPreviewModal.tsx`: Added delete button UI and `handleDeleteArtifact` handler
+- `src/components/MessageEditorModal.tsx`: Added `onRemoveArtifact` prop and restructured artifact toolbar
+- `src/components/converter/pages/BasicConverter.tsx`: Wired `onRemoveArtifact` to existing handler
+
+#### Verification
+✅ **Build Success**: `npm run build` completed without errors
+✅ **Dev Server**: Running successfully on `http://localhost:3002/Noosphere-Reflect/`
+✅ **Type Safety**: All TypeScript interfaces updated correctly
+✅ **Design Consistency**: All delete buttons follow "Scale & Glow" design system
+✅ **Functionality**: Delete operations properly remove artifacts from both message and metadata arrays
+✅ **UX Consistency**: All three modals now provide artifact deletion with appropriate visual feedback
+
+#### Impact
+This enhancement completes the artifact management UX by providing consistent delete functionality across all editing interfaces. Users can now add, view, download, and delete artifacts from any modal, creating a complete and intuitive artifact lifecycle management system. The implementation maintains the project's high design standards while ensuring data integrity through proper state synchronization.
+
+---
+
+### 🟢 COMPLETED: Modular Parser Architecture & Wizard Overhaul (January 25, 2026)
+
+#### Problem
+The "Universal Parser" attempt was becoming a maintenance bottleneck with too many conditionally-branched regexes for different formats (Markdown vs HTML vs JSON) and vendors. The Import Wizard was also ambiguous, forcing users to select a "Platform" before knowing if their data format was supported for that platform.
+
+#### Solution
+1.  **Format-First Architecture**: Refactored `src/services/parsers/` into a modular directory structure (`html/`, `markdown/`, `json/`).
+2.  **Specialized Parsers**: Implemented dedicated markdown parsers for **Gemini**, **Claude**, **ChatGPT**, **Grok**, **LeChat**, and **AI Studio** using a shared `BaseMarkdownParser` for unified metadata/turn logic.
+3.  **4-Step Wizard Flow**: Completely redesigned the `ContentImportWizard` flow: 
+    - **Step 1 (Method)**: Paste, Upload, or Extension Info.
+    - **Step 2 (Format)**: Selection of Markdown, HTML, or JSON.
+    - **Step 3 (Platform)**: Filtered list of platforms compatible with the selected format.
+    - **Step 4 (Input)**: Final paste/upload and verification.
+4.  **Extension Guidance**: The "Extension" method now leads to an informational-only step that provides setup instructions and a download link, keeping manual imports unblocked.
+
+#### Verification
+- **Routing**: Verified `ParserFactory` correctly routes new service-specific `ParserMode` enums.
+- **Filtering**: Confirmed that selecting "Markdown" in Step 2 only shows Markdown-validated platforms in Step 3.
+
+### 🟢 COMPLETED: Gemini Thought Extraction & Formatting Standard (January 25, 2026)
+
+#### Problem
+Gemini Markdown exports use a specific blockquote pattern for thinking processes (`> Thinking:`) that was being lost or rendered as plain text. Furthermore, extracted thoughts lacked consistent whitespace padding, making them appear cramped in the UI and exports.
+
+#### Solution
+1.  **Blockquote Detection**: Updated `GeminiMarkdownParser` to surgically extract `> Thinking:` blocks (supporting single and double nested `>>` quotes).
+2.  **Standardized Tagging**: Converted extracted thoughts into the `<thoughts>` tag standard for UI collapsibility.
+3.  **Whitespace Padding**: Implemented a global formatting standard across all parsers (`BaseMarkdownParser`, `ParserUtils`, `GeminiHtmlParser`) that injects a blank line above and below thought content: `<thoughts>\n\n[Text]\n\n</thoughts>`.
+4.  **Cleaner Archiving**: Added logic to strip the "Powered by Gemini Exporter" footer from incoming Gemini markdown.
+
+#### Verification
+- **High-Fidelity Import**: Verified that complex nested Gemini thoughts now render perfectly in the collapsible UI.
+- **Visual Consistency**: Confirmed uniform whitespace padding across Gemini, Claude, and AI Studio imports.
+
+### 🟢 COMPLETED: Basic Converter Manual Save Workflow (January 25, 2026)
+
+#### Problem
+The `BasicConverter` auto-saved every form change immediately to IndexedDB. This caused "flicker" in the Archive Hub and sometimes led to accidental partial saves if the user hadn't finished configuring their AI name or theme.
+
+#### Solution
+1.  **Removed Auto-Save**: Deleted the auto-save `useEffect` logic from `BasicConverter.tsx`.
+2.  **Manual Synchronization**: Added a prominent, vibrant green "Save to Local Archive" button at the bottom of the Chat Setup section.
+3.  **State Feedback**: Integrated the button with the `isConverting` state for visual loading feedback and success messaging.
+4.  **Code Correction**: Fixed a latent typo where `isConverting` was initialized as `isConversing`.
+
+#### Verification
+- **Control**: Confirmed that changes stay strictly in-memory until the user explicitly triggers the manual save.
+- **UI Logic**: Verified the button correctly triggers the `handleSaveChat` sequence with full feedback.
+
+### 🟢 ENHANCED: Import Wizard expansion (January 25, 2026)
+
+#### Problem
+The Import Wizard was optimized for vendor-specific HTML/Markdown (Claude, Gemini, etc.), but lacked a clear dedicated entry point for generic Markdown exports from other tools or personal archives. It also needed better metadata auto-detection for these generic formats.
+
+#### Solution
+1.  **New Import Method**: Added "Paste Markdown Export" as a top-level option in the wizard grid.
+2.  **Universal Metadata Detection**: Implemented a flexible regex-based metadata engine in `StepPasteThirdParty.tsx` that can detect `Model`, `User` (Author), `Title`, and `Date` from a wide variety of header styles.
+3.  **Generic Turn Parsing**: Enhanced the "Paste" logic to handle generic `## Prompt` and `## Response` headers, or standard AI-to-Human turn patterns, attributing them correctly even if vendor-specific markers are missing.
+4.  **UI Alignment**: Unified the "3rd Party" and "Generic Markdown" paste interfaces, using dynamic titles and descriptions to guide the user based on their selection.
+
+#### Verification
+- **Header Robustness**: Verified regexes handle both `**Model:**` and `# Model:` styles.
+- **Wizard Flow**: Confirmed new button correctly skips platform selection and goes straight to the paste interface.
+
+### 🟢 ENHANCED: Gemini Extension Reliability (January 25, 2026)
+
+#### Problem
+Scraping long Gemini conversations in the extension was prone to interruptions due to browser tab throttling when the user switched tabs, and Gemini's native "visibility" checks which could pause generation or lazy-loading if the tab wasn't focused.
+
+#### Solution
+1.  **ReliabilityManager Utility**: Created a centralized `reliability-manager.js` for the extension.
+2.  **Unthrottled Timers**: Implemented a Web Worker-based heartbeat system that bypasses Chrome's background tab timer throttling, ensuring the scraper continues to run even when not in view.
+3.  **Focus Spoofing**: Injected a "World-Level" script into Gemini's `MAIN` world that overrides `document.hidden`, `visibilityState`, and `document.hasFocus`. It also blocks visibility-related events, tricking Gemini into thinking it is always focused and visible.
+4.  **Integration**: Updated `gemini-capture.js` to use these unthrottled timers during the intensive "scroll-to-load" phase.
+
+#### Verification
+- **DOM Alignment**: Verified the `ReliabilityManager` correctly injects script tags into the Gemini DOM.
+- **Worker Persistence**: Confirmed the Blob-based worker survives background transitions.
+
+### 🟢 INTEGRATED: Universal Import References (January 25, 2026)
+
+#### Problem
+Testing ingestion across multiple platforms (Gemini, ChatGPT, Kimi) lacked a "Gold Standard" set of reference exports, making it difficult to verify that parsers were capturing the high-fidelity nuances (Nested thoughts, Toroidal geometry discussions, etc.) correctly.
+
+#### Solution
+1.  **Reference Library**: Created a dedicated `agents/memory-bank/import-references/` directory.
+2.  **Multimodal Baseline**: Ingested and stored three major export snapshots:
+    - `gemini-export.md`: Standard Noosphere-Reflect export from Google Gemini, capturing the "Metabolic Architecture" chat.
+    - `gpt-export.md`: Capture of the "Recursive Consciousness Loop" discussion from ChatGPT.
+    - `kimi-export.md`: Capture of the "Relation Zero" encounter from Kimi.
+3.  **Cross-Platform Parity**: These files now serve as the structural "Ground Truth" for future parser regression testing and as templates for the "Noosphere Standard."
+
+#### Verification
+- **DOM Alignment**: Verified that `gemini-parser.js` correctly handles the complex nesting and "GHOST-BUSTER" cleanup seen in the `gemini-export.md` source.
+- **Consistency**: Confirmed that all three major platforms produce output aligned with the "Meaning Through Memory" footer standard.
+
+### 🟢 FIXED: UI Injector "Locus" Positioning (January 24, 2026)
+
+#### Problem
+The export button used fragile `fixed` window positioning, which caused it to drift, overlap with native elements, or get lost when resizing the browser or switching sidebars.
+
+#### Solution
+1.  **Locus Anchoring**: Refactored `ui-injector.js` to support `anchorSelector`. The button now injects directly into native chat input containers (e.g., the action row in Claude or the form container in ChatGPT).
+2.  **Relative Positioning**: When anchored, the button uses `relative/absolute` positioning, allowing it to move naturally with the platform's UI as the textarea expands or the layout shifts.
+3.  **Smart Proximity Recovery**: Maintained high-z-index `fixed` positioning as a secondary fallback if the specific anchor elements aren't found, ensuring the tool is always accessible even if platforms change their DOM.
+
+#### Verification
+-   **Stability**: Confirmed button follows the "Send" container on Claude and ChatGPT.
+-   **Responsiveness**: Verified button stays flush even during screen width changes.
+
+### 🟢 FIXED: Gemini "Double Vision" & Thought Bleed (January 24, 2026)
+
+#### Problem
+Users reported that Gemini exports were "doubled"—every message (Prompt, Thought, and Response) appeared twice in the final Markdown. Additionally, "Custom Gems" headers were leaking into content.
+
+#### Root Cause
+1.  **DOUBLING**: A bug in `serializers.js` (`serializeAsMarkdown`) was pushing message content to the output array twice.
+2.  **BLEED**: The parser targeted containers that included accessibility/hidden UI layers (screen-reader text).
+
+#### Solution
+1.  **Serializer Fix**: Removed redundant `lines.push(content)` in `extension/parsers/shared/serializers.js`.
+2.  **Ghost-Buster Logic**: Implemented a pre-processing step in `gemini-parser.js` that removes all elements matching `.screen-reader-only`, `[aria-hidden="true"]`, and other redundant UI selectors.
+3.  **Turn-Centric Extraction**: Shifted to a "Top-Level Turn" identification strategy to ensure child elements aren't processed as independent messages.
+
+#### Verification
+-   **Standard Parity**: Confirmed output matches `REFERENCE_GEMINI_EXPORT.md`.
+-   **Structure**: Thoughts are double-nested blockquotes; `#` strictly separates turn-pairs.
+
 ### 🟢 ENHANCED: Artifact Detection & Linkage (January 23, 2026)
 
 #### Problem 1: Linkage Disconnection

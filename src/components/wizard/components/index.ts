@@ -4,3 +4,5 @@ export * from './StepMethodSelection';
 export * from './StepPlatformSelection';
 export * from './StepContentInput';
 export * from './StepVerification';
+export * from './StepFormatSelection';
+export * from './StepExtensionInfo';

@@ -281,8 +281,8 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
   // Pre-process: Ensure thought and collapsible tags are on their own lines for detection
   if (enableThoughts) {
     markdown = markdown
-      .replace(/<thought>/g, '\n<thought>\n')
-      .replace(/<\/thought>/g, '\n</thought>\n')
+      .replace(/<thoughts>/g, '\n<thoughts>\n')
+      .replace(/<\/thoughts>/g, '\n</thoughts>\n')
       .replace(/<collapsible>/g, '\n<collapsible>\n')
       .replace(/<\/collapsible>/g, '\n</collapsible>\n');
   }
@@ -295,14 +295,14 @@ const convertMarkdownToHtml = (markdown: string, enableThoughts: boolean): strin
     const line = lines[i];
     const trimmedLine = line.trim();
 
-    // 0. Collapsible blocks (four backticks, <thought>, or <collapsible> tags) - Highest precedence
-    if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thought>') || trimmedLine.startsWith('<collapsible>')) {
+    // 0. Collapsible blocks (four backticks, <thoughts>, or <collapsible> tags) - Highest precedence
+    if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thoughts>') || trimmedLine.startsWith('<collapsible>')) {
       let blockContent = '';
       let j = i + 1;
-      const isThought = trimmedLine.startsWith('<thought>');
+      const isThought = trimmedLine.startsWith('<thoughts>');
       const isCollapsible = trimmedLine.startsWith('<collapsible>');
 
-      const endMarker = isThought ? '</thought>' : (isCollapsible ? '</collapsible>' : '````');
+      const endMarker = isThought ? '</thoughts>' : (isCollapsible ? '</collapsible>' : '````');
       const blockTitle = isCollapsible ? 'Collapsible Section' : 'Thought process';
       const blockClass = isCollapsible ? 'markdown-collapsible-block' : 'markdown-thought-block';
       const summaryClass = isCollapsible ? 'markdown-collapsible-summary' : 'markdown-thought-summary';
@@ -580,7 +580,7 @@ const themeMap: Record<ChatTheme, ThemeClasses> = {
  * @param parserMode The parser mode used (affects structure/collapsibility)
  * @returns A string containing the full HTML content.
  */
-export const generateHtml = (
+export const generateHtml = async (
   chatData: ChatData,
   title: string = 'AI Chat Export',
   theme: ChatTheme = ChatTheme.DarkDefault,
@@ -590,8 +590,8 @@ export const generateHtml = (
   metadata?: ChatMetadata,
   includeFooter: boolean = true,
   isPreview: boolean = false
-): string => {
-  return exportService.generate('html', chatData, title, theme, userName, aiName, parserMode, metadata, includeFooter, isPreview);
+): Promise<string> => {
+  return await exportService.generate('html', chatData, title, theme, userName, aiName, parserMode, metadata, includeFooter, isPreview);
 };
 
 /**
@@ -603,14 +603,14 @@ export const generateHtml = (
  * @param metadata Optional metadata to include in the output
  * @returns A string containing the markdown content
  */
-export const generateMarkdown = (
+export const generateMarkdown = async (
   chatData: ChatData,
   title: string = 'AI Chat Export',
   userName: string = 'User',
   aiName: string = 'AI',
   metadata?: ChatMetadata
-): string => {
-  return exportService.generate('markdown', chatData, title, undefined, userName, aiName, undefined, metadata);
+): Promise<string> => {
+  return await exportService.generate('markdown', chatData, title, undefined, userName, aiName, undefined, metadata);
 };
 
 
@@ -627,11 +627,11 @@ export const generateMarkdown = (
  * @param metadata Optional metadata to include in the output
  * @returns A JSON string containing the exported data
  */
-export const generateJson = (
+export const generateJson = async (
   chatData: ChatData,
   metadata?: ChatMetadata
-): string => {
-  return exportService.generate('json', chatData, undefined, undefined, undefined, undefined, undefined, metadata);
+): Promise<string> => {
+  return await exportService.generate('json', chatData, undefined, undefined, undefined, undefined, undefined, metadata);
 };
 
 /**
@@ -653,13 +653,13 @@ export const generateManifest = (
  * @param format - Export format (html, markdown, json)
  * @returns Object with files: { filename: content }
  */
-export const generateDirectoryExport = (
+export const generateDirectoryExport = async (
   session: SavedChatSession,
   format: 'html' | 'markdown' | 'json'
-): Record<string, string | Blob> => {
-  const generateContent = (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
+): Promise<Record<string, string | Blob>> => {
+  const generateContent = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
     if (format === 'html') {
-      return generateHtml(
+      return await generateHtml(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.selectedTheme,
@@ -669,7 +669,7 @@ export const generateDirectoryExport = (
         session.metadata
       );
     } else if (format === 'markdown') {
-      return generateMarkdown(
+      return await generateMarkdown(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.userName,
@@ -677,11 +677,11 @@ export const generateDirectoryExport = (
         session.metadata
       );
     } else {
-      return generateJson(session.chatData!, session.metadata);
+      return await generateJson(session.chatData!, session.metadata);
     }
   };
 
-  return FilePackager.generateDirectoryExport(session, format, generateContent);
+  return await FilePackager.generateDirectoryExport(session, format, generateContent);
 };
 
 /**
@@ -737,9 +737,9 @@ export const generateZipExport = async (
   session: SavedChatSession,
   format: 'html' | 'markdown' | 'json'
 ): Promise<Blob> => {
-  const generateContent = (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
+  const generateContent = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
     if (format === 'html') {
-      return generateHtml(
+      return await generateHtml(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.selectedTheme,
@@ -749,7 +749,7 @@ export const generateZipExport = async (
         session.metadata
       );
     } else if (format === 'markdown') {
-      return generateMarkdown(
+      return await generateMarkdown(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.userName,
@@ -757,11 +757,11 @@ export const generateZipExport = async (
         session.metadata
       );
     } else {
-      return generateJson(session.chatData!, session.metadata);
+      return await generateJson(session.chatData!, session.metadata);
     }
   };
 
-  return FilePackager.generateZipExport(session, format, generateContent);
+  return await FilePackager.generateZipExport(session, format, generateContent);
 };
 
 /**
@@ -774,9 +774,9 @@ export const generateBatchZipExport = async (
   sessions: SavedChatSession[],
   format: 'html' | 'markdown' | 'json'
 ): Promise<Blob> => {
-  const generateContent = (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
+  const generateContent = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
     if (format === 'html') {
-      return generateHtml(
+      return await generateHtml(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.selectedTheme,
@@ -786,7 +786,7 @@ export const generateBatchZipExport = async (
         session.metadata
       );
     } else if (format === 'markdown') {
-      return generateMarkdown(
+      return await generateMarkdown(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.userName,
@@ -794,11 +794,11 @@ export const generateBatchZipExport = async (
         session.metadata
       );
     } else {
-      return generateJson(session.chatData!, session.metadata);
+      return await generateJson(session.chatData!, session.metadata);
     }
   };
 
-  return FilePackager.generateBatchZipExport(sessions, format, generateContent);
+  return await FilePackager.generateBatchZipExport(sessions, format, generateContent);
 };
 
 /**
@@ -811,9 +811,9 @@ export const generateDirectoryExportWithPicker = async (
   session: SavedChatSession,
   format: 'html' | 'markdown' | 'json'
 ) => {
-  const generateContent = (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
+  const generateContent = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json') => {
     if (format === 'html') {
-      return generateHtml(
+      return await generateHtml(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.selectedTheme,
@@ -823,7 +823,7 @@ export const generateDirectoryExportWithPicker = async (
         session.metadata
       );
     } else if (format === 'markdown') {
-      return generateMarkdown(
+      return await generateMarkdown(
         session.chatData!,
         session.metadata?.title || session.chatTitle,
         session.userName,
@@ -831,11 +831,11 @@ export const generateDirectoryExportWithPicker = async (
         session.metadata
       );
     } else {
-      return generateJson(session.chatData!, session.metadata);
+      return await generateJson(session.chatData!, session.metadata);
     }
   };
 
-  return FilePackager.generateDirectoryExportWithPicker(session, format, generateContent);
+  return await FilePackager.generateDirectoryExportWithPicker(session, format, generateContent);
 };
 
 /**

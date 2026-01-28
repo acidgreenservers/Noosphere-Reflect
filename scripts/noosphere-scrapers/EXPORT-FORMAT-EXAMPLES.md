@@ -18,7 +18,7 @@ When you export as Markdown with these collected messages:
 # AI Concepts Discussion
 
 **Platform:** Claude | **Date:** 1/12/2026, 10:30:00 PM
-**Source:** [https://claude.ai/chat/abc123](https://claude.ai/chat/abc123)
+**Source:** [Source Chat](https://claude.ai/chat/abc123)
 **Tags:** claude, export
 
 ---
@@ -29,9 +29,11 @@ What is AI?
 ---
 
 ## Response:
-<thought>
+<thoughts>
+
 The user is asking for a definition of AI. I should provide a clear, concise explanation of artificial intelligence.
-</thought>
+
+</thoughts>
 
 AI, or Artificial Intelligence, refers to computer systems designed to perform tasks that typically require human intelligence. These include learning from experience, recognizing patterns, and understanding language.
 
@@ -85,7 +87,7 @@ Same conversation exported as JSON:
     {
       "type": "response",
       "marker": "## Response:",
-      "content": "<thought>\nThe user is asking for a definition of AI. I should provide a clear, concise explanation of artificial intelligence.\n</thought>\n\nAI, or Artificial Intelligence, refers to computer systems designed to perform tasks that typically require human intelligence. These include learning from experience, recognizing patterns, and understanding language.",
+      "content": "<thoughts>\nThe user is asking for a definition of AI. I should provide a clear, concise explanation of artificial intelligence.\n</thoughts>\n\nAI, or Artificial Intelligence, refers to computer systems designed to perform tasks that typically require human intelligence. These include learning from experience, recognizing patterns, and understanding language.",
       "timestamp": "2026-01-12T22:30:05Z",
       "isEdited": false,
       "platform": "claude"
@@ -151,7 +153,7 @@ Same conversation exported as JSON:
 # ChatGPT Conversation
 
 **Platform:** ChatGPT | **Date:** 1/12/2026, 3:45:00 PM
-**Source:** [https://chatgpt.com/c/abc123](https://chatgpt.com/c/abc123)
+**Source:** [Source Chat](https://chatgpt.com/c/abc123)
 **Tags:** chatgpt, export
 
 ---
@@ -187,10 +189,12 @@ Solve this math problem: 15 * 23
 ---
 
 ## Response:
-<thought>
+<thoughts>
+
 The user wants me to multiply 15 by 23. Let me calculate:
 15 * 23 = 15 * (20 + 3) = (15 * 20) + (15 * 3) = 300 + 45 = 345
-</thought>
+
+</thoughts>
 
 15 * 23 = 345
 
@@ -206,7 +210,7 @@ The user wants me to multiply 15 by 23. Let me calculate:
 # LeChat Conversation
 
 **Platform:** LeChat | **Date:** 1/12/2026, 9:20:00 AM
-**Source:** [https://chat.mistral.ai/chat/abc123](https://chat.mistral.ai/chat/abc123)
+**Source:** [Source Chat](https://chat.mistral.ai/chat/abc123)
 **Tags:** lechat, export
 
 ---
@@ -347,15 +351,19 @@ Language marker preserved, formatting intact.
 ### With Multiple Thoughts
 ```markdown
 ## Response:
-<thought>
+<thoughts>
+
 First part of reasoning...
-</thought>
+
+</thoughts>
 
 Intermediate explanation...
 
-<thought>
+<thoughts>
+
 Second part of reasoning...
-</thought>
+
+</thoughts>
 
 Final answer...
 ```

@@ -92,7 +92,7 @@ function extractMarkdownFromHtml(element) {
         if (thoughtContentEl) {
           const thoughtText = thoughtContentEl.innerText.trim();
           if (thoughtText && !thoughtText.toLowerCase().includes('thought process') && !thoughtText.toLowerCase().includes('viewed memory')) {
-            container.replaceWith(document.createTextNode(`\n\n<thought>\n${thoughtText}\n</thought>\n\n`));
+            container.replaceWith(document.createTextNode(`\n\n<thoughts>\n${thoughtText}\n</thoughts>\n\n`));
             return;
           }
         }
@@ -235,7 +235,13 @@ function extractMarkdownFromHtml(element) {
     table.replaceWith(document.createTextNode(mdTable));
   });
 
-  // 12. Clean up extra buttons/SVGs
+  // 12. Handle Paragraphs explicitly to ensure separation
+  clone.querySelectorAll('p').forEach(p => {
+    // replaceWith text node of content surrounded by newlines
+    p.replaceWith(document.createTextNode(`\n\n${p.innerText}\n\n`));
+  });
+
+  // 13. Clean up extra buttons/SVGs
   clone.querySelectorAll('button, svg, [aria-label*="Copy"], [aria-label*="Retry"], [aria-label*="Edit"], [aria-label*="Delete"], [data-testid*="action-bar"]').forEach(el => {
     if (document.contains(el) || clone.contains(el)) {
       el.remove();
