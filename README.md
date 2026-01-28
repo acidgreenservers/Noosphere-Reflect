@@ -1,7 +1,7 @@
 # Noosphere Reflect - AI Chat Archival System 🗃️
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.8.5-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.8.8-green.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 **Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.

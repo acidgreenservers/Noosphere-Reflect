@@ -13,6 +13,19 @@ const Changelog: React.FC = () => {
     // Reverse chronological order
     const changes: Release[] = [
         {
+            version: 'v0.5.8.8',
+            date: 'Jan 28, 2026',
+            title: 'Standardized Metadata & Premium Exports',
+            items: [
+                'Metadata Standardization: Established the "Noosphere Standard" for headers across all Markdown and HTML formats.',
+                'Premium Export UX: Added standardized emojis (🤖, 📅, 🌐, 📊) and multi-line statistics for high-fidelity archival.',
+                'Fancy Export Refinement: Integrated visual Exchange #X sequencing and separators in Fancy layouts.',
+                'Export Reliability: Resolved critical [object Promise] errors by ensuring all content generation is properly awaited.',
+                'Basic Converter Restoration: Restored document attachment functionality from the message editor.',
+                'Async Hardening: Synchronized asynchronous handlers across Archive Hub, Basic Converter, and Google Drive hooks.',
+            ]
+        },
+        {
             version: 'v0.5.8.6',
             date: 'Jan 27, 2026',
             title: 'Modular Parser Architecture & Wizard Overhaul',

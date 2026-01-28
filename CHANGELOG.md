@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+## [v0.5.8.8] - January 28, 2026
 
-- Planning for Sprint 6.4: Unified Search across all archives.
+### Added
+- **Metadata Standardization**: Finalized the "Noosphere Standard" for metadata headers across all export formats (Markdown, HTML, Platform Themes).
+- **Premium Export UX**: Integrated standardized emojis (🤖, 📅, 🌐, 🏷️, 📂, 📊) and enhanced multi-line layouts for metadata stats.
+- **Fancy Export Refinement**: Added visual `Exchange #X` sequencing and separators to the "Fancy" Markdown layout.
+
+### Fixed
+- **Export Reliability**: Resolved critical `[object Promise]` errors across all export and preview paths (HTML, Markdown, JSON) by ensuring all `exportService.generate` calls are properly awaited.
+- **Basic Converter Restoration**: Restored missing `handleAttachToMessageWithArtifact` functionality, enabling document creation from the message editor.
+- **Async Hardening**: Synchronized asynchronous flows in `ArchiveHub`, `BasicConverter`, and `GoogleDrive` handlers to ensure UI consistency.
 
 ---
 

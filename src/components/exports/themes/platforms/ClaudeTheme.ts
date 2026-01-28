@@ -163,13 +163,13 @@ export class ClaudeThemeRenderer implements ThemeRenderer {
 
         <!-- Metadata Section -->
         <div class="text-center text-sm text-gray-400 mb-8 space-y-1">
-            ${metadata?.model ? `<div><strong>Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
-            ${metadata?.date ? `<div><strong>Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
+            ${metadata?.model ? `<div><strong>🤖 Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
+            ${metadata?.date ? `<div><strong>📅 Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
             ${metadata?.sourceUrl ? (() => {
-      const safeUrl = sanitizeUrl(metadata.sourceUrl);
-      return safeUrl ? `<div><strong>Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
-    })() : ''}
-            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
+        const safeUrl = sanitizeUrl(metadata.sourceUrl);
+        return safeUrl ? `<div><strong>🌐 Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
+      })() : ''}
+            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>🏷️ Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
         </div>
 
         <div class="space-y-2 flex flex-col w-full">

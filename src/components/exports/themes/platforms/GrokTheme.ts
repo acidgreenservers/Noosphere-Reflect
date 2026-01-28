@@ -8,23 +8,23 @@ import { MarkdownProcessor } from '../../services/MarkdownProcessor';
  * Based on DOM reference: scripts/reference-html-dom/grok-console-dom.html
  */
 export class GrokThemeRenderer implements ThemeRenderer {
-    private classes: PlatformThemeClasses;
+  private classes: PlatformThemeClasses;
 
-    constructor(classes: PlatformThemeClasses) {
-        this.classes = classes;
-    }
+  constructor(classes: PlatformThemeClasses) {
+    this.classes = classes;
+  }
 
-    generateHtml(
-        chatData: ChatData,
-        title: string,
-        userName: string,
-        aiName: string,
-        parserMode: ParserMode,
-        metadata?: ChatMetadata,
-        includeFooter: boolean = true,
-        isPreview: boolean = false
-    ): string {
-        const previewScript = isPreview ? `
+  generateHtml(
+    chatData: ChatData,
+    title: string,
+    userName: string,
+    aiName: string,
+    parserMode: ParserMode,
+    metadata?: ChatMetadata,
+    includeFooter: boolean = true,
+    isPreview: boolean = false
+  ): string {
+    const previewScript = isPreview ? `
     <script>
       function downloadArtifact(e) {
         e.preventDefault();
@@ -59,11 +59,11 @@ export class GrokThemeRenderer implements ThemeRenderer {
     </script>
   ` : '';
 
-        const chatMessagesHtml = chatData.messages
-            .map((message, index) => this.generateMessageHtml(message, index, userName, aiName, parserMode))
-            .join('');
+    const chatMessagesHtml = chatData.messages
+      .map((message, index) => this.generateMessageHtml(message, index, userName, aiName, parserMode))
+      .join('');
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en" class="${this.classes.htmlClass}">
 <head>
     <meta charset="UTF-8" />
@@ -95,13 +95,13 @@ export class GrokThemeRenderer implements ThemeRenderer {
 
         <!-- Metadata Section -->
         <div class="text-center text-sm text-gray-400 mb-8 space-y-1">
-            ${metadata?.model ? `<div><strong>Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
-            ${metadata?.date ? `<div><strong>Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
+            ${metadata?.model ? `<div><strong>🤖 Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
+            ${metadata?.date ? `<div><strong>📅 Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
             ${metadata?.sourceUrl ? (() => {
-                const safeUrl = sanitizeUrl(metadata.sourceUrl);
-                return safeUrl ? `<div><strong>Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
-            })() : ''}
-            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
+        const safeUrl = sanitizeUrl(metadata.sourceUrl);
+        return safeUrl ? `<div><strong>🌐 Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
+      })() : ''}
+            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>🏷️ Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
         </div>
 
         <div class="space-y-6 flex flex-col w-full">
@@ -119,53 +119,53 @@ export class GrokThemeRenderer implements ThemeRenderer {
     ${previewScript}
 </body>
 </html>`;
-    }
+  }
 
-    generateMessageHtml(
-        message: ChatMessage,
-        index: number,
-        userName: string,
-        aiName: string,
-        parserMode: ParserMode
-    ): string {
-        const isPrompt = message.type === 'prompt';
-        const messageClasses = isPrompt
-            ? this.classes.getUserMessageClasses(message, index)
-            : this.classes.getAssistantMessageClasses(message, index);
+  generateMessageHtml(
+    message: ChatMessage,
+    index: number,
+    userName: string,
+    aiName: string,
+    parserMode: ParserMode
+  ): string {
+    const isPrompt = message.type === 'prompt';
+    const messageClasses = isPrompt
+      ? this.classes.getUserMessageClasses(message, index)
+      : this.classes.getAssistantMessageClasses(message, index);
 
-        // Handle thought blocks for Grok
-        if (!isPrompt && message.content.includes('<thoughts>')) {
-            const parts = message.content.split(/(<thoughts>[\s\S]*?<\/thought>)/);
-            const contentHtml = parts.map(part => {
-                if (part.startsWith('<thoughts>') && part.endsWith('</thoughts>')) {
-                    const thoughtContent = part.replace(/<\/?thought>/g, '').trim();
-                    return this.generateThoughtBlockHtml(thoughtContent);
-                }
-                return MarkdownProcessor.convertMarkdownToHtml(part, true);
-            }).join('');
+    // Handle thought blocks for Grok
+    if (!isPrompt && message.content.includes('<thoughts>')) {
+      const parts = message.content.split(/(<thoughts>[\s\S]*?<\/thought>)/);
+      const contentHtml = parts.map(part => {
+        if (part.startsWith('<thoughts>') && part.endsWith('</thoughts>')) {
+          const thoughtContent = part.replace(/<\/?thought>/g, '').trim();
+          return this.generateThoughtBlockHtml(thoughtContent);
+        }
+        return MarkdownProcessor.convertMarkdownToHtml(part, true);
+      }).join('');
 
-            return `
+      return `
         <div class="${messageClasses}" data-message-index="${index}">
           <div class="response-content-markdown markdown">${contentHtml}</div>
         </div>
       `;
-        }
+    }
 
-        const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
+    const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
 
-        return `
+    return `
       <div class="${messageClasses}" data-message-index="${index}">
         <div class="response-content-markdown markdown" dir="auto">
           ${contentHtml}
         </div>
       </div>
     `;
-    }
+  }
 
-    generateThoughtBlockHtml(content: string): string {
-        const thoughtHtml = MarkdownProcessor.convertMarkdownToHtml(content, false);
+  generateThoughtBlockHtml(content: string): string {
+    const thoughtHtml = MarkdownProcessor.convertMarkdownToHtml(content, false);
 
-        return `
+    return `
       <details class="grok-thought-block my-4">
         <summary class="grok-thought-summary">
           <span>💭</span>
@@ -176,10 +176,10 @@ export class GrokThemeRenderer implements ThemeRenderer {
         </div>
       </details>
     `;
-    }
+  }
 
-    getStyles(): string {
-        return `
+  getStyles(): string {
+    return `
       @layer base {
         body {
           @apply ${this.classes.bodyBg} ${this.classes.bodyText} font-sans leading-relaxed;
@@ -256,25 +256,25 @@ export class GrokThemeRenderer implements ThemeRenderer {
         }
       }
     `;
-    }
+  }
 }
 
 // Grok theme classes - replication of xAI Grok's visual design
 export const GrokThemeClasses: PlatformThemeClasses = {
-    htmlClass: 'dark',
-    bodyBg: 'bg-[#0a0a0a]', // Grok's dark background
-    bodyText: 'text-gray-200',
-    containerBg: 'bg-transparent',
-    titleText: 'text-white',
+  htmlClass: 'dark',
+  bodyBg: 'bg-[#0a0a0a]', // Grok's dark background
+  bodyText: 'text-gray-200',
+  containerBg: 'bg-transparent',
+  titleText: 'text-white',
 
-    platformStyles: '',
+  platformStyles: '',
 
-    getUserMessageClasses: () => 'grok-user-message',
-    getAssistantMessageClasses: () => 'grok-assistant-message',
+  getUserMessageClasses: () => 'grok-user-message',
+  getAssistantMessageClasses: () => 'grok-assistant-message',
 
-    thoughtBlockClasses: 'grok-thought-block',
-    codeBlockClasses: 'grok-code-block',
-    copyButtonClasses: 'grok-copy-button',
+  thoughtBlockClasses: 'grok-thought-block',
+  codeBlockClasses: 'grok-code-block',
+  copyButtonClasses: 'grok-copy-button',
 };
 
 export const GrokThemeRendererInstance = new GrokThemeRenderer(GrokThemeClasses);

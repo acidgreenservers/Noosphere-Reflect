@@ -43,8 +43,8 @@
   - *Export*: Generates standard relative filesystem links.
 
 ### The Automation Layer (Silent UX)
-- **Auto-Save Persistence**: Forms in converter views follow a "Silent Persistence" pattern. Changes to core metadata (Title, Theme, Names) trigger a debounced background save (1.5s) to ensure zero data loss without requiring manual "Save" button clicks.
-- **ID-First Archiving**: The first conversion/parse automatically creates a database entry and captures the resulting ID. This ID is then used for all subsequent auto-saves in the same editing session, preventing row duplication.
+- **Hybrid Save System**: New chats are kept in-memory to allow safe configuration (AI name, theme) before manual archival. Once "Save to Local Archive" is triggered, the system shifts to a persistence-first model where further refinements are auto-synchronized.
+- **ID-First Archiving**: The first conversion/parse automatically creates a database entry and captures the resulting ID. This ID is then used for all subsequent saves in the same editing session, preventing row duplication.
 - **Collapsible Tagging Standard**: The `<collapsible>` tag is the application standard for user-defined toggle sections. It is treated as a first-class citizen alongside `<thought>` tags in all rendering engines.
 
 - **Visual Patterns (Noosphere Nexus)**:

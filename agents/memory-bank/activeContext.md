@@ -1,5 +1,50 @@
 # Active Context
 
+### 🟢 NEW: Metadata Standardization & Premium Export UX (January 28, 2026)
+
+#### Goal
+Establish a unified, high-fidelity metadata header across all Noosphere Reflect export formats (Markdown, HTML, and Platform-specific themes).
+
+#### Changes
+- **Unified Emoji Architecture**: Integrated a consistent set of emojis (`🤖`, `📅`, `🌐`, `🏷️`, `📂`, `📊`) into all metadata headers to enhance visual communication.
+- **Enhanced Readability**: Implemented a multi-line, spacer-separated layout for metadata statistics (Total Exchanges, Messages, user/AI counts, and Artifacts) using blockquote spacers (`>` and `>>`).
+- **Global Synchronization**: Updated `MarkdownGenerator`, `HtmlGenerator`, and all five platform-specific HTML themes (Claude, ChatGPT, Gemini, Grok, LeChat) to share this premium standard.
+- **Exchange Sequencing**: Refined the "Fancy" export style to include clear visual separators and counters (`Exchange #X`) between conversation turns.
+
+---
+
+### 🟢 FIXED: [object Promise] Export Errors (January 28, 2026)
+
+#### Problem
+Users reported seeing `[object Promise]` instead of chat content in various export formats (HTML, Markdown, JSON), particularly when exporting to Google Drive or using the Export Dropdown. This was caused by several asynchronous calls to `exportService.generate` not being awaited, resulting in the Promise object itself being serialized into the output.
+
+#### Solution
+Performed a comprehensive sweep of the codebase and ensured all calls to `exportService.generate` are properly awaited. This required updating multiple components, hooks, and service layers to correctly handle the asynchronous nature of content generation.
+
+#### Implementation Details
+
+**1. Global Async/Await Sweep**
+- **Archive Hub** (`src/archive/chats/pages/ArchiveHub.tsx`): Updated Google Drive export handlers to `await` content generation.
+- **Basic Converter** (`src/components/converter/pages/BasicConverter.tsx`): Marked handlers as `async` and added `await` to all preview and auto-save generation calls.
+- **Memory Archive** (`src/archive/memories/pages/MemoryArchive.tsx`): Fixed asynchronous export calls to Google Drive.
+- **Prompt Archive** (`src/archive/prompts/pages/PromptArchive.tsx`): Fixed asynchronous export calls to Google Drive.
+- **useArchiveGoogleDrive Hook** (`src/archive/chats/hooks/useArchiveGoogleDrive.ts`): Updated all helper functions to properly await `exportService.generate`.
+- **ExportDropdown Component** (`src/components/exports/ExportDropdown.tsx`): Ensured format-specific generation is awaited before download.
+
+**2. Basic Converter Functional Restoration**
+- **Missing Linkage**: Implemented the missing `handleAttachToMessageWithArtifact` function in `BasicConverter.tsx` to restore document creation from the message editor.
+- **State Synchronization**: Improved state updates in `loadSession` and message handlers to ensure the UI preview always reflects the latest generated content.
+
+#### Verification
+- ✅ **Build Success**: `npm run build` completed successfully without type errors.
+- ✅ **Runtime Verification**: Confirmed that exports now contain the actual rendered content instead of `[object Promise]`.
+- ✅ **Preview Reliability**: Verified that Basic Converter previews update correctly after all edits and artifact attachments.
+
+#### Impact
+This fix ensures the reliability of the core export functionality, which is the primary purpose of the application. It eliminates a critical bug that rendered exports useless and improves the overall robustness of the asynchronous data flow.
+
+---
+
 ### 🟢 COMPLETED: Artifact Delete Buttons Across All Modals (January 26, 2026)
 
 #### Problem

@@ -715,7 +715,7 @@ const generateExportMetadata = (sessions: SavedChatSession[]) => {
     exportDate: new Date().toISOString(),
     exportedBy: {
       tool: 'Noosphere Reflect',
-      version: '0.5.8.5'
+      version: '0.5.8.8'
     }, chats: chatMetadata,
     summary: {
       totalChats: sessions.length,

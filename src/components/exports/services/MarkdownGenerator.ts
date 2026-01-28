@@ -29,20 +29,26 @@ export class MarkdownGenerator {
     // Metadata Header (blockquote format)
     if (includeMetadata && metadata) {
       lines.push('---');
-      lines.push(`> **${layout === 'fancy' ? '🤖 ' : ''}Model:** ${metadata.model || aiName}`);
-      lines.push(`> **${layout === 'fancy' ? '📅 ' : ''}Date:** ${new Date(metadata.date).toLocaleString()}`);
+      lines.push(`> **🤖 Model:** ${metadata.model || aiName}`);
+      lines.push('>');
+      lines.push(`> **📅 Date:** ${new Date(metadata.date).toLocaleString()}`);
+
       if (metadata.sourceUrl) {
-        lines.push(`> **${layout === 'fancy' ? '🌐 ' : ''}Source:** [${metadata.sourceUrl}](${metadata.sourceUrl})`);
+        lines.push('>');
+        lines.push(`> **🌐 Source:** [${metadata.sourceUrl}](${metadata.sourceUrl})`);
       }
+
       if (metadata.tags && metadata.tags.length > 0) {
-        lines.push(`> **${layout === 'fancy' ? '🏷️ ' : ''}Tags:** ${metadata.tags.join(', ')}`);
+        lines.push('>');
+        lines.push(`> **🏷️ Tags:** ${metadata.tags.join(', ')}`);
       }
 
       // Artifact link (if directory export)
       const hasArtifacts = (metadata.artifacts && metadata.artifacts.length > 0) ||
         chatData.messages.some(m => m.artifacts && m.artifacts.length > 0);
       if (hasArtifacts) {
-        lines.push(`> **${layout === 'fancy' ? '📂 ' : ''}Artifacts:** [View Artifacts](./artifacts/)`);
+        lines.push('>');
+        lines.push(`> **📂 Artifacts:** [View Artifacts](./artifacts/)`);
       }
 
       // Stats
@@ -56,12 +62,20 @@ export class MarkdownGenerator {
         count + (msg.artifacts?.length || 0), 0) || 0;
       const totalArtifacts = sessionArtifacts + messageArtifacts;
 
-      lines.push(`> **${layout === 'fancy' ? '📊 ' : ''}Metadata:**`);
+      lines.push('>');
+      lines.push(`> **📊 Metadata:**`);
+
+      // Stats - all layouts now use multi-line with spacers
       lines.push(`>> **Total Exchanges:** ${userMessages}`);
+      lines.push('>>');
       lines.push(`>> **Total Chat Messages:** ${totalMessages}`);
+      lines.push('>>');
       lines.push(`>> **Total User Messages:** ${userMessages}`);
+      lines.push('>>');
       lines.push(`>> **Total AI Messages:** ${aiMessages}`);
+      lines.push('>>');
       lines.push(`>> **Total Artifacts:** ${totalArtifacts}`);
+
       lines.push('');
       lines.push('---');
       lines.push('');
@@ -207,6 +221,11 @@ export class MarkdownGenerator {
 
     // Exchange separator (except after last message, and only after AI responses)
     if (index < totalMessages - 1 && !isPrompt) {
+      const exchangeNum = Math.floor(index / 2) + 1;
+      lines.push('---');
+      lines.push('');
+      lines.push(`# **🔄 Exchange #${exchangeNum}**`);
+      lines.push('');
       lines.push('---');
       lines.push('');
     }

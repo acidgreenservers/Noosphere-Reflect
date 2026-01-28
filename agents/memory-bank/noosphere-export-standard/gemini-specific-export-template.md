@@ -1,24 +1,24 @@
 ---
-> **Model:** [Model]
+> **🤖 Model:** [Model]
 >
-> **Date:** [Date]
+> **🌐 Date:** [Date]
 >
-> **Source:** [Source](URL)
+> **🌐 Source:** [Source](URL)
 >
-> **Tags:** [Tags]
+> **🏷️ Tags:** [Tags]
 >
-> **Artifacts:** [Source](URL To Artifacts directory)
+> **📂 Artifacts:** [Source](URL To Artifacts directory)
 >
-> **Metadata:**
->> [Total Exchanges]
+> **📊 Metadata:**
+>> **Total Exchanges:** [Total Exchanges]
 >>
->> [Total Chat Messages]
+>> **Total Chat Messages:** [Total Chat Messages]
 >>
->> [Total User Messages]
+>> **Total User Messages:** [Total User Messages]
 >>
->> [Total AI Messages]
+>> **Total AI Messages:** [Total AI Messages]
 >>
->> [Total Artifacts]
+>> **Total Artifacts:** [Total Artifacts]
 ---
 
 ## Title:

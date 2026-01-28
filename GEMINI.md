@@ -56,7 +56,7 @@
 - **Storage**: IndexedDB (via custom `storageService`)
 
 ## Current Status
-- **Version**: Web App `v0.5.8.3` | Extension `v0.5.8.2`
+- **Version**: Web App `v0.5.8.8` | Extension `v0.5.8.8`
 - **Core Functionality**:
   - **Archive Hub**: Modularized dashboard with batch selection, export options, and "Scale & Glow" feedback.
     - Batch operations: Select multiple chats, export in various formats (HTML/MD/JSON), delete selected.

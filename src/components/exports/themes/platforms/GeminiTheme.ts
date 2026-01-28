@@ -8,23 +8,23 @@ import { MarkdownProcessor } from '../../services/MarkdownProcessor';
  * Based on DOM reference: scripts/reference-html-dom/gemini-aistudio-console-dom.html
  */
 export class GeminiThemeRenderer implements ThemeRenderer {
-    private classes: PlatformThemeClasses;
+  private classes: PlatformThemeClasses;
 
-    constructor(classes: PlatformThemeClasses) {
-        this.classes = classes;
-    }
+  constructor(classes: PlatformThemeClasses) {
+    this.classes = classes;
+  }
 
-    generateHtml(
-        chatData: ChatData,
-        title: string,
-        userName: string,
-        aiName: string,
-        parserMode: ParserMode,
-        metadata?: ChatMetadata,
-        includeFooter: boolean = true,
-        isPreview: boolean = false
-    ): string {
-        const previewScript = isPreview ? `
+  generateHtml(
+    chatData: ChatData,
+    title: string,
+    userName: string,
+    aiName: string,
+    parserMode: ParserMode,
+    metadata?: ChatMetadata,
+    includeFooter: boolean = true,
+    isPreview: boolean = false
+  ): string {
+    const previewScript = isPreview ? `
     <script>
       function downloadArtifact(e) {
         e.preventDefault();
@@ -59,11 +59,11 @@ export class GeminiThemeRenderer implements ThemeRenderer {
     </script>
   ` : '';
 
-        const chatMessagesHtml = chatData.messages
-            .map((message, index) => this.generateMessageHtml(message, index, userName, aiName, parserMode))
-            .join('');
+    const chatMessagesHtml = chatData.messages
+      .map((message, index) => this.generateMessageHtml(message, index, userName, aiName, parserMode))
+      .join('');
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en" class="${this.classes.htmlClass}">
 <head>
     <meta charset="UTF-8" />
@@ -96,13 +96,13 @@ export class GeminiThemeRenderer implements ThemeRenderer {
 
         <!-- Metadata Section -->
         <div class="text-center text-sm text-gray-400 mb-8 space-y-1">
-            ${metadata?.model ? `<div><strong>Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
-            ${metadata?.date ? `<div><strong>Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
+            ${metadata?.model ? `<div><strong>🤖 Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
+            ${metadata?.date ? `<div><strong>📅 Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
             ${metadata?.sourceUrl ? (() => {
-                const safeUrl = sanitizeUrl(metadata.sourceUrl);
-                return safeUrl ? `<div><strong>Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
-            })() : ''}
-            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
+        const safeUrl = sanitizeUrl(metadata.sourceUrl);
+        return safeUrl ? `<div><strong>🌐 Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
+      })() : ''}
+            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>🏷️ Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
         </div>
 
         <div class="space-y-0 flex flex-col w-full">
@@ -120,56 +120,56 @@ export class GeminiThemeRenderer implements ThemeRenderer {
     ${previewScript}
 </body>
 </html>`;
-    }
+  }
 
-    generateMessageHtml(
-        message: ChatMessage,
-        index: number,
-        userName: string,
-        aiName: string,
-        parserMode: ParserMode
-    ): string {
-        const isPrompt = message.type === 'prompt';
-        const messageClasses = isPrompt
-            ? this.classes.getUserMessageClasses(message, index)
-            : this.classes.getAssistantMessageClasses(message, index);
+  generateMessageHtml(
+    message: ChatMessage,
+    index: number,
+    userName: string,
+    aiName: string,
+    parserMode: ParserMode
+  ): string {
+    const isPrompt = message.type === 'prompt';
+    const messageClasses = isPrompt
+      ? this.classes.getUserMessageClasses(message, index)
+      : this.classes.getAssistantMessageClasses(message, index);
 
-        // Handle thought blocks for Gemini
-        if (!isPrompt && message.content.includes('<thoughts>')) {
-            const parts = message.content.split(/(<thoughts>[\s\S]*?<\/thought>)/);
-            const contentHtml = parts.map(part => {
-                if (part.startsWith('<thoughts>') && part.endsWith('</thoughts>')) {
-                    const thoughtContent = part.replace(/<\/?thought>/g, '').trim();
-                    return this.generateThoughtBlockHtml(thoughtContent);
-                }
-                return MarkdownProcessor.convertMarkdownToHtml(part, true);
-            }).join('');
+    // Handle thought blocks for Gemini
+    if (!isPrompt && message.content.includes('<thoughts>')) {
+      const parts = message.content.split(/(<thoughts>[\s\S]*?<\/thought>)/);
+      const contentHtml = parts.map(part => {
+        if (part.startsWith('<thoughts>') && part.endsWith('</thoughts>')) {
+          const thoughtContent = part.replace(/<\/?thought>/g, '').trim();
+          return this.generateThoughtBlockHtml(thoughtContent);
+        }
+        return MarkdownProcessor.convertMarkdownToHtml(part, true);
+      }).join('');
 
-            return `
+      return `
         <div class="${messageClasses}" data-message-index="${index}">
           <div class="turn-header">${aiName}</div>
           ${contentHtml}
         </div>
         <hr class="gemini-divider" />
       `;
-        }
+    }
 
-        const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
-        const header = isPrompt ? userName : aiName;
+    const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
+    const header = isPrompt ? userName : aiName;
 
-        return `
+    return `
       <div class="${messageClasses}" data-message-index="${index}">
         <div class="turn-header">${escapeHtml(header)}</div>
         <div class="turn-content">${contentHtml}</div>
       </div>
       <hr class="gemini-divider" />
     `;
-    }
+  }
 
-    generateThoughtBlockHtml(content: string): string {
-        const thoughtHtml = MarkdownProcessor.convertMarkdownToHtml(content, false);
+  generateThoughtBlockHtml(content: string): string {
+    const thoughtHtml = MarkdownProcessor.convertMarkdownToHtml(content, false);
 
-        return `
+    return `
       <details class="gemini-thought-block my-4" open>
         <summary class="gemini-thought-summary">
           <span class="material-symbols-outlined" style="font-size: 20px;">lightbulb</span>
@@ -181,10 +181,10 @@ export class GeminiThemeRenderer implements ThemeRenderer {
         </div>
       </details>
     `;
-    }
+  }
 
-    getStyles(): string {
-        return `
+  getStyles(): string {
+    return `
       @layer base {
         body {
           @apply ${this.classes.bodyBg} ${this.classes.bodyText} font-sans leading-relaxed;
@@ -274,25 +274,25 @@ export class GeminiThemeRenderer implements ThemeRenderer {
         }
       }
     `;
-    }
+  }
 }
 
 // Gemini theme classes - replication of Google AI Studio visual design
 export const GeminiThemeClasses: PlatformThemeClasses = {
-    htmlClass: 'dark',
-    bodyBg: 'bg-[#1e2936]', // Gemini's dark blue-gray background
-    bodyText: 'text-gray-200',
-    containerBg: 'bg-transparent',
-    titleText: 'text-blue-400',
+  htmlClass: 'dark',
+  bodyBg: 'bg-[#1e2936]', // Gemini's dark blue-gray background
+  bodyText: 'text-gray-200',
+  containerBg: 'bg-transparent',
+  titleText: 'text-blue-400',
 
-    platformStyles: '',
+  platformStyles: '',
 
-    getUserMessageClasses: () => 'gemini-user-turn',
-    getAssistantMessageClasses: () => 'gemini-assistant-turn',
+  getUserMessageClasses: () => 'gemini-user-turn',
+  getAssistantMessageClasses: () => 'gemini-assistant-turn',
 
-    thoughtBlockClasses: 'gemini-thought-block',
-    codeBlockClasses: 'gemini-code-block',
-    copyButtonClasses: 'gemini-copy-button',
+  thoughtBlockClasses: 'gemini-thought-block',
+  codeBlockClasses: 'gemini-code-block',
+  copyButtonClasses: 'gemini-copy-button',
 };
 
 export const GeminiThemeRendererInstance = new GeminiThemeRenderer(GeminiThemeClasses);

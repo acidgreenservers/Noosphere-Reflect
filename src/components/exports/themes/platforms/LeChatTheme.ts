@@ -8,23 +8,23 @@ import { MarkdownProcessor } from '../../services/MarkdownProcessor';
  * Based on DOM reference: scripts/reference-html-dom/lechat-console-dom.html
  */
 export class LeChatThemeRenderer implements ThemeRenderer {
-    private classes: PlatformThemeClasses;
+  private classes: PlatformThemeClasses;
 
-    constructor(classes: PlatformThemeClasses) {
-        this.classes = classes;
-    }
+  constructor(classes: PlatformThemeClasses) {
+    this.classes = classes;
+  }
 
-    generateHtml(
-        chatData: ChatData,
-        title: string,
-        userName: string,
-        aiName: string,
-        parserMode: ParserMode,
-        metadata?: ChatMetadata,
-        includeFooter: boolean = true,
-        isPreview: boolean = false
-    ): string {
-        const previewScript = isPreview ? `
+  generateHtml(
+    chatData: ChatData,
+    title: string,
+    userName: string,
+    aiName: string,
+    parserMode: ParserMode,
+    metadata?: ChatMetadata,
+    includeFooter: boolean = true,
+    isPreview: boolean = false
+  ): string {
+    const previewScript = isPreview ? `
     <script>
       function downloadArtifact(e) {
         e.preventDefault();
@@ -59,11 +59,11 @@ export class LeChatThemeRenderer implements ThemeRenderer {
     </script>
   ` : '';
 
-        const chatMessagesHtml = chatData.messages
-            .map((message, index) => this.generateMessageHtml(message, index, userName, aiName, parserMode))
-            .join('');
+    const chatMessagesHtml = chatData.messages
+      .map((message, index) => this.generateMessageHtml(message, index, userName, aiName, parserMode))
+      .join('');
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en" class="${this.classes.htmlClass}">
 <head>
     <meta charset="UTF-8" />
@@ -95,13 +95,13 @@ export class LeChatThemeRenderer implements ThemeRenderer {
 
         <!-- Metadata Section -->
         <div class="text-center text-sm text-gray-400 mb-8 space-y-1">
-            ${metadata?.model ? `<div><strong>Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
-            ${metadata?.date ? `<div><strong>Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
+            ${metadata?.model ? `<div><strong>🤖 Model:</strong> ${escapeHtml(metadata.model)}</div>` : ''}
+            ${metadata?.date ? `<div><strong>📅 Date:</strong> ${escapeHtml(new Date(metadata.date).toLocaleString())}</div>` : ''}
             ${metadata?.sourceUrl ? (() => {
-                const safeUrl = sanitizeUrl(metadata.sourceUrl);
-                return safeUrl ? `<div><strong>Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
-            })() : ''}
-            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
+        const safeUrl = sanitizeUrl(metadata.sourceUrl);
+        return safeUrl ? `<div><strong>🌐 Source:</strong> <a href="${escapeHtml(safeUrl)}" class="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></div>` : '';
+      })() : ''}
+            ${metadata?.tags && metadata.tags.length > 0 ? `<div><strong>🏷️ Tags:</strong> ${metadata.tags.map(tag => escapeHtml(tag)).join(', ')}</div>` : ''}
         </div>
 
         <div class="space-y-4 flex flex-col w-full">
@@ -119,47 +119,47 @@ export class LeChatThemeRenderer implements ThemeRenderer {
     ${previewScript}
 </body>
 </html>`;
-    }
+  }
 
-    generateMessageHtml(
-        message: ChatMessage,
-        index: number,
-        userName: string,
-        aiName: string,
-        parserMode: ParserMode
-    ): string {
-        const isPrompt = message.type === 'prompt';
-        const messageClasses = isPrompt
-            ? this.classes.getUserMessageClasses(message, index)
-            : this.classes.getAssistantMessageClasses(message, index);
+  generateMessageHtml(
+    message: ChatMessage,
+    index: number,
+    userName: string,
+    aiName: string,
+    parserMode: ParserMode
+  ): string {
+    const isPrompt = message.type === 'prompt';
+    const messageClasses = isPrompt
+      ? this.classes.getUserMessageClasses(message, index)
+      : this.classes.getAssistantMessageClasses(message, index);
 
-        const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
+    const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
 
-        if (isPrompt) {
-            // User message - LeChat style pill on right
-            return `
+    if (isPrompt) {
+      // User message - LeChat style pill on right
+      return `
         <div class="flex justify-end w-full" data-message-index="${index}">
           <div class="${messageClasses}">
             <div class="whitespace-pre-wrap select-text">${contentHtml}</div>
           </div>
         </div>
       `;
-        } else {
-            // Assistant message - full width with icon
-            return `
+    } else {
+      // Assistant message - full width with icon
+      return `
         <div class="${messageClasses}" data-message-index="${index}">
           <div class="flex w-full flex-col pb-4">
             <div class="markdown-content">${contentHtml}</div>
           </div>
         </div>
       `;
-        }
     }
+  }
 
-    generateThoughtBlockHtml(content: string): string {
-        const thoughtHtml = MarkdownProcessor.convertMarkdownToHtml(content, false);
+  generateThoughtBlockHtml(content: string): string {
+    const thoughtHtml = MarkdownProcessor.convertMarkdownToHtml(content, false);
 
-        return `
+    return `
       <details class="lechat-thought-block my-4">
         <summary class="lechat-thought-summary">
           <span>💭</span>
@@ -170,10 +170,10 @@ export class LeChatThemeRenderer implements ThemeRenderer {
         </div>
       </details>
     `;
-    }
+  }
 
-    getStyles(): string {
-        return `
+  getStyles(): string {
+    return `
       @layer base {
         body {
           @apply ${this.classes.bodyBg} ${this.classes.bodyText} font-sans leading-relaxed;
@@ -245,25 +245,25 @@ export class LeChatThemeRenderer implements ThemeRenderer {
         }
       }
     `;
-    }
+  }
 }
 
 // LeChat theme classes - replication of Mistral's LeChat visual design
 export const LeChatThemeClasses: PlatformThemeClasses = {
-    htmlClass: 'dark',
-    bodyBg: 'bg-[#0f0f0f]', // LeChat's dark background
-    bodyText: 'text-gray-200',
-    containerBg: 'bg-transparent',
-    titleText: 'text-teal-400',
+  htmlClass: 'dark',
+  bodyBg: 'bg-[#0f0f0f]', // LeChat's dark background
+  bodyText: 'text-gray-200',
+  containerBg: 'bg-transparent',
+  titleText: 'text-teal-400',
 
-    platformStyles: '',
+  platformStyles: '',
 
-    getUserMessageClasses: () => 'lechat-user-message',
-    getAssistantMessageClasses: () => 'lechat-assistant-message',
+  getUserMessageClasses: () => 'lechat-user-message',
+  getAssistantMessageClasses: () => 'lechat-assistant-message',
 
-    thoughtBlockClasses: 'lechat-thought-block',
-    codeBlockClasses: 'lechat-code-block',
-    copyButtonClasses: 'lechat-copy-button',
+  thoughtBlockClasses: 'lechat-thought-block',
+  codeBlockClasses: 'lechat-code-block',
+  copyButtonClasses: 'lechat-copy-button',
 };
 
 export const LeChatThemeRendererInstance = new LeChatThemeRenderer(LeChatThemeClasses);
