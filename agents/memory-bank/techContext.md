@@ -34,6 +34,10 @@
     - **`services/`**: Core infrastructure (`storageService`, `parserFactory`, `googleDrive`).
     - **`hooks/`**: Global hooks (`useTheme`, `useGoogleLogin`).
     - **`pages/`**: Static top-level pages (`Home`, `Changelog`).
+- **`scripts/`**: System utilities and scrapers.
+    - **`dom-scrapers/`**: Interactive browser-based capture tools.
+    - **`native-scrapers/`**: High-performance console-based capture scripts.
+    - **`legacy/`**: Deprecated or maintenance scripts.
 - **UI/Engine Separation**: A key pattern where a stable backend "engine" (e.g., `ExportService` in a scraper) is decoupled from the UI. This allows for UI "transplants" or upgrades (like porting the Neural Console) without touching the core, reliable logic.
 
 ## Data Management

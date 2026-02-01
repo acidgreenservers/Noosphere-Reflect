@@ -10,16 +10,17 @@
 - **High-Fidelity Engine**: Implemented `NoosphereMarkdownParser` specifically designed for native exports.
 - **Wizard Integration**: Added a dedicated "Noosphere Reflect" format option to the import wizard with custom iconography and descriptive tooltips.
 - **Smart Detection**: Added signal detection for native exports to allow first-class auto-parsing.
+- **Verification**: Confirmed re-imports preserve 100% of metadata, including sources and thoughts.
 
 ### ✅ Claude Neural Console Port ("Project Phoenix" Expansion)
 - **UI Modernization**: Ported the "Neural Orb" and glassmorphism "Neural Console" to `claude.js`.
 - **Selection Synergy**: Integrated the animated selection system into Claude's DOM structure.
 - **Export Standards**: Aligned Claude's Markdown generator with the high-fidelity Noosphere metadata standard.
 
-### ✅ LeChat Parser & UI Refinements
-- **Metadata Standard Fix**: Corrected spacing in Markdown metadata to ensure consistent Noosphere branding.
-- **Russian Doll Detection**: Successfully integrated nested response detection logic into the LeChat parser.
-- **Grid UI Optimization**: Reduced button sizes by 30% for improved information density in the wizard.
+### ✅ Repository Hygiene & Scraper Relocation
+- **Directory Structure**: Relocated root scripts to `/scripts/dom-scrapers/` and `/scripts/native-scrapers/`.
+- **Binary Cleanup**: Removed `.tar.gz` archive from the source tree.
+- **Release Ready**: Finalized `v0.5.8.8` documentation.
 
 ## Technical Implementation Details
 
