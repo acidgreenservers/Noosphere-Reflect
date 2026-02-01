@@ -5,7 +5,7 @@ import { MarkdownProcessor } from '../../services/MarkdownProcessor';
 
 /**
  * LeChat Theme - Replication of Mistral's LeChat interface styling
- * Based on DOM reference: scripts/reference-html-dom/lechat-console-dom.html
+ * Based on DOM reference: scripts/research/reference-html-dom/lechat-console-dom.html
  */
 export class LeChatThemeRenderer implements ThemeRenderer {
   private classes: PlatformThemeClasses;

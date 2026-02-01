@@ -3,7 +3,7 @@ import { ParserMode } from '../../../types';
 import { PLATFORM_OPTIONS } from '../constants';
 
 interface StepPlatformSelectionProps {
-    selectedFormat: 'markdown' | 'html' | 'json' | null;
+    selectedFormat: 'markdown' | 'html' | 'json' | 'noosphere' | null;
     selectedPlatform: ParserMode | null;
     onSelect: (platform: ParserMode) => void;
 }
@@ -24,44 +24,46 @@ export const StepPlatformSelection: React.FC<StepPlatformSelectionProps> = ({
                 <p className="text-gray-400 text-sm font-medium">Each Noosphere Parser is surgically tuned for high-fidelity extraction.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredOptions.map((option) => (
-                    <button
-                        key={option.mode}
-                        onClick={() => onSelect(option.mode)}
-                        className={`p-4 rounded-2xl border text-left transition-all duration-300 flex flex-col gap-3 relative overflow-hidden group h-full hover:scale-105 active:scale-95 ${selectedPlatform === option.mode
-                            ? 'bg-gray-800 border-emerald-500/50 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30'
-                            : 'bg-gray-800/30 border-gray-800 hover:border-blue-500/30 hover:bg-gray-800/60 hover:ring-2 hover:ring-blue-500/20'
-                            }`}
-                    >
-                        <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${option.color} opacity-80`} />
+            <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                    {filteredOptions.map((option) => (
+                        <button
+                            key={option.mode}
+                            onClick={() => onSelect(option.mode)}
+                            className={`p-2.5 rounded-lg border text-left transition-all duration-300 flex flex-col gap-2 relative overflow-hidden group h-full hover:scale-105 active:scale-95 w-[calc(100%-20px)] mx-auto ${selectedPlatform === option.mode
+                                ? 'bg-gray-800 border-emerald-500/50 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30'
+                                : 'bg-gray-800/30 border-gray-800 hover:border-blue-500/30 hover:bg-gray-800/60 hover:ring-2 hover:ring-blue-500/20'
+                                }`}
+                        >
+                            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${option.color} opacity-80`} />
 
-                        <div className="flex justify-between items-start w-full">
-                            <div className={`w-12 h-12 rounded-xl bg-gray-900/60 flex items-center justify-center text-3xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-inner border border-gray-800/50 group-hover:border-white/5`}>
-                                {option.icon}
-                            </div>
-                            {selectedPlatform === option.mode && (
-                                <div className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-in zoom-in-50">
-                                    SELECTED
+                            <div className="flex justify-between items-start w-full">
+                                <div className={`w-9 h-9 rounded-md bg-gray-900/60 flex items-center justify-center text-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-inner border border-gray-800/50 group-hover:border-white/5`}>
+                                    {option.icon}
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="flex-1">
-                            <h4 className={`font-bold text-sm tracking-tight ${selectedPlatform === option.mode ? 'text-white' : 'text-gray-200'}`}>
-                                {option.label}
-                            </h4>
-                            <p className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-tight font-medium">
-                                {option.description}
-                            </p>
-                            <div className="mt-3">
-                                <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold px-2 py-1 bg-gray-950/50 rounded-lg border border-gray-800/50">
-                                    {option.category}
-                                </span>
+                                {selectedPlatform === option.mode && (
+                                    <div className="bg-emerald-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full shadow-lg animate-in zoom-in-50">
+                                        SELECTED
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    </button>
-                ))}
+
+                            <div className="flex-1">
+                                <h4 className={`font-bold text-sm tracking-tight ${selectedPlatform === option.mode ? 'text-white' : 'text-gray-200'}`}>
+                                    {option.label}
+                                </h4>
+                                <p className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-tight font-medium">
+                                    {option.description}
+                                </p>
+                                <div className="mt-2">
+                                    <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold px-2 py-1 bg-gray-950/50 rounded border border-gray-800/50">
+                                        {option.category}
+                                    </span>
+                                </div>
+                            </div>
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="bg-blue-900/10 border border-blue-500/20 p-5 rounded-2xl backdrop-blur-sm shadow-inner">

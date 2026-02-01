@@ -34,6 +34,9 @@
   - **Tactile**: `hover:scale-110` (utility) or `scale-105` (navigation) with `active:scale-95`.
   - **Glow**: Theme-appropriate background highlights (`bg-*/10`) and focus rings (`focus:ring-2`) matched to the action's domain (e.g., purple for Memory, green for Convert).
   - **Unified Rendering Strategy (NEW)**: To prevent "UI Drift," all markdown/content previews across the application (Chat Preview, Reader Mode, Message Editor) MUST use the centralized `renderMarkdownToHtml` utility. Localized rendering logic is strictly forbidden to ensure consistent feature parity (e.g., collapsible support, artifact links, waterfall styling).
+  - **UI/Engine Separation (The "Phoenix" Pattern) (NEW)**: A strategy for modernizing legacy tools by treating the core logic as a stable "engine" and the UI as a swappable "chassis". This allows for rapid UI upgrades without compromising the reliability of the underlying functionality, as demonstrated in the successful port of the Neural Console to the `lechat.js` scraper.
+- **High-Fidelity Native Export/Parser Synergy (NEW)**: A circular data pattern where scrapers generate a specific "Noosphere Reflect" Markdown format which is then recognized and parsed by a dedicated native engine (`NoosphereMarkdownParser`). This ensures 100% fidelity for re-imports, preserving metadata and thoughts that generic parsers might lose.
+- **Neural Interface v2 Standard (NEW)**: Unified UI components for scrapers consisting of the "Neural Orb" (trigger) and "Neural Console" (dashboard), replacing service-specific custom buttons to ensure brand consistency across platforms.
 
 - **Security & Rendering Patterns**:
 

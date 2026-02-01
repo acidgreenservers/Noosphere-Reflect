@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ImportFormat = 'markdown' | 'html' | 'json';
+export type ImportFormat = 'markdown' | 'html' | 'json' | 'noosphere';
 
 interface StepFormatSelectionProps {
     onSelect: (format: ImportFormat) => void;
@@ -28,6 +28,13 @@ export const StepFormatSelection: React.FC<StepFormatSelectionProps> = ({ onSele
             description: 'Developer exports and Noosphere backups.',
             icon: '📦',
             color: 'from-purple-500 to-pink-600'
+        },
+        {
+            id: 'noosphere',
+            label: 'Noosphere Reflect (.md)',
+            description: 'Native high-fidelity exports from Noosphere scrapers.',
+            icon: '✨',
+            color: 'from-amber-400 to-orange-600'
         }
     ];
 
@@ -42,7 +49,7 @@ export const StepFormatSelection: React.FC<StepFormatSelectionProps> = ({ onSele
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto w-full">
                 {formats.map((format) => (
                     <button
                         key={format.id}

@@ -230,7 +230,22 @@ npm run dev
 
 
 
-## 🆕 What's New in v0.5.8.6 (Staged - Next Release)
+## 🆕 What's New in v0.5.8.8 (Current)
+
+### "Project Phoenix" Expansion - Claude Scraper UI/UX (Feb 1)
+- **Neural Console Port**: Ported the modern "Neural Console" UI and animated selection system to the `claude.js` scraper, standardizing the high-fidelity capture experience.
+- **Upgraded Checkboxes**: Integrated the new, styled green checkboxes for a consistent look and feel across platforms.
+- **Standardized Export**: Aligned Claude's Markdown generator with the high-fidelity Noosphere metadata standard.
+
+### Noosphere Reflect Native Parser (Feb 1)
+- **Native Importer**: Implemented a specialized first-class Markdown parser specifically for "Noosphere Reflect" exports.
+- **100% Fidelity**: Ensures re-imports preserve all metadata, sources, and thoughts with perfect accuracy.
+- **Wizard Integration**: Added a dedicated "Noosphere Reflect" option to the import wizard with smart signal detection.
+
+### "Project Phoenix" - LeChat Scraper UI/UX (Feb 1)
+- **Neural Console Port**: The stable `lechat.js` scraper has been upgraded with the modern "Neural Console" UI, replacing the old top-right dropdown with the floating orb.
+- **Standardized Metadata**: Corrected spacing in LeChat metadata to ensure consistent Noosphere branding.
+- **Preserved Engine**: Surgically rewired the new UI to the original, reliable `ExportService` to ensure perfect functionality.
 
 ### Modular Parser Architecture & Wizard Overhaul (Jan 25)
 - **Format-First Architecture**: Refactored parsers into modular directory structure (`html/`, `markdown/`, `json/`) for better maintainability.
@@ -439,6 +454,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 0.5.8.3
-**Last Updated**: January 21, 2026
+**Version**: 0.5.8.8
+**Last Updated**: February 1, 2026
 **Status**: Stable Release with Full Modular Refactor ✅

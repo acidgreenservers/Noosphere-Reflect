@@ -14,9 +14,13 @@ const Changelog: React.FC = () => {
     const changes: Release[] = [
         {
             version: 'v0.5.8.8',
-            date: 'Jan 28, 2026',
-            title: 'Standardized Metadata & Premium Exports',
+            date: 'Feb 1, 2026',
+            title: 'Noosphere Native Parser & Project Phoenix Expansion',
             items: [
+                'Noosphere Reflect Native Parser: Implemented a specialized first-class Markdown parser and Wizard integration for 100% fidelity re-imports.',
+                'Project Phoenix Expansion (Claude): Ported the modern "Neural Console" UI and animated selection system to the `claude.js` scraper.',
+                'Standardized Export Alignment: Unified Claude and LeChat metadata generators with the high-fidelity Noosphere standard.',
+                'LeChat Branding Fix: Corrected spacing in Markdown metadata to ensure consistent Noosphere branding.',
                 'Metadata Standardization: Established the "Noosphere Standard" for headers across all Markdown and HTML formats.',
                 'Premium Export UX: Added standardized emojis (🤖, 📅, 🌐, 📊) and multi-line statistics for high-fidelity archival.',
                 'Fancy Export Refinement: Integrated visual Exchange #X sequencing and separators in Fancy layouts.',

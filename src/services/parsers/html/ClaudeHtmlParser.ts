@@ -8,7 +8,7 @@ export class ClaudeParser implements BaseParser {
         const doc = parser.parseFromString(html, 'text/html');
         const messages: any[] = [];
 
-        // Selectors from scripts/claude.js
+        // Selectors from scripts/platforms/claude.js
         const SELECTORS = {
             CONVERSATION_TURN: '[data-test-render-count]',
             USER_MESSAGE: '[data-testid="user-message"]',

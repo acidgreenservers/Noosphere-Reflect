@@ -79,9 +79,11 @@
 - **Extension**: Fully functional Chrome Extension supporting 8+ platforms (Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, Kimi, AI Studio).
   - Features: One-click capture, "Copy as Markdown", "Copy as JSON", **Gemini Lazy-Loading Preload**.
 - **Recent Improvements**:
-  - **Global "Scale & Glow" Synergy**: Standardized tactile feedback across all archive navigation.
-  - **Page Orchestrator Pattern**: Decoupled state-management from UI rendering in main domains.
-  - **Google Drive Deduplication**: Smart merge logic preventing redundant copies during cloud sync.
+  - **"Project Phoenix" Expansion**: Ported the modern "Neural Console" UI and animated selection system to the `claude.js` scraper, standardizing the high-fidelity capture experience across major platforms.
+  - **Noosphere Reflect Native Parser**: Implemented a specialized first-class Markdown parser and Wizard integration for native exports, ensuring 100% fidelity for re-imports with full metadata and thought preservation.
+  - **Neural Interface v2.2.1**: Global standardization for selective sync, allowing users to pick specific chat segments for export with a high-fidelity DOM-syncing algorithm.
+  - **AI Icon Detection**: Implemented path-based geometry detection for LeChat AI icons, ensuring durable role identification regardless of platform DOM changes.
+  - **Global "Scale & Glow" Synergy**: Standardized tactile feedback and micro-animations across all archive navigation and modal controls.
   - **Strict Noosphere Standard**: Formalized high-fidelity native export validation vs 3rd-party flexibility.
 
 ## 🔒 Security & QA Workflow: Adversary Auditor (3-Eyes Verification)

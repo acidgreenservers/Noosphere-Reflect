@@ -8,7 +8,7 @@ export class ChatGptParser implements BaseParser {
         const doc = parser.parseFromString(html, 'text/html');
         const messages: any[] = [];
 
-        // Selectors from scripts/chatgpt.js and existing converterService
+        // Selectors from scripts/platforms/chatgpt.js and existing converterService
         const SELECTORS = {
             CONVERSATION_TURN: 'article[data-testid^="conversation-turn-"], article[data-turn-id]',
             USER_HEADING: 'h5.sr-only',

@@ -8,7 +8,7 @@ export class GeminiParser implements BaseParser {
         const doc = parser.parseFromString(html, 'text/html');
         const messages: any[] = [];
 
-        // Selectors from scripts/gemini.js and existing converterService
+        // Selectors from scripts/platforms/gemini.js and existing converterService
         const SELECTORS = {
             CHAT_CONTAINER: '[data-test-id="chat-history-container"]',
             CONVERSATION_TURN: 'div.conversation-container',

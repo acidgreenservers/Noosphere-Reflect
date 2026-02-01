@@ -19,6 +19,7 @@ import { GrokMarkdownParser } from './markdown/GrokMarkdownParser';
 import { LeChatMarkdownParser } from './markdown/LeChatMarkdownParser';
 import { AiStudioMarkdownParser } from './markdown/AiStudioMarkdownParser';
 import { KimiMarkdownParser } from './markdown/KimiMarkdownParser';
+import { NoosphereMarkdownParser } from './markdown/NoosphereMarkdownParser';
 
 // Generic & Special
 import { NoosphereParser } from './NoosphereParser';
@@ -62,6 +63,8 @@ export class ParserFactory {
                 return new AiStudioMarkdownParser();
             case ParserMode.KimiMarkdown:
                 return new KimiMarkdownParser();
+            case ParserMode.NoosphereMarkdown:
+                return new NoosphereMarkdownParser();
 
             // Generic fallback for others
             case ParserMode.LlamacoderMarkdown:

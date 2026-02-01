@@ -9,14 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v0.5.8.8] - January 28, 2026
+## [v0.5.8.8] - February 1, 2026
 
 ### Added
+- **Noosphere Reflect Native Parser**: Implemented a specialized first-class Markdown parser and context-aware wizard integration for re-importing native exports with 100% fidelity.
+- **"Project Phoenix" Expansion - Claude Scraper**: Ported the modern glassmorphism "Neural Console" UI and animated selection system to the `claude.js` scraper.
+- **Scraper UI Port (LeChat)**: Upgraded the stable `lechat.js` scraper with the modern "Neural Console" UI, replacing the old dropdown with the floating orb.
 - **Metadata Standardization**: Finalized the "Noosphere Standard" for metadata headers across all export formats (Markdown, HTML, Platform Themes).
 - **Premium Export UX**: Integrated standardized emojis (🤖, 📅, 🌐, 🏷️, 📂, 📊) and enhanced multi-line layouts for metadata stats.
 - **Fancy Export Refinement**: Added visual `Exchange #X` sequencing and separators to the "Fancy" Markdown layout.
 
 ### Fixed
+- **LeChat Metadata Spacing**: Corrected spacing in `lechat.js` to ensure consistent branding in Markdown exports.
 - **Export Reliability**: Resolved critical `[object Promise]` errors across all export and preview paths (HTML, Markdown, JSON) by ensuring all `exportService.generate` calls are properly awaited.
 - **Basic Converter Restoration**: Restored missing `handleAttachToMessageWithArtifact` functionality, enabling document creation from the message editor.
 - **Async Hardening**: Synchronized asynchronous flows in `ArchiveHub`, `BasicConverter`, and `GoogleDrive` handlers to ensure UI consistency.

@@ -5,7 +5,7 @@ import { MarkdownProcessor } from '../../services/MarkdownProcessor';
 
 /**
  * Grok Theme - Replication of xAI Grok's chat interface styling
- * Based on DOM reference: scripts/reference-html-dom/grok-console-dom.html
+ * Based on DOM reference: scripts/research/reference-html-dom/grok-console-dom.html
  */
 export class GrokThemeRenderer implements ThemeRenderer {
   private classes: PlatformThemeClasses;

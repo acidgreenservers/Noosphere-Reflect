@@ -34,6 +34,7 @@
     - **`services/`**: Core infrastructure (`storageService`, `parserFactory`, `googleDrive`).
     - **`hooks/`**: Global hooks (`useTheme`, `useGoogleLogin`).
     - **`pages/`**: Static top-level pages (`Home`, `Changelog`).
+- **UI/Engine Separation**: A key pattern where a stable backend "engine" (e.g., `ExportService` in a scraper) is decoupled from the UI. This allows for UI "transplants" or upgrades (like porting the Neural Console) without touching the core, reliable logic.
 
 ## Data Management
 - **Storage Engine**: `IndexedDB` (Wrapper: `StorageService` class).
@@ -46,6 +47,35 @@
     - **Full Export**: `storageService.exportDatabase()` dumps the entire state to JSON.
     - **Zero Lock-in**: All data is stored locally and is fully exportable/importable.
     - **Privacy**: No external servers (except AI APIs when explicitly used).
+- **Noosphere Export Format Standard (Markdown)**:
+    - **Header**: YAML-like metadata block between `---` (includes Model, Date, Source, Tags).
+    - **Title Section**: Identifiable via `## Title:`.
+    - **Turn Separation**: Horizontal rules (`---`) separate individual turns.
+    - **Message Headers**: Standardized `#### Prompt - [Name] [Emoji]` and `#### Response - [Name] [Emoji]`.
+    - **Thought Preservation**: `thought` code blocks or `<thoughts>` tags for internal AI reasoning.
+    - **Footer**: Distinct Noosphere branding/links to identify source fidelity.
+
+Example Structure:
+```markdown
+---
+> **🤖 Model:** Claude
+> **🌐 Date:** 2026-02-01
+---
+## Title:
+> Sample Conversation
+---
+#### Prompt - User 👤:
+Hello world
+---
+#### Response - Model 🤖:
+```
+Thoughts:
+User is saying hello.
+```
+Hello there!
+---
+###### Noosphere Reflect
+```
 
 ## Security Architecture (NEW: "Markdown Firewall")
 - **Input Validation**: 10MB size limit on HTML payloads; automated stripping of event handlers (`on*` attributes) during extraction.

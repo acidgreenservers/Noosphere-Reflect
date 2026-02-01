@@ -20,7 +20,7 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
     const [stepHistory, setStepHistory] = useState<WizardStep[]>([1]);
     const [inputMethod, setInputMethod] = useState<InputMethod | null>(null);
     const [selectedPlatform, setSelectedPlatform] = useState<ParserMode | null>(null);
-    const [selectedFormat, setSelectedFormat] = useState<'markdown' | 'html' | 'json' | null>(null);
+    const [selectedFormat, setSelectedFormat] = useState<'markdown' | 'html' | 'json' | 'noosphere' | null>(null);
     const [detectedSignal, setDetectedSignal] = useState<DetectionResult | null>(null);
     const [content, setContent] = useState('');
     const [fileName, setFileName] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
         setError(null);
     };
 
-    const handleFormatSelect = (format: 'markdown' | 'html' | 'json') => {
+    const handleFormatSelect = (format: 'markdown' | 'html' | 'json' | 'noosphere') => {
         setSelectedFormat(format);
         setStepHistory(prev => [...prev, 3]);
         setStep(3); // Go to Platform Selection
@@ -102,7 +102,7 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
             const data: ChatData = await parseChat(content, 'auto', modeToUse);
 
             // Validation successful - import directly
-            const type = isJson(content) ? 'json' : 'html';
+            const type = isJson(content) ? 'json' : (selectedFormat === 'noosphere' ? 'markdown' : 'html');
             onImport(content, type, modeToUse, attachments);
             onClose();
         } catch (err: any) {
@@ -113,7 +113,7 @@ export const useContentWizard = ({ isOpen, onClose, onImport }: ContentImportWiz
     };
 
     const handleFinalImport = () => {
-        const type = isJson(content) ? 'json' : 'html';
+        const type = isJson(content) ? 'json' : (selectedFormat === 'noosphere' ? 'markdown' : 'html');
         const mode = selectedPlatform || ParserMode.ThirdPartyMarkdown;
         onImport(content, type, mode, attachments);
         onClose();

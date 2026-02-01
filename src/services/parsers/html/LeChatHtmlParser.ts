@@ -8,7 +8,7 @@ export class LeChatParser implements BaseParser {
         const doc = parser.parseFromString(html, 'text/html');
         const messages: any[] = [];
 
-        // Selectors from scripts/lechat.js and MESSAGE-DETECTION-PATTERNS.md
+        // Selectors from scripts/platforms/lechat.js and MESSAGE-DETECTION-PATTERNS.md
         const SELECTORS = {
             MESSAGE_ITEM: '.me-auto, .ms-auto, [data-message-author-role]',
             USER_ALIGNMENT: '.ms-auto',

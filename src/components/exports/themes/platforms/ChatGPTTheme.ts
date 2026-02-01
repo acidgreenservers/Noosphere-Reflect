@@ -5,7 +5,7 @@ import { MarkdownProcessor } from '../../services/MarkdownProcessor';
 
 /**
  * ChatGPT Theme - Replication of ChatGPT's chat interface styling
- * Based on DOM reference: scripts/reference-html-dom/chatgpt-console-dom.html
+ * Based on DOM reference: scripts/research/reference-html-dom/chatgpt-console-dom.html
  */
 export class ChatGPTThemeRenderer implements ThemeRenderer {
   private classes: PlatformThemeClasses;

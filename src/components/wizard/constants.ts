@@ -49,6 +49,15 @@ export const PLATFORM_OPTIONS: PlatformOption[] = [
         format: 'markdown'
     },
     {
+        mode: ParserMode.LeChatMarkdown,
+        label: 'LeChat',
+        description: 'Mistral AI LeChat Markdown exports',
+        icon: '🌊',
+        color: 'from-yellow-600 to-amber-600',
+        category: 'LeChat',
+        format: 'markdown'
+    },
+    {
         mode: ParserMode.ThirdPartyMarkdown,
         label: 'Other / Generic',
         description: 'Generic AI Chat Markdown (Auto-detects Metadata)',
@@ -123,5 +132,16 @@ export const PLATFORM_OPTIONS: PlatformOption[] = [
         color: 'from-blue-500 to-indigo-600',
         category: 'Native',
         format: 'json'
+    },
+
+    // Noosphere Options
+    {
+        mode: ParserMode.NoosphereMarkdown,
+        label: 'Noosphere Reflect',
+        description: 'Native high-fidelity Markdown from Noosphere scrapers.',
+        icon: '✨',
+        color: 'from-amber-400 to-orange-600',
+        category: 'Native',
+        format: 'noosphere'
     }
 ];

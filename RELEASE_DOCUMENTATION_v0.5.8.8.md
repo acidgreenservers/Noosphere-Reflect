@@ -1,13 +1,24 @@
 # Release Documentation v0.5.8.8
-**Release Date**: January 28, 2026
+**Release Date**: February 1, 2026
 **Status**: Stable Release
 
 ## 🚀 Overview
-Version 0.5.8.8 represents a major milestone in **Export Reliability** and **Metadata Standardization**. This release definitively resolves the critical `[object Promise]` export bug and establishes the "Noosphere Standard" for high-fidelity archival. Every export—whether Markdown, HTML, or platform-specific—now features a premium, standardized metadata header designed for long-term clarity and aesthetic excellence.
+Version 0.5.8.8 marks the climax of **Project Phoenix** and the official launch of the **Noosphere Reflect Native Data Engine**. This release standardizes the premium "Neural Console" UI across both Claude and LeChat scrapers and introduces our first native Markdown parser. By establishing a circular "Native Export -> Native Import" loop with 100% fidelity, we have achieved a new level of data sovereignty where your conversations remain structurally perfect across the entire ecosystem.
 
 ## ✨ New Features & Improvements
 
-### 1. Metadata Standardization ("The Noosphere Standard")
+### 1. "Project Phoenix" Expansion: Claude & LeChat
+- **Neural Console for Claude**: Ported the glassmorphism "Neural Console" UI and animated selection orb to the `claude.js` scraper.
+- **Unified Visual Standard**: Standardized high-fidelity green checkboxes and platform-agnostic triggers across major AI services.
+- **Metadata Branding Fix**: Corrected spacing in LeChat exports to ensure perfect alignment with the Noosphere branding guidelines.
+
+### 2. Noosphere Reflect Native Parser
+- **Native Importer Engine**: Created a specialized parser in `src/services/parsers/markdown/NoosphereMarkdownParser.ts` designed to interpret our standardized native exports.
+- **Fidelity Guarantee**: Re-imported conversations now preserve 100% of their metadata, speaker identities, and internal thought processes.
+- **Wizard Integration**: Added a dedicated "Noosphere Reflect" format option to the Step 2 selection in the Content Import Wizard.
+- **Smart Signal Detection**: The wizard now automatically detects native Noosphere exports and recommends the native parser for the best results.
+
+### 3. Metadata Standardization ("The Noosphere Standard")
 - **Unified Emoji Architecture**: Integrated a consistent set of high-fidelity emojis across all metadata headers to enhance scannability and visual appeal:
   - `🤖 Model`: AI engine identification
   - `📅 Date`: Archival timestamp

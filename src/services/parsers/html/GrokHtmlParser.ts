@@ -8,7 +8,7 @@ export class GrokParser implements BaseParser {
         const doc = parser.parseFromString(html, 'text/html');
         const messages: any[] = [];
 
-        // Selectors from scripts/grok.js and MESSAGE-DETECTION-PATTERNS.md
+        // Selectors from scripts/platforms/grok.js and MESSAGE-DETECTION-PATTERNS.md
         const SELECTORS = {
             MARKDOWN_CONTAINER: 'div.response-content-markdown',
             USER_WRAPPER: 'div[dir="auto"]'

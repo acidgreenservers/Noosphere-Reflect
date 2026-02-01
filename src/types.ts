@@ -111,6 +111,7 @@ export enum ParserMode {
   LeChatMarkdown = 'lechat-md',
   AiStudioMarkdown = 'aistudio-md',
   LlamacoderMarkdown = 'llamacoder-md',
+  NoosphereMarkdown = 'noosphere-md',
   ThirdPartyMarkdown = 'third-party-markdown',
   ThirdPartyJson = 'third-party-json',
   Blank = 'blank',

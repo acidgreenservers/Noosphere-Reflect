@@ -8,7 +8,7 @@ export class LlamacoderParser implements BaseParser {
         const doc = parser.parseFromString(html, 'text/html');
         const messages: any[] = [];
 
-        // Selectors from scripts/llamacoder.js
+        // Selectors from scripts/platforms/llamacoder.js
         const SELECTORS = {
             PROSE: '.prose',
             USER_WRAPPER: 'div.flex-col.items-end',

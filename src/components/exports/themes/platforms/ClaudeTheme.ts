@@ -4,7 +4,7 @@ import { escapeHtml, sanitizeUrl } from '../../../../utils/securityUtils';
 
 /**
  * Claude Theme - Exact replication of Claude's chat interface styling
- * Based on DOM reference: scripts/reference-html-dom/claude-console-dom.html
+ * Based on DOM reference: scripts/research/reference-html-dom/claude-console-dom.html
  */
 export class ClaudeThemeRenderer implements ThemeRenderer {
   private classes: PlatformThemeClasses;

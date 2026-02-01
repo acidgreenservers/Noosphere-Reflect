@@ -5,7 +5,7 @@ import { MarkdownProcessor } from '../../services/MarkdownProcessor';
 
 /**
  * Gemini Theme - Replication of Google AI Studio (Gemini) interface styling
- * Based on DOM reference: scripts/reference-html-dom/gemini-aistudio-console-dom.html
+ * Based on DOM reference: scripts/research/reference-html-dom/gemini-aistudio-console-dom.html
  */
 export class GeminiThemeRenderer implements ThemeRenderer {
   private classes: PlatformThemeClasses;
