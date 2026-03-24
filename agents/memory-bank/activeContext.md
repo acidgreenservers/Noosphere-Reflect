@@ -1,5 +1,16 @@
 # Active Context
 
+### 🟢 COMPLETED: Claude Scraper Improvements (February 1, 2026)
+Following an audit of the reference HTML documents, I enhanced the Claude DOM scraper to capture additional context (like memory edits) and improved thought process isolation.
+
+**Key Changes**:
+- **Granular Extraction**: Refined thought process detection and added support for capturing "Viewed memory edits" and other side-channel outputs.
+- **Improved Isolation**: Robustly separated main response content from internal process blocks.
+- **Console Parity**: Added fallback selectors to support artifact detection in the Claude Console.
+- **Formatting**: Switched to `innerText` to better preserve line breaks.
+
+---
+
 ### 🟢 COMPLETED: Noosphere Reflect Native Parser (February 1, 2026)
 
 #### Goal

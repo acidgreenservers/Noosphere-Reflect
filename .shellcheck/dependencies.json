@@ -1,0 +1,261 @@
+{
+  "version": "2.0.0",
+  "dependencies": [
+    {
+      "id": "dep-325fe5a7",
+      "name": "@react-oauth/google",
+      "version": "^0.13.4",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-3499e8eb",
+      "name": "idb",
+      "version": "^8.0.3",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-c3904c9e",
+      "name": "jszip",
+      "version": "^3.10.1",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-1e321597",
+      "name": "minisearch",
+      "version": "^7.2.0",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-89bfbb61",
+      "name": "react",
+      "version": "^19.2.3",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-039bfc67",
+      "name": "react-dom",
+      "version": "^19.2.3",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-2aec94bd",
+      "name": "react-router-dom",
+      "version": "^7.11.0",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-97a452b2",
+      "name": "zod",
+      "version": "^4.3.5",
+      "type": "production",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-240313d1",
+      "name": "@tailwindcss/postcss",
+      "version": "^4.1.18",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-a1d94a94",
+      "name": "@tailwindcss/vite",
+      "version": "^4.1.18",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-59718613",
+      "name": "@testing-library/jest-dom",
+      "version": "^6.9.1",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-1a949bf4",
+      "name": "@testing-library/react",
+      "version": "^16.3.1",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-d658e0c4",
+      "name": "@types/node",
+      "version": "^22.14.0",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-3d4ad568",
+      "name": "@types/react",
+      "version": "^19.2.8",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-92bea1a5",
+      "name": "@types/react-dom",
+      "version": "^19.2.3",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-a8f179ed",
+      "name": "@typescript-eslint/eslint-plugin",
+      "version": "^8.52.0",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-eb5e6808",
+      "name": "@typescript-eslint/parser",
+      "version": "^8.52.0",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-98ecee09",
+      "name": "@vitejs/plugin-react",
+      "version": "^5.0.0",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-d43023cf",
+      "name": "@vitest/ui",
+      "version": "^4.0.16",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-a1936afc",
+      "name": "autoprefixer",
+      "version": "^10.4.23",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-b5ad8360",
+      "name": "eslint",
+      "version": "^9.39.2",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-29bc6931",
+      "name": "eslint-plugin-react",
+      "version": "^7.37.5",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-ce691cdc",
+      "name": "eslint-plugin-react-hooks",
+      "version": "^7.0.1",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-5b3ccfb3",
+      "name": "husky",
+      "version": "^9.1.7",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-7fe8e2e8",
+      "name": "jsdom",
+      "version": "^27.4.0",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-011537df",
+      "name": "lint-staged",
+      "version": "^16.2.7",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-5a29a71a",
+      "name": "postcss",
+      "version": "^8.5.6",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-81431249",
+      "name": "prettier",
+      "version": "^3.7.4",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-a1700281",
+      "name": "tailwindcss",
+      "version": "^4.1.18",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-94c2075d",
+      "name": "typescript",
+      "version": "~5.8.2",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-bdfa0a2e",
+      "name": "vite",
+      "version": "^6.2.0",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    },
+    {
+      "id": "dep-9affe1bf",
+      "name": "vitest",
+      "version": "^4.0.16",
+      "type": "development",
+      "deprecated": false,
+      "vulnerable": false
+    }
+  ]
+}
