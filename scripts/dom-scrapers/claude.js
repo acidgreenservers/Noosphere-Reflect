@@ -19,20 +19,19 @@
             // Message turns
             CONVERSATION_TURN: '[data-test-render-count]',
             USER_MESSAGE: '[data-testid="user-message"]',
-
-            // Claude response
             CLAUDE_RESPONSE: '.font-claude-response',
 
-            // Thought process
-            THOUGHT_CONTAINER: '.border-border-300.rounded-lg',
-            THOUGHT_CONTENT: '.standard-markdown',
+            // Side-channel blocks (Thoughts, Memory edits, etc)
+            SIDE_BLOCK: '.border-border-300.rounded-lg',
+            SIDE_BLOCK_TITLE: 'button',
+            SIDE_BLOCK_CONTENT: '.standard-markdown',
 
             // UI elements
             COPY_BUTTON: '[data-testid="action-bar-copy"]',
             CONVERSATION_TITLE: '[data-testid="chat-title-button"] .truncate',
 
             // Artifacts
-            ARTIFACT_CONTAINER: '[data-testid="artifact-container"]'
+            ARTIFACT_CONTAINER: '[data-testid="artifact-container"], .artifact-block-cell'
         },
 
         TIMING: {
@@ -437,38 +436,66 @@
                 if (msg.type === 'user') {
                     const content = msg.element.querySelector(CONFIG.SELECTORS.USER_MESSAGE);
                     markdown += `#### Prompt - User 👤:\n\n`;
-                    markdown += `${content?.textContent?.trim() || ''}\n\n`;
+                    markdown += `${content?.innerText?.trim() || ''}\n\n`;
                 }
 
                 if (msg.type === 'assistant') {
                     markdown += `#### Response - Model 🤖:\n\n`;
 
-                    // Extract thinking process if present (Claude uses specific containers for thoughts often)
-                    const thoughtContainer = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_CONTAINER);
-                    if (thoughtContainer) {
-                        const thoughtContent = thoughtContainer.querySelector(CONFIG.SELECTORS.THOUGHT_CONTENT);
-                        if (thoughtContent) {
-                            markdown += "```\nThoughts:\n";
-                            markdown += `${thoughtContent.textContent?.trim() || ''}\n`;
-                            markdown += "```\n\n";
-                        }
-                    }
+                    // 1. Extract all side blocks (Thoughts, Memory edits, tool usage summaries)
+                    const sideBlocks = msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK);
+                    sideBlocks.forEach((block, sbIndex) => {
+                        // Title is usually in the button text
+                        const title = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_TITLE)?.innerText?.trim() || 'Internal Process';
+                        const content = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_CONTENT)?.innerText?.trim();
 
-                    // Extract main response
+                        if (content) {
+                            // The first side block is almost always the Thought process in Claude
+                            // We also check for 'thought' in the title as a fallback
+                            const isThought = sbIndex === 0 || title.toLowerCase().includes('thought');
+
+                            if (isThought && !title.toLowerCase().includes('memory')) {
+                                // Align with Universal Export Standard: Thoughts: header in triple backticks
+                                markdown += "```\n";
+                                markdown += `Thoughts:\n${title}\n\n${content}\n`;
+                                markdown += "```\n\n";
+                            } else {
+                                // Use blockquotes for other internal processes (Memory edits, etc.)
+                                markdown += `> **[${title}]**\n> \n`;
+                                markdown += `> ${content.replace(/\n/g, '\n> ')}\n\n`;
+                            }
+                        }
+                    });
+
+                    // 2. Extract main response
                     const claudeResponse = msg.element.querySelector(CONFIG.SELECTORS.CLAUDE_RESPONSE);
                     if (claudeResponse) {
-                        // Exclude thought process from main response if it's nested
-                        const responseContent = claudeResponse.querySelector('.standard-markdown:not(.border-border-300 *)');
-                        if (responseContent) {
-                            markdown += `${responseContent.textContent?.trim() || ''}\n\n`;
+                        // Find all standard-markdown elements that are NOT inside a side block
+                        // to avoid duplication.
+                        const mainContents = Array.from(claudeResponse.querySelectorAll('.standard-markdown'))
+                            .filter(el => !el.closest(CONFIG.SELECTORS.SIDE_BLOCK));
+
+                        if (mainContents.length > 0) {
+                            mainContents.forEach(contentEl => {
+                                const text = contentEl.innerText?.trim();
+                                if (text) {
+                                    markdown += `${text}\n\n`;
+                                }
+                            });
                         } else {
-                            markdown += `${claudeResponse.textContent?.trim() || ''}\n\n`;
+                            // Fallback: if no isolated markdown blocks found, try to get text from the whole response 
+                            // minus the side blocks' text
+                            let fullText = claudeResponse.innerText;
+                            sideBlocks.forEach(sb => {
+                                fullText = fullText.replace(sb.innerText, '');
+                            });
+                            markdown += `${fullText.trim()}\n\n`;
                         }
                     }
                 }
 
                 if (index < selectedMessages.length - 1) {
-                    markdown += `---\n\n`;
+                    markdown += `\n\n`;
                 }
             });
 

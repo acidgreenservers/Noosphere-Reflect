@@ -10,13 +10,7 @@
   // CONSTANTS
   // ============================================================================
   const CONFIG = {
-    BUTTON_ID: 'gemini-export-btn',
-    DROPDOWN_ID: 'gemini-export-dropdown',
-    FILENAME_INPUT_ID: 'gemini-filename-input',
-    SELECT_DROPDOWN_ID: 'gemini-select-dropdown',
-    CHECKBOX_CLASS: 'gemini-export-checkbox',
-    EXPORT_MODE_NAME: 'gemini-export-mode',
-    NAMING_FORMAT_ID: 'gemini-naming-format',
+    CHECKBOX_CLASS: 'ns-checkbox', // Use the new checkbox class
 
     SELECTORS: {
       CHAT_CONTAINER: '[data-test-id="chat-history-container"]',
@@ -107,214 +101,195 @@
   };
 
   // ============================================================================
-  // CHECKBOX MANAGER
+  // UI AND CHECKBOX FUNCTIONS - PORTED FROM NEURAL CONSOLE
   // ============================================================================
-  class CheckboxManager {
-    createCheckbox(type, container) {
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.className = CONFIG.CHECKBOX_CLASS;
-      cb.checked = true;
-      cb.title = `Include this ${type} message in export`;
+  function injectStyles() {
+    const styleId = 'noosphere-styles';
+    if (document.getElementById(styleId)) return;
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+        :root { --ns-green: #10b981; --ns-purple: #8b5cf6; --ns-amber: #f59e0b; --ns-bg: rgba(17, 24, 39, 0.7); --ns-border: rgba(255, 255, 255, 0.1); }
+        .ns-orb { position: fixed; bottom: 25px; right: 25px; width: 56px; height: 56px; background: linear-gradient(135deg, var(--ns-green), var(--ns-purple)); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100000; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 2px solid rgba(255, 255, 255, 0.2); }
+        .ns-orb:hover { transform: scale(1.1) rotate(5deg); }
+        .ns-orb svg { width: 28px; height: 28px; fill: white; }
+        .ns-console { position: fixed; bottom: 95px; right: 25px; width: 340px; background: var(--ns-bg); backdrop-filter: blur(20px) saturate(180%); border: 1px solid var(--ns-border); border-radius: 28px; z-index: 99999; overflow: hidden; display: none; flex-direction: column; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); color: white; font-family: 'Inter', system-ui, sans-serif; }
+        .ns-console-header { padding: 24px 24px 16px; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); }
+        .ns-console-title { font-size: 20px; font-weight: 800; background: linear-gradient(to right, #fff, rgba(255,255,255,0.7)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
+        .ns-console-subtitle { font-size: 12px; color: rgba(255, 255, 255, 0.5); font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; }
+        .ns-console-tabs { display: flex; padding: 0 16px; gap: 8px; margin-bottom: 16px; }
+        .ns-tab { padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.6); border: 1px solid transparent; }
+        .ns-tab.active { background: rgba(16, 185, 129, 0.15); color: var(--ns-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .ns-console-content { padding: 0 20px 24px; display: flex; flex-direction: column; gap: 10px; }
+        .ns-btn { width: 100%; padding: 12px 18px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ns-border); border-radius: 16px; color: white; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s; }
+        .ns-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); transform: translateX(4px); }
+        .ns-btn svg { width: 18px; height: 18px; opacity: 0.7; }
+        .ns-btn-primary { background: linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1)); border-color: rgba(16, 185, 129, 0.3); color: var(--ns-green); }
+        .ns-btn-primary:hover { background: rgba(16, 185, 129, 0.25); border-color: var(--ns-green); }
+        .ns-input-group { background: rgba(0, 0, 0, 0.2); padding: 16px; border-radius: 20px; border: 1px solid var(--ns-border); }
+        .ns-label { font-size: 11px; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); margin-bottom: 8px; display: block; }
+        .ns-input { width: 100%; background: transparent; border: none; color: white; font-size: 15px; outline: none; padding: 4px 0; }
+        .ns-select { width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ns-border); border-radius: 12px; color: white; padding: 10px; outline: none; font-size: 13px; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.7)' d='M6 9L1 4h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 12px; padding-right: 30px; cursor: pointer; }
+        .ns-select:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+        .ns-select option { background: var(--ns-bg); color: white; padding: 8px; }
+        .ns-checkbox { appearance: none; width: 20px; height: 20px; border: 2px solid var(--ns-green); border-radius: 6px; cursor: pointer; background: rgba(0,0,0,0.3); transition: all 0.2s; position: relative; }
+        .ns-checkbox:checked { background: var(--ns-green); box-shadow: 0 0 10px var(--ns-green); }
+        .ns-checkbox:checked::after { content: '✓'; position: absolute; color: white; font-size: 14px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .ns-bulk-controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 12px; }
+        .ns-bulk-btn { padding: 6px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ns-border); border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; }
+        .ns-bulk-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+    `;
+    document.head.appendChild(style);
+  }
 
-      Object.assign(cb.style, {
-        position: 'absolute',
-        right: '28px',
-        top: '8px',
-        zIndex: '10000',
-        transform: 'scale(1.2)'
-      });
+  function createMenu() {
+    // Use safe DOM construction instead of innerHTML to comply with Trusted Types CSP
+    const ce = (tag, className, children, options) => {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (children) children.forEach(child => child && el.appendChild(child));
+        if (options) Object.keys(options).forEach(key => {
+            if (key === 'style') {
+                Object.assign(el.style, options.style);
+            } else {
+                el[key] = options[key];
+            }
+        });
+        return el;
+    };
 
-      container.style.position = 'relative';
-      container.appendChild(cb);
-      return cb;
-    }
+    const orb = ce('div', 'ns-orb');
+    const orbSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    orbSvg.setAttribute('viewBox', '0 0 24 24');
+    const orbPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    orbPath.setAttribute('d', 'M12,2C6.47,2,2,6.47,2,12s4.47,10,10,10,10-4.47,10-10S17.53,2,12,2zm0,18c-3.31,0-6-2.69-6-6,0-1.01,.25-1.97,.7-2.8l1.46,1.46c-.11,.43-.16,.88-.16,1.34,0,2.21,1.79,4,4,4s4-1.79,4-4-1.79-4-4-4c-.46,0-.91,.05-1.34,.16l-1.46-1.46c.83-.45,1.79-.7,2.8-.7,3.31,0,6,2.69,6,6s-2.69,6-6,6z');
+    orbSvg.appendChild(orbPath);
+    orb.appendChild(orbSvg);
+    document.body.appendChild(orb);
 
-    injectCheckboxes() {
-      const turns = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN);
+    const createButton = (id, text, isPrimary = false) => {
+        const btn = ce('button', `ns-btn${isPrimary ? ' ns-btn-primary' : ''}`);
+        btn.id = id;
+        if (id === 'ns-dl-md') {
+            const dlSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            dlSvg.setAttribute('viewBox', '0 0 24 24');
+            dlSvg.setAttribute('fill', 'none');
+            dlSvg.setAttribute('stroke', 'currentColor');
+            dlSvg.setAttribute('stroke-width', '2');
+            const dlPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            dlPath.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12');
+            dlSvg.appendChild(dlPath);
+            btn.appendChild(dlSvg);
+            btn.appendChild(document.createTextNode(text));
+        } else {
+            btn.textContent = text;
+        }
+        return btn;
+    };
 
-      turns.forEach(turn => {
-        // User query checkbox
+    const createTab = (text, target, isActive = false) => {
+        const tab = ce('div', `ns-tab${isActive ? ' active' : ''}`);
+        tab.textContent = text;
+        tab.dataset.target = target;
+        return tab;
+    };
+
+    const createInputGroup = (label, inputId, placeholder) => {
+        const labelEl = ce('span', 'ns-label');
+        labelEl.textContent = label;
+        const inputEl = ce('input', 'ns-input');
+        inputEl.id = inputId;
+        inputEl.type = 'text';
+        inputEl.placeholder = placeholder;
+        return ce('div', 'ns-input-group', [labelEl, inputEl]);
+    };
+
+    const createSelectGroup = (label, selectId, options) => {
+        const labelEl = ce('span', 'ns-label');
+        labelEl.textContent = label;
+        const selectEl = ce('select', 'ns-select');
+        selectEl.id = selectId;
+        options.forEach(opt => {
+            const optionEl = ce('option');
+            optionEl.value = opt.value;
+            optionEl.textContent = opt.text;
+            selectEl.appendChild(optionEl);
+        });
+        const wrapper = ce('div');
+        wrapper.style.padding = '0 4px';
+        wrapper.append(labelEl, selectEl);
+        return wrapper;
+    };
+
+    const consoleEl = ce('div', 'ns-console', [
+        ce('div', 'ns-console-header', [
+            ce('div', 'ns-console-subtitle', [document.createTextNode('Neural Interface')]),
+            ce('div', 'ns-console-title', [document.createTextNode('Noosphere Reflect')])
+        ]),
+        ce('div', 'ns-console-tabs', [
+            createTab('Export', 'ns-pane-export', true),
+            createTab('Configuration', 'ns-pane-config')
+        ]),
+        ce('div', 'ns-console-content', [
+            ce('div', 'ns-bulk-controls', [
+                Object.assign(ce('div', 'ns-bulk-btn', [document.createTextNode('All')]), { id: 'ns-select-all' }),
+                Object.assign(ce('div', 'ns-bulk-btn', [document.createTextNode('User')]), { id: 'ns-select-user' }),
+                Object.assign(ce('div', 'ns-bulk-btn', [document.createTextNode('AI')]), { id: 'ns-select-ai' }),
+                Object.assign(ce('div', 'ns-bulk-btn', [document.createTextNode('None')]), { id: 'ns-select-none' })
+            ]),
+            ce('div', null, [
+                createButton('ns-copy-md', 'Copy MD'),
+                createButton('ns-copy-json', 'Copy JSON')
+            ], { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } }),
+            createButton('ns-dl-md', 'Download .MD', true)
+        ], { id: 'ns-pane-export' }),
+        ce('div', 'ns-console-content', [
+            createInputGroup('Chat Title', 'ns-manual-title', 'e.g. Gemini Code Analysis'),
+            createInputGroup('Filename Prefix', 'ns-custom-name', 'Gemini_Export'),
+            createSelectGroup('Naming Segment', 'ns-naming-format', [
+                { value: 'kebab-case', text: 'kebab-case' }, { value: 'snake_case', text: 'snake_case' },
+                { value: 'PascalCase', text: 'PascalCase' }, { value: 'camelCase', text: 'camelCase' }
+            ])
+        ], { id: 'ns-pane-config', style: { display: 'none' } })
+    ]);
+    
+    document.body.appendChild(consoleEl);
+
+    orb.onclick = () => { consoleEl.style.display = consoleEl.style.display === 'flex' ? 'none' : 'flex'; };
+    consoleEl.querySelectorAll('.ns-tab').forEach(tab => {
+        tab.onclick = () => {
+            consoleEl.querySelectorAll('.ns-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            consoleEl.querySelectorAll('.ns-console-content').forEach(c => { c.style.display = c.id === tab.dataset.target ? 'flex' : 'none'; });
+        };
+    });
+  }
+
+  function injectCheckboxes() {
+    const createCheckbox = (type, container) => {
+        if (container.querySelector('.ns-checkbox')) return;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'ns-checkbox';
+        checkbox.dataset.type = type;
+        checkbox.checked = true;
+        Object.assign(checkbox.style, { position: 'absolute', right: '28px', top: '8px', zIndex: '10000', transform: 'scale(1.2)' });
+        container.style.position = 'relative';
+        container.appendChild(checkbox);
+    };
+    document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN).forEach(turn => {
         const userQueryElem = turn.querySelector(CONFIG.SELECTORS.USER_QUERY);
-        if (userQueryElem && !userQueryElem.querySelector(`.${CONFIG.CHECKBOX_CLASS}`)) {
-          this.createCheckbox('user', userQueryElem);
-        }
-
-        // Model response checkbox
+        if (userQueryElem) createCheckbox('user', userQueryElem);
         const modelRespElem = turn.querySelector(CONFIG.SELECTORS.MODEL_RESPONSE);
-        if (modelRespElem && !modelRespElem.querySelector(`.${CONFIG.CHECKBOX_CLASS}`)) {
-          this.createCheckbox('Gemini', modelRespElem);
-        }
-      });
-    }
-
-    removeAll() {
-      document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`).forEach(cb => cb.remove());
-    }
-
-    hasAnyChecked() {
-      return Array.from(document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`))
-        .some(cb => cb.checked);
-    }
+        if (modelRespElem) createCheckbox('assistant', modelRespElem);
+    });
   }
 
-  // ============================================================================
-  // SELECTION MANAGER
-  // ============================================================================
-  class SelectionManager {
-    constructor(checkboxManager) {
-      this.checkboxManager = checkboxManager;
-      this.lastSelection = 'all';
-    }
-
-    applySelection(value) {
-      const checkboxes = document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`);
-
-      switch (value) {
-        case 'all':
-          checkboxes.forEach(cb => cb.checked = true);
-          break;
-        case 'ai':
-          document.querySelectorAll(`${CONFIG.SELECTORS.USER_QUERY} .${CONFIG.CHECKBOX_CLASS}`)
-            .forEach(cb => cb.checked = false);
-          document.querySelectorAll(`${CONFIG.SELECTORS.MODEL_RESPONSE} .${CONFIG.CHECKBOX_CLASS}`)
-            .forEach(cb => cb.checked = true);
-          break;
-        case 'none':
-          checkboxes.forEach(cb => cb.checked = false);
-          break;
-      }
-
-      this.lastSelection = value;
-    }
-
-    reset() {
-      this.lastSelection = 'all';
-      const select = document.getElementById(CONFIG.SELECT_DROPDOWN_ID);
-      if (select) select.value = 'all';
-    }
-
-    reapplyIfNeeded() {
-      const select = document.getElementById(CONFIG.SELECT_DROPDOWN_ID);
-      if (select && this.lastSelection !== 'custom') {
-        select.value = this.lastSelection;
-        this.applySelection(this.lastSelection);
-      }
-    }
-  }
-
-  // ============================================================================
-  // UI BUILDER
-  // ============================================================================
-  class UIBuilder {
-    static getInputStyles(isDark) {
-      return isDark
-        ? `background:${CONFIG.STYLES.DARK_BG};color:${CONFIG.STYLES.DARK_TEXT};border:1px solid ${CONFIG.STYLES.DARK_BORDER};`
-        : `background:${CONFIG.STYLES.LIGHT_BG};color:${CONFIG.STYLES.LIGHT_TEXT};border:1px solid ${CONFIG.STYLES.LIGHT_BORDER};`;
-    }
-
-    static createDropdownHTML() {
-      const isDark = Utils.isDarkMode();
-      const inputStyles = this.getInputStyles(isDark);
-
-      return `
-        <div style="margin-top:10px;">
-          <label style="margin-right:10px;">
-            <input type="radio" name="${CONFIG.EXPORT_MODE_NAME}" value="file" checked>
-            Export as file
-          </label>
-          <label>
-            <input type="radio" name="${CONFIG.EXPORT_MODE_NAME}" value="clipboard">
-            Export to clipboard
-          </label>
-        </div>
-        <div id="gemini-filename-row" style="margin-top:10px;display:block;">
-          <label for="${CONFIG.FILENAME_INPUT_ID}" style="font-weight:bold;">
-            Filename <span style='color:#888;font-weight:normal;'>(optional)</span>:
-          </label>
-          <input id="${CONFIG.FILENAME_INPUT_ID}" type="text" 
-                 style="margin-left:8px;padding:2px 8px;width:260px;${inputStyles}" 
-                 value="">
-          <span style="display:block;font-size:0.95em;color:#888;margin-top:2px;">
-            Optional. Leave blank to use chat title or timestamp. 
-            Only <b>.md</b> (Markdown) files are supported. Do not include an extension.
-          </span>
-        </div>
-        <div style="margin-top:14px;">
-          <label style="font-weight:bold;">Name Format:</label>
-          <select id="${CONFIG.NAMING_FORMAT_ID}" 
-                  style="margin-left:8px;padding:2px 8px;${inputStyles}">
-            <option value="kebab-case">kebab-case</option>
-            <option value="Kebab-Case">Kebab-Case</option>
-            <option value="snake_case">snake_case</option>
-            <option value="Snake_Case">Snake_Case</option>
-            <option value="PascalCase">PascalCase</option>
-            <option value="camelCase">camelCase</option>
-          </select>
-        </div>
-        <div style="margin-top:14px;">
-          <label style="font-weight:bold;">Select messages:</label>
-          <select id="${CONFIG.SELECT_DROPDOWN_ID}" 
-                  style="margin-left:8px;padding:2px 8px;${inputStyles}">
-            <option value="all">All</option>
-            <option value="ai">Only answers</option>
-            <option value="none">None</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
-      `;
-    }
-
-    static createButton() {
-      const btn = document.createElement('button');
-      btn.id = CONFIG.BUTTON_ID;
-      btn.textContent = 'Export Chat';
-
-      Object.assign(btn.style, {
-        position: 'fixed',
-        top: '80px',
-        right: '20px',
-        zIndex: '9999',
-        padding: '8px 16px',
-        background: CONFIG.STYLES.BUTTON_PRIMARY,
-        color: '#fff',
-        border: 'none',
-        borderRadius: '6px',
-        fontSize: '1em',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        transition: 'background 0.2s'
+  function setupObserver() {
+      const observer = new MutationObserver(() => {
+          injectCheckboxes();
       });
-
-      btn.addEventListener('mouseenter', () => btn.style.background = CONFIG.STYLES.BUTTON_HOVER);
-      btn.addEventListener('mouseleave', () => btn.style.background = CONFIG.STYLES.BUTTON_PRIMARY);
-
-      return btn;
-    }
-
-    static createDropdown() {
-      const dropdown = document.createElement('div');
-      dropdown.id = CONFIG.DROPDOWN_ID;
-
-      const isDark = Utils.isDarkMode();
-      Object.assign(dropdown.style, {
-        position: 'fixed',
-        top: '124px',
-        right: '20px',
-        zIndex: '9999',
-        border: '1px solid #ccc',
-        borderRadius: '6px',
-        padding: '10px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        display: 'none',
-        background: isDark ? '#222' : '#fff',
-        color: isDark ? '#fff' : '#222'
-      });
-
-      dropdown.innerHTML = this.createDropdownHTML();
-      return dropdown;
-    }
+      observer.observe(document.body, { childList: true, subtree: true });
   }
 
   // ============================================================================
@@ -461,11 +436,11 @@
         const modelRespElem = turn.querySelector(CONFIG.SELECTORS.MODEL_RESPONSE);
 
         let turnSelected = false;
-        if (userQueryElem && userQueryElem.querySelector(`.${CONFIG.CHECKBOX_CLASS}`)?.checked) {
+        if (userQueryElem && userQueryElem.querySelector(`.ns-checkbox`)?.checked) {
           userCount++;
           turnSelected = true;
         }
-        if (modelRespElem && modelRespElem.querySelector(`.${CONFIG.CHECKBOX_CLASS}`)?.checked) {
+        if (modelRespElem && modelRespElem.querySelector(`.ns-checkbox`)?.checked) {
           aiCount++;
           turnSelected = true;
         }
@@ -596,12 +571,12 @@
 
         // Get all turns and inject checkboxes
         const turns = Array.from(document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN));
-        this.checkboxManager.injectCheckboxes();
+        injectCheckboxes();
 
         // Check if any messages selected
-        if (!this.checkboxManager.hasAnyChecked()) {
-          alert('Please select at least one message to export using the checkboxes or the dropdown.');
-          return;
+        if (!document.querySelector('.ns-checkbox:checked')) {
+            Utils.createNotification('Please select at least one message to export.');
+            return;
         }
 
         // Get title and build markdown
@@ -624,153 +599,54 @@
   }
 
   // ============================================================================
-  // EXPORT CONTROLLER
-  // ============================================================================
-  class ExportController {
-    constructor() {
-      this.checkboxManager = new CheckboxManager();
-      this.selectionManager = new SelectionManager(this.checkboxManager);
-      this.exportService = new ExportService(this.checkboxManager);
-      this.button = null;
-      this.dropdown = null;
-    }
-
-    init() {
-      this.createUI();
-      this.attachEventListeners();
-      this.observeStorageChanges();
-    }
-
-    createUI() {
-      this.button = UIBuilder.createButton();
-      this.dropdown = UIBuilder.createDropdown();
-
-      document.body.appendChild(this.dropdown);
-      document.body.appendChild(this.button);
-
-      this.setupFilenameRowToggle();
-    }
-
-    setupFilenameRowToggle() {
-      const updateFilenameRow = () => {
-        const fileRow = this.dropdown.querySelector('#gemini-filename-row');
-        const fileRadio = this.dropdown.querySelector(`input[name="${CONFIG.EXPORT_MODE_NAME}"][value="file"]`);
-        if (fileRow && fileRadio) {
-          fileRow.style.display = fileRadio.checked ? 'block' : 'none';
-        }
-      };
-
-      this.dropdown.querySelectorAll(`input[name="${CONFIG.EXPORT_MODE_NAME}"]`)
-        .forEach(radio => radio.addEventListener('change', updateFilenameRow));
-
-      updateFilenameRow();
-    }
-
-    attachEventListeners() {
-      // Button click
-      this.button.addEventListener('click', () => this.handleButtonClick());
-
-      // Selection dropdown
-      const selectDropdown = this.dropdown.querySelector(`#${CONFIG.SELECT_DROPDOWN_ID}`);
-      selectDropdown.addEventListener('change', (e) => this.handleSelectionChange(e.target.value));
-
-      // Checkbox manual changes
-      document.addEventListener('change', (e) => {
-        if (e.target?.classList?.contains(CONFIG.CHECKBOX_CLASS)) {
-          const select = document.getElementById(CONFIG.SELECT_DROPDOWN_ID);
-          if (select && select.value !== 'custom') {
-            select.value = 'custom';
-            this.selectionManager.lastSelection = 'custom';
-          }
-        }
-      });
-
-      // Click outside to hide dropdown
-      document.addEventListener('mousedown', (e) => {
-        if (this.dropdown.style.display !== 'none' &&
-          !this.dropdown.contains(e.target) &&
-          e.target !== this.button) {
-          this.dropdown.style.display = 'none';
-        }
-      });
-    }
-
-    handleSelectionChange(value) {
-      this.checkboxManager.injectCheckboxes();
-      this.selectionManager.applySelection(value);
-    }
-
-    async handleButtonClick() {
-      this.checkboxManager.injectCheckboxes();
-
-      if (this.dropdown.style.display === 'none') {
-        this.dropdown.style.display = '';
-        return;
-      }
-
-      this.button.disabled = true;
-      this.button.textContent = 'Exporting...';
-
-      try {
-        const exportMode = this.dropdown.querySelector(`input[name="${CONFIG.EXPORT_MODE_NAME}"]:checked`)?.value || 'file';
-        const namingFormat = this.dropdown.querySelector(`#${CONFIG.NAMING_FORMAT_ID}`)?.value || 'kebab-case';
-        const customFilename = exportMode === 'file'
-          ? this.dropdown.querySelector(`#${CONFIG.FILENAME_INPUT_ID}`)?.value.trim() || ''
-          : '';
-
-        this.dropdown.style.display = 'none';
-
-        await this.exportService.execute(exportMode, customFilename, namingFormat);
-
-        // Cleanup after export
-        this.checkboxManager.removeAll();
-        this.selectionManager.reset();
-
-        if (exportMode === 'file') {
-          const filenameInput = this.dropdown.querySelector(`#${CONFIG.FILENAME_INPUT_ID}`);
-          if (filenameInput) filenameInput.value = '';
-        }
-
-      } catch (error) {
-        console.error('Export error:', error);
-      } finally {
-        this.button.disabled = false;
-        this.button.textContent = 'Export Chat';
-      }
-    }
-
-    observeStorageChanges() {
-      const updateVisibility = () => {
-        try {
-          if (chrome?.storage?.sync) {
-            chrome.storage.sync.get(['hideExportBtn'], (result) => {
-              this.button.style.display = result.hideExportBtn ? 'none' : '';
-            });
-          }
-        } catch (e) {
-          console.error('Storage access error:', e);
-        }
-      };
-
-      updateVisibility();
-
-      const observer = new MutationObserver(updateVisibility);
-      observer.observe(document.body, { childList: true, subtree: true });
-
-      if (chrome?.storage?.onChanged) {
-        chrome.storage.onChanged.addListener((changes, area) => {
-          if (area === 'sync' && 'hideExportBtn' in changes) {
-            updateVisibility();
-          }
-        });
-      }
-    }
-  }
-
-  // ============================================================================
   // INITIALIZATION
   // ============================================================================
-  const controller = new ExportController();
-  controller.init();
+  function init() {
+    console.log('[Noosphere] Initializing Gemini Exporter with Neural Console...');
+    // The ExportService in gemini.js doesn't need the checkbox manager passed in.
+    const exportService = new ExportService();
+
+    injectStyles();
+    createMenu();
+    injectCheckboxes();
+    setupObserver();
+
+    // ** THIS IS THE CRITICAL RE-WIRING STEP **
+    document.getElementById('ns-copy-md').onclick = async () => {
+        const namingFormat = document.getElementById('ns-naming-format')?.value || 'kebab-case';
+        await exportService.execute('clipboard', '', namingFormat);
+    };
+    
+    document.getElementById('ns-dl-md').onclick = async () => {
+        const customFilename = document.getElementById('ns-custom-name')?.value;
+        const namingFormat = document.getElementById('ns-naming-format')?.value || 'kebab-case';
+        await exportService.execute('file', customFilename, namingFormat);
+    };
+    
+    document.getElementById('ns-copy-json').onclick = () => {
+         Utils.createNotification('JSON export not yet implemented for Gemini.');
+    };
+    
+    // Bulk selection logic
+    const bulkSelect = (type) => {
+        document.querySelectorAll('.ns-checkbox').forEach(cb => {
+            let shouldBeChecked = false;
+            if (type === 'all') shouldBeChecked = true;
+            if (type === 'none') shouldBeChecked = false;
+            if (type === 'user' && cb.dataset.type === 'user') shouldBeChecked = true;
+            if (type === 'ai' && cb.dataset.type === 'assistant') shouldBeChecked = true;
+            cb.checked = shouldBeChecked;
+        });
+    };
+
+    document.getElementById('ns-select-all').onclick = () => bulkSelect('all');
+    document.getElementById('ns-select-user').onclick = () => bulkSelect('user');
+    document.getElementById('ns-select-ai').onclick = () => bulkSelect('ai');
+    document.getElementById('ns-select-none').onclick = () => bulkSelect('none');
+
+    console.log('[Noosphere] Gemini Neural Console is live.');
+  }
+
+  init();
 
 })();

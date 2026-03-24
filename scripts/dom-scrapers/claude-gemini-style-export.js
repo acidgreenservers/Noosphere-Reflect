@@ -1,6 +1,6 @@
 /**
- * Le Chat Exporter - Mistral Le Chat content script
- * Exports Le Chat conversations to Markdown with thinking process preservation
+ * Claude Chat Exporter - Claude content script
+ * Exports Claude chat conversations to Markdown with thought process preservation
  */
 
 (function () {
@@ -10,40 +10,28 @@
     // CONSTANTS
     // ============================================================================
     const CONFIG = {
-        // IDs for the new Neural Console UI are handled within the createMenu function.
-        // The old top-level button IDs are no longer needed.
-        CHECKBOX_CLASS: 'ns-checkbox', // Use the new checkbox class
+        CHECKBOX_CLASS: 'ns-checkbox',
 
         SELECTORS: {
-            // Message containers
-            MESSAGE_CONTAINER: '[data-message-id]',
+            // Chat container
+            CHAT_CONTAINER: '[data-testid="chat-messages"]',
 
-            // User message
-            USER_MESSAGE: '[data-message-author-role="user"]',
-            USER_CONTENT: '.whitespace-pre-wrap',
+            // Message turns
+            CONVERSATION_TURN: '[data-test-render-count]',
+            USER_MESSAGE: '[data-testid="user-message"]',
+            CLAUDE_RESPONSE: '.font-claude-response',
 
-            // Assistant message
-            ASSISTANT_MESSAGE: '[data-message-author-role="assistant"]',
+            // Side-channel blocks (Thoughts, Memory edits, etc)
+            SIDE_BLOCK: '.border-border-300.rounded-lg',
+            SIDE_BLOCK_TITLE: 'button',
+            SIDE_BLOCK_CONTENT: '.standard-markdown',
 
-            // Thinking/Reasoning process
-            THINKING_CONTAINER: '[data-message-part-type="reasoning"]',
+            // UI elements
+            COPY_BUTTON: '[data-testid="action-bar-copy"]',
+            CONVERSATION_TITLE: '[data-testid="chat-title-button"] .truncate',
 
-            // Response content
-            RESPONSE_CONTENT: '[data-message-part-type="answer"]',
-
-            // Code blocks
-            CODE_BLOCK: '[data-testid="code-block"]',
-            CODE_LANGUAGE: '.devicon-html5-plain, span.text-xs',
-            CODE_CONTENT: 'code',
-
-            // Tables
-            TABLE: '[role="table"]',
-
-            // Copy button
-            COPY_BUTTON: '[aria-label="Copy to clipboard"]',
-
-            // Title
-            CONVERSATION_TITLE: '.min-h-5\\.5.truncate'
+            // Artifacts
+            ARTIFACT_CONTAINER: '[data-testid="artifact-container"], .artifact-block-cell'
         },
 
         TIMING: {
@@ -58,8 +46,8 @@
         },
 
         STYLES: {
-            BUTTON_PRIMARY: '#ff7000', // Mistral orange
-            BUTTON_HOVER: '#e66300',
+            BUTTON_PRIMARY: '#c76f3b', // Claude orange
+            BUTTON_HOVER: '#a55f2f',
             DARK_BG: '#1a1a1a',
             DARK_TEXT: '#fff',
             DARK_BORDER: '#444',
@@ -196,8 +184,6 @@
             .ns-select option { background: var(--ns-bg); color: white; padding: 8px; }
             /* Checkbox Styles */
             .ns-checkbox-container { z-index: 1000; display: flex; align-items: center; justify-content: center; }
-            .ms-auto .ns-checkbox-container { position: absolute; top: 10px; left: -35px; }
-            .flex-col .ns-checkbox-container { margin-bottom: 6px; }
             .ns-checkbox {
                 appearance: none; width: 20px; height: 20px; border: 2px solid var(--ns-green);
                 border-radius: 6px; cursor: pointer; background: rgba(0,0,0,0.3);
@@ -215,6 +201,10 @@
                 font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s;
             }
             .ns-bulk-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+            /* Claude Specific Overrides */
+            .user-message-container .ns-checkbox-container { position: absolute; left: -30px; top: 12px; }
+            .claude-response-container .ns-checkbox-container { position: absolute; left: -30px; top: 12px; }
         `;
         document.head.appendChild(style);
     }
@@ -259,7 +249,7 @@
                 </div>
                 <div class="ns-input-group">
                     <span class="ns-label">Filename Prefix</span>
-                    <input type="text" class="ns-input" id="ns-custom-name" placeholder="LeChat_Export">
+                    <input type="text" class="ns-input" id="ns-custom-name" placeholder="Claude_Export">
                 </div>
                 <div style="padding: 0 4px;">
                     <span class="ns-label">Naming Segment</span>
@@ -306,8 +296,22 @@
             container.prepend(checkboxContainer);
         };
 
-        document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE).forEach(msg => createCheckbox('user', msg));
-        document.querySelectorAll(CONFIG.SELECTORS.ASSISTANT_MESSAGE).forEach(msg => createCheckbox('assistant', msg));
+        const turns = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN);
+        turns.forEach(turn => {
+            const userMsg = turn.querySelector(CONFIG.SELECTORS.USER_MESSAGE);
+            const claudeResponse = turn.querySelector(CONFIG.SELECTORS.CLAUDE_RESPONSE);
+
+            if (userMsg) {
+                const target = userMsg.closest('.group') || userMsg;
+                target.classList.add('user-message-container');
+                createCheckbox('user', target);
+            }
+            if (claudeResponse) {
+                const target = claudeResponse.closest('.group') || claudeResponse;
+                target.classList.add('claude-response-container');
+                createCheckbox('assistant', target);
+            }
+        });
     }
 
     function setupObserver() {
@@ -322,8 +326,11 @@
     // ============================================================================
     const ExportService = {
         getConversationTitle() {
+            const manualTitle = document.getElementById('ns-manual-title')?.value;
+            if (manualTitle?.trim()) return manualTitle.trim();
+
             const titleEl = document.querySelector(CONFIG.SELECTORS.CONVERSATION_TITLE);
-            return titleEl?.textContent?.trim() || document.title || 'LeChat_Conversation';
+            return titleEl?.textContent?.trim() || document.title || 'Claude_Conversation';
         },
 
         generateFilename(customFilename, conversationTitle, format = 'kebab-case') {
@@ -365,31 +372,43 @@
             const dateStr = now.toLocaleString();
             const sourceUrl = window.location.href;
 
-            const allMessages = [...document.querySelectorAll(CONFIG.SELECTORS.MESSAGE_CONTAINER)];
+            const turns = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN);
             let userCount = 0;
             let aiCount = 0;
+            let artifactCount = 0;
             let selectedMessages = [];
 
-            allMessages.forEach((msg) => {
-                const checkbox = msg.querySelector('.ns-checkbox'); // Use the new class directly
-                if (checkbox && !checkbox.checked) return;
+            turns.forEach((turn) => {
+                const checkboxes = turn.querySelectorAll('.ns-checkbox');
+                checkboxes.forEach(cb => {
+                    if (!cb.checked) return;
 
-                selectedMessages.push(msg);
-                if (msg.matches(CONFIG.SELECTORS.USER_MESSAGE)) userCount++;
-                if (msg.matches(CONFIG.SELECTORS.ASSISTANT_MESSAGE)) aiCount++;
+                    const container = cb.closest('.user-message-container, .claude-response-container');
+                    if (container) {
+                        selectedMessages.push({
+                            type: cb.dataset.type,
+                            element: container,
+                            hasArtifact: !!container.querySelector(CONFIG.SELECTORS.ARTIFACT_CONTAINER)
+                        });
+
+                        if (cb.dataset.type === 'user') userCount++;
+                        if (cb.dataset.type === 'assistant') aiCount++;
+                        if (container.querySelector(CONFIG.SELECTORS.ARTIFACT_CONTAINER)) artifactCount++;
+                    }
+                });
             });
 
             const totalMessages = userCount + aiCount;
             const exchanges = selectedMessages.length;
 
             let markdown = `---
-> **🤖 Model:** Le Chat (Mistral)
+> **🤖 Model:** Claude
 >
 > **🌐 Date:** ${dateStr}
 >
-> **🌐 Source:** [Le Chat](${sourceUrl})
+> **🌐 Source:** [Claude Chat](${sourceUrl})
 >
-> **🏷️ Tags:** Le-Chat, Mistral, AI-Chat, Noosphere
+> **🏷️ Tags:** Claude, AI-Chat, Noosphere
 >
 > **📂 Artifacts:** [Internal](${sourceUrl})
 >
@@ -402,7 +421,7 @@
 >>
 >> **Total AI Messages:** ${aiCount}
 >>
->> **Total Artifacts:** 0
+>> **Total Artifacts:** ${artifactCount}
 ---
 
 ## Title:
@@ -414,30 +433,54 @@
 `;
 
             selectedMessages.forEach((msg, index) => {
-                const isUser = msg.matches(CONFIG.SELECTORS.USER_MESSAGE);
-                const isAssistant = msg.matches(CONFIG.SELECTORS.ASSISTANT_MESSAGE);
-
-                if (isUser) {
-                    const content = msg.querySelector(CONFIG.SELECTORS.USER_CONTENT);
+                if (msg.type === 'user') {
+                    const content = msg.element.querySelector(CONFIG.SELECTORS.USER_MESSAGE);
                     markdown += `#### Prompt - User 👤:\n\n`;
-                    markdown += `${content?.textContent?.trim() || ''}\n\n`;
+                    markdown += `${content?.innerText?.trim() || ''}\n\n`;
                 }
 
-                if (isAssistant) {
+                if (msg.type === 'assistant') {
                     markdown += `#### Response - Model 🤖:\n\n`;
 
-                    // Extract thinking process
-                    const thinkingEl = msg.querySelector(CONFIG.SELECTORS.THINKING_CONTAINER);
-                    if (thinkingEl) {
-                        markdown += "```\nThoughts:\n";
-                        markdown += `${thinkingEl.textContent?.trim() || ''}\n`;
-                        markdown += "```\n\n";
-                    }
+                    // 1. Extract all side blocks (Thoughts, Memory edits, tool usage summaries)
+                    const sideBlocks = msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK);
+                    sideBlocks.forEach(block => {
+                        // Title is usually in the button text
+                        const title = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_TITLE)?.innerText?.trim() || 'Internal Process';
+                        const content = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_CONTENT)?.innerText?.trim();
 
-                    // Extract main response
-                    const responseEl = msg.querySelector(CONFIG.SELECTORS.RESPONSE_CONTENT);
-                    if (responseEl) {
-                        markdown += `${responseEl.textContent?.trim() || ''}\n\n`;
+                        if (content) {
+                            // Use blockquotes for internal processes to distinguish from the main response
+                            // but keep them reasonably readable
+                            markdown += `> **[${title}]**\n> \n`;
+                            markdown += `> ${content.replace(/\n/g, '\n> ')}\n\n`;
+                        }
+                    });
+
+                    // 2. Extract main response
+                    const claudeResponse = msg.element.querySelector(CONFIG.SELECTORS.CLAUDE_RESPONSE);
+                    if (claudeResponse) {
+                        // Find all standard-markdown elements that are NOT inside a side block
+                        // to avoid duplication.
+                        const mainContents = Array.from(claudeResponse.querySelectorAll('.standard-markdown'))
+                            .filter(el => !el.closest(CONFIG.SELECTORS.SIDE_BLOCK));
+
+                        if (mainContents.length > 0) {
+                            mainContents.forEach(contentEl => {
+                                const text = contentEl.innerText?.trim();
+                                if (text) {
+                                    markdown += `${text}\n\n`;
+                                }
+                            });
+                        } else {
+                            // Fallback: if no isolated markdown blocks found, try to get text from the whole response 
+                            // minus the side blocks' text
+                            let fullText = claudeResponse.innerText;
+                            sideBlocks.forEach(sb => {
+                                fullText = fullText.replace(sb.innerText, '');
+                            });
+                            markdown += `${fullText.trim()}\n\n`;
+                        }
                     }
                 }
 
@@ -475,15 +518,16 @@
         },
 
         execute(exportMode, customFilename) {
-            const messages = document.querySelectorAll(CONFIG.SELECTORS.MESSAGE_CONTAINER);
-            if (!messages.length) {
+            const turns = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN);
+            if (!turns.length) {
                 Utils.createNotification('❌ No messages found');
                 return;
             }
 
             const conversationTitle = this.getConversationTitle();
             const markdown = this.buildMarkdown(conversationTitle);
-            const filename = this.generateFilename(customFilename, conversationTitle);
+            const namingFormat = document.getElementById('ns-naming-format')?.value || 'kebab-case';
+            const filename = this.generateFilename(customFilename, conversationTitle, namingFormat);
 
             if (exportMode === 'clipboard') {
                 this.exportToClipboard(markdown);
@@ -497,19 +541,18 @@
     // MAIN INITIALIZATION
     // ============================================================================
     function init() {
-        console.log('[Noosphere] Initializing LeChat Exporter with Neural Console...');
+        console.log('[Noosphere] Initializing Claude Exporter with Neural Console...');
 
         // Ensure no old UI is present
-        document.getElementById(CONFIG.BUTTON_ID)?.remove();
-        document.getElementById(CONFIG.DROPDOWN_ID)?.remove();
+        document.getElementById('claude-export-btn')?.remove();
+        document.getElementById('claude-export-dropdown')?.remove();
 
         injectStyles();
         createMenu();
         injectCheckboxes();
         setupObserver();
 
-        // ** THIS IS THE CRITICAL RE-WIRING STEP **
-        // Connect the new UI buttons to the original, stable ExportService.
+        // Connect UI buttons to ExportService
         document.getElementById('ns-copy-md').onclick = () => {
             const customFilename = document.getElementById('ns-custom-name')?.value;
             ExportService.execute('clipboard', customFilename);
@@ -520,8 +563,6 @@
             ExportService.execute('file', customFilename);
         };
 
-        // The JSON button is new. For now, it will just copy the Markdown.
-        // A future task could be to implement a buildJSON method in ExportService.
         document.getElementById('ns-copy-json').onclick = () => {
             const customFilename = document.getElementById('ns-custom-name')?.value;
             Utils.createNotification('JSON export not yet implemented. Copying Markdown instead.');
@@ -545,7 +586,7 @@
         document.getElementById('ns-select-ai').onclick = () => bulkSelect('ai');
         document.getElementById('ns-select-none').onclick = () => bulkSelect('none');
 
-        console.log('[Noosphere] Neural Console is live.');
+        console.log('[Noosphere] Neural Console is live on Claude.');
     }
 
     // Run on page load

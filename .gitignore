@@ -29,3 +29,5 @@ agents/implementation-plans
 .env
 
 reference-html-dom
+
+.shellcheck/
