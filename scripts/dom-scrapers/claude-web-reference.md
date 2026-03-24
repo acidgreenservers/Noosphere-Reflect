@@ -23,6 +23,11 @@
 | `.font-claude-response` | Claude responses | 13 | Best option |
 | `[data-test-render-count]` | Message turns | 26 | Groups pairs |
 | `.standard-markdown` | Content area | 31 | Text/markup |
+<<<<<<< HEAD
+=======
+| `button.group\/status` | Thought header | - | Claude 3.7+ Reasoning |
+| `.flex-col.font-ui` | Thought container | - | Multi-step reasoning |
+>>>>>>> fix/update-claude-scraper-script-5768348324
 | `pre.code-block__code` | Code blocks | 219 | Formatted code |
 | `pre` | All code blocks | 219 | Generic fallback |
 | `[class*="language-"]` | Language tags | 205 | Code language |

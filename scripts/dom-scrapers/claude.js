@@ -25,6 +25,13 @@
             SIDE_BLOCK: '.border-border-300.rounded-lg',
             SIDE_BLOCK_TITLE: 'button',
             SIDE_BLOCK_CONTENT: '.standard-markdown',
+<<<<<<< HEAD
+=======
+            
+            // New "Thinking" blocks (Claude 3.7+ Reasoning)
+            THOUGHT_HEADER: 'button.group\\/status',
+            THOUGHT_CONTENT_CONTAINER: '.flex-col.font-ui',
+>>>>>>> fix/update-claude-scraper-script-5768348324
 
             // UI elements
             COPY_BUTTON: '[data-testid="action-bar-copy"]',
@@ -442,6 +449,7 @@
                 if (msg.type === 'assistant') {
                     markdown += `#### Response - Model 🤖:\n\n`;
 
+<<<<<<< HEAD
                     // 1. Extract all side blocks (Thoughts, Memory edits, tool usage summaries)
                     const sideBlocks = msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK);
                     sideBlocks.forEach((block, sbIndex) => {
@@ -453,6 +461,64 @@
                             // The first side block is almost always the Thought process in Claude
                             // We also check for 'thought' in the title as a fallback
                             const isThought = sbIndex === 0 || title.toLowerCase().includes('thought');
+=======
+                    // 1. Extract new style "Thinking / Thoughts" (Reasoning steps)
+                    const thoughtHeader = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_HEADER);
+                    const thoughtContent = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_CONTENT_CONTAINER);
+
+                    if (thoughtHeader || thoughtContent) {
+                        // Extract title from header (e.g., "Architected interactive reference tool...")
+                        const statusTitle = thoughtHeader?.querySelector('.truncate')?.innerText?.trim() 
+                                         || thoughtHeader?.innerText?.trim() 
+                                         || 'Thinking Process';
+                        
+                        // Extract all markdown steps within the thinking container
+                        let reasoningText = '';
+                        if (thoughtContent) {
+                            // Claude 3.7+ Reasoning Steps
+                            const stepContainers = thoughtContent.querySelectorAll('.flex.flex-col.shrink-0');
+                            const processedSteps = [];
+                            
+                            stepContainers.forEach(container => {
+                                const markdown = container.querySelector('.standard-markdown');
+                                if (markdown) {
+                                    const text = markdown.innerText?.trim();
+                                    if (text) {
+                                        // Prefix with bullet and indent subsequent lines
+                                        processedSteps.push(`- ${text.replace(/\n/g, '\n  ')}`);
+                                    }
+                                } else {
+                                    // Check for status labels like "Done" (text-text-300)
+                                    const statusLabel = container.querySelector('.text-text-300')?.innerText?.trim();
+                                    if (statusLabel) {
+                                        processedSteps.push(`- ${statusLabel}`);
+                                    }
+                                }
+                            });
+                            
+                            reasoningText = processedSteps.join('\n\n');
+                        }
+
+                        if (reasoningText || statusTitle) {
+                            markdown += "```text\n";
+                            markdown += `Thoughts:\n${statusTitle}\n\n${reasoningText}\n`;
+                            markdown += "```\n\n";
+                        }
+                    }
+
+                    // 2. Extract legacy side blocks (Thoughts, Memory edits, tool usage summaries)
+                    // We skip the first one if we already captured thoughts above to avoid duplication
+                    const sideBlocks = Array.from(msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK));
+                    sideBlocks.forEach((block, sbIndex) => {
+                        // Title is usually in the button text
+                        const title = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_TITLE)?.innerText?.trim() || 'Internal Process';
+                        const content = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_CONTENT)?.innerText?.trim();
+
+                        if (content) {
+                            // If we already added new-style thoughts, and this looks like a thought, skip it
+                            const isThought = sbIndex === 0 || title.toLowerCase().includes('thought');
+                            if (isThought && (thoughtHeader || thoughtContent)) return;
+>>>>>>> fix/update-claude-scraper-script-5768348324
 
                             if (isThought && !title.toLowerCase().includes('memory')) {
                                 // Align with Universal Export Standard: Thoughts: header in triple backticks
