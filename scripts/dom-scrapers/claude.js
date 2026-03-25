@@ -25,13 +25,10 @@
             SIDE_BLOCK: '.border-border-300.rounded-lg',
             SIDE_BLOCK_TITLE: 'button',
             SIDE_BLOCK_CONTENT: '.standard-markdown',
-<<<<<<< HEAD
-=======
             
             // New "Thinking" blocks (Claude 3.7+ Reasoning)
             THOUGHT_HEADER: 'button.group\\/status',
             THOUGHT_CONTENT_CONTAINER: '.flex-col.font-ui',
->>>>>>> fix/update-claude-scraper-script-5768348324
 
             // UI elements
             COPY_BUTTON: '[data-testid="action-bar-copy"]',
@@ -449,19 +446,6 @@
                 if (msg.type === 'assistant') {
                     markdown += `#### Response - Model 🤖:\n\n`;
 
-<<<<<<< HEAD
-                    // 1. Extract all side blocks (Thoughts, Memory edits, tool usage summaries)
-                    const sideBlocks = msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK);
-                    sideBlocks.forEach((block, sbIndex) => {
-                        // Title is usually in the button text
-                        const title = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_TITLE)?.innerText?.trim() || 'Internal Process';
-                        const content = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_CONTENT)?.innerText?.trim();
-
-                        if (content) {
-                            // The first side block is almost always the Thought process in Claude
-                            // We also check for 'thought' in the title as a fallback
-                            const isThought = sbIndex === 0 || title.toLowerCase().includes('thought');
-=======
                     // 1. Extract new style "Thinking / Thoughts" (Reasoning steps)
                     const thoughtHeader = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_HEADER);
                     const thoughtContent = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_CONTENT_CONTAINER);
@@ -518,7 +502,6 @@
                             // If we already added new-style thoughts, and this looks like a thought, skip it
                             const isThought = sbIndex === 0 || title.toLowerCase().includes('thought');
                             if (isThought && (thoughtHeader || thoughtContent)) return;
->>>>>>> fix/update-claude-scraper-script-5768348324
 
                             if (isThought && !title.toLowerCase().includes('memory')) {
                                 // Align with Universal Export Standard: Thoughts: header in triple backticks

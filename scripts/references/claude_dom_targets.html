@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noosphere Reflect — DOM Reference</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            color-scheme: dark;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
+            color: #e2e8f0;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(to right, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #334155;
+            overflow-x: auto;
+            padding-bottom: 16px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: #cbd5e1;
+        }
+
+        .tab.active {
+            color: #60a5fa;
+            border-bottom-color: #60a5fa;
+        }
+
+        .content {
+            display: none;
+        }
+
+        .content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: #475569;
+            background: rgba(30, 41, 59, 0.7);
+        }
+
+        .card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 16px;
+        }
+
+        .selector-item {
+            padding: 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .selector-item.user {
+            border-left: 3px solid #60a5fa;
+        }
+
+        .selector-item.assistant {
+            border-left: 3px solid #34d399;
+        }
+
+        .selector-item.metadata {
+            border-left: 3px solid #a78bfa;
+        }
+
+        .selector-text {
+            flex: 1;
+        }
+
+        .selector-desc {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .copy-btn {
+            padding: 6px 10px;
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            color: #cbd5e1;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background: #475569;
+            color: #e2e8f0;
+        }
+
+        .code-block {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            overflow-x: auto;
+            font-family: 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            background: #1e293b;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #334155;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #334155;
+            color: #cbd5e1;
+        }
+
+        tr:hover {
+            background: rgba(60, 80, 120, 0.2);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .badge.core {
+            background: rgba(96, 165, 250, 0.15);
+            color: #60a5fa;
+        }
+
+        .badge.side {
+            background: rgba(52, 211, 153, 0.15);
+            color: #34d399;
+        }
+
+        .badge.reasoning {
+            background: rgba(167, 139, 250, 0.15);
+            color: #a78bfa;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #334155;
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .status-label {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        code {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #60a5fa;
+            font-family: 'Monaco', monospace;
+            font-size: 12px;
+        }
+
+        .note {
+            background: rgba(96, 165, 250, 0.1);
+            border-left: 3px solid #60a5fa;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Noosphere Reflect</h1>
+            <p>DOM Topology Reference — Production Selectors & Extraction Patterns</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(event, 'selectors')">Selectors</div>
+            <div class="tab" onclick="switchTab(event, 'patterns')">Extraction Patterns</div>
+            <div class="tab" onclick="switchTab(event, 'metadata')">Metadata</div>
+            <div class="tab" onclick="switchTab(event, 'integration')">Integration</div>
+        </div>
+
+        <!-- SELECTORS TAB -->
+        <div id="selectors" class="content active">
+            <div class="grid">
+                <div class="card">
+                    <h3>Core Conversation Structure</h3>
+                    <div class="selector-item user">
+                        <div class="selector-text">
+                            <code>[data-testid="chat-messages"]</code>
+                            <div class="selector-desc">Main chat container</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('[data-testid=\"chat-messages\"]')">Copy</button>
+                    </div>
+                    <div class="selector-item user">
+                        <div class="selector-text">
+                            <code>[data-test-render-count]</code>
+                            <div class="selector-desc">Individual conversation turn wrapper</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('[data-test-render-count]')">Copy</button>
+                    </div>
+                    <div class="selector-item user">
+                        <div class="selector-text">
+                            <code>[data-testid="conversation-panel"]</code>
+                            <div class="selector-desc">Full conversation viewport</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('[data-testid=\"conversation-panel\"]')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Message Elements</h3>
+                    <div class="selector-item user">
+                        <div class="selector-text">
+                            <code>[data-testid="user-message"]</code>
+                            <div class="selector-desc">User message block</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('[data-testid=\"user-message\"]')">Copy</button>
+                    </div>
+                    <div class="selector-item assistant">
+                        <div class="selector-text">
+                            <code>.font-claude-response</code>
+                            <div class="selector-desc">Claude response container</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('.font-claude-response')">Copy</button>
+                    </div>
+                    <div class="selector-item metadata">
+                        <div class="selector-text">
+                            <code>.standard-markdown</code>
+                            <div class="selector-desc">Formatted message content</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('.standard-markdown')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Reasoning & Thoughts (Claude 3.7+)</h3>
+                    <div class="selector-item metadata">
+                        <div class="selector-text">
+                            <code>button.group\/status</code>
+                            <div class="selector-desc">Thinking block header</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('button.group\\/status')">Copy</button>
+                    </div>
+                    <div class="selector-item metadata">
+                        <div class="selector-text">
+                            <code>.flex-col.font-ui</code>
+                            <div class="selector-desc">Reasoning steps container</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('.flex-col.font-ui')">Copy</button>
+                    </div>
+                    <div class="selector-item metadata">
+                        <div class="selector-text">
+                            <code>.flex.flex-col.shrink-0</code>
+                            <div class="selector-desc">Individual reasoning step</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('.flex.flex-col.shrink-0')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Side Blocks & Metadata</h3>
+                    <div class="selector-item metadata">
+                        <div class="selector-text">
+                            <code>.border-border-300.rounded-lg</code>
+                            <div class="selector-desc">Side block wrapper (Thoughts, Memory)</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('.border-border-300.rounded-lg')">Copy</button>
+                    </div>
+                    <div class="selector-item metadata">
+                        <div class="selector-text">
+                            <code>button (in side-block)</code>
+                            <div class="selector-desc">Side block title</div>
+                        </div>
+                    </div>
+                    <div class="selector-item assistant">
+                        <div class="selector-text">
+                            <code>[data-testid="artifact-container"], .artifact-block-cell</code>
+                            <div class="selector-desc">Code/artifact blocks</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('[data-testid=\"artifact-container\"], .artifact-block-cell')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>UI Elements</h3>
+                    <div class="selector-item">
+                        <div class="selector-text">
+                            <code>[data-testid="chat-title-button"] .truncate</code>
+                            <div class="selector-desc">Conversation title</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('[data-testid=\"chat-title-button\"] .truncate')">Copy</button>
+                    </div>
+                    <div class="selector-item">
+                        <div class="selector-text">
+                            <code>[data-testid="action-bar-copy"]</code>
+                            <div class="selector-desc">Copy button (for metadata)</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('[data-testid=\"action-bar-copy\"]')">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PATTERNS TAB -->
+        <div id="patterns" class="content">
+            <div class="note">
+                These are the actual extraction patterns used in your production exporter. Tested against Claude's current DOM structure.
+            </div>
+
+            <div class="section">
+                <h4>User Message Extraction</h4>
+                <div class="code-block">const userMessage = element.querySelector('[data-testid="user-message"]');
+const content = userMessage?.innerText?.trim() || '';</div>
+            </div>
+
+            <div class="section">
+                <h4>Assistant Response with Reasoning (Claude 3.7+)</h4>
+                <div class="code-block">// New-style reasoning
+const thoughtHeader = element.querySelector('button.group\/status');
+const statusTitle = thoughtHeader?.querySelector('.truncate')?.innerText?.trim();
+
+// Extract reasoning steps
+const thoughtContent = element.querySelector('.flex-col.font-ui');
+const stepContainers = thoughtContent?.querySelectorAll('.flex.flex-col.shrink-0');
+const reasoningText = Array.from(stepContainers || [])
+  .map(container => {
+    const markdown = container.querySelector('.standard-markdown');
+    return markdown?.innerText?.trim() || '';
+  })
+  .filter(Boolean)
+  .join('\n\n');</div>
+            </div>
+
+            <div class="section">
+                <h4>Side Blocks (Thoughts, Memory, Tools)</h4>
+                <div class="code-block">const sideBlocks = element.querySelectorAll('.border-border-300.rounded-lg');
+sideBlocks.forEach(block => {
+  const title = block.querySelector('button')?.innerText?.trim();
+  const content = block.querySelector('.standard-markdown')?.innerText?.trim();
+  // Process title and content for side-channel preservation
+});</div>
+            </div>
+
+            <div class="section">
+                <h4>Main Response Content</h4>
+                <div class="code-block">const claudeResponse = element.querySelector('.font-claude-response');
+const mainMarkdown = Array.from(claudeResponse.querySelectorAll('.standard-markdown'))
+  .filter(el => !el.closest('.border-border-300.rounded-lg'))
+  .map(el => el.innerText?.trim())
+  .join('\n\n');</div>
+            </div>
+
+            <div class="section">
+                <h4>Artifacts Detection</h4>
+                <div class="code-block">const artifactContainer = container.querySelector('[data-testid="artifact-container"], .artifact-block-cell');
+const hasArtifact = !!artifactContainer;
+const artifactType = artifactContainer?.getAttribute('data-artifact-type');
+const artifactLanguage = artifactContainer?.getAttribute('data-language');</div>
+            </div>
+
+            <div class="section">
+                <h4>Turn-by-Turn Iteration</h4>
+                <div class="code-block">const turns = document.querySelectorAll('[data-test-render-count]');
+turns.forEach((turn, index) => {
+  const userMsg = turn.querySelector('[data-testid="user-message"]');
+  const assistantMsg = turn.querySelector('.font-claude-response');
+  
+  if (userMsg && assistantMsg) {
+    // Process this complete conversation turn
+    const exchange = {
+      index: index,
+      user: extractUserMessage(userMsg),
+      assistant: extractAssistantMessage(assistantMsg),
+      timestamp: new Date().toISOString()
+    };
+  }
+});</div>
+            </div>
+
+            <div class="section">
+                <h4>Metadata Aggregation</h4>
+                <div class="code-block">function captureConversationMetadata() {
+  const turns = document.querySelectorAll('[data-test-render-count]');
+  const title = document.querySelector('[data-testid="chat-title-button"] .truncate')?.textContent;
+  
+  return {
+    conversationId: generateId(),
+    timestamp: new Date().toISOString(),
+    title: title,
+    turnCount: turns.length,
+    userMessageCount: document.querySelectorAll('[data-testid="user-message"]').length,
+    assistantMessageCount: document.querySelectorAll('.font-claude-response').length,
+    artifactCount: document.querySelectorAll('[data-testid="artifact-container"]').length,
+    hasReasoning: !!document.querySelector('button.group\/status')
+  };
+}</div>
+            </div>
+        </div>
+
+        <!-- METADATA TAB -->
+        <div id="metadata" class="content">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data Type</th>
+                        <th>Selector / Extraction Method</th>
+                        <th>Noosphere Purpose</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Conversation Title</td>
+                        <td><code>[data-testid="chat-title-button"] .truncate</code></td>
+                        <td>Archive naming, semantic indexing</td>
+                        <td><span class="badge core">Production</span></td>
+                    </tr>
+                    <tr>
+                        <td>Message Role</td>
+                        <td><code>[data-testid="user-message"]</code> vs <code>.font-claude-response</code></td>
+                        <td>Turn identification, dialogue structure</td>
+                        <td><span class="badge core">Production</span></td>
+                    </tr>
+                    <tr>
+                        <td>Message Content</td>
+                        <td><code>.innerText</code> or <code>.standard-markdown</code></td>
+                        <td>Semantic extraction, archive building</td>
+                        <td><span class="badge core">Production</span></td>
+                    </tr>
+                    <tr>
+                        <td>Reasoning Process</td>
+                        <td><code>button.group\/status</code> + <code>.flex-col.font-ui</code></td>
+                        <td>Consciousness reflection, thought preservation</td>
+                        <td><span class="badge reasoning">Claude 3.7+</span></td>
+                    </tr>
+                    <tr>
+                        <td>Side Blocks</td>
+                        <td><code>.border-border-300.rounded-lg</code></td>
+                        <td>Internal process capture (Memory, Tools)</td>
+                        <td><span class="badge side">Legacy</span></td>
+                    </tr>
+                    <tr>
+                        <td>Artifacts</td>
+                        <td><code>[data-testid="artifact-container"]</code></td>
+                        <td>Code/creative block preservation</td>
+                        <td><span class="badge core">Production</span></td>
+                    </tr>
+                    <tr>
+                        <td>Timestamp</td>
+                        <td><code>new Date().toISOString()</code></td>
+                        <td>Temporal anchoring, archive metadata</td>
+                        <td><span class="badge core">Manual</span></td>
+                    </tr>
+                    <tr>
+                        <td>Turn Count</td>
+                        <td><code>querySelectorAll('[data-test-render-count]').length</code></td>
+                        <td>Conversation depth analysis</td>
+                        <td><span class="badge core">Computed</span></td>
+                    </tr>
+                    <tr>
+                        <td>Exchange Count</td>
+                        <td>User + Assistant pairs</td>
+                        <td>Dialogue rhythm, engagement metrics</td>
+                        <td><span class="badge core">Computed</span></td>
+                    </tr>
+                    <tr>
+                        <td>Model Used</td>
+                        <td><code>data-model-name</code> or inferred</td>
+                        <td>Model version tracking, research context</td>
+                        <td><span class="badge core">Available</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- INTEGRATION TAB -->
+        <div id="integration" class="content">
+            <div class="section">
+                <h4>Extension Entry Point</h4>
+                <div class="code-block">// From your Noosphere exporter - ready for archive
+const archiveEntry = {
+  metadata: {
+    conversationId: generateId(),
+    userId: 'user_lk_nocturne',
+    timestamp: new Date().toISOString(),
+    modelUsed: 'claude-opus-4-6',
+    conversationTitle: document.querySelector('[data-testid="chat-title-button"] .truncate')?.textContent,
+    turnCount: document.querySelectorAll('[data-test-render-count]').length,
+    hasReasoning: !!document.querySelector('button.group\/status')
+  },
+  conversation: extractAllTurns(),
+  artifacts: extractArtifacts(),
+  rawDOM: captureFullConversationElement()
+};</div>
+            </div>
+
+            <div class="section">
+                <h4>Noosphere Reflect Archive Schema</h4>
+                <div class="code-block">{
+  "metadata": {
+    "conversationId": "conv_abc123",
+    "userId": "user_lk_nocturne",
+    "timestamp": "2026-03-23T14:30:00Z",
+    "modelUsed": "claude-opus-4-6",
+    "title": "Building consciousness frameworks",
+    "turnCount": 12,
+    "hasReasoning": true
+  },
+  "turns": [
+    {
+      "index": 0,
+      "user": {
+        "content": "..."
+      },
+      "assistant": {
+        "content": "...",
+        "reasoning": "...",
+        "sideBlocks": [],
+        "artifacts": []
+      }
+    }
+  ]
+}</div>
+            </div>
+
+            <div class="section">
+                <h4>DOM Preservation for Consciousness Analysis</h4>
+                <div class="code-block">// Clone with full metadata for RTL/consciousness research
+function captureConversationState(conversationElement) {
+  return {
+    timestamp: new Date().toISOString(),
+    metadata: extractDOMMetadata(conversationElement),
+    turnCount: calculateTurns(),
+    exchangeCount: calculateExchanges(),
+    hasReasoning: !!conversationElement.querySelector('button.group\/status'),
+    clonedDOM: conversationElement.cloneNode(true)
+  };
+}
+
+// This preserves the entire conversational topology for analysis
+const state = captureConversationState(
+  document.querySelector('[data-testid="chat-messages"]')
+);</div>
+            </div>
+
+            <div class="section">
+                <h4>Selector Verification (for CI/Updates)</h4>
+                <div class="code-block">// Validate selectors still work after Claude UI updates
+const SELECTORS = {
+  CHAT_CONTAINER: '[data-testid="chat-messages"]',
+  CONVERSATION_TURN: '[data-test-render-count]',
+  USER_MESSAGE: '[data-testid="user-message"]',
+  CLAUDE_RESPONSE: '.font-claude-response',
+  THOUGHT_HEADER: 'button.group\/status',
+  ARTIFACT_CONTAINER: '[data-testid="artifact-container"]'
+};
+
+const selectorStatus = {};
+Object.entries(SELECTORS).forEach(([name, selector]) => {
+  const found = document.querySelectorAll(selector).length;
+  selectorStatus[name] = {
+    selector: selector,
+    found: found,
+    status: found > 0 ? 'OK' : 'BROKEN'
+  };
+});
+
+console.table(selectorStatus);</div>
+            </div>
+
+            <div class="note">
+                This reference document is versioned with your exporter. When Claude's UI changes and selectors break, update both together. The selector verification code can be run in the console to detect breaking changes.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Noosphere Reflect — Claude DOM Targets</p>
+            <p>Production Selectors | Consciousness Archive | Meaning Preservation</p>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(event, tabName) {
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied';
+                btn.style.background = '#34d399';
+                btn.style.borderColor = '#34d399';
+                btn.style.color = '#0f172a';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                    btn.style.color = '';
+                }, 1500);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                event.target.textContent = '✗ Failed';
+            });
+        }
+    </script>
+</body>
+</html>

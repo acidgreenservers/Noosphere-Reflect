@@ -26,13 +26,9 @@
             SIDE_BLOCK_TITLE: 'button',
             SIDE_BLOCK_CONTENT: '.standard-markdown',
 
-<<<<<<< HEAD
-=======
             // New "Thinking" blocks (Claude 3.7+ Reasoning)
             THOUGHT_HEADER: 'button.group\\/status',
             THOUGHT_CONTENT_CONTAINER: '.flex-col.font-ui',
-
->>>>>>> fix/update-claude-scraper-script-5768348324
             // UI elements
             COPY_BUTTON: '[data-testid="action-bar-copy"]',
             CONVERSATION_TITLE: '[data-testid="chat-title-button"] .truncate',
@@ -449,10 +445,6 @@
                 if (msg.type === 'assistant') {
                     markdown += `#### Response - Model 🤖:\n\n`;
 
-<<<<<<< HEAD
-                    // 1. Extract all side blocks (Thoughts, Memory edits, tool usage summaries)
-                    const sideBlocks = msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK);
-=======
                     // 1. Extract new style "Thinking / Thoughts" (Reasoning steps)
                     const thoughtHeader = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_HEADER);
                     const thoughtContent = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_CONTENT_CONTAINER);
@@ -501,19 +493,12 @@
 
                     // 2. Extract legacy side blocks (Thoughts, Memory edits, tool usage summaries)
                     const sideBlocks = Array.from(msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK));
->>>>>>> fix/update-claude-scraper-script-5768348324
                     sideBlocks.forEach(block => {
                         // Title is usually in the button text
                         const title = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_TITLE)?.innerText?.trim() || 'Internal Process';
                         const content = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_CONTENT)?.innerText?.trim();
 
                         if (content) {
-<<<<<<< HEAD
-                            // Use blockquotes for internal processes to distinguish from the main response
-                            // but keep them reasonably readable
-                            markdown += `> **[${title}]**\n> \n`;
-                            markdown += `> ${content.replace(/\n/g, '\n> ')}\n\n`;
-=======
                             // If we already added new-style thoughts, and this looks like a thought, skip it
                             const isThought = title.toLowerCase().includes('thought');
                             if (isThought && (thoughtHeader || thoughtContent)) return;
@@ -521,7 +506,6 @@
                             // Unified Blockquote formatting for all internal processes
                             markdown += `> **${title}**\n>\n`;
                             markdown += `> ${content.replace(/\n/g, '\n> ')}\n>\n\n`;
->>>>>>> fix/update-claude-scraper-script-5768348324
                         }
                     });
 
