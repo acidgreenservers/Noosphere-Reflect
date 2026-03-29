@@ -29,14 +29,17 @@ export const processArtifactUpload = (
     const updatedMessages = [...currentMessages];
     const finalArtifacts = [...currentArtifacts];
 
-    // Step 1: Build filename -> message indices map (O(M) where M = messages)
+    // Pre-calculate lowercased message contents to avoid redundant O(N) operations in loops
+    const messageContents = currentMessages.map(m => m.content.toLowerCase());
+
+    // Step 1: Build filename -> message indices map
     const extractedNames = extractArtifactNamesFromChat(currentMessages);
     const filenameToMessageIndices = new Map<string, number[]>();
 
     extractedNames.forEach(name => {
         const normalizedName = name.toLowerCase();
-        currentMessages.forEach((msg, idx) => {
-            if (msg.content.toLowerCase().includes(normalizedName)) {
+        messageContents.forEach((content, idx) => {
+            if (content.includes(normalizedName)) {
                 if (!filenameToMessageIndices.has(normalizedName)) {
                     filenameToMessageIndices.set(normalizedName, []);
                 }
@@ -98,13 +101,13 @@ export const processArtifactUpload = (
             const normalizedFileName = artifact.fileName.toLowerCase();
             const searchableName = normalizedFileName.replace(/\.[^/.]+$/, ""); // name without extension
 
-            updatedMessages.forEach((msg, idx) => {
-                const content = msg.content.toLowerCase();
+            messageContents.forEach((content, idx) => {
                 // We check for the full filename OR the base name (if unique enough > 4 chars)
                 const hasFullMatch = content.includes(normalizedFileName);
                 const hasBaseMatch = searchableName.length > 4 && content.includes(searchableName);
 
                 if (hasFullMatch || hasBaseMatch) {
+                    const msg = updatedMessages[idx];
                     const msgArtifacts = msg.artifacts || [];
                     if (!msgArtifacts.some(a => a.id === artifact.id)) {
                         updatedMessages[idx] = {
