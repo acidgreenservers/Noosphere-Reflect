@@ -10,6 +10,7 @@ interface MessageEditorModalProps {
     onClose: () => void;
     onSave: (updatedContent: string) => Promise<void>;
     onCreateDocument?: (fileName: string, content: string) => void;
+    onAttachArtifact?: (artifact: ConversationArtifact) => void;
     onRemoveArtifact?: (artifactId: string) => void;
     isMobile?: boolean;
 }
@@ -21,6 +22,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
     onClose,
     onSave,
     onCreateDocument,
+    onAttachArtifact,
     onRemoveArtifact,
     isMobile = false
 }) => {
@@ -28,6 +30,47 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [isCreateDocModalOpen, setIsCreateDocModalOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const handlePaste = async (e: React.ClipboardEvent) => {
+        const items = e.clipboardData?.items;
+        if (!items || !onCreateDocument) return;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (!file) continue;
+
+                e.preventDefault(); // Prevent pasting binary data as text if any
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64 = (event.target?.result as string).split(',')[1];
+                    const fileName = `pasted-image-${Date.now()}.${file.type.split('/')[1]}`;
+
+                    // Use a special internal prop or logic to handle image artifacts
+                    // For now, we'll reuse onCreateDocument if it supports different mimetypes
+                    // but we need to ensure the parent knows it's an image.
+                    // Let's create a custom artifact object and pass it.
+                    const artifact: ConversationArtifact = {
+                        id: crypto.randomUUID(),
+                        fileName,
+                        fileSize: file.size,
+                        mimeType: file.type,
+                        fileData: base64,
+                        uploadedAt: new Date().toISOString(),
+                        insertedAfterMessageIndex: messageIndex
+                    };
+
+                    if (onAttachArtifact) {
+                        onAttachArtifact(artifact);
+                    } else {
+                        console.warn('No onAttachArtifact handler provided for pasted image');
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    };
 
     // Reset content when modal opens with a new message
     useEffect(() => {
@@ -150,8 +193,9 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                             value={editedContent}
                             onChange={(e) => setEditedContent(e.target.value)}
                             onKeyDown={handleKeyDown}
+                            onPaste={handlePaste}
                             className="w-full h-full p-3 bg-gray-800 text-gray-100 rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-sm font-mono"
-                            placeholder="Edit your message..."
+                            placeholder="Edit your message... (Tip: You can paste images from clipboard)"
                             disabled={isSaving}
                             autoFocus
                         />

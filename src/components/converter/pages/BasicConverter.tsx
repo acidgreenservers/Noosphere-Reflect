@@ -1268,6 +1268,7 @@ const BasicConverter: React.FC = () => {
                             // Attach the artifact to the message
                             handleAttachToMessageWithArtifact(editingMessageIndex!, artifact);
                         }}
+                        onAttachArtifact={(artifact) => handleAttachToMessageWithArtifact(editingMessageIndex!, artifact)}
                         onRemoveArtifact={(artifactId) => handleRemoveMessageArtifact(editingMessageIndex!, artifactId)}
                     />
                 )

@@ -5,15 +5,109 @@ import { validateReflectFile } from '../utils/reflectValidator';
 import { parseChat } from './converterService';
 
 const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 const STORE_NAME = 'sessions';
 const SETTINGS_STORE_NAME = 'settings';
 const MEMORY_STORE_NAME = 'memories';
 const PROMPT_STORE_NAME = 'prompts';
 const FOLDERS_STORE_NAME = 'folders';
+const ARTIFACT_STORE_NAME = 'artifactContents';
 
 class StorageService {
     private db: IDBDatabase | null = null;
+
+    /**
+     * Extracts and saves Base64 artifact data to the separate artifactContents store.
+     * Keeps the session object in the sessions store lightweight.
+     * Note: This method DOES NOT mutate the original artifacts in the session object.
+     */
+    private saveArtifacts(session: SavedChatSession, transaction: IDBTransaction): void {
+        const artifactStore = transaction.objectStore(ARTIFACT_STORE_NAME);
+
+        const processArtifacts = (artifacts: ConversationArtifact[] | undefined) => {
+            if (!artifacts) return;
+            artifacts.forEach(artifact => {
+                if (artifact.fileData) {
+                    // Save Base64 data to separate store
+                    artifactStore.put({
+                        id: artifact.id,
+                        sessionId: session.id,
+                        fileData: artifact.fileData
+                    });
+                }
+            });
+        };
+
+        // Extract and save session-level artifacts
+        processArtifacts(session.metadata?.artifacts);
+
+        // Extract and save message-level artifacts
+        session.chatData?.messages.forEach(msg => {
+            processArtifacts(msg.artifacts);
+        });
+    }
+
+    /**
+     * Creates a lightweight clone of the session object for storage,
+     * removing heavy fileData from artifacts.
+     */
+    private createLightweightClone(session: SavedChatSession): SavedChatSession {
+        // Deep clone the session to avoid mutating the original
+        const clone = JSON.parse(JSON.stringify(session)) as SavedChatSession;
+
+        const removeFileData = (artifacts: ConversationArtifact[] | undefined) => {
+            if (!artifacts) return;
+            artifacts.forEach(artifact => {
+                delete artifact.fileData;
+            });
+        };
+
+        removeFileData(clone.metadata?.artifacts);
+        clone.chatData?.messages.forEach(msg => {
+            removeFileData(msg.artifacts);
+        });
+
+        return clone;
+    }
+
+    /**
+     * Re-attaches Base64 artifact data to a session by fetching it from artifactContents.
+     */
+    private async attachArtifactContents(session: SavedChatSession): Promise<void> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(ARTIFACT_STORE_NAME, 'readonly');
+            const store = transaction.objectStore(ARTIFACT_STORE_NAME);
+            const index = store.index('sessionId');
+            const request = index.getAll(session.id);
+
+            request.onsuccess = () => {
+                const results = request.result as Array<{ id: string, fileData: string }>;
+                const artifactMap = new Map(results.map(r => [r.id, r.fileData]));
+
+                const restoreArtifacts = (artifacts: ConversationArtifact[] | undefined) => {
+                    if (!artifacts) return;
+                    artifacts.forEach(artifact => {
+                        const data = artifactMap.get(artifact.id);
+                        if (data) {
+                            artifact.fileData = data;
+                        }
+                    });
+                };
+
+                // Restore session-level artifacts
+                restoreArtifacts(session.metadata?.artifacts);
+
+                // Restore message-level artifacts
+                session.chatData?.messages.forEach(msg => {
+                    restoreArtifacts(msg.artifacts);
+                });
+
+                resolve();
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
 
     private async getDB(): Promise<IDBDatabase> {
         if (this.db) return this.db;
@@ -136,6 +230,60 @@ class StorageService {
                     }
                     console.log('✅ Added folderId indexes to sessions, memories, and prompts');
                 }
+
+                // v7 → v8: Separate artifact data from session metadata
+                if (oldVersion < 8) {
+                    if (!db.objectStoreNames.contains(ARTIFACT_STORE_NAME)) {
+                        const artifactStore = db.createObjectStore(ARTIFACT_STORE_NAME, { keyPath: 'id' });
+                        artifactStore.createIndex('sessionId', 'sessionId', { unique: false });
+                        console.log('✅ Created artifactContents object store with sessionId index');
+                    }
+
+                    // Migrate existing Base64 data from sessions to artifactContents
+                    const sessionStore = transaction.objectStore(STORE_NAME);
+                    const artifactStore = transaction.objectStore(ARTIFACT_STORE_NAME);
+                    const cursorRequest = sessionStore.openCursor();
+
+                    cursorRequest.onsuccess = (e) => {
+                        const cursor = (e.target as IDBRequest).result;
+                        if (cursor) {
+                            const session = cursor.value as SavedChatSession;
+                            let hasChanges = false;
+
+                            const migrateArtifacts = (artifacts: ConversationArtifact[] | undefined) => {
+                                if (!artifacts) return;
+                                artifacts.forEach(artifact => {
+                                    if (artifact.fileData) {
+                                        // Save to new store
+                                        artifactStore.put({
+                                            id: artifact.id,
+                                            sessionId: session.id,
+                                            fileData: artifact.fileData
+                                        });
+                                        // Remove from session
+                                        delete artifact.fileData;
+                                        hasChanges = true;
+                                    }
+                                });
+                            };
+
+                            // Migrate session-level artifacts
+                            migrateArtifacts(session.metadata?.artifacts);
+
+                            // Migrate message-level artifacts
+                            session.chatData?.messages.forEach(msg => {
+                                migrateArtifacts(msg.artifacts);
+                            });
+
+                            if (hasChanges) {
+                                cursor.update(session);
+                            }
+                            cursor.continue();
+                        } else {
+                            console.log('✅ Finished migrating Base64 artifact data to artifactContents store');
+                        }
+                    };
+                }
             };
 
             request.onsuccess = (event) => {
@@ -206,7 +354,13 @@ class StorageService {
             const store = transaction.objectStore(STORE_NAME);
             const request = store.get(id);
 
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = async () => {
+                const session = request.result as SavedChatSession;
+                if (session) {
+                    await this.attachArtifactContents(session);
+                }
+                resolve(session);
+            };
             request.onerror = () => reject(request.error);
         });
     }
@@ -219,7 +373,13 @@ class StorageService {
             const index = store.index('normalizedTitle');
             const request = index.get(normalizedTitle);
 
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = async () => {
+                const session = request.result as SavedChatSession;
+                if (session) {
+                    await this.attachArtifactContents(session);
+                }
+                resolve(session);
+            };
             request.onerror = () => reject(request.error);
         });
     }
@@ -253,11 +413,17 @@ class StorageService {
         const db = await this.getDB();
 
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const transaction = db.transaction([STORE_NAME, ARTIFACT_STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
 
-            // Attempt to insert/update
-            const request = store.put(session);
+            // Handle artifacts (extract and save Base64 data separately)
+            this.saveArtifacts(session, transaction);
+
+            // Create a lightweight clone for the main store
+            const lightweightSession = this.createLightweightClone(session);
+
+            // Attempt to insert/update session
+            const request = store.put(lightweightSession);
 
             request.onsuccess = () => {
                 console.log(`✅ Saved session: "${title}" (ID: ${session.id})`);
@@ -343,9 +509,23 @@ class StorageService {
     async deleteSession(id: string): Promise<void> {
         const db = await this.getDB();
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            store.delete(id);
+            const transaction = db.transaction([STORE_NAME, ARTIFACT_STORE_NAME], 'readwrite');
+            const sessionStore = transaction.objectStore(STORE_NAME);
+            const artifactStore = transaction.objectStore(ARTIFACT_STORE_NAME);
+
+            // Delete session
+            sessionStore.delete(id);
+
+            // Delete associated artifacts
+            const index = artifactStore.index('sessionId');
+            const cursorRequest = index.openCursor(id);
+            cursorRequest.onsuccess = (e) => {
+                const cursor = (e.target as IDBRequest).result;
+                if (cursor) {
+                    cursor.delete();
+                    cursor.continue();
+                }
+            };
 
             transaction.oncomplete = () => resolve();
             transaction.onerror = () => reject(transaction.error);

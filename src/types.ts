@@ -9,7 +9,7 @@ export interface ConversationArtifact {
   fileName: string; // Original filename (e.g., "screenshot.png")
   fileSize: number; // Bytes
   mimeType: string; // e.g., "image/png", "application/json"
-  fileData: string; // Base64-encoded file content
+  fileData?: string; // Base64-encoded file content
   description?: string; // User-provided context
   uploadedAt: string; // ISO timestamp
   insertedAfterMessageIndex?: number; // Which message index to insert link after

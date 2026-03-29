@@ -199,6 +199,39 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         onSave(updatedSession);
     };
 
+    const handleAttachToMessageWithArtifact = async (messageIndex: number, artifact: ConversationArtifact) => {
+        if (!session.chatData) return;
+
+        // Add to pool and update message
+        const updatedMessages = [...session.chatData.messages];
+        const currentMessage = updatedMessages[messageIndex];
+        updatedMessages[messageIndex] = {
+            ...currentMessage,
+            artifacts: [...(currentMessage.artifacts || []), artifact]
+        };
+
+        const updatedMetadata = {
+            ...(session.metadata || {
+                title: session.chatTitle,
+                model: 'Unknown',
+                date: session.date,
+                tags: []
+            }),
+            artifacts: [...(session.metadata?.artifacts || []), artifact]
+        };
+
+        const updatedSession: SavedChatSession = {
+            ...session,
+            chatData: {
+                ...session.chatData,
+                messages: updatedMessages
+            },
+            metadata: updatedMetadata
+        };
+
+        await onSave(updatedSession);
+    };
+
     const handleDeleteArtifact = async (messageIndex: number, artifactId: string) => {
         if (!session.chatData) return;
 
@@ -524,6 +557,10 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                         onClose={() => setEditingMessageIndex(null)}
                         onSave={handleSaveMessage}
                         onCreateDocument={handleCreateDocument}
+                        onAttachArtifact={(artifact) => {
+                            if (editingMessageIndex === null) return;
+                            handleAttachToMessageWithArtifact(editingMessageIndex, artifact);
+                        }}
                         onRemoveArtifact={(artifactId) => handleDeleteArtifact(editingMessageIndex, artifactId)}
                     />
                 </div>
