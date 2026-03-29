@@ -1,4 +1,4 @@
-import { escapeHtml } from './securityUtils';
+import { escapeHtml, sanitizeHtml } from './securityUtils';
 
 /**
  * Basic Markdown to HTML converter for preview mode.
@@ -90,5 +90,5 @@ export function renderMarkdownToHtml(text: string, onArtifactClick?: (artifactId
     html = html.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => codeBlocks[parseInt(index)]);
     html = html.replace(/__INLINE_CODE_(\d+)__/g, (match, index) => inlineCode[parseInt(index)]);
 
-    return html;
+    return sanitizeHtml(html);
 }
