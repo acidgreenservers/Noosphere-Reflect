@@ -19,7 +19,7 @@
         SELECTORS: {
             userMsg: '[data-testid="user-message"]',
             aiMsg: '.font-claude-response',
-            copyBtn: 'button[aria-label*="Copy"], button[aria-label*="copy"]',
+            copyBtn: 'button.group\\/btn, button[class*="group/btn"]',
             title: 'title',
             // Thought block selectors
             thoughtBlock: '[class*="overflow-hidden"][class*="transition-[max-height]"]',
@@ -30,8 +30,6 @@
     };
 
     let collectedMessages = [];
-    let capturedClipboardContent = null; // Temp storage for intercepted clipboard
-    let isInterceptingClipboard = false;
     let thoughtSegmentsCaptured = 0; // Track thought block captures
 
     /**
@@ -122,56 +120,37 @@
     }
 
     /**
-     * Intercept clipboard API to capture Claude's perfect markdown output
-     * Claude uses clipboard.write() with ClipboardItem, NOT clipboard.writeText()
+     * Capture message content via native copy button
+     * Clicks the button, waits for clipboard write, then reads it directly
      */
-    function setupClipboardIntercept() {
-        const originalWrite = navigator.clipboard.write.bind(navigator.clipboard);
-        
-        navigator.clipboard.write = async function(data) {
-            if (isInterceptingClipboard && data) {
-                try {
-                    // Claude uses ClipboardItem with text/plain
-                    for (const item of data) {
-                        if (item.types.includes('text/plain')) {
-                            const blob = await item.getType('text/plain');
-                            const text = await blob.text();
-                            capturedClipboardContent = text;
-                            console.log('[Noosphere] Intercepted via clipboard.write:', text.substring(0, 100));
-                            break;
-                        }
-                        // Also try text/html for rich markdown
-                        if (item.types.includes('text/html')) {
-                            const blob = await item.getType('text/html');
-                            const text = await blob.text();
-                            console.log('[Noosphere] Also has text/html:', text.substring(0, 100));
-                        }
-                    }
-                } catch (err) {
-                    console.log('[Noosphere] Intercept read error:', err);
-                }
+    async function captureMessageViaClipboard(btn) {
+        try {
+            // Click the native copy button
+            btn.click();
+            
+            // Wait for Claude's UI to write to clipboard
+            await new Promise(resolve => setTimeout(resolve, 350));
+            
+            // Read the clipboard content
+            let clipboardText = '';
+            try {
+                clipboardText = await navigator.clipboard.readText();
+            } catch (err) {
+                console.error('[Noosphere] Clipboard read failed:', err.message);
+                return null;
             }
-            return originalWrite(data);
-        };
-    }
-
-    /**
-     * Click a copy button and capture the clipboard content
-     */
-    async function captureMessageViaClipboard(copyButton) {
-        return new Promise((resolve) => {
-            capturedClipboardContent = null;
-            isInterceptingClipboard = true;
             
-            // Click the copy button
-            copyButton.click();
+            if (!clipboardText.trim()) {
+                console.error('[Noosphere] Clipboard is empty after copy');
+                return null;
+            }
             
-            // Wait for clipboard to be written
-            setTimeout(() => {
-                isInterceptingClipboard = false;
-                resolve(capturedClipboardContent);
-            }, 500);
-        });
+            return clipboardText;
+            
+        } catch (err) {
+            console.error('[Noosphere] captureMessageViaClipboard error:', err);
+            return null;
+        }
     }
 
     /**
@@ -634,79 +613,32 @@
     }
 
     function interceptNativeCopyButtons() {
-        // Setup clipboard intercept for perfect markdown capture
-        setupClipboardIntercept();
-        
         document.addEventListener('click', async (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
-            const label = (btn.getAttribute('aria-label') || '').toLowerCase();
-            const text = (btn.innerText || '').toLowerCase();
+            
+            // Claude's copy buttons use group/btn class and contain SVG with copy icon path
+            const isCopyBtn = btn.matches(CONFIG.SELECTORS.copyBtn) 
+                           || btn.classList.toString().includes('group/btn')
+                           || btn.querySelector('svg path[d*="12.5 3"]');
 
-            if (label.includes('copy') || text.includes('copy')) {
-                const container = btn.closest(CONFIG.SELECTORS.userMsg) || btn.closest(CONFIG.SELECTORS.aiMsg);
-                if (container) {
-                    const isUser = container.matches(CONFIG.SELECTORS.userMsg);
-                    
-                    // HYBRID APPROACH:
-                    // 1. Capture perfect markdown from clipboard (tables, formatting)
-                    // 2. Optionally extract thought blocks from DOM (when enabled)
-                    
-                    let finalContent = '';
-                    let thoughtBlock = null;
-                    
-                    // If Include Thought Sections is enabled, extract thoughts from DOM FIRST
-                    // Pass the button itself - extractThoughtBlocksFromDOM goes up 4 levels to find container
-                    if (getIncludeThoughts() && !isUser) {
-                        thoughtBlock = extractThoughtBlocksFromDOM(btn);
-                    }
-                    
-                    // Capture via clipboard intercept (perfect markdown)
-                    const clipboardContent = await captureMessageViaClipboard(btn);
-                    
-                    if (clipboardContent) {
-                        // Use clipboard content (has perfect markdown, tables)
-                        finalContent = clipboardContent;
-                        
-                        // Prepend thought block if extracted
-                        if (thoughtBlock && thoughtBlock.content) {
-                            finalContent = `<thought>\n${thoughtBlock.title}\n\n${thoughtBlock.content}\n</thought>\n\n${finalContent}`;
-                            thoughtSegmentsCaptured++;
-                            console.log('[Noosphere] Thought block prepended to clipboard:', thoughtBlock.title);
-                        }
-                        
-                        collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', finalContent));
-                        
-                        // Show combined status with thought count if enabled
-                        if (getIncludeThoughts() && thoughtSegmentsCaptured > 0) {
-                            showStatus(`⚡ ${collectedMessages.length} Neuro | 💭 ${thoughtSegmentsCaptured} Thoughts`, 'success');
-                        } else {
-                            showStatus(`⚡ Captured (${collectedMessages.length}) [Clipboard]`, 'success');
-                        }
-                    } else {
-                        // Fallback to DOM extraction if clipboard failed
-                        const content = extractMessageText(container);
-                        if (content) {
-                            // Prepend thought block if extracted
-                            let fallbackContent = content;
-                            if (thoughtBlock && thoughtBlock.content) {
-                                fallbackContent = `<thought>\n${thoughtBlock.title}\n\n${thoughtBlock.content}\n</thought>\n\n${content}`;
-                                thoughtSegmentsCaptured++;
-                                console.log('[Noosphere] Thought block prepended to fallback:', thoughtBlock.title);
-                            }
-                            
-                            collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', fallbackContent));
-                            
-                            // Show combined status with thought count if enabled
-                            if (getIncludeThoughts() && thoughtSegmentsCaptured > 0) {
-                                showStatus(`⚡ ${collectedMessages.length} Neuro | 💭 ${thoughtSegmentsCaptured} Thoughts`, 'info');
-                            } else {
-                                showStatus(`Captured (${collectedMessages.length}) [DOM]`, 'info');
-                            }
-                        }
-                    }
-                }
+            if (!isCopyBtn) return;
+            
+            // Capture message via native copy button (click → wait → readText)
+            const clipboardContent = await captureMessageViaClipboard(btn);
+            
+            if (!clipboardContent) return;
+            
+            // Determine if user or AI message by traversing up 8 levels to message wrapper
+            let wrapper = btn;
+            for (let i = 0; i < 8; i++) {
+                wrapper = wrapper?.parentElement;
             }
+            
+            const isUser = wrapper?.querySelector(CONFIG.SELECTORS.userMsg) !== null;
+            
+            collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', clipboardContent));
+            showStatus(`⚡ Captured (${collectedMessages.length})`, 'success');
         }, true);
     }
 
