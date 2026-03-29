@@ -170,135 +170,295 @@
 
     },
 
-    showDisclaimer() {
+    createProgressModal() {
 
-      return new Promise(resolve => {
+      const backdrop = document.createElement('div');
 
-        // Backdrop
+      backdrop.className = 'ns-modal-backdrop';
 
-        const backdrop = document.createElement('div');
+      const modal = document.createElement('div');
 
-        Object.assign(backdrop.style, {
+      modal.className = 'ns-modal';
 
-          position: 'fixed', inset: '0', background: 'rgba(0, 0, 0, 0.5)',
 
-          zIndex: '100000', display: 'flex', alignItems: 'center', justifyContent: 'center'
 
-        });
+      // Icon (spinner initially, swaps to checkmark on complete)
 
+      const icon = document.createElement('div');
 
+      icon.id = 'ns-progress-icon';
 
-        // Modal
+      icon.className = 'ns-spinner';
 
-        const modal = document.createElement('div');
+      modal.appendChild(icon);
 
-        Object.assign(modal.style, {
 
-          background: 'rgba(17, 24, 39, 0.95)', backdropFilter: 'blur(20px)',
 
-          border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '28px',
+      // Title
 
-          maxWidth: '480px', width: '90%', padding: '32px', color: '#f3f4f6',
+      const title = document.createElement('h2');
 
-          fontFamily: '\'Inter\', system-ui, sans-serif', zIndex: '100001'
+      title.id = 'ns-progress-title';
 
-        });
+      title.textContent = 'Loading Conversation...';
 
+      Object.assign(title.style, {
 
-
-        // Header emoji
-
-        const header = document.createElement('div');
-
-        header.textContent = '🔄';
-
-        Object.assign(header.style, { fontSize: '28px', marginBottom: '8px' });
-
-        modal.appendChild(header);
-
-
-
-        // Title
-
-        const title = document.createElement('h2');
-
-        title.textContent = 'Messages Loaded';
-
-        Object.assign(title.style, {
-
-          fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.02em'
-
-        });
-
-        modal.appendChild(title);
-
-
-
-        // Description (safe text)
-
-        const desc = document.createElement('p');
-
-        desc.textContent = 'Gemini lazy-loads messages as you scroll. We\'ve auto-scrolled to load all messages for you. If you notice some messages are missing from the export, try clicking the Select button again, or manually scroll to the top of the conversation first.';
-
-        Object.assign(desc.style, {
-
-          fontSize: '14px', color: 'rgba(243, 244, 246, 0.8)', lineHeight: '1.6',
-
-          margin: '0 0 24px 0'
-
-        });
-
-        modal.appendChild(desc);
-
-
-
-        // Button
-
-        const btn = document.createElement('button');
-
-        btn.textContent = 'Got it';
-
-        Object.assign(btn.style, {
-
-          width: '100%', padding: '12px 18px', background: 'linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1))',
-
-          border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', color: '#10b981',
-
-          fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
-
-        });
-
-        btn.onmouseover = () => {
-
-          btn.style.background = 'rgba(16, 185, 129, 0.25)';
-
-          btn.style.borderColor = '#10b981';
-
-        };
-
-        btn.onmouseout = () => {
-
-          btn.style.background = 'linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1))';
-
-          btn.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-
-        };
-
-        btn.onclick = () => {
-
-          backdrop.remove();
-
-          resolve();
-
-        };
-
-        modal.appendChild(btn);
-
-        backdrop.appendChild(modal);
-
-        document.body.appendChild(backdrop);
+        fontSize: '20px', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.02em', textAlign: 'center'
 
       });
+
+      modal.appendChild(title);
+
+
+
+      // Subtitle
+
+      const sub = document.createElement('p');
+
+      sub.id = 'ns-progress-sub';
+
+      sub.textContent = 'Auto-scrolling to load all lazy-loaded messages...';
+
+      Object.assign(sub.style, {
+
+        fontSize: '14px', color: 'rgba(243, 244, 246, 0.6)', textAlign: 'center', margin: '0 0 24px 0'
+
+      });
+
+      modal.appendChild(sub);
+
+
+
+      // Metrics area (hidden initially)
+
+      const metricsArea = document.createElement('div');
+
+      metricsArea.id = 'ns-metrics-area';
+
+      Object.assign(metricsArea.style, { display: 'none' });
+
+      modal.appendChild(metricsArea);
+
+
+
+      // Continue button (hidden initially)
+
+      const continueBtn = document.createElement('button');
+
+      continueBtn.id = 'ns-continue-btn';
+
+      continueBtn.textContent = 'Continue';
+
+      continueBtn.className = 'ns-btn ns-btn-primary';
+
+      Object.assign(continueBtn.style, { display: 'none', marginTop: '16px' });
+
+      modal.appendChild(continueBtn);
+
+
+
+      backdrop.appendChild(modal);
+
+      document.body.appendChild(backdrop);
+
+
+
+      // Return controller object
+
+      return {
+
+        setPhase(phase) {
+
+          const titleEl = document.getElementById('ns-progress-title');
+
+          const subEl = document.getElementById('ns-progress-sub');
+
+          if (phase === 'loading') {
+
+            titleEl.textContent = 'Loading Conversation...';
+
+            subEl.textContent = 'Auto-scrolling to load all lazy-loaded messages...';
+
+          } else if (phase === 'processing') {
+
+            titleEl.textContent = 'Processing Messages...';
+
+            subEl.textContent = 'Expanding AI thought blocks...';
+
+          } else if (phase === 'complete') {
+
+            titleEl.textContent = 'Export Ready';
+
+            subEl.textContent = '';
+
+          }
+
+        },
+
+        updateLoadCount(count) {
+
+          const subEl = document.getElementById('ns-progress-sub');
+
+          subEl.textContent = `${count} message${count !== 1 ? 's' : ''} found...`;
+
+        },
+
+        updateProcessing(stats) {
+
+          const subEl = document.getElementById('ns-progress-sub');
+
+          const { userDone, aiDone, thoughtsDone } = stats;
+
+          subEl.textContent = `Users: ${userDone} • Responses: ${aiDone} • Thoughts: ${thoughtsDone}...`;
+
+        },
+
+        showComplete(metrics) {
+
+          // Swap spinner to checkmark
+
+          const icon = document.getElementById('ns-progress-icon');
+
+          icon.className = 'ns-checkmark';
+
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+          svg.setAttribute('viewBox', '0 0 24 24');
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+          path.setAttribute('d', 'M20 6L9 17l-5-5');
+
+          svg.appendChild(path);
+
+          icon.textContent = '';
+
+          icon.appendChild(svg);
+
+
+
+          // Show metrics
+
+          const metricsArea = document.getElementById('ns-metrics-area');
+
+          metricsArea.textContent = '';
+
+          const { totalFound, totalSelected, userCount, aiCount, thoughtCount } = metrics;
+
+          const missedCount = totalFound - totalSelected;
+
+
+
+          const rows = [
+
+            { label: 'Messages Found', value: totalFound },
+
+            { label: 'Messages Selected', value: totalSelected },
+
+            { label: 'User Messages', value: userCount },
+
+            { label: 'AI Responses', value: aiCount },
+
+            { label: 'Thought Blocks', value: thoughtCount }
+
+          ];
+
+
+
+          rows.forEach(row => {
+
+            const div = document.createElement('div');
+
+            div.className = 'ns-metric-row';
+
+            const label = document.createElement('span');
+
+            label.className = 'ns-metric-label';
+
+            label.textContent = row.label;
+
+            const value = document.createElement('span');
+
+            value.className = 'ns-metric-value';
+
+            value.textContent = row.value;
+
+            div.appendChild(label);
+
+            div.appendChild(value);
+
+            metricsArea.appendChild(div);
+
+          });
+
+
+
+          // Missed messages warning (if any)
+
+          if (missedCount > 0) {
+
+            const div = document.createElement('div');
+
+            div.className = 'ns-metric-row';
+
+            const label = document.createElement('span');
+
+            label.className = 'ns-metric-label';
+
+            label.textContent = 'Possibly Missed';
+
+            const value = document.createElement('span');
+
+            value.className = 'ns-metric-value ns-metric-warn';
+
+            value.textContent = missedCount;
+
+            div.appendChild(label);
+
+            div.appendChild(value);
+
+            metricsArea.appendChild(div);
+
+          }
+
+
+
+          // Disclaimer
+
+          const disc = document.createElement('div');
+
+          disc.className = 'ns-disclaimer-text';
+
+          disc.textContent = 'Gemini lazy-loads messages as you scroll. If you notice messages are missing, try clicking the Select button again, or manually scroll to the top of the conversation first.';
+
+          metricsArea.appendChild(disc);
+
+
+
+          metricsArea.style.display = 'block';
+
+          document.getElementById('ns-continue-btn').style.display = 'block';
+
+        },
+
+        waitForContinue() {
+
+          return new Promise(resolve => {
+
+            document.getElementById('ns-continue-btn').onclick = () => {
+
+              backdrop.remove();
+
+              resolve();
+
+            };
+
+          });
+
+        }
+
+      };
 
     }
 
@@ -517,6 +677,20 @@
       .ns-bulk-btn { padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--ns-border); border-radius: 8px; color: rgba(255,255,255,0.7); font-size: 11px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; }
 
       .ns-bulk-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+      /* Progress Modal */
+      .ns-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; }
+      .ns-modal { background: rgba(17,24,39,0.97); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 28px; max-width: 480px; width: 90%; padding: 32px; color: #f3f4f6; font-family: 'Inter', system-ui, sans-serif; }
+      .ns-spinner { width: 48px; height: 48px; border: 3px solid rgba(16,185,129,0.2); border-top-color: #10b981; border-radius: 50%; animation: ns-spin 0.8s linear infinite; margin: 0 auto 20px; }
+      @keyframes ns-spin { to { transform: rotate(360deg); } }
+      .ns-checkmark { width: 48px; height: 48px; border-radius: 50%; background: rgba(16,185,129,0.15); border: 2px solid #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; animation: ns-pop 0.3s ease; }
+      @keyframes ns-pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .ns-checkmark svg { width: 24px; height: 24px; stroke: #10b981; stroke-width: 2.5; fill: none; }
+      .ns-metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+      .ns-metric-label { color: rgba(255,255,255,0.5); }
+      .ns-metric-value { font-weight: 700; color: #f3f4f6; }
+      .ns-metric-warn { color: #f59e0b; }
+      .ns-disclaimer-text { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.6; margin-top: 16px; }
 
     `;
 
@@ -854,7 +1028,7 @@
 
 
 
-    async scrollToLoadAll() {
+    async scrollToLoadAll(onProgress) {
 
       const scroller = document.querySelector(CONFIG.SELECTORS.CHAT_CONTAINER);
 
@@ -874,6 +1048,8 @@
 
         stable = (newCount === count && newCount === lastCount) ? stable + 1 : 0;
 
+        if (stable > 0 && onProgress) onProgress(newCount);
+
         lastCount = newCount;
 
         attempts++;
@@ -887,7 +1063,7 @@
 
 
 
-    async buildMarkdown(selectedTurns, conversationTitle) {
+    async buildMarkdown(selectedTurns, conversationTitle, onProgress) {
 
       const dateStr  = new Date().toLocaleString();
 
@@ -895,7 +1071,7 @@
 
 
 
-      let userCount = 0, aiCount = 0;
+      let userCount = 0, aiCount = 0, thoughtCount = 0;
 
       selectedTurns.forEach(turn => {
 
@@ -967,11 +1143,11 @@
 
 
 
+      let userDone = 0, aiDone = 0;
+
       for (let i = 0; i < selectedTurns.length; i++) {
 
         const turn = selectedTurns[i];
-
-        Utils.createNotification(`📝 Building turn ${i + 1} of ${selectedTurns.length}...`);
 
 
 
@@ -984,6 +1160,8 @@
           const text = extractUserText(uq);
 
           md += `#### Prompt - User 👤:\n\n${text}\n\n`;
+
+          userDone++;
 
         }
 
@@ -1011,6 +1189,8 @@
 
             md += "```\n\n";
 
+            thoughtCount++;
+
           }
 
 
@@ -1029,9 +1209,13 @@
 
           }
 
+          aiDone++;
+
         }
 
 
+
+        if (onProgress) onProgress({ userDone, aiDone, thoughtsDone: thoughtCount, userTotal: userCount, aiTotal: aiCount });
 
         if (i < selectedTurns.length - 1) md += '---\n\n';
 
@@ -1051,7 +1235,7 @@
 
 
 
-      return md;
+      return { markdown: md, stats: { userCount, aiCount, thoughtCount } };
 
     }
 
@@ -1061,7 +1245,7 @@
 
       await navigator.clipboard.writeText(markdown);
 
-      alert('Conversation copied to clipboard!');
+      Utils.createNotification('✅ Copied to clipboard!');
 
     }
 
@@ -1089,29 +1273,33 @@
 
       try {
 
-        Utils.createNotification('🔄 Loading all messages...');
+        const modal = Utils.createProgressModal();
 
-        await this.scrollToLoadAll();
+        // Phase 1: Scroll
 
-        await Utils.showDisclaimer();
+        modal.setPhase('loading');
 
+        const totalFound = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN).length;
 
+        await this.scrollToLoadAll(count => modal.updateLoadCount(count));
+
+        // Phase 2: Process
+
+        modal.setPhase('processing');
 
         const turns = Array.from(document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN));
 
         injectCheckboxes();
 
-
-
         if (!document.querySelector('.ns-checkbox:checked')) {
+
+          modal.backdrop?.remove?.();
 
           Utils.createNotification('Please select at least one message to export.');
 
           return;
 
         }
-
-
 
         // Collect selected turns
 
@@ -1125,17 +1313,33 @@
 
         });
 
-
-
-        // Build markdown
-
-        Utils.createNotification('📝 Building markdown...');
+        // Build markdown with progress
 
         const conversationTitle = getConversationTitle();
 
-        const markdown = await this.buildMarkdown(selectedTurns, conversationTitle);
+        const { markdown, stats } = await this.buildMarkdown(selectedTurns, conversationTitle,
 
+          s => modal.updateProcessing(s)
 
+        );
+
+        // Phase 3: Complete
+
+        modal.showComplete({
+
+          totalFound: totalFound,
+
+          totalSelected: selectedTurns.length,
+
+          userCount: stats.userCount,
+
+          aiCount: stats.aiCount,
+
+          thoughtCount: stats.thoughtCount
+
+        });
+
+        await modal.waitForContinue();
 
         // Export
 
@@ -1150,8 +1354,6 @@
           await this.exportToFile(markdown, filename);
 
         }
-
-
 
       } catch (error) {
 
