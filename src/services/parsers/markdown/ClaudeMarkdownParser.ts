@@ -5,16 +5,17 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
     parse(input: string): ChatData {
         const metadata = this.extractMetadata(input);
 
-        // Ensure model is set if not detected
-        if (metadata.model === 'AI Assistant') {
-            metadata.model = 'Claude';
-        }
+        // Always set model to Claude for Claude imports
+        metadata.model = 'Claude';
 
         // Strip 3rd party metadata
         let cleanInput = this.stripMetadata(input);
 
         // Convert 4+ backtick blocks to 3, wrap plaintext in collapsible
         cleanInput = this.convertFourBacktickBlocks(cleanInput);
+
+        // Wrap blockquote reference blocks in collapsible
+        cleanInput = this.wrapBlockquoteReferences(cleanInput);
 
         const messages = this.parseClaudeTurns(cleanInput);
 
@@ -64,6 +65,69 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
                 return `\`\`\`${language}\n${content}\`\`\`\n`;
             }
         });
+    }
+
+    /**
+     * Wrap blockquote reference blocks in collapsible tags
+     * Detects blocks where all lines start with > and contain links [text](url)
+     */
+    private wrapBlockquoteReferences(input: string): string {
+        const lines = input.split('\n');
+        const result: string[] = [];
+        let inBlockquote = false;
+        let blockquoteLines: string[] = [];
+        let hasLinks = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+
+            // Check if this is a blockquote line (starts with >)
+            if (trimmed.startsWith('>')) {
+                if (!inBlockquote) {
+                    inBlockquote = true;
+                    blockquoteLines = [];
+                    hasLinks = false;
+                }
+                // Remove > prefix and collect content
+                const content = trimmed.replace(/^>\s?/, '');
+                blockquoteLines.push(content);
+                // Check for links
+                if (content.match(/\[([^\]]+)\]\(([^)]+)\)/)) {
+                    hasLinks = true;
+                }
+            } else {
+                // End of blockquote block
+                if (inBlockquote) {
+                    if (hasLinks && blockquoteLines.length > 0) {
+                        // Wrap in collapsible tags
+                        result.push('<collapsible>');
+                        result.push(...blockquoteLines);
+                        result.push('</collapsible>');
+                    } else {
+                        // Keep as regular blockquote
+                        result.push(...blockquoteLines.map(l => `> ${l}`));
+                    }
+                    inBlockquote = false;
+                    blockquoteLines = [];
+                    hasLinks = false;
+                }
+                result.push(line);
+            }
+        }
+
+        // Handle blockquote at end of input
+        if (inBlockquote) {
+            if (hasLinks && blockquoteLines.length > 0) {
+                result.push('<collapsible>');
+                result.push(...blockquoteLines);
+                result.push('</collapsible>');
+            } else {
+                result.push(...blockquoteLines.map(l => `> ${l}`));
+            }
+        }
+
+        return result.join('\n');
     }
 
     /**
