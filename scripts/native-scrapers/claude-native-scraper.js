@@ -18,13 +18,21 @@
         PLATFORM_COLOR: '#8b5cf6', // Claude Purple
         SELECTORS: {
             userMsg: '[data-testid="user-message"]',
-            aiMsg: '[data-testid="assistant-message"], [data-testid="claude-message"]',
+            aiMsg: '.font-claude-response',
             copyBtn: 'button[aria-label*="Copy"], button[aria-label*="copy"]',
-            title: 'title'
+            title: 'title',
+            // Thought block selectors
+            thoughtBlock: '[class*="overflow-hidden"][class*="transition-[max-height]"]',
+            thoughtMarkdown: '.standard-markdown',
+            thoughtHeader: 'button.group\\/status',
+            thoughtContainer: '.flex-col.font-ui'
         }
     };
 
     let collectedMessages = [];
+    let capturedClipboardContent = null; // Temp storage for intercepted clipboard
+    let isInterceptingClipboard = false;
+    let thoughtSegmentsCaptured = 0; // Track thought block captures
 
     /**
      * Extract text from a message element, preserving structure
@@ -78,6 +86,100 @@
             };
         }
         return { thoughts: null, contentWithoutThoughts: content };
+    }
+
+    /**
+     * Extract thought blocks from DOM with max-height fix
+     * The thought blocks use [style*="max-height"] selector
+     */
+    function extractThoughtBlocksFromDOM(element) {
+        if (!element) return null;
+
+        // Go up 4 levels from the copy button to the message container
+        let container = element;
+        for (let i = 0; i < 4; i++) {
+            container = container?.parentElement;
+        }
+        if (!container) return null;
+
+        // Find the thought block by its style attribute (max-height: 200px when collapsed)
+        const thoughtBlock = container.querySelector('[style*="max-height"]');
+        if (!thoughtBlock) return null;
+
+        // Expand it
+        const originalMaxHeight = thoughtBlock.style.maxHeight;
+        thoughtBlock.style.maxHeight = 'none';
+        void thoughtBlock.offsetHeight;
+
+        const fullText = thoughtBlock.innerText?.trim();
+
+        // Restore
+        thoughtBlock.style.maxHeight = originalMaxHeight;
+
+        if (!fullText || fullText.length < 10) return null;
+
+        return { title: 'Thinking Process', content: fullText };
+    }
+
+    /**
+     * Intercept clipboard API to capture Claude's perfect markdown output
+     * Claude uses clipboard.write() with ClipboardItem, NOT clipboard.writeText()
+     */
+    function setupClipboardIntercept() {
+        const originalWrite = navigator.clipboard.write.bind(navigator.clipboard);
+        
+        navigator.clipboard.write = async function(data) {
+            if (isInterceptingClipboard && data) {
+                try {
+                    // Claude uses ClipboardItem with text/plain
+                    for (const item of data) {
+                        if (item.types.includes('text/plain')) {
+                            const blob = await item.getType('text/plain');
+                            const text = await blob.text();
+                            capturedClipboardContent = text;
+                            console.log('[Noosphere] Intercepted via clipboard.write:', text.substring(0, 100));
+                            break;
+                        }
+                        // Also try text/html for rich markdown
+                        if (item.types.includes('text/html')) {
+                            const blob = await item.getType('text/html');
+                            const text = await blob.text();
+                            console.log('[Noosphere] Also has text/html:', text.substring(0, 100));
+                        }
+                    }
+                } catch (err) {
+                    console.log('[Noosphere] Intercept read error:', err);
+                }
+            }
+            return originalWrite(data);
+        };
+    }
+
+    /**
+     * Click a copy button and capture the clipboard content
+     */
+    async function captureMessageViaClipboard(copyButton) {
+        return new Promise((resolve) => {
+            capturedClipboardContent = null;
+            isInterceptingClipboard = true;
+            
+            // Click the copy button
+            copyButton.click();
+            
+            // Wait for clipboard to be written
+            setTimeout(() => {
+                isInterceptingClipboard = false;
+                resolve(capturedClipboardContent);
+            }, 500);
+        });
+    }
+
+    /**
+     * Get whether "Include Thought Sections" is enabled
+     */
+    function getIncludeThoughts() {
+        const checkbox = document.getElementById('ns-include-thoughts');
+        return checkbox ? checkbox.checked : false;
     }
 
     /**
@@ -245,6 +347,20 @@
             if (text) messages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', text));
         });
         return messages;
+    }
+
+    /**
+     * Get page metadata for Noosphere export
+     */
+    function getPageMetadata() {
+        return {
+            title: document.title || 'Claude Chat',
+            model: 'Claude',
+            sourceUrl: window.location.href,
+            tags: ['Claude', 'AI-Chat', 'Noosphere'],
+            timestamp: new Date().toISOString(),
+            platform: CONFIG.PLATFORM_ID
+        };
     }
 
     /**
@@ -416,6 +532,17 @@
                         <option value="camelCase">camelCase</option>
                     </select>
                 </div>
+                <div class="ns-config-group" style="margin-top: 14px;">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" id="ns-include-thoughts" style="width: 20px; height: 20px; accent-color: var(--ns-primary);" />
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px;">Include Thought Sections</div>
+                            <div style="font-size: 11px; opacity: 0.5; margin-top: 2px;">
+                                Extracts full thinking blocks from DOM (max-height fix)
+                            </div>
+                        </div>
+                    </label>
+                </div>
                 <div style="font-size: 11px; opacity: 0.4; line-height: 1.4; padding: 4px;">
                     Neural markers: ## Prompt, ## Response. Standardized for Noosphere Reflect v2.2.
                 </div>
@@ -507,7 +634,10 @@
     }
 
     function interceptNativeCopyButtons() {
-        document.addEventListener('click', (e) => {
+        // Setup clipboard intercept for perfect markdown capture
+        setupClipboardIntercept();
+        
+        document.addEventListener('click', async (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
             const label = (btn.getAttribute('aria-label') || '').toLowerCase();
@@ -517,10 +647,63 @@
                 const container = btn.closest(CONFIG.SELECTORS.userMsg) || btn.closest(CONFIG.SELECTORS.aiMsg);
                 if (container) {
                     const isUser = container.matches(CONFIG.SELECTORS.userMsg);
-                    const content = extractMessageText(container);
-                    if (content) {
-                        collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', content));
-                        showStatus(`Segment Captured (${collectedMessages.length})`, 'info');
+                    
+                    // HYBRID APPROACH:
+                    // 1. Capture perfect markdown from clipboard (tables, formatting)
+                    // 2. Optionally extract thought blocks from DOM (when enabled)
+                    
+                    let finalContent = '';
+                    let thoughtBlock = null;
+                    
+                    // If Include Thought Sections is enabled, extract thoughts from DOM FIRST
+                    // Pass the button itself - extractThoughtBlocksFromDOM goes up 4 levels to find container
+                    if (getIncludeThoughts() && !isUser) {
+                        thoughtBlock = extractThoughtBlocksFromDOM(btn);
+                    }
+                    
+                    // Capture via clipboard intercept (perfect markdown)
+                    const clipboardContent = await captureMessageViaClipboard(btn);
+                    
+                    if (clipboardContent) {
+                        // Use clipboard content (has perfect markdown, tables)
+                        finalContent = clipboardContent;
+                        
+                        // Prepend thought block if extracted
+                        if (thoughtBlock && thoughtBlock.content) {
+                            finalContent = `<thought>\n${thoughtBlock.title}\n\n${thoughtBlock.content}\n</thought>\n\n${finalContent}`;
+                            thoughtSegmentsCaptured++;
+                            console.log('[Noosphere] Thought block prepended to clipboard:', thoughtBlock.title);
+                        }
+                        
+                        collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', finalContent));
+                        
+                        // Show combined status with thought count if enabled
+                        if (getIncludeThoughts() && thoughtSegmentsCaptured > 0) {
+                            showStatus(`⚡ ${collectedMessages.length} Neuro | 💭 ${thoughtSegmentsCaptured} Thoughts`, 'success');
+                        } else {
+                            showStatus(`⚡ Captured (${collectedMessages.length}) [Clipboard]`, 'success');
+                        }
+                    } else {
+                        // Fallback to DOM extraction if clipboard failed
+                        const content = extractMessageText(container);
+                        if (content) {
+                            // Prepend thought block if extracted
+                            let fallbackContent = content;
+                            if (thoughtBlock && thoughtBlock.content) {
+                                fallbackContent = `<thought>\n${thoughtBlock.title}\n\n${thoughtBlock.content}\n</thought>\n\n${content}`;
+                                thoughtSegmentsCaptured++;
+                                console.log('[Noosphere] Thought block prepended to fallback:', thoughtBlock.title);
+                            }
+                            
+                            collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', fallbackContent));
+                            
+                            // Show combined status with thought count if enabled
+                            if (getIncludeThoughts() && thoughtSegmentsCaptured > 0) {
+                                showStatus(`⚡ ${collectedMessages.length} Neuro | 💭 ${thoughtSegmentsCaptured} Thoughts`, 'info');
+                            } else {
+                                showStatus(`Captured (${collectedMessages.length}) [DOM]`, 'info');
+                            }
+                        }
                     }
                 }
             }
