@@ -14,12 +14,15 @@
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.3.3",
     "idb": "^8.0.3",
     "jszip": "^3.10.1",
     "minisearch": "^7.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.11.0",
+    "typescript-eslint": "^8.57.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {

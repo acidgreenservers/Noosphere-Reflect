@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 /**
  * Security Utilities Module
  * Provides HTML escaping, URL sanitization, and input validation.
@@ -28,6 +30,24 @@ export function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/**
+ * Sanitizes HTML using DOMPurify.
+ * Removes dangerous tags, attributes, and scripts.
+ *
+ * @param html - Raw HTML input
+ * @returns Sanitized HTML string
+ */
+export function sanitizeHtml(html: string): string {
+  if (!html || typeof html !== 'string') {
+    return '';
+  }
+
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'span', 'div', 'img', 'details', 'summary', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'button', 'hr'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'onclick', 'style', 'id'],
+  });
 }
 
 /**
@@ -71,7 +91,7 @@ export function sanitizeUrl(url: string): string {
     if (dangerousProtocols.test(decoded)) {
       return '';
     }
-  } catch (e) {
+  } catch {
     // If decodeURIComponent fails, the URL is likely malformed
     return '';
   }
