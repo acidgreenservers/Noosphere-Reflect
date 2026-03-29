@@ -168,6 +168,138 @@
 
       setTimeout(() => popup.remove(), CONFIG.TIMING.POPUP_DURATION);
 
+    },
+
+    showDisclaimer() {
+
+      return new Promise(resolve => {
+
+        // Backdrop
+
+        const backdrop = document.createElement('div');
+
+        Object.assign(backdrop.style, {
+
+          position: 'fixed', inset: '0', background: 'rgba(0, 0, 0, 0.5)',
+
+          zIndex: '100000', display: 'flex', alignItems: 'center', justifyContent: 'center'
+
+        });
+
+
+
+        // Modal
+
+        const modal = document.createElement('div');
+
+        Object.assign(modal.style, {
+
+          background: 'rgba(17, 24, 39, 0.95)', backdropFilter: 'blur(20px)',
+
+          border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '28px',
+
+          maxWidth: '480px', width: '90%', padding: '32px', color: '#f3f4f6',
+
+          fontFamily: '\'Inter\', system-ui, sans-serif', zIndex: '100001'
+
+        });
+
+
+
+        // Header emoji
+
+        const header = document.createElement('div');
+
+        header.textContent = '🔄';
+
+        Object.assign(header.style, { fontSize: '28px', marginBottom: '8px' });
+
+        modal.appendChild(header);
+
+
+
+        // Title
+
+        const title = document.createElement('h2');
+
+        title.textContent = 'Messages Loaded';
+
+        Object.assign(title.style, {
+
+          fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.02em'
+
+        });
+
+        modal.appendChild(title);
+
+
+
+        // Description (safe text)
+
+        const desc = document.createElement('p');
+
+        desc.textContent = 'Gemini lazy-loads messages as you scroll. We\'ve auto-scrolled to load all messages for you. If you notice some messages are missing from the export, try clicking the Select button again, or manually scroll to the top of the conversation first.';
+
+        Object.assign(desc.style, {
+
+          fontSize: '14px', color: 'rgba(243, 244, 246, 0.8)', lineHeight: '1.6',
+
+          margin: '0 0 24px 0'
+
+        });
+
+        modal.appendChild(desc);
+
+
+
+        // Button
+
+        const btn = document.createElement('button');
+
+        btn.textContent = 'Got it';
+
+        Object.assign(btn.style, {
+
+          width: '100%', padding: '12px 18px', background: 'linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1))',
+
+          border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', color: '#10b981',
+
+          fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
+
+        });
+
+        btn.onmouseover = () => {
+
+          btn.style.background = 'rgba(16, 185, 129, 0.25)';
+
+          btn.style.borderColor = '#10b981';
+
+        };
+
+        btn.onmouseout = () => {
+
+          btn.style.background = 'linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1))';
+
+          btn.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+
+        };
+
+        btn.onclick = () => {
+
+          backdrop.remove();
+
+          resolve();
+
+        };
+
+        modal.appendChild(btn);
+
+        backdrop.appendChild(modal);
+
+        document.body.appendChild(backdrop);
+
+      });
+
     }
 
   };
@@ -960,6 +1092,8 @@
         Utils.createNotification('🔄 Loading all messages...');
 
         await this.scrollToLoadAll();
+
+        await Utils.showDisclaimer();
 
 
 
