@@ -126,7 +126,7 @@ const BasicConverter: React.FC = () => {
     const [fileType, setFileType] = useState<'markdown' | 'json' | 'auto'>('auto');
     const [selectedTheme, setSelectedTheme] = useState<ChatTheme>(ChatTheme.DarkDefault);
     const [selectedStyle, setSelectedStyle] = useState<ChatStyle>(ChatStyle.Default);
-    const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
+    const [savedSessions, setSavedSessions] = useState<SavedChatSessionMetadata[]>([]);
     const [showSavedSessions, setShowSavedSessions] = useState<boolean>(false);
     const [isConverting, setIsConverting] = useState<boolean>(false);
     const [parserMode, setParserMode] = useState<ParserMode>(ParserMode.Basic);
@@ -153,7 +153,14 @@ const BasicConverter: React.FC = () => {
     const [showChatContentModal, setShowChatContentModal] = useState<boolean>(false);
     const [showReviewEditModal, setShowReviewEditModal] = useState<boolean>(false);
     // Move loadSession before useEffect to avoid TDZ
-    const loadSession = useCallback(async (session: SavedChatSession) => {
+    const loadSession = useCallback(async (sessionMeta: SavedChatSessionMetadata) => {
+        // LAZY LOADING: Fetch full session data only when needed
+        const session = await storageService.getSessionById(sessionMeta.id);
+        if (!session) {
+            console.error(`Session ${sessionMeta.id} not found`);
+            return;
+        }
+
         setLoadedSessionId(session.id); // Track loaded session for database mode
         setInputContent(session.inputContent);
         setChatTitle(session.chatTitle);
@@ -258,15 +265,21 @@ const BasicConverter: React.FC = () => {
         const init = async () => {
             await storageService.migrateLegacyData();
 
-            const sessions = await storageService.getAllSessions();
+            const sessions = await storageService.getAllSessionsMetadata();
             setSavedSessions(sessions);
 
             // Check if we requested a specific session to load via URL
             const loadId = searchParams.get('load');
             if (loadId) {
-                const sessionToLoad = await storageService.getSessionById(loadId);
-                if (sessionToLoad) {
-                    loadSession(sessionToLoad);
+                // Find in our metadata list or fetch if not present
+                const meta = sessions.find(s => s.id === loadId);
+                if (meta) {
+                    loadSession(meta);
+                } else {
+                    const sessionToLoad = await storageService.getSessionById(loadId);
+                    if (sessionToLoad) {
+                        loadSession(sessionToLoad as SavedChatSessionMetadata);
+                    }
                 }
             } else {
                 // Only load default username if NOT loading a session
@@ -650,7 +663,7 @@ const BasicConverter: React.FC = () => {
                 setLoadedSessionId(newSession.id);
             }
 
-            const updatedSessions = await storageService.getAllSessions();
+            const updatedSessions = await storageService.getAllSessionsMetadata();
             setSavedSessions(updatedSessions);
 
             if (!silent) {
@@ -695,13 +708,13 @@ const BasicConverter: React.FC = () => {
 
             // Persist
             await storageService.saveSession(updatedSession);
-            setSavedSessions(await storageService.getAllSessions());
+            setSavedSessions(await storageService.getAllSessionsMetadata());
         }
     };
 
     const deleteSession = async (id: string) => {
         await storageService.deleteSession(id);
-        const updated = await storageService.getAllSessions();
+        const updated = await storageService.getAllSessionsMetadata();
         setSavedSessions(updated);
     };
 
@@ -1010,6 +1023,39 @@ const BasicConverter: React.FC = () => {
             alert('Failed to upload files: ' + (error as Error).message);
         }
     };
+
+    const handlePaste = useCallback(async (event: ClipboardEvent) => {
+        // Only process pastes if we have chat data and aren't currently converting
+        if (!chatData || isConverting) return;
+
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        const imageFiles: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    // Create a proper File object with a timestamped name
+                    const file = new File([blob], `pasted-image-${Date.now()}-${i}.png`, { type: blob.type });
+                    imageFiles.push(file);
+                }
+            }
+        }
+
+        if (imageFiles.length > 0) {
+            console.log(`📋 Detected ${imageFiles.length} images in clipboard, processing...`);
+            // We need a FileList-like object to pass to handleArtifactUpload
+            const dataTransfer = new DataTransfer();
+            imageFiles.forEach(file => dataTransfer.items.add(file));
+            handleArtifactUpload(dataTransfer.files);
+        }
+    }, [chatData, isConverting, handleArtifactUpload]);
+
+    useEffect(() => {
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, [handlePaste]);
 
     const handleRemoveArtifact = (artifactId: string) => {
         if (!chatData) {

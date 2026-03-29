@@ -1,10 +1,10 @@
 import React from 'react';
-import { SavedChatSession, ParserMode } from '../../../types';
+import { SavedChatSessionMetadata, ParserMode } from '../../../types';
 
 interface ConverterSidebarProps {
-    sessions: SavedChatSession[];
+    sessions: SavedChatSessionMetadata[];
     visible: boolean;
-    onLoadSession: (session: SavedChatSession) => void;
+    onLoadSession: (session: SavedChatSessionMetadata) => void;
     onDeleteSession: (id: string) => void;
 }
 
