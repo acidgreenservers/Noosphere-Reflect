@@ -815,10 +815,6 @@
 
 >> Total AI Messages: ${aiCount}
 
->>
-
->> Total Artifacts: ${ImageCache.keys().length}
-
 ---
 
 
