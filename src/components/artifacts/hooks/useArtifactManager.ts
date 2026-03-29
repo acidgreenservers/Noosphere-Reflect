@@ -41,10 +41,13 @@ export const useArtifactManager = ({
         setError(null);
         setSuccess(null);
 
-        try {
-            const newArtifacts: ConversationArtifact[] = [];
+        let currentArtifactPool = [...artifacts];
+        let currentMessagesPool = [...messages];
+        let totalUploaded = 0;
+        let totalMatches: string[] = [];
 
-            // Process all files first
+        try {
+            // Process files one-by-one for incremental UI updates and better responsiveness
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
 
@@ -81,37 +84,44 @@ export const useArtifactManager = ({
                     uploadedAt: new Date().toISOString()
                 };
 
-                newArtifacts.push(artifact);
-            }
+                // Use shared utility for auto-matching and deduplication (per file)
+                const result = processArtifactUpload([artifact], currentArtifactPool, currentMessagesPool);
 
-            // Use shared utility for auto-matching and deduplication
-            const result = processArtifactUpload(newArtifacts, artifacts, messages);
+                // If it wasn't a duplicate, result.updatedArtifacts will have the new artifact
+                const wasAdded = result.updatedArtifacts.length > currentArtifactPool.length;
 
-            // Save to IndexedDB if not in manual mode
-            if (!manualMode) {
-                for (const artifact of result.updatedArtifacts.filter(a =>
-                    !artifacts.some(existing => existing.id === a.id)
-                )) {
-                    await storageService.attachArtifact(session.id, artifact);
+                if (wasAdded) {
+                    const newArtifact = result.updatedArtifacts[result.updatedArtifacts.length - 1];
+
+                    // Save to IndexedDB if not in manual mode
+                    if (!manualMode) {
+                        await storageService.attachArtifact(session.id, newArtifact);
+                    }
+
+                    // Update tracking variables for next iteration
+                    currentArtifactPool = result.updatedArtifacts;
+                    currentMessagesPool = result.updatedMessages;
+                    totalUploaded++;
+                    totalMatches = [...totalMatches, ...result.matches];
+
+                    // Incremental state updates for immediate UI feedback
+                    setArtifacts(currentArtifactPool);
+                    onArtifactsChange(currentArtifactPool);
+
+                    if (onMessagesChange && result.matchCount > 0) {
+                        onMessagesChange(currentMessagesPool);
+                    }
                 }
             }
 
-            // Update local state
-            setArtifacts(result.updatedArtifacts);
-            onArtifactsChange(result.updatedArtifacts);
-
-            // Notify parent of message updates if callback exists
-            if (onMessagesChange && result.matchCount > 0) {
-                onMessagesChange(result.updatedMessages);
+            // Final success message
+            if (totalUploaded > 0) {
+                let successMessage = `✅ ${totalUploaded} file(s) uploaded successfully`;
+                if (totalMatches.length > 0) {
+                    successMessage += `\n🎯 Auto-matched: ${totalMatches.join(', ')}`;
+                }
+                setSuccess(successMessage);
             }
-
-            // Build success message with auto-match info
-            let successMessage = `✅ ${newArtifacts.length} file(s) uploaded successfully`;
-            if (result.matchCount > 0) {
-                successMessage += `\n🎯 Auto-matched: ${result.matches.join(', ')}`;
-            }
-
-            setSuccess(successMessage);
         } catch (err) {
             setError('Failed to upload file: ' + (err as Error).message);
         } finally {

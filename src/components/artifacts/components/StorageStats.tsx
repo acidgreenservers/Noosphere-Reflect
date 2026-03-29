@@ -8,9 +8,15 @@ interface StorageStatsProps {
 }
 
 export const StorageStats: React.FC<StorageStatsProps> = ({ artifacts, messageArtifacts }) => {
-    const totalSize = artifacts.reduce((sum, a) => sum + a.fileSize, 0);
-    const totalMessageArtifactSize = messageArtifacts.reduce((sum, a) => sum + a.fileSize, 0);
-    const grandTotal = totalSize + totalMessageArtifactSize;
+    // Combine all artifacts and filter for uniqueness to avoid double-counting
+    // when an artifact is in both the pool and attached to a message
+    const uniqueArtifactsMap = new Map<string, ConversationArtifact>();
+
+    artifacts.forEach(a => uniqueArtifactsMap.set(a.id, a));
+    messageArtifacts.forEach(a => uniqueArtifactsMap.set(a.id, a));
+
+    const uniqueArtifacts = Array.from(uniqueArtifactsMap.values());
+    const grandTotal = uniqueArtifacts.reduce((sum, a) => sum + a.fileSize, 0);
 
     return (
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -20,7 +26,7 @@ export const StorageStats: React.FC<StorageStatsProps> = ({ artifacts, messageAr
                     {formatFileSize(grandTotal)}
                 </span>
                 <span className="text-sm text-gray-500 mb-1">
-                    {artifacts.length + messageArtifacts.length} files total
+                    {uniqueArtifacts.length} files total
                 </span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
