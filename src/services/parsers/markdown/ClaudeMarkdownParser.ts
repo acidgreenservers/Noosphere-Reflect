@@ -50,10 +50,15 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
     /**
      * Convert 4+ backtick blocks to 3 backticks
      * Plaintext blocks get wrapped in <collapsible> tags
+     * Robust detection handles format variations:
+     * - Content on same line as opening backticks
+     * - Content on new line after opening backticks
+     * - Extra spaces/tabs before content
+     * - Different line endings
      */
     private convertFourBacktickBlocks(input: string): string {
-        // Match blocks with 4 or more backticks
-        return input.replace(/````([^`\n]*)\n([\s\S]*?)````\n/g, (match, lang, content) => {
+        // Match blocks with 4 or more backticks - robust pattern for format variations
+        return input.replace(/````([^`\n]*)\s*\n?([\s\S]*?)````\n?/g, (match, lang, content) => {
             const language = lang.trim();
             const isPlaintext = language === 'plaintext';
 
