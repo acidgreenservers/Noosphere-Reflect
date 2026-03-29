@@ -344,7 +344,7 @@
 
           metricsArea.textContent = '';
 
-          const { totalFound, totalSelected, userCount, aiCount, thoughtCount } = metrics;
+          const { totalFound, totalSelected, userCount, aiCount, thoughtCount, imageCount } = metrics;
 
           const missedCount = totalFound - totalSelected;
 
@@ -360,7 +360,9 @@
 
             { label: 'AI Responses', value: aiCount },
 
-            { label: 'Thought Blocks', value: thoughtCount }
+            { label: 'Thought Blocks', value: thoughtCount },
+
+            { label: 'Images Detected', value: imageCount ?? 0 }
 
           ];
 
@@ -581,6 +583,82 @@
     const markdown = scc.querySelector('.markdown');
 
     return markdown ? markdown.innerText.trim() : scc.innerText.trim();
+
+  }
+
+
+
+  /**
+
+   * Extract image filenames from a user-query element.
+
+   * Images are skipped during export (text-only), but we capture their names
+
+   * so the Noosphere artifact auto-linker can pair uploaded files to messages.
+
+   * Emits 📎 markers into markdown, which textNormalization.ts already scans for.
+
+   *
+
+   * Strategy order: src URL last segment → alt text → data-filename / aria-label
+
+   */
+
+  function extractImageNamesFromTurn(userQueryElem) {
+
+    const names = [];
+
+    const seen = new Set();
+
+    userQueryElem.querySelectorAll('img').forEach(img => {
+
+      // Strategy 1: parse src URL — grab last path segment if it looks like a filename
+
+      if (img.src) {
+
+        try {
+
+          const url = new URL(img.src);
+
+          const segments = url.pathname.split('/').filter(Boolean);
+
+          const last = segments[segments.length - 1];
+
+          if (last && /\.[a-zA-Z0-9]{2,5}$/.test(last)) {
+
+            const decoded = decodeURIComponent(last);
+
+            if (!seen.has(decoded)) { names.push(decoded); seen.add(decoded); return; }
+
+          }
+
+        } catch (_) {}
+
+      }
+
+      // Strategy 2: alt text (Gemini often sets descriptive alt="filename.jpg")
+
+      const alt = img.alt?.trim();
+
+      if (alt && /\.[a-zA-Z0-9]{2,5}$/.test(alt) && !seen.has(alt)) {
+
+        names.push(alt); seen.add(alt); return;
+
+      }
+
+      // Strategy 3: data-filename or aria-label attribute
+
+      const dataName = img.dataset?.filename || img.getAttribute('aria-label');
+
+      if (dataName && /\.[a-zA-Z0-9]{2,5}$/.test(dataName) && !seen.has(dataName)) {
+
+        names.push(dataName); seen.add(dataName);
+
+      }
+
+    });
+
+    return names;
 
   }
 
@@ -1071,7 +1149,7 @@
 
 
 
-      let userCount = 0, aiCount = 0, thoughtCount = 0;
+      let userCount = 0, aiCount = 0, thoughtCount = 0, imageCount = 0;
 
       selectedTurns.forEach(turn => {
 
@@ -1159,7 +1237,19 @@
 
           const text = extractUserText(uq);
 
+          const imageNames = extractImageNamesFromTurn(uq);
+
           md += `#### Prompt - User 👤:\n\n${text}\n\n`;
+
+          if (imageNames.length > 0) {
+
+            imageNames.forEach(name => { md += `📎 ${name}\n`; });
+
+            md += '\n';
+
+            imageCount += imageNames.length;
+
+          }
 
           userDone++;
 
@@ -1235,7 +1325,7 @@
 
 
 
-      return { markdown: md, stats: { userCount, aiCount, thoughtCount } };
+      return { markdown: md, stats: { userCount, aiCount, thoughtCount, imageCount } };
 
     }
 
@@ -1335,7 +1425,9 @@
 
           aiCount: stats.aiCount,
 
-          thoughtCount: stats.thoughtCount
+          thoughtCount: stats.thoughtCount,
+
+          imageCount: stats.imageCount
 
         });
 
