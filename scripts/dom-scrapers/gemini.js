@@ -614,15 +614,41 @@
 
       const cb = document.createElement('input');
 
-      cb.type = 'checkbox'; cb.className = 'ns-checkbox';
+      cb.type = 'checkbox';
 
-      cb.dataset.type = type; cb.checked = true;
+      cb.className = 'ns-checkbox';
 
-      Object.assign(cb.style, {
+      cb.dataset.type = type;
 
-        position: 'absolute', right: '28px', top: '8px', zIndex: '10000', transform: 'scale(1.2)'
+      cb.checked = true;
 
-      });
+
+
+      // Different positioning for user vs AI messages
+
+      if (type === 'user') {
+
+        // USER MESSAGES: right side
+
+        Object.assign(cb.style, {
+
+          position: 'absolute', right: '8px', top: '8px', zIndex: '10000', transform: 'scale(1.2)'
+
+        });
+
+      } else {
+
+        // AI MESSAGES: left side, positioned below the Gemini logo (~16px)
+
+        Object.assign(cb.style, {
+
+          position: 'absolute', left: '8px', top: '208px', zIndex: '10000', transform: 'scale(1.2)'
+
+        });
+
+      }
+
+
 
       container.style.position = 'relative';
 
