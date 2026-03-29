@@ -455,9 +455,17 @@
                                          || thoughtHeader?.innerText?.trim() 
                                          || 'Thinking Process';
                         
-                        // Extract all markdown steps within the thinking container
+                        // Extract FULL thought body text with max-height fix
+                        // MAX-HEIGHT FIX: Temporarily remove CSS height restriction
+                        // Thought blocks have max-height: 200px + overflow: hidden that visually hides content
+                        // But the full text is always in the DOM - we just need to remove the height limit
                         let reasoningText = '';
                         if (thoughtContent) {
+                            const thoughtBlockContainer = thoughtContent.closest('[class*="overflow-hidden"][class*="transition-[max-height]"]') 
+                                                       || thoughtContent;
+                            const originalMaxHeight = thoughtBlockContainer.style.maxHeight;
+                            thoughtBlockContainer.style.maxHeight = 'none';
+                            
                             // Claude 3.7+ Reasoning Steps
                             const stepContainers = thoughtContent.querySelectorAll('.flex.flex-col.shrink-0');
                             const processedSteps = [];
@@ -480,6 +488,9 @@
                             });
                             
                             reasoningText = processedSteps.join('\n\n');
+                            
+                            // Restore original max-height
+                            thoughtBlockContainer.style.maxHeight = originalMaxHeight;
                         }
 
                         if (reasoningText || statusTitle) {

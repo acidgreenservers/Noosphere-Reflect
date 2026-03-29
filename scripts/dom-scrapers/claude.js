@@ -326,6 +326,55 @@
     }
 
     // ============================================================================
+    // TABLE EXTRACTION HELPER
+    // ============================================================================
+    function extractTableAsMarkdown(tableElement) {
+        if (!tableElement) return '';
+        
+        const rows = tableElement.querySelectorAll('tr');
+        if (!rows.length) return '';
+        
+        const markdownRows = [];
+        
+        rows.forEach((row, index) => {
+            const cells = row.querySelectorAll('th, td');
+            const cellTexts = Array.from(cells).map(cell => {
+                // Clean up cell content - remove extra whitespace
+                return cell.innerText?.trim().replace(/\n+/g, ' ') || '';
+            });
+            
+            if (cellTexts.length > 0) {
+                markdownRows.push('| ' + cellTexts.join(' | ') + ' |');
+                
+                // Add separator after header row
+                if (index === 0) {
+                    markdownRows.push('| ' + cellTexts.map(() => '---').join(' | ') + ' |');
+                }
+            }
+        });
+        
+        return markdownRows.join('\n');
+    }
+
+    function extractListAsMarkdown(listElement) {
+        if (!listElement) return '';
+        
+        const isOrdered = listElement.tagName === 'OL';
+        const items = listElement.querySelectorAll(':scope > li');
+        const markdownItems = [];
+        
+        items.forEach((item, index) => {
+            const prefix = isOrdered ? `${index + 1}. ` : '- ';
+            const text = item.innerText?.trim().replace(/\n+/g, '\n  ') || '';
+            if (text) {
+                markdownItems.push(`${prefix}${text}`);
+            }
+        });
+        
+        return markdownItems.join('\n');
+    }
+
+    // ============================================================================
     // EXPORT SERVICE
     // ============================================================================
     const ExportService = {
@@ -456,36 +505,62 @@
                                          || thoughtHeader?.innerText?.trim() 
                                          || 'Thinking Process';
                         
-                        // Extract all markdown steps within the thinking container
-                        let reasoningText = '';
+                        // Extract FULL thought body text with max-height fix
+                        let fullThoughtText = '';
+                        
                         if (thoughtContent) {
-                            // Claude 3.7+ Reasoning Steps
-                            const stepContainers = thoughtContent.querySelectorAll('.flex.flex-col.shrink-0');
-                            const processedSteps = [];
+                            // MAX-HEIGHT FIX: Temporarily remove CSS height restriction
+                            // Thought blocks have max-height: 200px + overflow: hidden that visually hides content
+                            // But the full text is always in the DOM - we just need to remove the height limit
+                            const thoughtBlockContainer = thoughtContent.closest('[class*="overflow-hidden"][class*="transition-[max-height]"]') 
+                                                       || thoughtContent;
+                            const originalMaxHeight = thoughtBlockContainer.style.maxHeight;
+                            thoughtBlockContainer.style.maxHeight = 'none';
                             
-                            stepContainers.forEach(container => {
-                                const markdown = container.querySelector('.standard-markdown');
-                                if (markdown) {
-                                    const text = markdown.innerText?.trim();
-                                    if (text) {
-                                        // Prefix with bullet and indent subsequent lines
-                                        processedSteps.push(`- ${text.replace(/\n/g, '\n  ')}`);
-                                    }
-                                } else {
-                                    // Check for status labels like "Done" (text-text-300)
-                                    const statusLabel = container.querySelector('.text-text-300')?.innerText?.trim();
-                                    if (statusLabel) {
-                                        processedSteps.push(`- ${statusLabel}`);
+                            // Get ALL markdown elements within the thought container
+                            const allMarkdownElements = thoughtContent.querySelectorAll('.standard-markdown');
+                            const thoughtParagraphs = [];
+                            
+                            allMarkdownElements.forEach(mdEl => {
+                                const text = mdEl.innerText?.trim();
+                                if (text && text.length > 10) { // Filter out tiny fragments
+                                    // Check if this is inside a reasoning step container
+                                    const isStepContainer = mdEl.closest('.flex.flex-col.shrink-0');
+                                    if (isStepContainer) {
+                                        // Format as bullet point for reasoning steps
+                                        thoughtParagraphs.push(`- ${text.replace(/\n/g, '\n  ')}`);
+                                    } else {
+                                        // This is the main thought body text - preserve as paragraph
+                                        thoughtParagraphs.push(text);
                                     }
                                 }
                             });
                             
-                            reasoningText = processedSteps.join('\n\n');
+                            // Restore original max-height
+                            thoughtBlockContainer.style.maxHeight = originalMaxHeight;
+                            
+                            // Also check for any direct text content in the thought container
+                            const directText = thoughtContent.innerText?.trim();
+                            if (directText && thoughtParagraphs.length === 0) {
+                                // Fallback: use the full inner text
+                                fullThoughtText = directText;
+                            } else {
+                                fullThoughtText = thoughtParagraphs.join('\n\n');
+                            }
+                            
+                            // Check for status labels like "Done" (text-text-300)
+                            const statusLabels = thoughtContent.querySelectorAll('.text-text-300');
+                            statusLabels.forEach(label => {
+                                const labelText = label.innerText?.trim();
+                                if (labelText && labelText.length > 2) {
+                                    fullThoughtText += `\n\n- ${labelText}`;
+                                }
+                            });
                         }
 
-                        if (reasoningText || statusTitle) {
-                            markdown += "```text\n";
-                            markdown += `Thoughts:\n${statusTitle}\n\n${reasoningText}\n`;
+                        if (fullThoughtText || statusTitle) {
+                            markdown += "```\n";
+                            markdown += `Thoughts:\n${statusTitle}\n\n${fullThoughtText}\n`;
                             markdown += "```\n\n";
                         }
                     }
@@ -526,9 +601,51 @@
 
                         if (mainContents.length > 0) {
                             mainContents.forEach(contentEl => {
-                                const text = contentEl.innerText?.trim();
-                                if (text) {
-                                    markdown += `${text}\n\n`;
+                                // Check for tables in this content block
+                                const tables = contentEl.querySelectorAll('table');
+                                const lists = contentEl.querySelectorAll('ul, ol');
+                                
+                                if (tables.length > 0 || lists.length > 0) {
+                                    // Process structured content with tables/lists
+                                    const childNodes = contentEl.childNodes;
+                                    let blockContent = '';
+                                    
+                                    childNodes.forEach(node => {
+                                        if (node.nodeType === Node.ELEMENT_NODE) {
+                                            if (node.tagName === 'TABLE') {
+                                                const tableMd = extractTableAsMarkdown(node);
+                                                if (tableMd) {
+                                                    blockContent += '\n' + tableMd + '\n\n';
+                                                }
+                                            } else if (node.tagName === 'UL' || node.tagName === 'OL') {
+                                                const listMd = extractListAsMarkdown(node);
+                                                if (listMd) {
+                                                    blockContent += listMd + '\n\n';
+                                                }
+                                            } else {
+                                                // Regular element - get text
+                                                const text = node.innerText?.trim();
+                                                if (text) {
+                                                    blockContent += text + '\n\n';
+                                                }
+                                            }
+                                        } else if (node.nodeType === Node.TEXT_NODE) {
+                                            const text = node.textContent?.trim();
+                                            if (text) {
+                                                blockContent += text + '\n';
+                                            }
+                                        }
+                                    });
+                                    
+                                    if (blockContent.trim()) {
+                                        markdown += blockContent;
+                                    }
+                                } else {
+                                    // No structured content - just get text
+                                    const text = contentEl.innerText?.trim();
+                                    if (text) {
+                                        markdown += `${text}\n\n`;
+                                    }
                                 }
                             });
                         } else {
@@ -538,7 +655,23 @@
                             sideBlocks.forEach(sb => {
                                 fullText = fullText.replace(sb.innerText, '');
                             });
-                            markdown += `${fullText.trim()}\n\n`;
+                            
+                            // Check for tables in the fallback text
+                            const allTables = claudeResponse.querySelectorAll('table');
+                            if (allTables.length > 0) {
+                                // Extract tables separately and insert them
+                                let processedText = fullText;
+                                allTables.forEach(table => {
+                                    const tableMd = extractTableAsMarkdown(table);
+                                    if (tableMd) {
+                                        // Replace table placeholder with markdown
+                                        processedText = processedText.replace(table.innerText, '\n' + tableMd + '\n');
+                                    }
+                                });
+                                markdown += `${processedText.trim()}\n\n`;
+                            } else {
+                                markdown += `${fullText.trim()}\n\n`;
+                            }
                         }
                     }
                 }

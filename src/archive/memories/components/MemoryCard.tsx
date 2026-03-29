@@ -51,9 +51,9 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
             onClick={() => onPreview(memory)}
             draggable
             onDragStart={handleDragStart}
-            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-110 active:scale-95 cursor-pointer
+            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer
             ${isSelected
-                    ? 'bg-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20 ring-2 ring-purple-500/50 scale-105'
+                    ? 'bg-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20 ring-2 ring-purple-500/50 scale-[1.03]'
                     : 'bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 hover:border-purple-500/30 hover:shadow-purple-900/10 hover:shadow-purple-500/20 hover:shadow-lg'
                 }`}>
             {/* Selection Checkbox & Edit Button */}
@@ -64,8 +64,9 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
                         e.stopPropagation();
                         onEdit(memory);
                     }}
-                    className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/40 rounded transition-all"
+                    className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/40 rounded transition-all hover:scale-110 active:scale-95"
                     title="Edit memory content"
+                    aria-label="Edit memory"
                 >
                     Edit
                 </button>
@@ -75,11 +76,13 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
                         e.stopPropagation();
                         onToggleSelect(memory.id);
                     }}
-                    className={`w-6 h-6 rounded border flex items-center justify-center transition-all
+                    className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110 active:scale-95
                         ${isSelected
                             ? 'bg-purple-500 border-purple-500 text-white opacity-100'
                             : 'bg-gray-900/50 border-gray-600 hover:border-purple-400 text-transparent opacity-100'
                         }`}
+                    title={isSelected ? "Deselect this memory" : "Select this memory"}
+                    aria-label={isSelected ? "Deselect this memory" : "Select this memory"}
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -118,11 +121,12 @@ export default function MemoryCard({ memory, onEdit, onDelete, onExport, onStatu
                 <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={handleStatusToggleLocal}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${memory.metadata.exportStatus === 'exported'
+                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-95 ${memory.metadata.exportStatus === 'exported'
                             ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
                             : 'bg-red-500/20 border-red-500/50 text-red-400'
                             }`}
                         title={`Export Status: ${memory.metadata.exportStatus === 'exported' ? 'Exported' : 'Not Exported'} (Click to toggle)`}
+                        aria-label={`Toggle Export Status: Currently ${memory.metadata.exportStatus === 'exported' ? 'Exported' : 'Not Exported'}`}
                     >
                         {memory.metadata.exportStatus === 'exported' ? '📤' : '📥'}
                     </button>

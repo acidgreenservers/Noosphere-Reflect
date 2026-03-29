@@ -1,5 +1,5 @@
-# Bolt's Performance Journal ⚡
+# Bolt's Journal - Critical Learnings Only
 
-## 2026-05-22 - [Lazy Loading Strategy for Session Archives]
-**Learning:** Bulk retrieval methods (like `getAllSessions`) that fetch full records including large base64 image data cause significant memory bloat and UI lag as the database grows. This is especially critical in IndexedDB-based apps where large blobs can block the main thread during serialization.
-**Action:** Always prefer fetching lightweight metadata for list views and fetch heavy data on-demand (lazy loading) for specific item views.
+## 2025-05-23 - Initializing Bolt's Journal
+**Learning:** Starting the mission to optimize the artifact upload and auto-attachment system.
+**Action:** Focus on real-time metadata updates and efficient artifact handling.

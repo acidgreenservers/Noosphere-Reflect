@@ -18,13 +18,19 @@
         PLATFORM_COLOR: '#8b5cf6', // Claude Purple
         SELECTORS: {
             userMsg: '[data-testid="user-message"]',
-            aiMsg: '[data-testid="assistant-message"], [data-testid="claude-message"]',
-            copyBtn: 'button[aria-label*="Copy"], button[aria-label*="copy"]',
-            title: 'title'
+            aiMsg: '.font-claude-response',
+            copyBtn: 'button.group\\/btn, button[class*="group/btn"]',
+            title: 'title',
+            // Thought block selectors
+            thoughtBlock: '[class*="overflow-hidden"][class*="transition-[max-height]"]',
+            thoughtMarkdown: '.standard-markdown',
+            thoughtHeader: 'button.group\\/status',
+            thoughtContainer: '.flex-col.font-ui'
         }
     };
 
     let collectedMessages = [];
+    let thoughtSegmentsCaptured = 0; // Track thought block captures
 
     /**
      * Extract text from a message element, preserving structure
@@ -78,6 +84,81 @@
             };
         }
         return { thoughts: null, contentWithoutThoughts: content };
+    }
+
+    /**
+     * Extract thought blocks from DOM with max-height fix
+     * The thought blocks use [style*="max-height"] selector
+     */
+    function extractThoughtBlocksFromDOM(element) {
+        if (!element) return null;
+
+        // Go up 4 levels from the copy button to the message container
+        let container = element;
+        for (let i = 0; i < 4; i++) {
+            container = container?.parentElement;
+        }
+        if (!container) return null;
+
+        // Find the thought block by its style attribute (max-height: 200px when collapsed)
+        const thoughtBlock = container.querySelector('[style*="max-height"]');
+        if (!thoughtBlock) return null;
+
+        // Expand it
+        const originalMaxHeight = thoughtBlock.style.maxHeight;
+        thoughtBlock.style.maxHeight = 'none';
+        void thoughtBlock.offsetHeight;
+
+        const fullText = thoughtBlock.innerText?.trim();
+
+        // Restore
+        thoughtBlock.style.maxHeight = originalMaxHeight;
+
+        if (!fullText || fullText.length < 10) return null;
+
+        return { title: 'Thinking Process', content: fullText };
+    }
+
+    /**
+     * Capture message content via native copy button
+     * Clicks the button, waits for clipboard write, then reads it directly
+     */
+    async function captureMessageViaClipboard(btn) {
+        try {
+            // Click the native copy button
+            btn.click();
+            
+            // Wait for Claude's UI to write to clipboard
+            await new Promise(resolve => setTimeout(resolve, 350));
+            
+            // Read the clipboard content
+            let clipboardText = '';
+            try {
+                clipboardText = await navigator.clipboard.readText();
+            } catch (err) {
+                console.error('[Noosphere] Clipboard read failed:', err.message);
+                return null;
+            }
+            
+            if (!clipboardText.trim()) {
+                console.error('[Noosphere] Clipboard is empty after copy');
+                return null;
+            }
+            
+            return clipboardText;
+            
+        } catch (err) {
+            console.error('[Noosphere] captureMessageViaClipboard error:', err);
+            return null;
+        }
+    }
+
+    /**
+     * Get whether "Include Thought Sections" is enabled
+     */
+    function getIncludeThoughts() {
+        const checkbox = document.getElementById('ns-include-thoughts');
+        return checkbox ? checkbox.checked : false;
     }
 
     /**
@@ -245,6 +326,20 @@
             if (text) messages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', text));
         });
         return messages;
+    }
+
+    /**
+     * Get page metadata for Noosphere export
+     */
+    function getPageMetadata() {
+        return {
+            title: document.title || 'Claude Chat',
+            model: 'Claude',
+            sourceUrl: window.location.href,
+            tags: ['Claude', 'AI-Chat', 'Noosphere'],
+            timestamp: new Date().toISOString(),
+            platform: CONFIG.PLATFORM_ID
+        };
     }
 
     /**
@@ -416,6 +511,17 @@
                         <option value="camelCase">camelCase</option>
                     </select>
                 </div>
+                <div class="ns-config-group" style="margin-top: 14px;">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" id="ns-include-thoughts" style="width: 20px; height: 20px; accent-color: var(--ns-primary);" />
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px;">Include Thought Sections</div>
+                            <div style="font-size: 11px; opacity: 0.5; margin-top: 2px;">
+                                Extracts full thinking blocks from DOM (max-height fix)
+                            </div>
+                        </div>
+                    </label>
+                </div>
                 <div style="font-size: 11px; opacity: 0.4; line-height: 1.4; padding: 4px;">
                     Neural markers: ## Prompt, ## Response. Standardized for Noosphere Reflect v2.2.
                 </div>
@@ -507,23 +613,32 @@
     }
 
     function interceptNativeCopyButtons() {
-        document.addEventListener('click', (e) => {
+        document.addEventListener('click', async (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
-            const label = (btn.getAttribute('aria-label') || '').toLowerCase();
-            const text = (btn.innerText || '').toLowerCase();
+            
+            // Claude's copy buttons use group/btn class and contain SVG with copy icon path
+            const isCopyBtn = btn.matches(CONFIG.SELECTORS.copyBtn) 
+                           || btn.classList.toString().includes('group/btn')
+                           || btn.querySelector('svg path[d*="12.5 3"]');
 
-            if (label.includes('copy') || text.includes('copy')) {
-                const container = btn.closest(CONFIG.SELECTORS.userMsg) || btn.closest(CONFIG.SELECTORS.aiMsg);
-                if (container) {
-                    const isUser = container.matches(CONFIG.SELECTORS.userMsg);
-                    const content = extractMessageText(container);
-                    if (content) {
-                        collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', content));
-                        showStatus(`Segment Captured (${collectedMessages.length})`, 'info');
-                    }
-                }
+            if (!isCopyBtn) return;
+            
+            // Capture message via native copy button (click → wait → readText)
+            const clipboardContent = await captureMessageViaClipboard(btn);
+            
+            if (!clipboardContent) return;
+            
+            // Determine if user or AI message by traversing up 8 levels to message wrapper
+            let wrapper = btn;
+            for (let i = 0; i < 8; i++) {
+                wrapper = wrapper?.parentElement;
             }
+            
+            const isUser = wrapper?.querySelector(CONFIG.SELECTORS.userMsg) !== null;
+            
+            collectedMessages.push(createMessageWithMetadata(isUser ? 'prompt' : 'response', clipboardContent));
+            showStatus(`⚡ Captured (${collectedMessages.length})`, 'success');
         }, true);
     }
 

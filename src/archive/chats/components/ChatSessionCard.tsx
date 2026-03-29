@@ -67,9 +67,9 @@ export function ChatSessionCard({
             onClick={handleCardClick}
             draggable
             onDragStart={handleDragStart}
-            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-110 active:scale-95 block cursor-pointer
+            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 block cursor-pointer
                 ${isSelected
-                    ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20 ring-2 ring-green-500/50 scale-105'
+                    ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20 ring-2 ring-green-500/50 scale-[1.03]'
                     : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-green-500/30 hover:shadow-green-900/10 hover:shadow-lg hover:shadow-green-500/20'
                 }`}
         >
@@ -86,11 +86,12 @@ export function ChatSessionCard({
                     {/* Export Status Toggle */}
                     <button
                         onClick={(e) => onStatusToggle(session, e)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 ${session.exportStatus === 'exported'
+                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-95 ${session.exportStatus === 'exported'
                             ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
                             : 'bg-red-500/20 border-red-500/50 text-red-400'
                             }`}
                         title={`Export Status: ${session.exportStatus === 'exported' ? 'Exported' : 'Not Exported'} (Click to toggle)`}
+                        aria-label={`Toggle Export Status: Currently ${session.exportStatus === 'exported' ? 'Exported' : 'Not Exported'}`}
                     >
                         {session.exportStatus === 'exported' ? '📤' : '📥'}
                     </button>
@@ -99,8 +100,9 @@ export function ChatSessionCard({
                     {artifactCount > 0 ? (
                         <button
                             onClick={handleArtifactsClick}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-colors hover:scale-105 shadow-lg shadow-emerald-500/50"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-all hover:scale-110 active:scale-95 shadow-lg shadow-emerald-500/50"
                             title="Manage artifacts for this chat"
+                            aria-label={`Manage ${artifactCount} artifacts`}
                         >
                             <span>📎</span>
                             <span>{artifactCount}</span>
@@ -108,8 +110,9 @@ export function ChatSessionCard({
                     ) : (
                         <button
                             onClick={handleArtifactsClick}
-                            className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-colors font-medium hover:scale-105"
+                            className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-all font-medium hover:scale-110 active:scale-95"
                             title="Add artifacts to this chat"
+                            aria-label="Add artifacts"
                         >
                             + Add Artifacts
                         </button>
@@ -118,7 +121,8 @@ export function ChatSessionCard({
                     {/* Delete Button */}
                     <button
                         onClick={(e) => onDelete(session.id, e)}
-                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95"
+                        aria-label="Delete chat"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -162,19 +166,25 @@ export function ChatSessionCard({
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleEditClick}
-                        className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500/20 hover:border-purple-500/40 transition-all"
+                        className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500/20 hover:border-purple-500/40 transition-all hover:scale-110 active:scale-95"
                         title="Edit conversation content"
+                        aria-label="Edit chat"
                     >
                         Edit Chat
                     </button>
                     <button
-                        onClick={(e) => onSelect(session.id, e)}
-                        className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSelect(session.id, e);
+                        }}
+                        className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110 active:scale-95
                             ${isSelected
                                 ? 'bg-green-500 border-green-500 text-white'
                                 : 'bg-gray-900/50 border-gray-600 hover:border-green-400 text-transparent'
                             }`}
                         title={isSelected ? "Deselect this chat" : "Select this chat"}
+                        aria-label={isSelected ? "Deselect this chat" : "Select this chat"}
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
