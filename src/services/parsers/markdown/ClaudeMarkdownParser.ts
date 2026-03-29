@@ -1,5 +1,5 @@
 import { BaseMarkdownParser } from './BaseMarkdownParser';
-import { ChatData } from '../../../types';
+import { ChatData, ChatMessage, ChatMessageType } from '../../../types';
 
 export class ClaudeMarkdownParser extends BaseMarkdownParser {
     parse(input: string): ChatData {
@@ -10,12 +10,119 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
             metadata.model = 'Claude';
         }
 
-        const messages = this.parseStandardTurns(input);
+        // Strip 3rd party metadata
+        let cleanInput = this.stripMetadata(input);
+
+        // Convert 4+ backtick blocks to 3, wrap plaintext in collapsible
+        cleanInput = this.convertFourBacktickBlocks(cleanInput);
+
+        const messages = this.parseClaudeTurns(cleanInput);
 
         if (messages.length === 0) {
             throw new Error('No Claude conversation turns detected. Ensure "## Prompt:" headers are present.');
         }
 
         return { messages, metadata };
+    }
+
+    /**
+     * Strip 3rd party metadata from Claude exports
+     * Removes:
+     * - Header block: **User:**, **Created:**, **Updated:**, **Exported:**, **Link:**
+     * - Footer: ---\nPowered by [Claude Exporter]
+     */
+    private stripMetadata(input: string): string {
+        let result = input;
+
+        // Remove header metadata block (lines starting with **)
+        result = result.replace(/^\*\*[^*]+\*\*[^\n]*\n/gm, '');
+
+        // Remove Powered by footer
+        result = result.replace(/---\s*\nPowered by \[Claude Exporter\][^\n]*/g, '');
+
+        // Clean up extra whitespace
+        result = result.replace(/\n{3,}/g, '\n\n').trim();
+
+        return result;
+    }
+
+    /**
+     * Convert 4+ backtick blocks to 3 backticks
+     * Plaintext blocks get wrapped in <collapsible> tags
+     */
+    private convertFourBacktickBlocks(input: string): string {
+        // Match blocks with 4 or more backticks
+        return input.replace(/````([^`\n]*)\n([\s\S]*?)````\n/g, (match, lang, content) => {
+            const language = lang.trim();
+            const isPlaintext = language === 'plaintext';
+
+            if (isPlaintext) {
+                // Wrap in collapsible tags with 3 backticks
+                return `<collapsible>\n\`\`\`plaintext\n${content}\`\`\`\n</collapsible>\n`;
+            } else {
+                // Just convert to 3 backticks
+                return `\`\`\`${language}\n${content}\`\`\`\n`;
+            }
+        });
+    }
+
+    /**
+     * Claude-specific turn parser with exchange tracking
+     * Handles:
+     * - ## Prompt: (user messages)
+     * - ## Response: (AI responses)
+     * - ````plaintext (4 backticks) for thought blocks
+     * - Exchange tracking to ensure proper alternation
+     * - Nested ## headers within content (not treated as boundaries)
+     */
+    private parseClaudeTurns(input: string): ChatMessage[] {
+        const messages: ChatMessage[] = [];
+        
+        // Strict Claude header pattern - only ## Prompt: or ## Response:
+        const headerPattern = /^##\s+(Prompt|Response):\s*$/gm;
+        const matches = Array.from(input.matchAll(headerPattern));
+
+        if (matches.length === 0) return [];
+
+        let expectedType: 'prompt' | 'response' = 'prompt'; // Claude always starts with user prompt
+
+        for (let i = 0; i < matches.length; i++) {
+            const headerType = matches[i][1].toLowerCase();
+            const contentStart = matches[i].index! + matches[i][0].length;
+            const contentEnd = (i + 1 < matches.length) ? matches[i + 1].index : input.length;
+
+            let rawContent = input.substring(contentStart, contentEnd).trim();
+
+            // Validate exchange alternation
+            const isPrompt = headerType === 'prompt';
+            if (isPrompt !== (expectedType === 'prompt')) {
+                // Skip invalid exchange (e.g., two prompts in a row)
+                continue;
+            }
+
+            // Extract thought blocks (````plaintext with 4 backticks)
+            let thoughts: string | undefined;
+            const thoughtMatch = rawContent.match(/````plaintext\n([\s\S]*?)````\n/g);
+            if (thoughtMatch) {
+                thoughts = thoughtMatch[0].replace(/````plaintext\n/g, '').replace(/\n````\n/g, '').trim();
+                rawContent = rawContent.replace(thoughtMatch[0], '').trim();
+            }
+
+            // Build final content
+            let finalContent = rawContent;
+            if (!isPrompt && thoughts) {
+                finalContent = `<thoughts>\n\n${thoughts}\n\n</thoughts>\n\n${rawContent}`;
+            }
+
+            messages.push({
+                type: isPrompt ? ChatMessageType.Prompt : ChatMessageType.Response,
+                content: finalContent
+            });
+
+            // Toggle expected type for next exchange
+            expectedType = isPrompt ? 'response' : 'prompt';
+        }
+
+        return messages;
     }
 }
