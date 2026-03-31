@@ -1306,7 +1306,7 @@ const BasicConverter: React.FC = () => {
                                 fileName: fileName,
                                 fileSize: content.length,
                                 mimeType: 'text/markdown',
-                                fileData: btoa(content), // Base64 encode the content
+                                fileData: content, // Store raw markdown directly (no encoding needed for plain text)
                                 uploadedAt: new Date().toISOString(),
                                 insertedAfterMessageIndex: editingMessageIndex
                             };
