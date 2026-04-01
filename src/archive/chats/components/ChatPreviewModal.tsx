@@ -83,14 +83,22 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
 
     const handleDownloadArtifact = (artifact: any) => {
         try {
-            // Convert base64 to blob
-            const byteCharacters = atob(artifact.fileData);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            let blob: Blob;
+
+            // Handle markdown files (stored as raw text) vs binary files (stored as base64)
+            if (isMarkdownFile(artifact.fileName)) {
+                // Markdown is stored as raw text, no decoding needed
+                blob = new Blob([artifact.fileData], { type: 'text/markdown' });
+            } else {
+                // Binary files are stored as base64, decode them
+                const byteCharacters = atob(artifact.fileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                blob = new Blob([byteArray], { type: artifact.mimeType });
             }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: artifact.mimeType });
 
             // Create download link
             const url = URL.createObjectURL(blob);
@@ -163,7 +171,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
             fileName,
             fileSize: new Blob([content]).size,
             mimeType: 'text/markdown',
-            fileData: btoa(unescape(encodeURIComponent(content))), // Base64 encode
+            fileData: content, // Store raw markdown directly (no encoding needed for plain text)
             uploadedAt: new Date().toISOString(),
             insertedAfterMessageIndex: editingMessageIndex
         };
