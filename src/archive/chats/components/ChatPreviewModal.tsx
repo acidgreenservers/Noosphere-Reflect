@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedChatSession, ChatMessage, ConversationArtifact } from '../../../types';
 import { renderMarkdownToHtml } from '../../../utils/markdownUtils';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
 import { ArtifactViewerModal } from '../../../components/ArtifactViewerModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
+import { useMathJax } from '../../../hooks/useMathJax';
 
 interface ChatPreviewModalProps {
     session: SavedChatSession;
@@ -20,6 +21,27 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
     const [editedTitle, setEditedTitle] = useState(session.metadata?.title || session.chatTitle);
     const [isSavingTitle, setIsSavingTitle] = useState(false);
+
+    // MathJax for LaTeX rendering
+    const { isLoaded: mathJaxLoaded, typeset } = useMathJax();
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    // Trigger MathJax typeset when content or session changes
+    useEffect(() => {
+        console.log('[ChatPreviewModal] MathJax effect fired', {
+            mathJaxLoaded,
+            hasContentRef: !!contentRef.current,
+            messageCount: messages.length
+        });
+
+        if (mathJaxLoaded && contentRef.current) {
+            const timer = setTimeout(() => {
+                console.log('[ChatPreviewModal] Calling typeset after delay');
+                typeset(contentRef.current || undefined);
+            }, 300); // Increased delay to ensure DOM is fully ready
+            return () => clearTimeout(timer);
+        }
+    }, [session, mathJaxLoaded, typeset]);
 
     // HYDRATION: Link artifacts from metadata to messages at runtime
     const hydratedMessages = useMemo(() => {
@@ -383,7 +405,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                     </div>
 
                     {/* Main Content: Chat Stream */}
-                    <div className="flex-1 overflow-y-auto bg-gray-900 p-4 lg:p-8 custom-scrollbar scroll-smooth">
+                    <div ref={contentRef} className="flex-1 overflow-y-auto bg-gray-900 p-4 lg:p-8 custom-scrollbar scroll-smooth">
                         <div className="max-w-4xl mx-auto space-y-8">
                             {messages.map((msg, idx) => {
                                 const isUser = msg.type === 'prompt';
