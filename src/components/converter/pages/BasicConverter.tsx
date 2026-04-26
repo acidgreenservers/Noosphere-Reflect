@@ -129,6 +129,7 @@ const BasicConverter: React.FC = () => {
     const [savedSessions, setSavedSessions] = useState<SavedChatSessionMetadata[]>([]);
     const [showSavedSessions, setShowSavedSessions] = useState<boolean>(false);
     const [isConverting, setIsConverting] = useState<boolean>(false);
+    const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
     const [parserMode, setParserMode] = useState<ParserMode>(ParserMode.Basic);
     const [chatData, setChatData] = useState<ChatData | null>(null);
     const [metadata, setMetadata] = useState<ChatMetadata>({
@@ -682,8 +683,16 @@ const BasicConverter: React.FC = () => {
     const handleSaveManual = async () => {
         if (!chatData) return;
         setIsConverting(true); // Show loading state on button
-        await handleSaveChat(chatTitle, false);
-        setIsConverting(false);
+        try {
+            await handleSaveChat(chatTitle, false);
+            // Visual success feedback
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2500);
+        } catch (err) {
+            // Error already handled in handleSaveChat
+        } finally {
+            setIsConverting(false);
+        }
     };
 
     const handlePreviewSave = async (updatedSession: SavedChatSession) => {
@@ -1175,22 +1184,34 @@ const BasicConverter: React.FC = () => {
                         <div className="flex justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <button
                                 onClick={handleSaveManual}
-                                disabled={isConverting}
-                                className="group relative px-12 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-2xl font-black text-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-2xl shadow-green-500/20 ring-2 ring-white/10 flex items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={isConverting || saveSuccess}
+                                className={`group relative px-12 py-4 text-white rounded-2xl font-black text-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-2xl ring-2 flex items-center gap-4 disabled:cursor-not-allowed ${
+                                    saveSuccess
+                                        ? 'bg-gradient-to-r from-emerald-500 to-green-400 shadow-emerald-500/40 ring-emerald-400/50 animate-pulse'
+                                        : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 shadow-green-500/20 ring-white/10 disabled:opacity-50'
+                                }`}
                             >
-                                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                                    saveSuccess ? 'bg-white/30 scale-110' : 'bg-white/20 group-hover:rotate-12'
+                                }`}>
                                     {isConverting ? (
                                         <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    ) : saveSuccess ? (
+                                        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                         </svg>
                                     ) : (
                                         <span className="text-xl">💾</span>
                                     )}
                                 </div>
                                 <div className="flex flex-col items-start leading-tight">
-                                    <span className="uppercase tracking-widest text-[10px] opacity-70">Archive Synchronization</span>
-                                    <span>Save to Local Archive</span>
+                                    <span className="uppercase tracking-widest text-[10px] opacity-70">
+                                        {saveSuccess ? 'Synchronization Complete' : 'Archive Synchronization'}
+                                    </span>
+                                    <span>{saveSuccess ? 'Saved Successfully!' : 'Save to Local Archive'}</span>
                                 </div>
                                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
                             </button>
