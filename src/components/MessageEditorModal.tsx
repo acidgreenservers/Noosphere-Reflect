@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from '../types';
 import { CreateMarkdownAttachmentModal } from './CreateMarkdownAttachmentModal';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { ConfirmationModal } from './ConfirmationModal';
 import { useMathJax } from '../hooks/useMathJax';
 
 interface MessageEditorModalProps {
@@ -12,6 +13,7 @@ interface MessageEditorModalProps {
     onSave: (updatedContent: string) => Promise<void>;
     onCreateDocument?: (fileName: string, content: string) => void;
     onRemoveArtifact?: (artifactId: string) => void;
+    onDeleteMessage?: () => void;
     isMobile?: boolean;
 }
 
@@ -23,11 +25,15 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
     onSave,
     onCreateDocument,
     onRemoveArtifact,
+    onDeleteMessage,
     isMobile = false
 }) => {
     const [editedContent, setEditedContent] = useState(message.content);
     const [isSaving, setIsSaving] = useState(false);
     const [isCreateDocModalOpen, setIsCreateDocModalOpen] = useState(false);
+    const [isDeleteMessageModalOpen, setIsDeleteMessageModalOpen] = useState(false);
+    const [isDeleteArtifactModalOpen, setIsDeleteArtifactModalOpen] = useState(false);
+    const [artifactToDelete, setArtifactToDelete] = useState<string | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +68,30 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleDeleteMessage = () => {
+        setIsDeleteMessageModalOpen(true);
+    };
+
+    const confirmDeleteMessage = () => {
+        setIsDeleteMessageModalOpen(false);
+        if (onDeleteMessage) {
+            onDeleteMessage();
+        }
+    };
+
+    const handleDeleteArtifact = (artifactId: string, fileName: string) => {
+        setArtifactToDelete(artifactId);
+        setIsDeleteArtifactModalOpen(true);
+    };
+
+    const confirmDeleteArtifact = () => {
+        setIsDeleteArtifactModalOpen(false);
+        if (artifactToDelete && onRemoveArtifact) {
+            onRemoveArtifact(artifactToDelete);
+        }
+        setArtifactToDelete(null);
     };
 
     const handleInsertCollapsible = () => {
@@ -136,16 +166,30 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                             {message.type === 'prompt' ? 'User' : 'AI'}
                         </span>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 p-1 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600 hover:scale-110 active:scale-95 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50"
-                        aria-label="Close modal"
-                        disabled={isSaving}
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {onDeleteMessage && (
+                            <button
+                                onClick={handleDeleteMessage}
+                                className="text-gray-400 hover:text-red-400 transition-all duration-300 bg-gray-800/80 backdrop-blur-sm hover:bg-red-900/20 p-2 rounded-xl border border-gray-700/50 hover:border-red-500/50 hover:scale-110 active:scale-95 hover:shadow-lg hover:shadow-red-500/20 hover:ring-2 hover:ring-red-500/50 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                title="Delete this message"
+                                disabled={isSaving}
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-white transition-all duration-300 bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 p-2 rounded-xl border border-gray-700/50 hover:border-gray-600/50 hover:scale-110 active:scale-95 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            aria-label="Close modal"
+                            disabled={isSaving}
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Editing Area */}
@@ -238,11 +282,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                                             </button>
                                             {onRemoveArtifact && (
                                                 <button
-                                                    onClick={() => {
-                                                        if (confirm(`Delete ${art.fileName}?`)) {
-                                                            onRemoveArtifact(art.id);
-                                                        }
-                                                    }}
+                                                    onClick={() => handleDeleteArtifact(art.id, art.fileName)}
                                                     className="px-1.5 py-1 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded-r transition-all duration-200 hover:scale-110 active:scale-95"
                                                     title={`Delete ${art.fileName}`}
                                                 >
@@ -325,6 +365,33 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                     if (onCreateDocument) {
                         onCreateDocument(fileName, content);
                     }
+                }}
+            />
+
+            {/* Delete Message Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteMessageModalOpen}
+                title="Delete Message?"
+                message="Are you sure you want to delete this message? This action cannot be undone."
+                confirmText="Delete Message"
+                cancelText="Cancel"
+                variant="danger"
+                onConfirm={confirmDeleteMessage}
+                onCancel={() => setIsDeleteMessageModalOpen(false)}
+            />
+
+            {/* Delete Artifact Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteArtifactModalOpen}
+                title="Delete Attachment?"
+                message={`Are you sure you want to delete "${message.artifacts?.find(a => a.id === artifactToDelete)?.fileName || 'this file'}"? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                onConfirm={confirmDeleteArtifact}
+                onCancel={() => {
+                    setIsDeleteArtifactModalOpen(false);
+                    setArtifactToDelete(null);
                 }}
             />
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedChatSession, ChatMessage, ConversationArtifact } from '../../../types';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
 import { ArtifactViewerModal } from '../../../components/ArtifactViewerModal';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { useMathJax } from '../../../hooks/useMathJax';
 import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
@@ -21,6 +22,8 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
     const [editedTitle, setEditedTitle] = useState(session.metadata?.title || session.chatTitle);
     const [isSavingTitle, setIsSavingTitle] = useState(false);
+    const [isDeleteArtifactModalOpen, setIsDeleteArtifactModalOpen] = useState(false);
+    const [artifactToDelete, setArtifactToDelete] = useState<{ messageIndex: number; artifactId: string; fileName: string } | null>(null);
 
     // MathJax for LaTeX rendering
     const { isLoaded: mathJaxLoaded, typeset } = useMathJax();
@@ -230,7 +233,18 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     };
 
     const handleDeleteArtifact = async (messageIndex: number, artifactId: string) => {
-        if (!session.chatData) return;
+        // Find artifact name for confirmation
+        const artifact = session.chatData?.messages[messageIndex]?.artifacts?.find(a => a.id === artifactId);
+        if (artifact) {
+            setArtifactToDelete({ messageIndex, artifactId, fileName: artifact.fileName });
+            setIsDeleteArtifactModalOpen(true);
+        }
+    };
+
+    const confirmDeleteArtifact = async () => {
+        if (!artifactToDelete || !session.chatData) return;
+
+        const { messageIndex, artifactId } = artifactToDelete;
 
         // Remove from message artifacts
         const updatedMessages = [...session.chatData.messages];
@@ -261,6 +275,25 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         };
 
         await onSave(updatedSession);
+        setIsDeleteArtifactModalOpen(false);
+        setArtifactToDelete(null);
+    };
+
+    const handleDeleteMessage = async () => {
+        if (editingMessageIndex === null || !session.chatData) return;
+
+        const updatedMessages = session.chatData.messages.filter((_, idx) => idx !== editingMessageIndex);
+
+        const updatedSession: SavedChatSession = {
+            ...session,
+            chatData: {
+                ...session.chatData,
+                messages: updatedMessages
+            }
+        };
+
+        await onSave(updatedSession);
+        setEditingMessageIndex(null);
     };
 
     return (
@@ -515,9 +548,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                if (confirm(`Delete ${art.fileName}?`)) {
-                                                                                    handleDeleteArtifact(idx, art.id);
-                                                                                }
+                                                                                handleDeleteArtifact(idx, art.id);
                                                                             }}
                                                                             className="p-2 bg-gray-900/60 backdrop-blur-sm border border-gray-700/50 hover:border-red-500/50 hover:bg-red-900/10 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 group cursor-pointer hover:shadow-lg hover:shadow-red-500/10"
                                                                             title={`Delete ${art.fileName}`}
@@ -559,6 +590,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                         onSave={handleSaveMessage}
                         onCreateDocument={handleCreateDocument}
                         onRemoveArtifact={(artifactId) => handleDeleteArtifact(editingMessageIndex, artifactId)}
+                        onDeleteMessage={handleDeleteMessage}
                     />
                 </div>
             )}
@@ -567,6 +599,21 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
             <ArtifactViewerModal
                 artifact={viewingArtifact}
                 onClose={() => setViewingArtifact(null)}
+            />
+
+            {/* Delete Artifact Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteArtifactModalOpen}
+                title="Delete Attachment?"
+                message={`Are you sure you want to delete "${artifactToDelete?.fileName || 'this file'}"? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                onConfirm={confirmDeleteArtifact}
+                onCancel={() => {
+                    setIsDeleteArtifactModalOpen(false);
+                    setArtifactToDelete(null);
+                }}
             />
         </div>
     );

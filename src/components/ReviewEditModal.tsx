@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatData, ChatMessageType, ChatMessage, ConversationArtifact } from '../types';
-import { renderMarkdownToHtml } from '../utils/markdownUtils';
 import { ArtifactViewerModal } from './ArtifactViewerModal';
+import { ConfirmationModal } from './ConfirmationModal';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface ReviewEditModalProps {
     chatData: ChatData | null;
@@ -30,6 +31,8 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
     const [isEditing, setIsEditing] = useState(initialEditing);
     const [dropdownOpen, setDropdownOpen] = useState<{ index: number, type: 'before' | 'after' } | null>(null);
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [messageToDelete, setMessageToDelete] = useState<number | null>(null);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -64,10 +67,18 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
     };
 
     const handleDeleteMessage = (index: number) => {
-        if (!chatData || !confirm('Are you sure you want to delete this message?')) return;
+        if (!chatData) return;
+        setMessageToDelete(index);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteMessage = () => {
+        if (messageToDelete === null || !chatData) return;
         const newMessages = [...chatData.messages];
-        newMessages.splice(index, 1);
+        newMessages.splice(messageToDelete, 1);
         onMessagesChange(newMessages);
+        setIsDeleteModalOpen(false);
+        setMessageToDelete(null);
     };
 
     const handleArtifactClick = (artifactId: string) => {
@@ -496,10 +507,9 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                     </div>
 
                                     <div className="text-gray-300 text-sm overflow-hidden leading-relaxed font-normal opacity-90 pl-11">
-                                        <div
-                                            dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(msg.content) }}
-                                            className="prose prose-invert max-w-none"
-                                        />
+                                        <div className="max-w-none">
+                                            <MarkdownRenderer content={msg.content} />
+                                        </div>
                                         {msg.isEdited && <span className="block mt-2 text-yellow-500/50 text-xs italic">(Edited)</span>}
                                     </div>
 
@@ -561,6 +571,21 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                 <ArtifactViewerModal
                     artifact={viewingArtifact}
                     onClose={() => setViewingArtifact(null)}
+                />
+
+                {/* Delete Confirmation Modal */}
+                <ConfirmationModal
+                    isOpen={isDeleteModalOpen}
+                    title="Delete Message"
+                    message="Are you sure you want to delete this message? This action cannot be undone."
+                    confirmText="Delete"
+                    cancelText="Cancel"
+                    variant="danger"
+                    onConfirm={confirmDeleteMessage}
+                    onCancel={() => {
+                        setIsDeleteModalOpen(false);
+                        setMessageToDelete(null);
+                    }}
                 />
             </div>
         </div>
