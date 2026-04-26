@@ -112,4 +112,274 @@
     mask-size: contain;
     -webkit-mask-size: contain;
   }
+
+  /* Manual Prose-like Styles for Markdown Content */
+  .markdown-content {
+    line-height: 1.75;
+    color: #d1d5db;
+  }
+
+  .markdown-content p {
+    margin-bottom: 1rem;
+  }
+
+  .markdown-content h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    margin-top: 2rem;
+    color: #f3f4f6;
+    border-bottom: 2px solid #374151;
+    padding-bottom: 0.5rem;
+  }
+
+  .markdown-content h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    margin-top: 1.75rem;
+    color: #e5e7eb;
+  }
+
+  .markdown-content h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    margin-top: 1.5rem;
+    color: #d1d5db;
+  }
+
+  .markdown-content h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.875rem;
+    margin-top: 1.25rem;
+    color: #d1d5db;
+  }
+
+  .markdown-content h5,
+  .markdown-content h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    margin-top: 1rem;
+    color: #9ca3af;
+  }
+
+  .markdown-content a {
+    color: #60a5fa;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    transition: color 0.2s;
+  }
+
+  .markdown-content a:hover {
+    color: #93c5fd;
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .markdown-content ul {
+    list-style-type: disc;
+  }
+
+  .markdown-content ol {
+    list-style-type: decimal;
+  }
+
+  .markdown-content li {
+    margin-bottom: 0.5rem;
+  }
+
+  .markdown-content blockquote {
+    border-left: 4px solid #6272a4;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #9ca3af;
+    font-style: italic;
+    background: rgba(98, 114, 164, 0.1);
+    padding: 1rem;
+    border-radius: 0.5rem;
+  }
+
+  .markdown-content code {
+    font-family: 'Fira Code', 'Consolas', monospace;
+  }
+
+  .markdown-content pre {
+    margin: 1rem 0;
+    border-radius: 0.75rem;
+    overflow-x: auto;
+  }
+
+  .markdown-content pre code {
+    display: block;
+    padding: 1rem;
+    background: transparent;
+  }
+
+  .markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+  }
+
+  .markdown-content th,
+  .markdown-content td {
+    padding: 0.75rem;
+    text-align: left;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .markdown-content th {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    color: #e5e7eb;
+  }
+
+  .markdown-content hr {
+    border: none;
+    border-top: 2px solid #374151;
+    margin: 2rem 0;
+  }
+
+  .markdown-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+  }
+
+  /* Dracula Theme for Code Blocks */
+  .hljs {
+    background: #282a36;
+    color: #f8f8f2;
+  }
+
+  .hljs-comment,
+  .hljs-quote {
+    color: #6272a4;
+    font-style: italic;
+  }
+
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-subst {
+    color: #ff79c6;
+  }
+
+  .hljs-number,
+  .hljs-literal,
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-tag .hljs-attr {
+    color: #bd93f9;
+  }
+
+  .hljs-string,
+  .hljs-doctag {
+    color: #f1fa8c;
+  }
+
+  .hljs-title,
+  .hljs-section,
+  .hljs-selector-id {
+    color: #50fa7b;
+  }
+
+  .hljs-type,
+  .hljs-class .hljs-title {
+    color: #8be9fd;
+  }
+
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-attribute {
+    color: #f8f8f2;
+  }
+
+  .hljs-built_in,
+  .hljs-builtin-name {
+    color: #ff79c6;
+  }
+
+  .hljs-meta {
+    color: #ff79c6;
+  }
+
+  .hljs-deletion {
+    background: #ff5555;
+  }
+
+  .hljs-addition {
+    background: #50fa7b;
+  }
+
+  .hljs-emphasis {
+    font-style: italic;
+  }
+
+  .hljs-strong {
+    font-weight: bold;
+  }
+
+  /* Animation Keyframes for Enhanced UI */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+
+    50% {
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+    }
+  }
+
+  @keyframes border-pulse {
+    0%, 100% {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    50% {
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+  }
 }

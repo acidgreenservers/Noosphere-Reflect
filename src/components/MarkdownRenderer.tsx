@@ -45,25 +45,25 @@ const CustomComponents = {
   code: ({ inline, children, className }: { inline?: boolean; children: React.ReactNode; className?: string }) => {
     if (inline) {
       return (
-        <code className="bg-gray-800 px-1.5 py-0.5 rounded text-purple-300 font-mono text-sm border border-gray-700">
+        <code className="bg-gray-800/50 px-1.5 py-0.5 rounded text-purple-300 font-mono text-sm border border-gray-700/50">
           {children}
         </code>
       );
     }
 
     const match = /language-(\w+)/.exec(className || '');
-    const language = match ? match[1] : '';
+    const language = match ? match[1] : 'plaintext';
 
     return (
       <div className="group relative my-4">
-        <pre className="bg-gray-950 p-4 rounded-lg border border-gray-800 overflow-x-auto">
-          <code className={`language-${language} text-sm text-gray-300`}>{children}</code>
+        <pre className="hljs bg-gray-950/80 p-4 rounded-xl border border-gray-800/50 overflow-x-auto">
+          <code className={`language-${language} text-sm text-gray-300 font-mono`}>{children}</code>
         </pre>
         <button
           onClick={() => {
             navigator.clipboard.writeText(String(children).replace(/\n$/, ''));
           }}
-          className="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded hover:bg-gray-700 transition-colors opacity-0 group-hover:opacity-100"
+          className="absolute top-3 right-3 px-2.5 py-1.5 text-xs bg-gray-800/80 hover:bg-gray-700 border border-gray-700/50 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105"
           title="Copy code"
         >
           Copy

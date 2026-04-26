@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedChatSession, ChatMessage, ConversationArtifact } from '../../../types';
-import { renderMarkdownToHtml } from '../../../utils/markdownUtils';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
 import { ArtifactViewerModal } from '../../../components/ArtifactViewerModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { useMathJax } from '../../../hooks/useMathJax';
+import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
 
 interface ChatPreviewModalProps {
     session: SavedChatSession;
@@ -264,10 +264,14 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     };
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10">
-            <div className="bg-gray-900 rounded-2xl shadow-2xl w-full h-full max-w-7xl border border-gray-700 flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-xl p-4 sm:p-6 lg:p-10">
+            <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-2xl w-full h-full max-w-7xl border border-gray-700/50 flex flex-col overflow-hidden relative">
+                {/* Gradient Overlay for Depth */}
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-purple-500/5 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-green-500/3 via-transparent to-transparent pointer-events-none" />
+
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-gray-800 shrink-0 bg-gray-900">
+                <div className="relative flex justify-between items-center p-6 border-b border-gray-800/50 shrink-0 bg-gradient-to-r from-gray-900/95 via-gray-800/90 to-gray-900/95 backdrop-blur-xl">
                     <div className="flex flex-col gap-1 flex-1 pr-4">
                         {isEditing ? (
                             <div className="flex items-center gap-2">
@@ -331,9 +335,9 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                     </button>
 
                     {/* Left Sidebar: Navigation & Tools */}
-                    <div className={`w-full lg:w-80 bg-gray-950 border-r border-gray-800 flex flex-col shrink-0 z-10 transition-all duration-300 ${isSidebarCollapsed ? 'lg:-ml-80 opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                    <div className={`w-full lg:w-80 bg-gray-950/90 backdrop-blur-md border-r border-gray-800/50 flex flex-col shrink-0 z-10 transition-all duration-300 ${isSidebarCollapsed ? 'lg:-ml-80 opacity-0 pointer-events-none' : 'opacity-100'}`}>
                         {/* Search & Edit Bar */}
-                        <div className="p-4 border-b border-gray-800 flex gap-2">
+                        <div className="p-4 border-b border-gray-800/50 flex gap-2">
                             <div className="relative flex-1">
                                 <input
                                     type="text"
@@ -362,7 +366,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
 
                         {/* Jump List */}
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 bg-gradient-to-r from-green-500/20 via-purple-500/20 to-transparent rounded-lg border-l-2 border-green-500/50">
                                 Jump to Message
                             </h3>
                             {filteredMessageIndices.length === 0 ? (
@@ -378,9 +382,9 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                         <button
                                             key={idx}
                                             onClick={() => scrollToMessage(idx)}
-                                            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all border border-transparent ${activeMessageId === idx
-                                                ? 'bg-purple-900/20 text-purple-300 border-purple-500/30'
-                                                : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                                            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-300 border ${activeMessageId === idx
+                                                ? 'bg-gradient-to-r from-purple-900/30 to-purple-800/20 text-purple-300 border-purple-500/50 shadow-lg shadow-purple-500/20 scale-[1.02]'
+                                                : 'text-gray-400 hover:bg-gray-800/80 hover:text-gray-200 hover:border-gray-700 hover:scale-[1.01] border-transparent'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2 mb-1">
@@ -405,7 +409,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                     </div>
 
                     {/* Main Content: Chat Stream */}
-                    <div ref={contentRef} className="flex-1 overflow-y-auto bg-gray-900 p-4 lg:p-8 custom-scrollbar scroll-smooth">
+                    <div ref={contentRef} className="flex-1 overflow-y-auto bg-gray-900/95 backdrop-blur-md p-4 lg:p-8 custom-scrollbar scroll-smooth relative">
                         <div className="max-w-4xl mx-auto space-y-8">
                             {messages.map((msg, idx) => {
                                 const isUser = msg.type === 'prompt';
@@ -415,24 +419,27 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                     <div
                                         key={idx}
                                         id={`preview-message-${idx}`}
-                                        className={`group relative pl-4 lg:pl-0 transition-opacity duration-500 ${searchTerm && !isHighlighted ? 'opacity-30' : 'opacity-100'
+                                        className={`group relative pl-4 lg:pl-0 transition-all duration-500 ${searchTerm && !isHighlighted ? 'opacity-30 scale-[0.98]' : 'opacity-100'
                                             }`}
+                                        style={{ animation: 'fadeInUp 0.5s ease-out' }}
                                     >
                                         {/* Avatar/Header */}
-                                        <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center justify-between mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-lg ${isUser
-                                                    ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white'
-                                                    : 'bg-gradient-to-br from-green-500 to-emerald-700 text-white'
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg shadow-black/20 backdrop-blur-md ${isUser
+                                                    ? 'bg-gradient-to-br from-blue-500/90 to-blue-700/90 text-white border border-blue-400/30'
+                                                    : 'bg-gradient-to-br from-green-500/90 to-emerald-700/90 text-white border border-green-400/30'
                                                     }`}>
                                                     {isUser ? 'U' : 'AI'}
                                                 </div>
-                                                <span className={`text-sm font-bold tracking-wide ${isUser ? 'text-blue-400' : 'text-green-400'
-                                                    }`}>
-                                                    {isUser ? session.userName || 'User' : session.aiName || 'AI'}
-                                                </span>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex flex-col">
+                                                    <span className={`text-sm font-bold tracking-wide ${isUser ? 'text-blue-400' : 'text-green-400'
+                                                        }`}>
+                                                        {isUser ? session.userName || 'User' : session.aiName || 'AI'}
+                                                    </span>
                                                     <span className="text-xs text-gray-600 font-mono">#{idx + 1}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
                                                     {msg.artifacts && msg.artifacts.length > 0 && (
                                                         <span className="text-xs text-purple-400 animate-pulse" title={`${msg.artifacts.length} artifact(s)`}>
                                                             📎
@@ -457,18 +464,15 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                         </div>
 
                                         {/* Content Bubble */}
-                                        <div className={`prose prose-invert max-w-none rounded-2xl p-6 border shadow-lg ${isUser
-                                            ? 'bg-gray-800/50 border-gray-700/50'
-                                            : 'bg-gray-950/50 border-gray-800/50'
+                                        <div className={`max-w-none rounded-3xl p-6 border shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.005] hover:shadow-xl ${isUser
+                                            ? 'bg-gradient-to-br from-blue-900/40 to-blue-800/30 border-blue-700/30 hover:border-blue-600/50 shadow-blue-500/10 hover:shadow-blue-500/20'
+                                            : 'bg-gradient-to-br from-gray-900/60 to-gray-950/50 border-gray-700/30 hover:border-gray-600/50 shadow-gray-500/10 hover:shadow-gray-500/20'
                                             }`}>
-                                            <div
-                                                dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(msg.content) }}
-                                                className="leading-relaxed text-gray-300"
-                                            />
+                                            <MarkdownRenderer content={msg.content} />
 
                                             {/* Artifacts Display */}
                                             {msg.artifacts && msg.artifacts.length > 0 && (
-                                                <div className="mt-6 pt-4 border-t border-gray-700/50">
+                                                <div className="mt-6 pt-4 border-t border-gray-700/30 backdrop-blur-sm">
                                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                                                         📎 Attached Files
                                                     </p>
@@ -479,11 +483,11 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                 <div key={art.id} className="flex items-center gap-2">
                                                                     <button
                                                                         onClick={() => handleArtifactAction(art)}
-                                                                        className="flex items-center gap-3 bg-gray-900/80 p-2.5 rounded-lg border border-gray-700 hover:border-purple-500 hover:bg-purple-900/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group cursor-pointer text-left flex-1 hover:ring-1 hover:ring-purple-500/30"
+                                                                        className="flex items-center gap-3 bg-gray-900/60 backdrop-blur-sm p-2.5 rounded-xl border border-gray-700/50 hover:border-purple-500/50 hover:bg-purple-900/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] group cursor-pointer text-left flex-1 hover:shadow-lg hover:shadow-purple-500/10"
                                                                         title={isMarkdown ? `View ${art.fileName}` : `Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
                                                                     >
                                                                         <span className="text-lg">{getFileIcon(art.mimeType)}</span>
-                                                                        <span className="text-sm text-gray-300 truncate flex-1 group-hover:text-purple-300">{art.fileName}</span>
+                                                                        <span className="text-sm text-gray-300 truncate flex-1 group-hover:text-purple-300 transition-colors">{art.fileName}</span>
                                                                         <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                             {isMarkdown ? (
                                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -498,7 +502,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                                 e.stopPropagation();
                                                                                 handleDownloadArtifact(art);
                                                                             }}
-                                                                            className="p-2 bg-gray-900/80 border border-gray-700 hover:border-green-500 hover:bg-green-900/20 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 group cursor-pointer hover:ring-2 hover:ring-green-500/50"
+                                                                            className="p-2 bg-gray-900/60 backdrop-blur-sm border border-gray-700/50 hover:border-green-500/50 hover:bg-green-900/10 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 group cursor-pointer hover:shadow-lg hover:shadow-green-500/10"
                                                                             title={`Download ${art.fileName}`}
                                                                         >
                                                                             <svg className="w-4 h-4 text-gray-600 group-hover:text-green-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -515,7 +519,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                                     handleDeleteArtifact(idx, art.id);
                                                                                 }
                                                                             }}
-                                                                            className="p-2 bg-gray-900/80 border border-gray-700 hover:border-red-500 hover:bg-red-900/20 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 group cursor-pointer hover:ring-2 hover:ring-red-500/50"
+                                                                            className="p-2 bg-gray-900/60 backdrop-blur-sm border border-gray-700/50 hover:border-red-500/50 hover:bg-red-900/10 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 group cursor-pointer hover:shadow-lg hover:shadow-red-500/10"
                                                                             title={`Delete ${art.fileName}`}
                                                                         >
                                                                             <svg className="w-4 h-4 text-gray-600 group-hover:text-red-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -536,7 +540,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
 
                             {/* End of Chat */}
                             <div className="py-12 text-center">
-                                <div className="w-2 h-2 bg-gray-700 rounded-full mx-auto mb-2"></div>
+                                <div className="w-2 h-2 bg-gradient-to-b from-green-500 to-purple-500 rounded-full mx-auto mb-2 animate-pulse"></div>
                                 <span className="text-xs text-gray-600 uppercase tracking-widest">End of Conversation</span>
                             </div>
                         </div>

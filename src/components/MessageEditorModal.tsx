@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from '../types';
-import { renderMarkdownToHtml } from '../utils/markdownUtils';
 import { CreateMarkdownAttachmentModal } from './CreateMarkdownAttachmentModal';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { useMathJax } from '../hooks/useMathJax';
 
 interface MessageEditorModalProps {
     message: ChatMessage;
@@ -28,6 +29,10 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [isCreateDocModalOpen, setIsCreateDocModalOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const previewRef = useRef<HTMLDivElement>(null);
+
+    // MathJax for LaTeX rendering
+    const { isLoaded: mathJaxLoaded, typeset } = useMathJax();
 
     // Reset content when modal opens with a new message
     useEffect(() => {
@@ -35,6 +40,16 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
             setEditedContent(message.content);
         }
     }, [isOpen, message.content]);
+
+    // Trigger MathJax typeset when content changes
+    useEffect(() => {
+        if (mathJaxLoaded && previewRef.current) {
+            const timer = setTimeout(() => {
+                typeset(previewRef.current || undefined);
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [editedContent, mathJaxLoaded, typeset]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -97,20 +112,19 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
         }
     };
 
-    // Use centralized markdown-to-HTML utility
-    const renderPreview = (text: string) => {
-        return renderMarkdownToHtml(text);
-    };
 
     if (!isOpen) return null;
 
     const hasChanges = editedContent !== message.content;
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
-            <div className={`bg-gray-900 border border-gray-700 rounded-xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl`}>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4 backdrop-blur-xl">
+            <div className={`bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-3xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl relative overflow-hidden`}>
+                {/* Gradient Overlay for Depth */}
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-purple-500/5 pointer-events-none" />
+
                 {/* Modal Header */}
-                <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800/50 rounded-t-xl">
+                <div className="relative flex justify-between items-center p-4 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/95 via-gray-800/90 to-gray-900/95 backdrop-blur-xl rounded-t-3xl">
                     <div className="flex items-center gap-3">
                         <h3 className="text-xl font-bold text-gray-100">
                             Edit Message #{messageIndex + 1}
@@ -135,9 +149,9 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                 </div>
 
                 {/* Editing Area */}
-                <div className={`flex-1 overflow-hidden flex ${isMobile ? 'flex-col' : 'flex-row'}`} style={{ minHeight: '500px' }}>
+                <div className={`relative flex-1 overflow-hidden flex ${isMobile ? 'flex-col' : 'flex-row'}`} style={{ minHeight: '500px' }}>
                     {/* Editor */}
-                    <div className={`p-4 ${isMobile ? 'w-full border-b border-gray-700' : 'w-1/2 border-r border-gray-700'} flex flex-col`}>
+                    <div className={`relative p-4 ${isMobile ? 'w-full border-b border-gray-800/50' : 'w-1/2 border-r border-gray-800/50'} flex flex-col backdrop-blur-sm`}>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-400">Editor</span>
                             <span className="text-xs text-gray-500">
@@ -150,7 +164,7 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                             value={editedContent}
                             onChange={(e) => setEditedContent(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="w-full h-full p-3 bg-gray-800 text-gray-100 rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-sm font-mono"
+                            className="w-full h-full p-3 bg-gray-800/80 backdrop-blur-md text-gray-100 rounded-xl border border-gray-700/50 focus:ring-2 focus:ring-green-500/50 focus:border-green-500/30 resize-none text-sm font-mono transition-all duration-300 hover:border-gray-600/50"
                             placeholder="Edit your message..."
                             disabled={isSaving}
                             autoFocus
@@ -246,23 +260,22 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
 
                     {/* Preview */}
                     {!isMobile && (
-                        <div className="w-1/2 p-4 overflow-auto flex flex-col">
+                        <div className="relative w-1/2 p-4 overflow-auto flex flex-col backdrop-blur-sm">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium text-gray-400">Live Preview</span>
                                 <span className="text-xs text-gray-500">Rendered output</span>
                             </div>
-                            <div className="bg-gray-800 rounded-lg p-4 flex-1 border border-gray-600 overflow-auto">
-                                <div
-                                    className="prose prose-invert max-w-none text-gray-100 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: renderPreview(editedContent) }}
-                                />
+                            <div ref={previewRef} className="bg-gray-800/60 backdrop-blur-md rounded-2xl p-4 flex-1 border border-gray-700/50 overflow-auto">
+                                <div className="text-gray-100 text-sm">
+                                    <MarkdownRenderer content={editedContent} />
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* Modal Footer */}
-                <div className="flex justify-between items-center gap-3 p-4 border-t border-gray-700 bg-gray-800/50 rounded-b-xl">
+                <div className="relative flex justify-between items-center gap-3 p-4 border-t border-gray-800/50 bg-gradient-to-r from-gray-900/95 via-gray-800/90 to-gray-900/95 backdrop-blur-xl rounded-b-3xl">
                     <div className="text-sm">
                         {hasChanges ? (
                             <span className="text-yellow-400">⚠️ Unsaved changes</span>
@@ -273,14 +286,14 @@ export const MessageEditorModal: React.FC<MessageEditorModalProps> = ({
                     <div className="flex gap-3">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 border border-gray-600 hover:border-gray-500 hover:shadow-lg text-sm font-medium"
+                            className="px-4 py-2 bg-gray-800/80 backdrop-blur-md text-gray-200 rounded-xl hover:bg-gray-700/80 transition-all duration-300 hover:scale-105 active:scale-95 border border-gray-700/50 hover:border-gray-600/50 hover:shadow-lg text-sm font-medium"
                             disabled={isSaving}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
                             disabled={isSaving || !hasChanges}
                         >
                             {isSaving ? (
