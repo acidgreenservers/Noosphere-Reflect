@@ -58,6 +58,15 @@ export const PLATFORM_OPTIONS: PlatformOption[] = [
         format: 'markdown'
     },
     {
+        mode: ParserMode.LeoAiMarkdown,
+        label: 'Leo AI',
+        description: 'Brave Leo Assistant chat copy-paste',
+        icon: '🦁',
+        color: 'from-orange-500 to-blue-600',
+        category: 'Leo AI',
+        format: 'markdown'
+    },
+    {
         mode: ParserMode.ThirdPartyMarkdown,
         label: 'Other / Generic',
         description: 'Generic AI Chat Markdown (Auto-detects Metadata)',

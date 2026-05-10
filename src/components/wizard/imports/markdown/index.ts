@@ -6,6 +6,7 @@ import { GrokMarkdownSignal } from './GrokMarkdown';
 import { LlamacoderMarkdownSignal } from './LlamacoderMarkdown';
 import { AiStudioMarkdownSignal } from './AiStudioMarkdown';
 import { LeChatMarkdownSignal } from './LeChatMarkdown';
+import { LeoAiMarkdownSignal } from './LeoAiMarkdown';
 import { NoosphereMarkdownSignal } from './NoosphereMarkdown';
 import { GenericMarkdownSignal } from './GenericMarkdown';
 import { ImportSignal } from './types';
@@ -21,6 +22,7 @@ export const MARKDOWN_SIGNALS: ImportSignal[] = [
     LlamacoderMarkdownSignal,
     AiStudioMarkdownSignal,
     LeChatMarkdownSignal,
+    LeoAiMarkdownSignal,
     NoosphereMarkdownSignal,
     GenericMarkdownSignal
 ];

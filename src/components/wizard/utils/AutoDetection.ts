@@ -59,7 +59,31 @@ export const detectImportSignal = (content: string): DetectionResult => {
         };
     }
 
-    // 3. STRUCTURAL MARKER DETECTION (Export Format Markers Only)
+    // 3. Platform detection for non-standard markdown formats (Leo, Kimi)
+
+    // Leo AI (uses You: / Leo AI: markers)
+    const leoSignal = MARKDOWN_SIGNALS.find(s => s.id === 'leo-ai-md');
+    if (leoSignal && content.includes('You: ') && content.includes('Leo AI: ')) {
+        return {
+            signal: leoSignal,
+            method: 'markdown',
+            confidence: 'medium',
+            reason: 'Leo AI conversation structure detected (You: / Leo AI: markers)'
+        };
+    }
+
+    // Kimi (uses different structure with User:/Kimi: labels)
+    const kimiSignal = MARKDOWN_SIGNALS.find(s => s.id === 'kimi-md');
+    if (kimiSignal && content.includes('\nKimi:') && content.includes('\nUser:')) {
+        return {
+            signal: kimiSignal,
+            method: 'markdown',
+            confidence: 'medium',
+            reason: 'Kimi conversation structure detected (User:/Kimi: labels)'
+        };
+    }
+
+    // 4. STRUCTURAL MARKER DETECTION (Standard Export Format Markers)
     const header = content.slice(0, 300);  // First 300 chars for metadata
     const footer = content.slice(-100);     // Last 100 chars for signature
 
@@ -147,17 +171,6 @@ export const detectImportSignal = (content: string): DetectionResult => {
                 };
             }
         }
-    }
-
-    // 4. Check for Kimi (uses different structure with User:/Kimi: labels)
-    const kimiSignal = MARKDOWN_SIGNALS.find(s => s.id === 'kimi-md');
-    if (kimiSignal && content.includes('\nKimi:') && content.includes('\nUser:')) {
-        return {
-            signal: kimiSignal,
-            method: 'markdown',
-            confidence: 'medium',
-            reason: 'Kimi conversation structure detected (User:/Kimi: labels)'
-        };
     }
 
     // 5. FALLBACK: Generic Markdown (has Prompt/Response structure but unknown platform)
