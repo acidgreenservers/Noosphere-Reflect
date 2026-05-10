@@ -5,6 +5,7 @@ import { ChatGPTThemeRendererInstance, ChatGPTThemeClasses } from './platforms/C
 import { GrokThemeRendererInstance, GrokThemeClasses } from './platforms/GrokTheme';
 import { GeminiThemeRendererInstance, GeminiThemeClasses } from './platforms/GeminiTheme';
 import { LeChatThemeRendererInstance, LeChatThemeClasses } from './platforms/LeChatTheme';
+import { LeoAiThemeRendererInstance, LeoAiThemeClasses } from './platforms/LeoAiTheme';
 
 /**
  * Style configuration - maps ChatStyle to theme renderer
@@ -143,6 +144,15 @@ export class ThemeRegistry implements IThemeRegistry {
       description: 'Mistral LeChat interface styling',
       renderer: LeChatThemeRendererInstance,
       classes: LeChatThemeClasses,
+    });
+
+    // Leo AI style
+    this.registerStyle({
+      id: ChatStyle.LeoAI,
+      name: 'Leo AI',
+      description: 'Brave Leo Assistant interface styling',
+      renderer: LeoAiThemeRendererInstance,
+      classes: LeoAiThemeClasses,
     });
   }
 }

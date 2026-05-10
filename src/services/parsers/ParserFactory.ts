@@ -17,6 +17,7 @@ import { ClaudeMarkdownParser } from './markdown/ClaudeMarkdownParser';
 import { ChatGptMarkdownParser } from './markdown/ChatGptMarkdownParser';
 import { GrokMarkdownParser } from './markdown/GrokMarkdownParser';
 import { LeChatMarkdownParser } from './markdown/LeChatMarkdownParser';
+import { LeoAiMarkdownParser } from './markdown/LeoAiMarkdownParser';
 import { AiStudioMarkdownParser } from './markdown/AiStudioMarkdownParser';
 import { KimiMarkdownParser } from './markdown/KimiMarkdownParser';
 import { NoosphereMarkdownParser } from './markdown/NoosphereMarkdownParser';
@@ -59,6 +60,8 @@ export class ParserFactory {
                 return new GrokMarkdownParser();
             case ParserMode.LeChatMarkdown:
                 return new LeChatMarkdownParser();
+            case ParserMode.LeoAiMarkdown:
+                return new LeoAiMarkdownParser();
             case ParserMode.AiStudioMarkdown:
                 return new AiStudioMarkdownParser();
             case ParserMode.KimiMarkdown:

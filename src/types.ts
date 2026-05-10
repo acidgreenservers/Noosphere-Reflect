@@ -76,6 +76,7 @@ export enum ChatStyle {
   Gemini = 'gemini',
   Grok = 'grok',
   LeChat = 'lechat',
+  LeoAI = 'leo-ai',
 }
 
 export interface ThemeClasses {
@@ -111,6 +112,7 @@ export enum ParserMode {
   LeChatMarkdown = 'lechat-md',
   AiStudioMarkdown = 'aistudio-md',
   LlamacoderMarkdown = 'llamacoder-md',
+  LeoAiMarkdown = 'leo-ai-md',
   NoosphereMarkdown = 'noosphere-md',
   ThirdPartyMarkdown = 'third-party-markdown',
   ThirdPartyJson = 'third-party-json',
