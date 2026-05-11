@@ -72,7 +72,7 @@ export default function PromptArchive() {
     const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-    const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
+    const { isLoggedIn, accessToken, promptsFolderId } = useGoogleAuth();
 
     useEffect(() => {
         loadPrompts();
@@ -335,7 +335,7 @@ export default function PromptArchive() {
     };
 
     const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', _packageType: 'directory' | 'zip' | 'single') => {
-        if (!isLoggedIn || !accessToken || !driveFolderId) {
+        if (!isLoggedIn || !accessToken || !promptsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
         }
@@ -370,7 +370,7 @@ export default function PromptArchive() {
                     uploadFilename = `${filename}.json`;
                 }
 
-                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, driveFolderId);
+                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, promptsFolderId);
             }
 
             alert(`✅ Exported ${selectedMetas.length} prompt(s) to Google Drive`);

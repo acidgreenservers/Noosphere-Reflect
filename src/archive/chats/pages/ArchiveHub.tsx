@@ -69,7 +69,7 @@ const ArchiveHub: React.FC = () => {
 
     const location = useLocation();
     const navigate = useNavigate();
-    const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
+    const { isLoggedIn, accessToken, chatsFolderId } = useGoogleAuth();
 
     useEffect(() => {
         let cancelled = false;
@@ -594,7 +594,7 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleDirectoryExportToDrive = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', appSettings: AppSettings, accessToken: string, driveFolderId: string) => {
+    const handleDirectoryExportToDrive = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', appSettings: AppSettings, accessToken: string, chatsFolderId: string) => {
         const theme = session.selectedTheme || ChatTheme.DarkDefault;
         const userName = session.userName || 'User';
         const aiName = session.aiName || 'AI';
@@ -608,7 +608,7 @@ const ArchiveHub: React.FC = () => {
         const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 
         // Create main export folder inside the Noosphere-Reflect folder
-        const mainFolderId = await googleDriveService.createFolder(accessToken, baseFilename, driveFolderId);
+        const mainFolderId = await googleDriveService.createFolder(accessToken, baseFilename, chatsFolderId);
 
         // Generate conversation content
         let content: string;
@@ -769,7 +769,7 @@ const ArchiveHub: React.FC = () => {
     };
 
     const handleExportToDriveWithFormat = async (sessionMeta: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
-        if (!isLoggedIn || !accessToken || !driveFolderId) {
+        if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
         }
@@ -784,7 +784,7 @@ const ArchiveHub: React.FC = () => {
 
             if (packageType === 'directory') {
                 // Directory export - create folder structure in Google Drive
-                const result = await handleDirectoryExportToDrive(session, format, appSettings, accessToken, driveFolderId);
+                const result = await handleDirectoryExportToDrive(session, format, appSettings, accessToken, chatsFolderId);
 
                 // Mark as exported
                 await storageService.updateExportStatus(session.id, 'exported');
@@ -855,7 +855,7 @@ const ArchiveHub: React.FC = () => {
                     content,
                     uploadFilename,
                     mimeType,
-                    driveFolderId
+                    chatsFolderId
                 );
 
                 // Mark as exported
@@ -874,7 +874,7 @@ const ArchiveHub: React.FC = () => {
     };
 
     const handleSyncFromDrive = async () => {
-        if (!isLoggedIn || !accessToken || !driveFolderId) {
+        if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
         }
@@ -1031,7 +1031,7 @@ const ArchiveHub: React.FC = () => {
     };
 
     const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
-        if (!isLoggedIn || !accessToken || !driveFolderId) {
+        if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
         }
@@ -1113,7 +1113,7 @@ const ArchiveHub: React.FC = () => {
                     content,
                     uploadFilename,
                     mimeType,
-                    driveFolderId
+                    chatsFolderId
                 );
 
                 // Mark as exported
@@ -1132,7 +1132,7 @@ const ArchiveHub: React.FC = () => {
     };
 
     const handleExportToDrive = async () => {
-        if (!isLoggedIn || !accessToken || !driveFolderId) {
+        if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
         }
@@ -1182,7 +1182,7 @@ const ArchiveHub: React.FC = () => {
                     content,
                     `${filename}.html`,
                     'text/html',
-                    driveFolderId
+                    chatsFolderId
                 );
 
                 // Mark as exported

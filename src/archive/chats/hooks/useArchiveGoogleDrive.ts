@@ -44,7 +44,7 @@ export interface UseArchiveGoogleDriveReturn {
         sessions: SavedChatSessionMetadata[],
         appSettings: AppSettings,
         accessToken: string,
-        driveFolderId: string,
+        chatsFolderId: string,
         loadSessions: () => Promise<void>
     ) => Promise<void>;
     handleExportToDriveWithFormat: (
@@ -53,7 +53,7 @@ export interface UseArchiveGoogleDriveReturn {
         packageType: ExportPackageType,
         appSettings: AppSettings,
         accessToken: string,
-        driveFolderId: string,
+        chatsFolderId: string,
         loadSessions: () => Promise<void>
     ) => Promise<void>;
     handleBatchExportToDrive: (
@@ -62,7 +62,7 @@ export interface UseArchiveGoogleDriveReturn {
         format: ExportFormat,
         appSettings: AppSettings,
         accessToken: string,
-        driveFolderId: string,
+        chatsFolderId: string,
         loadSessions: () => Promise<void>
     ) => Promise<void>;
 }
@@ -77,7 +77,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
         format: ExportFormat,
         appSettings: AppSettings,
         accessToken: string,
-        driveFolderId: string
+        chatsFolderId: string
     ) => {
         const theme = session.selectedTheme || ChatTheme.DarkDefault;
         const userName = session.userName || 'User';
@@ -90,7 +90,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
         );
         const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 
-        const mainFolderId = await googleDriveService.createFolder(accessToken, baseFilename, driveFolderId);
+        const mainFolderId = await googleDriveService.createFolder(accessToken, baseFilename, chatsFolderId);
 
         let content: string;
         let extension: string;
@@ -286,7 +286,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
         sessions: SavedChatSessionMetadata[],
         appSettings: AppSettings,
         accessToken: string,
-        driveFolderId: string,
+        chatsFolderId: string,
         loadSessions: () => Promise<void>
     ) => {
         const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
@@ -309,7 +309,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                     session.parserMode, session.metadata, true, false, session.selectedStyle
                 );
 
-                await googleDriveService.uploadFile(accessToken, content, `${filename}.html`, 'text/html', driveFolderId);
+                await googleDriveService.uploadFile(accessToken, content, `${filename}.html`, 'text/html', chatsFolderId);
                 await storageService.updateExportStatus(session.id, 'exported');
             }
             await loadSessions();
@@ -328,7 +328,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
         packageType: ExportPackageType,
         appSettings: AppSettings,
         accessToken: string,
-        driveFolderId: string,
+        chatsFolderId: string,
         loadSessions: () => Promise<void>
     ) => {
         setIsSendingToDrive(true);
@@ -340,7 +340,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
             }
 
             if (packageType === 'directory') {
-                const result = await handleDirectoryExportToDrive(session, format, appSettings, accessToken, driveFolderId);
+                const result = await handleDirectoryExportToDrive(session, format, appSettings, accessToken, chatsFolderId);
                 await storageService.updateExportStatus(session.id, 'exported');
                 await loadSessions();
                 alert(`✅ Exported to Google Drive folder:\n- ${result.folderName}/\n  - ${result.mainFile}\n  - artifacts/ (${result.artifactsUploaded} files)\n  - export-metadata.json`);
@@ -366,7 +366,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                     uploadFilename = `${filename}.json`;
                 }
 
-                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, driveFolderId);
+                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, chatsFolderId);
                 await storageService.updateExportStatus(session.id, 'exported');
                 await loadSessions();
                 alert(`✅ Uploaded to Google Drive: ${uploadFilename}`);
@@ -385,7 +385,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
         format: ExportFormat,
         appSettings: AppSettings,
         accessToken: string,
-        driveFolderId: string,
+        chatsFolderId: string,
         loadSessions: () => Promise<void>
     ) => {
         const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
@@ -418,7 +418,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                     uploadFilename = `${filename}.json`;
                 }
 
-                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, driveFolderId);
+                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, chatsFolderId);
                 await storageService.updateExportStatus(session.id, 'exported');
             }
             await loadSessions();

@@ -8,23 +8,13 @@ import { ChatData, ChatMessage, ChatMessageType } from '../types';
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
-// Global token refresh callback
-let tokenRefreshCallback: (() => Promise<boolean>) | null = null;
-
-export const setTokenRefreshCallback = (callback: (() => Promise<boolean>) | null) => {
-    tokenRefreshCallback = callback;
-};
-
-// Export secure token functions for external use
-export { setSecureToken, getSecureToken };
-
 // SECURITY: Improved token storage and validation
 const TOKEN_STORAGE_KEY = 'google_access_token';
 
 /**
  * Securely store OAuth token with validation
  */
-const setSecureToken = (token: string): void => {
+export const setSecureToken = (token: string): void => {
     if (!token || typeof token !== 'string' || token.length < 10) {
         throw new Error('Invalid token format');
     }
@@ -35,7 +25,7 @@ const setSecureToken = (token: string): void => {
 /**
  * Securely retrieve OAuth token with validation
  */
-const getSecureToken = (): string | null => {
+export const getSecureToken = (): string | null => {
     const token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
     if (!token) return null;
 
@@ -49,34 +39,25 @@ const getSecureToken = (): string | null => {
     return token;
 };
 
-// Helper to make authenticated requests with automatic retry on 401
+// Global token expiration callback (e.g. to logout user)
+let tokenExpirationCallback: (() => void) | null = null;
+
+export const setTokenExpirationCallback = (callback: (() => void) | null) => {
+    tokenExpirationCallback = callback;
+};
+
+// Helper to make authenticated requests
 const makeAuthenticatedRequest = async (
     url: string,
-    options: RequestInit,
-    retryCount = 0
+    options: RequestInit
 ): Promise<Response> => {
-    let response = await fetch(url, options);
+    const response = await fetch(url, options);
 
-    // If we get a 401 and haven't retried yet, try to refresh token
-    if (response.status === 401 && retryCount === 0 && tokenRefreshCallback) {
-        console.log('Token expired, attempting refresh...');
-        const refreshSuccess = await tokenRefreshCallback();
-
-        if (refreshSuccess) {
-            const newToken = getSecureToken();
-            if (!newToken) {
-                throw new Error('Token refresh succeeded but no valid token available');
-            }
-
-            // Retry the request with new token
-            const newOptions = {
-                ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': `Bearer ${newToken}`,
-                },
-            };
-            response = await fetch(url, newOptions);
+    // If we get a 401, token is invalid or expired
+    if (response.status === 401) {
+        console.warn('Token expired or invalid');
+        if (tokenExpirationCallback) {
+            tokenExpirationCallback();
         }
     }
 
@@ -358,15 +339,36 @@ export const googleDriveService = {
     },
 
     /**
-     * Ensure a folder exists.
+     * Ensure a folder exists within a parent folder (or root).
      * Checks if it exists, if not creates it.
      */
-    async ensureFolder(accessToken: string, folderName: string): Promise<string> {
-        const existingId = await this.searchFolder(accessToken, folderName);
-        if (existingId) {
-            return existingId;
+    async ensureFolder(accessToken: string, folderName: string, parentFolderId?: string): Promise<string> {
+        let query = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`;
+        if (parentFolderId) {
+            query += ` and '${parentFolderId}' in parents`;
+        } else {
+            query += ` and 'root' in parents`;
         }
-        return this.createFolder(accessToken, folderName);
+
+        const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)`;
+
+        const response = await makeAuthenticatedRequest(url, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Drive search failed: ${error.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.files && data.files.length > 0) {
+            return data.files[0].id;
+        }
+
+        return this.createFolder(accessToken, folderName, parentFolderId);
     },
 
     /**
