@@ -72,7 +72,7 @@ export default function MemoryArchive() {
     const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-    const { isLoggedIn, accessToken, driveFolderId } = useGoogleAuth();
+    const { isLoggedIn, accessToken, memoriesFolderId } = useGoogleAuth();
 
     useEffect(() => {
         loadMemories();
@@ -292,7 +292,7 @@ export default function MemoryArchive() {
     };
 
     const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', _packageType: 'directory' | 'zip' | 'single') => {
-        if (!isLoggedIn || !accessToken || !driveFolderId) {
+        if (!isLoggedIn || !accessToken || !memoriesFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
         }
@@ -327,7 +327,7 @@ export default function MemoryArchive() {
                     uploadFilename = `${filename}.json`;
                 }
 
-                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, driveFolderId);
+                await googleDriveService.uploadFile(accessToken, content, uploadFilename, mimeType, memoriesFolderId);
             }
 
             alert(`✅ Exported ${selectedMetas.length} memory(ies) to Google Drive`);
