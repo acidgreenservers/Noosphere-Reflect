@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeSanitize from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import rehypeRaw from 'rehype-raw';
 import { sanitizeUrl } from '../utils/securityUtils';
 import { useMathJax } from './MathJaxProvider';
 
@@ -99,6 +100,37 @@ const CustomComponents = {
   td: ({ children }: { children: React.ReactNode }) => (
     <td className="px-4 py-3 text-sm text-gray-300 border border-gray-700">{children}</td>
   ),
+
+  collapsible: ({ children }: { children: React.ReactNode }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+      <span className="block my-4 border border-purple-500/30 rounded-xl overflow-hidden bg-purple-500/5 transition-all duration-300 shadow-lg shadow-purple-500/5">
+        <details
+          open={isOpen}
+          onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
+        >
+          <summary className="cursor-pointer p-4 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 font-bold flex items-center justify-between list-none transition-colors">
+            <span className="flex items-center gap-3">
+              <span className="text-purple-400 text-lg">{isOpen ? '📂' : '📁'}</span>
+              <span>Collapsible Section</span>
+            </span>
+            <span className={`inline-block transform transition-transform duration-300 text-purple-400 ${isOpen ? 'rotate-90' : ''}`}>
+              ▶
+            </span>
+          </summary>
+          <span className="block p-4 text-gray-300 border-t border-purple-500/20 bg-gray-900/40">
+            {children}
+          </span>
+        </details>
+      </span>
+    );
+  },
+};
+
+// Customize sanitization schema to allow <collapsible> tag
+const schema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), 'collapsible'],
 };
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
@@ -112,8 +144,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     <div className="markdown-content max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight, rehypeSanitize]}
-        components={CustomComponents}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, schema], rehypeHighlight]}
+        components={CustomComponents as any}
       >
         {content}
       </ReactMarkdown>
