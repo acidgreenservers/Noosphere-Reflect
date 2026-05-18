@@ -173,13 +173,17 @@ export class MarkdownProcessor {
    */
   static convertMarkdownToHtml(markdown: string, enableThoughts: boolean): string {
     // Pre-process: Ensure thought and collapsible tags are on their own lines for detection
+    // Thoughts depend on enableThoughts flag
     if (enableThoughts) {
       markdown = markdown
         .replace(/<thoughts>/g, '\n<thoughts>\n')
-        .replace(/<\/thought>/g, '\n</thoughts>\n')
-        .replace(/<collapsible>/g, '\n<collapsible>\n')
-        .replace(/<\/collapsible>/g, '\n</collapsible>\n');
+        .replace(/<\/thought>/g, '\n</thoughts>\n');
     }
+
+    // Collapsible tags are always processed as they are a manual user tool
+    markdown = markdown
+      .replace(/<collapsible>/g, '\n<collapsible>\n')
+      .replace(/<\/collapsible>/g, '\n</collapsible>\n');
 
     const lines = markdown.split('\n');
     const htmlOutput: string[] = [];

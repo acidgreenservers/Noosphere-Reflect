@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { ChatGptParser } from '../ChatGptParser';
-import { ClaudeParser } from '../ClaudeParser';
-import { GeminiParser } from '../GeminiParser';
-import { AiStudioParser } from '../AiStudioParser';
-import { GrokParser } from '../GrokParser';
-import { LeChatParser } from '../LeChatParser';
-import { KimiParser } from '../KimiParser';
-import { LlamacoderParser } from '../LlamacoderParser';
+import { ChatGptParser } from '../html/ChatGptHtmlParser';
+import { ClaudeParser } from '../html/ClaudeHtmlParser';
+import { GeminiParser } from '../html/GeminiHtmlParser';
+import { AiStudioParser } from '../html/AiStudioHtmlParser';
+import { GrokParser } from '../html/GrokHtmlParser';
+import { LeChatParser } from '../html/LeChatHtmlParser';
+import { KimiParser } from '../html/KimiHtmlParser';
+import { LlamacoderParser } from '../html/LlamacoderHtmlParser';
 import { ParserFactory } from '../ParserFactory';
 import { ChatMessageType, ParserMode } from '../../../types';
 import { extractMarkdownFromHtml, validateMarkdownOutput } from '../ParserUtils';
@@ -131,12 +131,13 @@ describe('AI Chat Parsers - Robustness Suite', () => {
     const parser = new ThirdPartyParser();
 
     it('should parse flexible name-based headers', () => {
-      const input = `## Lucas: Hello\n## AI: Hi there\n## Arbitrary: Middle message`;
+      const input = `## User: Hello\n## AI: Hi there\n## User: Middle message`;
       const result = parser.parse(input);
       expect(result.messages).toHaveLength(3);
       expect(result.messages[0].type).toBe(ChatMessageType.Prompt);
       expect(result.messages[0].content).toBe('Hello');
       expect(result.messages[1].type).toBe(ChatMessageType.Response);
+      expect(result.messages[1].content).toBe('Hi there');
       expect(result.messages[2].type).toBe(ChatMessageType.Prompt); // Alternating fallback
     });
 
