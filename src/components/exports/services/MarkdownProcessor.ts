@@ -177,7 +177,9 @@ export class MarkdownProcessor {
     if (enableThoughts) {
       markdown = markdown
         .replace(/<thoughts>/g, '\n<thoughts>\n')
-        .replace(/<\/thought>/g, '\n</thoughts>\n');
+        .replace(/<\/thoughts>/g, '\n</thoughts>\n')
+        .replace(/<thought>/g, '\n<thought>\n')
+        .replace(/<\/thought>/g, '\n</thought>\n');
     }
 
     // Collapsible tags are always processed as they are a manual user tool
@@ -185,7 +187,55 @@ export class MarkdownProcessor {
       .replace(/<collapsible>/g, '\n<collapsible>\n')
       .replace(/<\/collapsible>/g, '\n</collapsible>\n');
 
-    const lines = markdown.split('\n');
+    const rawLines = markdown.split('\n');
+    const lines: string[] = [];
+    let blockquotePrefix = "";
+    let insideNestedTag = false;
+    let customTagStack: string[] = [];
+
+    // First pass: Handle nesting in blockquotes (similar to MarkdownRenderer logic)
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const trimmedLine = line.trim();
+
+      const blockquoteMatch = line.match(/^(\s*>+ ?)/);
+      if (blockquoteMatch) {
+        blockquotePrefix = blockquoteMatch[1];
+      } else if (trimmedLine === "" && customTagStack.length === 0) {
+        blockquotePrefix = "";
+      }
+
+      const tagStartMatch = trimmedLine.match(/^<(collapsible|thoughts|thought)>/);
+      const tagEndMatch = trimmedLine.match(/<\/(collapsible|thoughts|thought)>/);
+
+      if (tagStartMatch) {
+        const tagName = tagStartMatch[1];
+        if (blockquotePrefix && customTagStack.length === 0) {
+          insideNestedTag = true;
+        }
+        customTagStack.push(tagName);
+      }
+
+      let processedLine = line;
+      if (insideNestedTag) {
+        if (blockquotePrefix && !line.startsWith(blockquotePrefix)) {
+          processedLine = blockquotePrefix + line;
+        }
+      }
+
+      if (tagEndMatch) {
+        const tagName = tagEndMatch[1];
+        const lastIndex = customTagStack.lastIndexOf(tagName);
+        if (lastIndex !== -1) {
+          customTagStack.splice(lastIndex, 1);
+          if (customTagStack.length === 0) {
+            insideNestedTag = false;
+          }
+        }
+      }
+      lines.push(processedLine);
+    }
+
     const htmlOutput: string[] = [];
     let i = 0;
 
@@ -193,20 +243,29 @@ export class MarkdownProcessor {
       const line = lines[i];
       const trimmedLine = line.trim();
 
-      // 0. Collapsible blocks (four backticks, <thoughts>, or <collapsible> tags) - Highest precedence
-      if (trimmedLine.startsWith('````') || trimmedLine.startsWith('<thoughts>') || trimmedLine.startsWith('<collapsible>')) {
+      // 0. Collapsible blocks (four backticks, <thoughts>, <thought>, or <collapsible> tags) - Highest precedence
+      // Note: trimmedLine might start with > if it was pre-processed for nesting
+      const blockquoteStrippedLine = trimmedLine.replace(/^>+\s*/, '');
+      if (blockquoteStrippedLine.startsWith('````') ||
+          blockquoteStrippedLine.startsWith('<thoughts>') ||
+          blockquoteStrippedLine.startsWith('<thought>') ||
+          blockquoteStrippedLine.startsWith('<collapsible>')) {
         let blockContent = '';
         let j = i + 1;
-        const isThought = trimmedLine.startsWith('<thoughts>');
-        const isCollapsible = trimmedLine.startsWith('<collapsible>');
+        const isThought = blockquoteStrippedLine.startsWith('<thoughts>') || blockquoteStrippedLine.startsWith('<thought>');
+        const isCollapsible = blockquoteStrippedLine.startsWith('<collapsible>');
 
-        const endMarker = isThought ? '</thoughts>' : (isCollapsible ? '</collapsible>' : '````');
+        const endMarker = blockquoteStrippedLine.startsWith('<thoughts>') ? '</thoughts>' :
+                         (blockquoteStrippedLine.startsWith('<thought>') ? '</thought>' :
+                         (isCollapsible ? '</collapsible>' : '````'));
         const blockTitle = isCollapsible ? 'Collapsible Section' : 'Thought process';
         const blockClass = isCollapsible ? 'markdown-collapsible-block' : 'markdown-thought-block';
         const summaryClass = isCollapsible ? 'markdown-collapsible-summary' : 'markdown-thought-summary';
 
-        while (j < lines.length && !lines[j].trim().startsWith(endMarker)) {
-          blockContent += lines[j] + '\n';
+        while (j < lines.length && !lines[j].trim().replace(/^>+\s*/, '').startsWith(endMarker)) {
+          // If we're in a blockquote context, remove the prefix for the content to be parsed
+          const contentLine = lines[j].trim().startsWith('>') ? lines[j].trim().replace(/^>+\s?/, '') : lines[j];
+          blockContent += contentLine + '\n';
           j++;
         }
 
