@@ -101,36 +101,66 @@ const CustomComponents = {
     <td className="px-4 py-3 text-sm text-gray-300 border border-gray-700">{children}</td>
   ),
 
-  collapsible: ({ children }: { children: React.ReactNode }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-      <span className="block my-4 border border-purple-500/30 rounded-xl overflow-hidden bg-purple-500/5 transition-all duration-300 shadow-lg shadow-purple-500/5">
-        <details
-          open={isOpen}
-          onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
-        >
-          <summary className="cursor-pointer p-4 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 font-bold flex items-center justify-between list-none transition-colors">
-            <span className="flex items-center gap-3">
-              <span className="text-purple-400 text-lg">{isOpen ? '📂' : '📁'}</span>
-              <span>Collapsible Section</span>
-            </span>
-            <span className={`inline-block transform transition-transform duration-300 text-purple-400 ${isOpen ? 'rotate-90' : ''}`}>
-              ▶
-            </span>
-          </summary>
-          <span className="block p-4 text-gray-300 border-t border-purple-500/20 bg-gray-900/40">
-            {children}
-          </span>
-        </details>
-      </span>
-    );
-  },
+  collapsible: ({ children }: { children: React.ReactNode }) => (
+    <CollapsibleBlock title="Collapsible Section" iconOpen="📂" iconClosed="📁">
+      {children}
+    </CollapsibleBlock>
+  ),
+
+  thoughts: ({ children }: { children: React.ReactNode }) => (
+    <CollapsibleBlock title="Thought process" iconOpen="🧠" iconClosed="💡" isThought={true}>
+      {children}
+    </CollapsibleBlock>
+  ),
+
+  thought: ({ children }: { children: React.ReactNode }) => (
+    <CollapsibleBlock title="Thought process" iconOpen="🧠" iconClosed="💡" isThought={true}>
+      {children}
+    </CollapsibleBlock>
+  ),
 };
 
-// Customize sanitization schema to allow <collapsible> tag
+interface CollapsibleBlockProps {
+  title: string;
+  children: React.ReactNode;
+  iconOpen: string;
+  iconClosed: string;
+  isThought?: boolean;
+}
+
+const CollapsibleBlock: React.FC<CollapsibleBlockProps> = ({ title, children, iconOpen, iconClosed, isThought }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const blockClass = isThought ? "markdown-thought-block" : "markdown-collapsible-block";
+  const summaryClass = isThought ? "markdown-thought-summary" : "markdown-collapsible-summary";
+  const contentClass = isThought ? "markdown-thought-content" : "";
+
+  return (
+    <span className={`block my-4 ${blockClass}`}>
+      <details
+        open={isOpen}
+        onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
+      >
+        <summary className={`${summaryClass} cursor-pointer flex items-center justify-between list-none`}>
+          <span className="flex items-center gap-3">
+            <span className="text-purple-400 text-lg">{isOpen ? iconOpen : iconClosed}</span>
+            <span className="font-bold">{title}</span>
+          </span>
+          <span className={`inline-block transform transition-transform duration-300 text-purple-400 ${isOpen ? 'rotate-90' : ''}`}>
+            ▶
+          </span>
+        </summary>
+        <span className={`block p-4 border-t border-purple-500/20 bg-gray-900/40 ${contentClass}`}>
+          {children}
+        </span>
+      </details>
+    </span>
+  );
+};
+
+// Customize sanitization schema to allow <collapsible>, <thoughts>, and <thought> tags
 const schema = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames || []), 'collapsible'],
+  tagNames: [...(defaultSchema.tagNames || []), 'collapsible', 'thoughts', 'thought'],
 };
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
@@ -140,6 +170,72 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     typeset();
   }, [content, typeset]);
 
+  // Pre-process markdown to handle nested custom tags in blockquotes without blank lines
+  const processedContent = React.useMemo(() => {
+    if (!content) return '';
+
+    const lines = content.split('\n');
+    const result: string[] = [];
+    let blockquotePrefix = "";
+    let insideNestedTag = false;
+    let customTagStack: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+
+      // Check for blockquote prefix
+      // We look for a line starting with > (potentially preceded by spaces)
+      const blockquoteMatch = line.match(/^(\s*>+ ?)/);
+      if (blockquoteMatch) {
+        blockquotePrefix = blockquoteMatch[1];
+      } else if (trimmedLine === "" && customTagStack.length === 0) {
+        // Only reset blockquote prefix on truly empty lines if not currently inside a custom tag
+        // that we are force-nesting.
+        blockquotePrefix = "";
+      }
+
+      // Check for custom tag starts
+      const tagStartMatch = trimmedLine.match(/^<(collapsible|thoughts|thought)>/);
+      const tagEndMatch = trimmedLine.match(/<\/(collapsible|thoughts|thought)>/);
+
+      if (tagStartMatch) {
+        const tagName = tagStartMatch[1];
+        // If we have a blockquote prefix and we're starting a tag at the top level
+        // (relative to other custom tags), we mark that we're now force-nesting.
+        if (blockquotePrefix && customTagStack.length === 0) {
+          insideNestedTag = true;
+        }
+        customTagStack.push(tagName);
+      }
+
+      let processedLine = line;
+      if (insideNestedTag) {
+        // If we are inside a tag that started in a blockquote context,
+        // ensure every line (including blank ones) has the blockquote prefix
+        // so it stays within the same blockquote element in the DOM.
+        if (blockquotePrefix && !line.startsWith(blockquotePrefix)) {
+          processedLine = blockquotePrefix + line;
+        }
+      }
+
+      if (tagEndMatch) {
+        const tagName = tagEndMatch[1];
+        // Find last occurrence of this tag in stack to handle potential nesting correctly
+        const lastIndex = customTagStack.lastIndexOf(tagName);
+        if (lastIndex !== -1) {
+          customTagStack.splice(lastIndex, 1);
+          if (customTagStack.length === 0) {
+            insideNestedTag = false;
+          }
+        }
+      }
+
+      result.push(processedLine);
+    }
+    return result.join('\n');
+  }, [content]);
+
   return (
     <div className="markdown-content max-w-none">
       <ReactMarkdown
@@ -147,7 +243,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
         rehypePlugins={[rehypeRaw, [rehypeSanitize, schema], rehypeHighlight]}
         components={CustomComponents as any}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );
