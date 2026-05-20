@@ -19,8 +19,8 @@ interface ReviewEditModalProps {
 export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
     chatData,
     onEditMessage,
-    onSaveMessage: _onSaveMessage,
-    editingMessageIndex: _editingMessageIndex,
+    onSaveMessage,
+    editingMessageIndex,
     onAttachToMessage,
     onRemoveMessageArtifact,
     onMessagesChange,

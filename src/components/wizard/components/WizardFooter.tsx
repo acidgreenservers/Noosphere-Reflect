@@ -19,10 +19,10 @@ export const WizardFooter: React.FC<WizardFooterProps> = ({
     inputMethod,
     content,
     isParsing,
-    verificationData: _verificationData,
+    verificationData,
     onBack,
     onVerify,
-    onFinalImport: _onFinalImport
+    onFinalImport
 }) => {
     return (
         <div className="p-6 border-t border-gray-800 bg-gray-900 flex justify-between items-center">

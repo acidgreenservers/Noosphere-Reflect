@@ -9,7 +9,7 @@ import { ChatData, ChatMetadata, ParserMode, ChatMessageType } from '../types';
  * 3. Ensures tags include the model name
  * 4. Sets default date to now if missing
  */
-export const _enrichMetadata = (data: ChatData, mode: ParserMode): ChatMetadata => {
+export const enrichMetadata = (data: ChatData, mode: ParserMode): ChatMetadata => {
     const newMetadata: ChatMetadata = {
         title: data.metadata?.title || '',
         model: data.metadata?.model || '',

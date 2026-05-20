@@ -205,7 +205,7 @@ export const getSourceLabel = (result: ImportDetectionResult): string => {
 /**
  * Create a human-readable description of why import failed (if applicable)
  */
-export const _getSourceDescription = (result: ImportDetectionResult): string => {
+export const getSourceDescription = (result: ImportDetectionResult): string => {
   if (!result.isSupported) {
     return result.error || 'File format not supported';
   }

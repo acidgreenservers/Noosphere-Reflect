@@ -40,7 +40,7 @@ export const GoogleDriveImportModal: React.FC<GoogleDriveImportModalProps> = ({
     const [sourceStats, setSourceStats] = useState<{ noosphere: number; thirdParty: number; platformHtml: number; unsupported: number }>({ noosphere: 0, thirdParty: 0, platformHtml: 0, unsupported: 0 });
 
     // Auto-detect parser mode based on file content
-    const _detectMode = (text: string): ParserMode => {
+    const detectMode = (text: string): ParserMode => {
         // Gemini Detection
         if (text.includes('model-response') || text.includes('user-query') || text.includes('gemini.google.com'))
             return ParserMode.GeminiHtml;

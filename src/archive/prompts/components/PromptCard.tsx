@@ -12,7 +12,7 @@ interface Props {
     onToggleSelect: (id: string) => void;
 }
 
-export default function PromptCard({ prompt, onEdit, onDelete: _onDelete, onExport: _onExport, onStatusToggle, onPreview, isSelected, onToggleSelect }: Props) {
+export default function PromptCard({ prompt, onEdit, onDelete, onExport, onStatusToggle, onPreview, isSelected, onToggleSelect }: Props) {
     const formattedDate = new Date(prompt.createdAt).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',

@@ -1,4 +1,4 @@
-import type { ParserMode } from '../../../../types';
+import { ParserMode } from '../../../../types';
 
 export interface ImportSignal {
     id: string;

@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { WizardStep, InputMethod, ContentImportWizardProps } from '../types';
 import { ParserMode, ChatData, ChatMessage } from '../../../types';
 import { isJson, parseChat } from '../../../services/converterService';
-import { DetectionResult, ConfidenceLevel } from '../utils/AutoDetection';
+import { detectImportSignal, DetectionResult, ConfidenceLevel } from '../utils/AutoDetection';
 
 export interface VerificationData {
     count: number;

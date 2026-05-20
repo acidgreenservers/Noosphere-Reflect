@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChatData, ChatTheme, ChatMetadata, ParserMode, SavedChatSession as _SavedChatSession, ConversationArtifact } from '../../../types';
+import { ChatData, ChatTheme, ChatMetadata, ParserMode, SavedChatSession, ConversationArtifact } from '../../../types';
 import ExportDropdown from '../../exports/ExportDropdown';
 
 interface ConverterPreviewProps {

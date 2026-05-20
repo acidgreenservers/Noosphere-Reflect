@@ -76,7 +76,7 @@ const parseExportedJson = (exportedData: any): ChatData => {
  * @param apiKey Optional API key for AI mode.
  * @returns A ChatData object.
  */
-export const _parseChat = async (input: string, fileType: 'markdown' | 'json' | 'auto', mode: ParserMode, apiKey?: string): Promise<ChatData> => {
+export const parseChat = async (input: string, fileType: 'markdown' | 'json' | 'auto', mode: ParserMode, apiKey?: string): Promise<ChatData> => {
   const parser = ParserFactory.getParser(mode);
   if (parser) {
     return parser.parse(input);
