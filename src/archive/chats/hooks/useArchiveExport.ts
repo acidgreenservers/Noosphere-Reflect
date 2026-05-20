@@ -339,7 +339,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
         const aiName = session.aiName || 'AI';
         const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
 
-        let content = '';
+        let content: string;
         if (format === 'markdown') {
             content = await exportService.generate(
                 'markdown',

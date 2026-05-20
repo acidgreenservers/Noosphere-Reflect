@@ -205,7 +205,7 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
             const contentStart = matches[i].index! + matches[i][0].length;
             const contentEnd = (i + 1 < matches.length) ? matches[i + 1].index : input.length;
 
-            let rawContent = input.substring(contentStart, contentEnd).trim();
+            const rawContent = input.substring(contentStart, contentEnd).trim();
 
             // Validate exchange alternation
             const isPrompt = headerType === 'prompt';

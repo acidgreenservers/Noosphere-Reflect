@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../../assets/logo.png';
-import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ParserMode, ChatData, Folder } from '../../../types';
+import { SavedChatSession, SavedChatSessionMetadata, ChatTheme, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ParserMode, Folder } from '../../../types';
 import { generateZipExport, generateBatchZipExport, parseChat, isJson } from '../../../services/converterService';
 import { exportService } from '../../../components/exports/services';
 import { enrichMetadata } from '../../../utils/metadataEnricher';
@@ -12,12 +12,11 @@ import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
 import { sanitizeFilename } from '../../../utils/securityUtils';
 import { SearchInterface } from '../../../components/SearchInterface';
-import { searchService } from '../../../services/searchService';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService, DriveFile } from '../../../services/googleDriveService';
 import { GoogleDriveImportModal } from '../../../components/GoogleDriveImportModal';
 import { deduplicateMessages } from '../../../utils/messageDedupe';
-import { ChatSessionCard, ArchiveHeader, ArchiveSearchBar, ArchiveBatchActionBar, ArchiveSessionGrid, ChatPreviewModal } from '../components';
+import { ChatSessionCard, ArchiveHeader, ArchiveSearchBar, ArchiveBatchActionBar, ChatPreviewModal } from '../components';
 import { useExtensionBridge } from '../hooks/useExtensionBridge';
 import { useArchiveSearch } from '../hooks/useArchiveSearch';
 import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
@@ -30,13 +29,12 @@ const ArchiveHub: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
-    const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+    const [, setExportDropdownOpen] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('directory');
     const [settingsModalOpen, setSettingsModalOpen] = useState(false);
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedSessionForArtifacts, setSelectedSessionForArtifacts] = useState<SavedChatSession | null>(null);
     const [previewSession, setPreviewSession] = useState<SavedChatSession | null>(null);
     const [showArtifactManager, setShowArtifactManager] = useState(false);
@@ -223,7 +221,7 @@ const ArchiveHub: React.FC = () => {
         setMoveModalOpen(true);
     };
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType?: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', _packageType?: 'directory' | 'zip' | 'single') => {
         const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
         if (selectedMetas.length === 0) return;
 
@@ -353,12 +351,6 @@ const ArchiveHub: React.FC = () => {
                 setExportDropdownOpen(false);
                 return;
             }
-
-            // Count artifacts from BOTH sources (session-level + message-level)
-            const sessionArtifacts = session.metadata?.artifacts?.length || 0;
-            const messageArtifacts = session.chatData?.messages.reduce((count, msg) =>
-                count + (msg.artifacts?.length || 0), 0) || 0;
-            const totalArtifacts = sessionArtifacts + messageArtifacts;
 
             // Handle directory/zip exports
             if (packageType === 'zip') {
@@ -541,58 +533,6 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleClipboardExport = async (format: 'markdown' | 'json') => {
-        if (selectedIds.size !== 1) {
-            alert('Please select exactly one chat to copy to clipboard.');
-            return;
-        }
-
-        const sessionId = Array.from(selectedIds)[0];
-        // Fetch FULL session
-        const session = await storageService.getSessionById(sessionId);
-
-        if (!session || !session.chatData) return;
-
-        const theme = session.selectedTheme || ChatTheme.DarkDefault;
-        const userName = session.userName || 'User';
-        const aiName = session.aiName || 'AI';
-        const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
-
-        let content = '';
-
-        if (format === 'markdown') {
-            content = await exportService.generate(
-                'markdown',
-                session.chatData,
-                title,
-                undefined,
-                userName,
-                aiName,
-                undefined,
-                session.metadata
-            );
-        } else if (format === 'json') {
-            content = await exportService.generate(
-                'json',
-                session.chatData,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                session.metadata
-            );
-        }
-
-        try {
-            await navigator.clipboard.writeText(content);
-            alert('Copied to clipboard!');
-            setExportDropdownOpen(false);
-        } catch (err) {
-            console.error('Failed to copy to clipboard:', err);
-            alert('Failed to copy to clipboard.');
-        }
-    };
 
     const handleDirectoryExportToDrive = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', appSettings: AppSettings, accessToken: string, chatsFolderId: string) => {
         const theme = session.selectedTheme || ChatTheme.DarkDefault;
@@ -1030,7 +970,7 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
@@ -1438,7 +1378,11 @@ const ArchiveHub: React.FC = () => {
                 onDestinationSelected={(destination) => {
                     setExportDestination(destination);
                     setShowExportDestination(false);
-                    setExportModalOpen(true);
+                    if (destination === 'drive' && selectedIds.size > 1) {
+                        handleExportToDrive();
+                    } else {
+                        setExportModalOpen(true);
+                    }
                 }}
                 isExporting={isSendingToDrive}
                 accentColor="green"

@@ -112,10 +112,8 @@ function indexSession(session: SavedChatSession) {
     // Remove old documents for this session
     // Discard each document ID before re-adding to prevent duplicates
     documents.forEach(doc => {
-        try {
+        if (miniSearch.has(doc.id)) {
             miniSearch.discard(doc.id);
-        } catch (e) {
-            // Document doesn't exist yet, ignore
         }
     });
 
@@ -197,16 +195,13 @@ function search(query: string, filters?: SearchFilters): SearchResult[] {
     return results.map(result => {
         const doc = result as unknown as SearchDocument & { score: number };
         const content = doc.content || '';
-        const queryLower = query.toLowerCase();
-        const contentLower = content.toLowerCase();
+        const foundIndex = content.toLowerCase().indexOf(query.toLowerCase());
 
-        // Find the query in the content
-        const index = contentLower.indexOf(queryLower);
-        let snippet = '';
+        let snippet: string;
 
-        if (index !== -1) {
-            const start = Math.max(0, index - 50);
-            const end = Math.min(content.length, index + query.length + 50);
+        if (foundIndex !== -1) {
+            const start = Math.max(0, foundIndex - 50);
+            const end = Math.min(content.length, foundIndex + query.length + 50);
             snippet = (start > 0 ? '...' : '') +
                 content.substring(start, end) +
                 (end < content.length ? '...' : '');
@@ -244,16 +239,16 @@ self.onmessage = async (e: MessageEvent) => {
                 indexSession(payload.session);
                 await saveIndex();
                 self.postMessage({ type: 'INDEX_COMPLETE', payload: { sessionId: payload.session.id }, messageId });
+                break;
 
-            case 'INDEX_WITH_CHECK':
+            case 'INDEX_WITH_CHECK': {
                 // Incremental indexing: skip if session unchanged
-                const SCHEMA_VERSION = 2; // Increased for model field support
                 const lastIndexed = await getLastIndexedTime(payload.session.id);
                 const sessionUpdated = payload.session.metadata?.updatedAt
                     ? new Date(payload.session.metadata.updatedAt).getTime()
                     : Date.now();
 
-                if (lastIndexed && sessionUpdated <= lastIndexed && lastIndexed > 1736636400000) {
+                if (lastIndexed && sessionUpdated <= lastIndexed && lastIndexed > 1736636400000 /* SCHEMA_CUTOFF_DATE */ ) {
                     self.postMessage({
                         type: 'INDEX_SKIPPED',
                         payload: { sessionId: payload.session.id, reason: 'No changes' },
@@ -270,12 +265,46 @@ self.onmessage = async (e: MessageEvent) => {
                     });
                 }
                 break;
-                break;
+            }
 
-            case 'SEARCH':
+            case 'INDEX_SESSIONS': {
+                const sessions: SavedChatSession[] = payload.sessions || [];
+                let indexedCount = 0;
+                let skippedCount = 0;
+                const now = Date.now();
+
+                for (const session of sessions) {
+                    const lastIdx = await getLastIndexedTime(session.id);
+                    const updated = session.metadata?.updatedAt
+                        ? new Date(session.metadata.updatedAt).getTime()
+                        : now;
+
+                    if (lastIdx && updated <= lastIdx && lastIdx > 1736636400000 /* SCHEMA_CUTOFF_DATE */ ) {
+                        skippedCount++;
+                    } else {
+                        indexSession(session);
+                        await recordIndexTime(session.id, now);
+                        indexedCount++;
+                    }
+                }
+
+                if (indexedCount > 0) {
+                    await saveIndex();
+                }
+
+                self.postMessage({
+                    type: 'INDEX_BATCH_COMPLETE',
+                    payload: { indexed: indexedCount, skipped: skippedCount },
+                    messageId
+                });
+                break;
+            }
+
+            case 'SEARCH': {
                 const results = search(payload.query);
                 self.postMessage({ type: 'SEARCH_RESULTS', payload: { results }, messageId });
                 break;
+            }
 
             case 'CLEAR':
                 miniSearch.removeAll();

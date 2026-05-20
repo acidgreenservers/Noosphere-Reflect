@@ -11,7 +11,6 @@ import {
     generateMemoryBatchZipExport,
     generateMemoryBatchDirectoryExportWithPicker
 } from '../../../services/converterService';
-import PromptInput from '../components/PromptInput';
 import PromptAddModal from '../components/PromptAddModal';
 import PromptList from '../components/PromptList';
 import { ExportModal } from '../../../components/exports/ExportModal';
@@ -30,9 +29,9 @@ export default function PromptArchive() {
     const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
     const [previewPrompt, setPreviewPrompt] = useState<Prompt | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isExporting, setIsExporting] = useState(false);
+    const [, setIsExporting] = useState(false);
     const [selectedPrompts, setSelectedPrompts] = useState<Set<string>>(new Set());
-    const [showExportModal, setShowExportModal] = useState(false);
+    const [, setShowExportModal] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');

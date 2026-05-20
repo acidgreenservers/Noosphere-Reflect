@@ -17,7 +17,7 @@ interface ParserOption {
     tldr?: string;
 }
 
-export const ParserModeSelector: React.FC<ParserModeSelectorProps> = ({ selectedMode, onSelectMode, currentMethod }) => {
+export const ParserModeSelector: React.FC<ParserModeSelectorProps> = ({ selectedMode, onSelectMode, currentMethod: _currentMethod }) => {
 
     const allOptions: ParserOption[] = [
         {

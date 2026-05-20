@@ -79,6 +79,10 @@ class SearchService {
         await this.sendMessage('INDEX_SESSION', { session });
     }
 
+    async indexSessions(sessions: SavedChatSession[]): Promise<void> {
+        await this.sendMessage('INDEX_SESSIONS', { sessions });
+    }
+
     async search(query: string, filters?: SearchFilters): Promise<SearchResult[]> {
         const result = await this.sendMessage('SEARCH', { query, filters });
         return result.results || [];

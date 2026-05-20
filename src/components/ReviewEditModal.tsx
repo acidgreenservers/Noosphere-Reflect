@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatData, ChatMessageType, ChatMessage, ConversationArtifact } from '../types';
 import { ArtifactViewerModal } from './ArtifactViewerModal';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -19,8 +19,8 @@ interface ReviewEditModalProps {
 export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
     chatData,
     onEditMessage,
-    onSaveMessage,
-    editingMessageIndex,
+    onSaveMessage: _onSaveMessage,
+    editingMessageIndex: _editingMessageIndex,
     onAttachToMessage,
     onRemoveMessageArtifact,
     onMessagesChange,

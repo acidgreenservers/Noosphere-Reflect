@@ -191,7 +191,7 @@ export class MarkdownProcessor {
     const lines: string[] = [];
     let blockquotePrefix = "";
     let insideNestedTag = false;
-    let customTagStack: string[] = [];
+    const customTagStack: string[] = [];
 
     // First pass: Handle nesting in blockquotes (similar to MarkdownRenderer logic)
     for (let i = 0; i < rawLines.length; i++) {
