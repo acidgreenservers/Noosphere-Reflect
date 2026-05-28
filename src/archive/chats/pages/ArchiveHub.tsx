@@ -29,6 +29,7 @@ const ArchiveHub: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [, setExportDropdownOpen] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
@@ -146,6 +147,7 @@ const ArchiveHub: React.FC = () => {
     const filteredSessions = filterSessions(sessions);
 
     const handleManualRefresh = () => {
+        setIsRefreshing(true);
         // Hard refresh the page to ensure all imports are loaded
         window.location.reload();
     };

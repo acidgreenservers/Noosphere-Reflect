@@ -126,6 +126,49 @@ This roadmap is organized into three tiers:
 
 ---
 
+- [ ] **Task 01: Convert hard‑coded Zod values to a dynamic TypeScript enum for the Noosphere Reflect AI Chat archival app**
+
+  **Description:**  
+  1. **Locate the source Zod schema** – Identify the file(s) (`*.schema.ts`) that currently declare hard‑coded string or numeric literals (e.g., `z.enum(['draft', 'published', 'archived'])` expressed as literal unions).  
+  2. **Extract the literal set** – For each hard‑coded enum‑like union, programmatically read the literal array values using a small Node.js utility (or manually copy if the list is static).  
+  3. **Generate a TypeScript enum** –  
+     - Create a new file `src/constants/reflectChatEnum.ts`.  
+     - Export a `export enum ReflectChatStatus { … }` where each member name is a PascalCase version of the literal value and its value is the original string (e.g., `Draft = 'draft'`).  
+     - Ensure the enum is *dynamic* by wiring the generation script to read the source schema at build time, so future schema changes automatically refresh the enum (e.g., using `ts-node scripts/generateEnumFromZod.ts`).  
+  4. **Replace hard‑coded literals in the Zod schema** – Refactor the schema to reference the generated enum:  
+     ```ts
+     import { ReflectChatStatus } from '@/constants/reflectChatEnum';
+     export const ReflectChatSchema = z.object({
+       status: z.nativeEnum(ReflectChatStatus),
+       // …other fields
+     });
+     ```  
+     - Use `z.nativeEnum` for runtime validation and preserve TypeScript type inference.  
+  5. **Update all usage sites** – Search the codebase for the previous literal union (`'draft' | 'published' | 'archived'`) and replace with `ReflectChatStatus`. Adjust any switch‑cases, UI selects, or API payload constructors accordingly.  
+  6. **Edge‑case handling** –  
+     - **Backward compatibility:** Provide a runtime mapping (`const legacyToEnum = { draft: ReflectChatStatus.Draft, … }`) to gracefully accept old payloads during a transition period.  
+     - **Unknown values:** Configure the Zod schema to reject any value not present in the enum (`z.nativeEnum` already enforces this). Add a fallback error handler that logs the invalid value for debugging.  
+     - **Enum expansion:** Ensure the generation script re‑runs on `npm run build` and is part of the CI pipeline so new literals automatically surface as enum members without manual file edits.  
+  7. **Testing & verification** –  
+     - Add unit tests verifying that `ReflectChatSchema.parse({ status: ReflectChatStatus.Draft })` succeeds and that an invalid string throws a Zod error.  
+     - Update integration tests that mock API payloads to use the enum constants.  
+     - Run the TypeScript compiler (`tsc --noEmit`) to confirm no type errors remain after the refactor.  
+  8. **Documentation** –  
+     - Document the new enum in the project wiki and add a comment block in `reflectChatEnum.ts` describing the generation process.  
+     - Update any developer onboarding docs that reference the previous hard‑coded values.  
+
+  > **Success Criteria:**  
+  1. The generated `ReflectChatStatus` enum is present in `src/constants/reflectChatEnum.ts` and contains **exactly** the set of literals that were previously hard‑coded.  
+  2. `ReflectChatSchema` uses `z.nativeEnum(ReflectChatStatus)` and passes `npm run lint && npm run build` without TypeScript errors.  
+  3. All former literal unions are replaced with `ReflectChatStatus` across the codebase; a full‑text search finds zero occurrences of the old union pattern.  
+  4. Automated tests (unit + integration) covering the schema pass 100 % and explicitly test both a valid enum value and an invalid value.  
+  5. CI pipeline runs the enum‑generation script and fails if the generated enum diverges from the source Zod literals.  
+  6. Runtime behavior of the archival application remains unchanged (no regression in storing, retrieving, or displaying chat status).  
+  7. Documentation and onboarding materials are updated to reference the new enum.
+
+---
+
+
 ## 🚧 PLANNED PHASES (Active Work)
 
 ## Phase 6.2.5: Smart Import Detection & Google Drive Sync (v0.5.8.2)
