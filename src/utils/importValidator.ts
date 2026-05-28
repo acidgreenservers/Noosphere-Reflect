@@ -73,7 +73,7 @@ const ConversationArtifactSchema = z.object({
 
 // Chat Message Schema with content sanitization - matching ChatMessage interface
 const ChatMessageSchema = z.object({
-    type: z.enum(['prompt', 'response']),
+    type: z.enum(['prompt', 'response', 'thought']),
     content: z.string().max(1_000_000), // 1MB limit per message
     isEdited: z.boolean().optional(),
     artifacts: z.array(ConversationArtifactSchema).max(50).optional()
@@ -104,21 +104,34 @@ const SavedChatSessionSchema = z.object({
     chatTitle: z.string().max(200),
     userName: z.string().max(100),
     aiName: z.string().max(100),
-    selectedTheme: z.enum(['dark-default', 'light-default', 'dark-green', 'dark-purple']),
-    parserMode: z.enum(['basic', 'ai', 'llamacoder-html', 'claude-html', 'lechat-html', 'chatgpt-html', 'gemini-html', 'aistudio-html', 'kimi-html', 'kimi-share-copy', 'grok-html']),
+    selectedTheme: z.enum(['dark-default', 'light-default', 'dark-green', 'dark-purple', 'claude']),
+    selectedStyle: z.enum(['default', 'claude', 'chatgpt', 'gemini', 'grok', 'lechat', 'leo-ai']).optional(),
+    parserMode: z.enum([
+        'basic', 'ai',
+        'llamacoder-html', 'claude-html', 'lechat-html', 'chatgpt-html',
+        'gemini-html', 'aistudio-html', 'kimi-html', 'kimi-share-copy', 'grok-html',
+        'claude-md', 'gemini-md', 'gpt-md', 'grok-md', 'kimi-md',
+        'lechat-md', 'aistudio-md', 'llamacoder-md', 'leo-ai-md',
+        'noosphere-md', 'third-party-markdown', 'third-party-json',
+        'blank'
+    ]),
     chatData: z.object({
         messages: z.array(ChatMessageSchema).max(10_000), // Limit messages per session
         metadata: ChatMetadataSchema.optional()
     }).optional(),
     metadata: ChatMetadataSchema.optional(),
     normalizedTitle: z.string().max(200).optional(),
-    exportStatus: z.enum(['exported', 'not_exported']).optional()
+    exportStatus: z.enum(['exported', 'not_exported']).optional(),
+    folderId: z.string().nullable().optional()
 });
 
 // App Settings Schema - matching AppSettings interface
 const AppSettingsSchema = z.object({
     defaultUserName: z.string().max(100),
-    fileNamingCase: z.enum(['kebab-case', 'Kebab-Case', 'snake_case', 'Snake_Case', 'PascalCase', 'camelCase']).default('kebab-case')
+    fileNamingCase: z.enum(['kebab-case', 'Kebab-Case', 'snake_case', 'Snake_Case', 'PascalCase', 'camelCase']).default('kebab-case'),
+    markdownLayout: z.enum(['universal', 'fancy']).default('universal'),
+    exportRootMetadata: z.boolean().default(true),
+    exportChatMetadata: z.boolean().default(true)
 });
 
 // Memory Metadata Schema - matching MemoryMetadata interface

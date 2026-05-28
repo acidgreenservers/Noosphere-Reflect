@@ -1,6 +1,16 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
-import 'fake-indexeddb/auto';
+
+// Mock IndexedDB
+const indexedDB = {
+    open: vi.fn(),
+    deleteDatabase: vi.fn()
+};
+
+Object.defineProperty(window, 'indexedDB', {
+    writable: true,
+    value: indexedDB
+});
 
 // Mock chrome API for extension tests
 Object.defineProperty(window, 'chrome', {

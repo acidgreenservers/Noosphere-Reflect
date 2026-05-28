@@ -24,11 +24,11 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
 
     useEffect(() => {
         if (folder) {
-            setTimeout(() => setName(folder.name), 0);
-            setTimeout(() => setTags(folder.tags || []), 0);
+            setName(folder.name);
+            setTags(folder.tags || []);
         } else {
             setName('');
-            setTimeout(() => setTags([]), 0);
+            setTags([]);
         }
         setTagInput('');
     }, [folder, isOpen]);
