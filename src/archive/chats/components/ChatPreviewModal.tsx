@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { SavedChatSession, ChatMessage, ConversationArtifact } from '../../../types';
+import { SavedChatSession, ConversationArtifact } from '../../../types';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
 import { ArtifactViewerModal } from '../../../components/ArtifactViewerModal';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';

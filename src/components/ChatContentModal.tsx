@@ -191,7 +191,7 @@ export const ChatContentModal: React.FC<ChatContentModalProps> = ({
 
                                     <div className="mt-4 text-center">
                                         <p className="text-xs text-gray-500">
-                                            <span className="text-purple-400 font-medium">Tip:</span> Use "Collapsible" to manually organize sections or preserve thinking chains. {parserMode === ParserMode.Basic ? 'Basic Mode is a fallback.' : `${getParserModeDisplay()} mode detected.`}
+                                            <span className="text-purple-400 font-medium">Tip:</span> Use &quot;Collapsible&quot; to manually organize sections or preserve thinking chains. {parserMode === ParserMode.Basic ? 'Basic Mode is a fallback.' : `${getParserModeDisplay()} mode detected.`}
                                         </p>
                                     </div>
                                 </div>

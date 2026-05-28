@@ -202,7 +202,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                     const enrichedMetadata = enrichMetadata(chatData, mode);
 
                     const normalizedTitleValue = enrichedMetadata.title ? normalizeTitle(enrichedMetadata.title) : '';
-                    let existingSession = normalizedTitleValue
+                    const existingSession = normalizedTitleValue
                         ? await storageService.getSessionByNormalizedTitle(normalizedTitleValue)
                         : null;
 

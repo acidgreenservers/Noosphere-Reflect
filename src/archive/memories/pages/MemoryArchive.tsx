@@ -11,7 +11,6 @@ import {
     generateMemoryBatchZipExport,
     generateMemoryBatchDirectoryExportWithPicker
 } from '../../../services/converterService';
-import MemoryInput from '../components/MemoryInput';
 import MemoryAddModal from '../components/MemoryAddModal';
 import MemoryList from '../components/MemoryList';
 import { ExportModal } from '../../../components/exports/ExportModal';
@@ -30,9 +29,9 @@ export default function MemoryArchive() {
     const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
     const [previewMemory, setPreviewMemory] = useState<Memory | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isExporting, setIsExporting] = useState(false);
+    const [, setIsExporting] = useState(false);
     const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
-    const [showExportModal, setShowExportModal] = useState(false);
+    const [, setShowExportModal] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
     const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');

@@ -374,7 +374,7 @@ const BasicConverter: React.FC = () => {
 
         try {
             // Determine parsing mode
-            let detectedMode = modeToUse;
+            const detectedMode = modeToUse;
 
             console.log('[BasicConverter] Converting with mode:', detectedMode);
             console.log('[BasicConverter] Content to convert (first 200):', contentToConvert.substring(0, 200));

@@ -1,7 +1,7 @@
 // useExtensionBridge Hook
 // Extracted from ArchiveHub.tsx for Chrome extension communication
 
-import { useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { SavedChatSession, ConversationArtifact } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { deduplicateMessages } from '../../../utils/messageDedupe';

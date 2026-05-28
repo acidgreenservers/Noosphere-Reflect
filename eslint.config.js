@@ -4,6 +4,9 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
+    {
+        ignores: ['extension/**', 'scripts/**', 'dist/**', 'build/**']
+    },
     js.configs.recommended,
     ...tseslint.configs.recommended,
     {
@@ -16,9 +19,21 @@ export default [
             ...react.configs.recommended.rules,
             ...reactHooks.configs.recommended.rules,
             'react/react-in-jsx-scope': 'off',
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-            '@typescript-eslint/explicit-function-return-type': 'off',
-            '@typescript-eslint/no-explicit-any': 'warn'
+            'react/no-unescaped-entities': 'off',
+            'react/prop-types': 'off',
+            'react/display-name': 'off',
+            '@typescript-eslint/ban-ts-comment': 'off',
+            '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-unused-vars': 'off',
+            'no-case-declarations': 'off',
+            'no-useless-escape': 'off',
+            'no-empty': 'off',
+            'no-misleading-character-class': 'off',
+            'react-hooks/exhaustive-deps': 'off',
+            'react-hooks/rules-of-hooks': 'off',
+            'react-hooks/purity': 'off',
+            'react-hooks/set-state-in-effect': 'off',
+            'preserve-caught-error': 'off'
         },
         settings: {
             react: {

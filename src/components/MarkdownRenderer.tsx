@@ -178,7 +178,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     const result: string[] = [];
     let blockquotePrefix = "";
     let insideNestedTag = false;
-    let customTagStack: string[] = [];
+    const customTagStack: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];

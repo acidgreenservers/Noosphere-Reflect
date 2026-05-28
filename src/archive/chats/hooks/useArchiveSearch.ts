@@ -25,22 +25,37 @@ export function useArchiveSearch(sessions: SavedChatSessionMetadata[]): UseArchi
         const initSearch = async () => {
             setIsSearchIndexing(true);
             try {
+                const startTime = performance.now();
                 await searchService.init();
-                // Index all sessions - Streamed to avoid OOM
-                // We fetch full sessions one by one so the GC can clean them up
-                for (const sessionMeta of sessions) {
+
+                // Batch indexing - Process in chunks to balance speed and memory
+                const CHUNK_SIZE = 50;
+                for (let i = 0; i < sessions.length; i += CHUNK_SIZE) {
                     if (cancelled) break;
-                    try {
-                        const fullSession = await storageService.getSessionById(sessionMeta.id);
-                        if (fullSession) {
-                            await searchService.indexSession(fullSession);
+
+                    const chunk = sessions.slice(i, i + CHUNK_SIZE);
+                    const fullSessions = [];
+
+                    for (const sessionMeta of chunk) {
+                        try {
+                            const fullSession = await storageService.getSessionById(sessionMeta.id);
+                            if (fullSession) {
+                                fullSessions.push(fullSession);
+                            }
+                        } catch (err) {
+                            console.warn(`Failed to fetch session ${sessionMeta.id} for indexing`, err);
                         }
-                        // Small delay to yield to main thread and allow GC
-                        await new Promise(resolve => setTimeout(resolve, 10));
-                    } catch (err) {
-                        console.warn(`Failed to index session ${sessionMeta.id}`, err);
                     }
+
+                    if (fullSessions.length > 0) {
+                        await searchService.indexSessions(fullSessions);
+                    }
+
+                    // Yield to main thread
+                    await new Promise(resolve => setTimeout(resolve, 0));
                 }
+                const duration = performance.now() - startTime;
+                console.log(`⚡ Search indexing completed in ${duration.toFixed(2)}ms for ${sessions.length} sessions`);
             } catch (error) {
                 console.error('Failed to initialize search:', error);
             } finally {
