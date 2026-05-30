@@ -15,6 +15,7 @@ import {
     ChatMetadata,
     ConversationArtifact,
     ChatMessage,
+    SavedChatSessionMetadata,
 } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { deduplicateMessages } from '../../../utils/messageDedupe';
@@ -600,7 +601,7 @@ const BasicConverter: React.FC = () => {
 
 
 
-    const handleWizardImport = (content: string, type: 'html' | 'json', mode: ParserMode, attachments?: File[]) => {
+    const handleWizardImport = (content: string, type: 'json' | 'markdown' | 'html', mode: ParserMode, attachments?: File[]) => {
         console.log('[BasicConverter] handleWizardImport called');
         console.log('[BasicConverter] Mode:', mode);
         console.log('[BasicConverter] Content length:', content.length);

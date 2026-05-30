@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ConversationArtifact, ChatMessage, SavedChatSession } from '../../types';
+import { ConversationArtifact, ChatMessage, SavedChatSession } from '../../../types';
 import { validateFileSize, INPUT_LIMITS, sanitizeFilename, neutralizeDangerousExtension } from '../../../utils/securityUtils';
 import { processArtifactUpload, processGlobalArtifactRemoval } from '../../../utils/artifactLinking';
 import { storageService } from '../../../services/storageService';
