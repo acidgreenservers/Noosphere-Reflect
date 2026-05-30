@@ -1,227 +1,81 @@
+import { openDB, IDBPDatabase } from 'idb';
+import { migrations } from './db/migrations';
+import { DB_NAME, DB_VERSION, STORES } from './db/schema';
 import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme, Folder, ArchiveType } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 import { validateImportData } from '../utils/importValidator';
 import { validateReflectFile } from '../utils/reflectValidator';
 import { parseChat } from './converterService';
 
-const DB_NAME = 'AIChatArchiverDB';
-const DB_VERSION = 7;
-const STORE_NAME = 'sessions';
-const SETTINGS_STORE_NAME = 'settings';
-const MEMORY_STORE_NAME = 'memories';
-const PROMPT_STORE_NAME = 'prompts';
-const FOLDERS_STORE_NAME = 'folders';
-
 class StorageService {
-    private db: IDBDatabase | null = null;
+    private db: IDBPDatabase | null = null;
 
-    private async getDB(): Promise<IDBDatabase> {
-        if (this.db) return this.db;
+    private async getDB(): Promise<IDBPDatabase> {
+        if (this.db) {
+            try {
+                // Heartbeat to check if connection is still alive
+                await this.db.get(STORES.SETTINGS, 'heartbeat');
+                return this.db;
+            } catch (e) {
+                this.db = null;
+            }
+        }
 
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-            request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                const oldVersion = event.oldVersion;
-                const transaction = (event.target as IDBOpenDBRequest).transaction!;
-
-                // Create sessions store if upgrading from v0
-                if (oldVersion < 1 && !db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                }
-
-                // Create settings store if upgrading from v1
-                if (oldVersion < 2 && !db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
-                    db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'key' });
-                }
-
-                // v2 → v3: Add normalizedTitle index with unique constraint
-                if (oldVersion < 3) {
-                    const store = transaction.objectStore(STORE_NAME);
-
-                    // Check if index already exists (defensive)
-                    if (!store.indexNames.contains('normalizedTitle')) {
-                        // Create unique index on normalizedTitle field
-                        store.createIndex('normalizedTitle', 'normalizedTitle', { unique: true });
-                        console.log('✅ Created unique index on normalizedTitle');
+        this.db = await openDB(DB_NAME, DB_VERSION, {
+            upgrade(db, oldVersion, newVersion, transaction) {
+                for (const migration of migrations) {
+                    if (oldVersion < migration.version && (newVersion === null || migration.version <= newVersion)) {
+                        migration.migrate(db as any, transaction as any, oldVersion);
                     }
-
-                    // Backfill normalizedTitle for existing records using cursor (Memory Optimized)
-                    const cursorRequest = store.openCursor();
-                    cursorRequest.onsuccess = (e) => {
-                        const cursor = (e.target as IDBRequest).result;
-                        if (cursor) {
-                            const session = cursor.value;
-                            if (!session.normalizedTitle) {
-                                const title = session.metadata?.title || session.chatTitle || session.name || '';
-                                if (title) {
-                                    try {
-                                        session.normalizedTitle = normalizeTitle(title);
-                                        cursor.update(session); // In-place update
-                                        console.log(`🔄 Backfilled normalizedTitle for: ${title}`);
-                                    } catch (err) {
-                                        console.error(`⚠️ Failed to normalize title for session ${session.id}:`, err);
-                                    }
-                                }
-                            }
-                            cursor.continue();
-                        }
-                    };
                 }
-
-                // v3 → v4: Add artifacts support
-                if (oldVersion < 4) {
-                    const store = transaction.objectStore(STORE_NAME);
-                    console.log('🔄 Migrating IndexedDB to v4: Adding artifacts field');
-
-                    // Backfill artifacts array for existing records
-                    const cursorRequest = store.openCursor();
-                    cursorRequest.onsuccess = (e) => {
-                        const cursor = (e.target as IDBRequest).result;
-                        if (cursor) {
-                            const session = cursor.value;
-                            if (!session.metadata) {
-                                session.metadata = {};
-                            }
-                            if (!session.metadata.artifacts) {
-                                session.metadata.artifacts = [];
-                            }
-                            cursor.update(session);
-                            cursor.continue();
-                        }
-                    };
-                }
-
-                // v4 → v5: Add memories object store
-                if (oldVersion < 5 && !db.objectStoreNames.contains('memories')) {
-                    const memoryStore = db.createObjectStore('memories', { keyPath: 'id' });
-                    memoryStore.createIndex('aiModel', 'aiModel', { unique: false });
-                    memoryStore.createIndex('createdAt', 'createdAt', { unique: false });
-                    memoryStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
-                    console.log('✅ Created memories object store with indexes');
-                }
-
-                // v5 → v6: Add prompts object store
-                if (oldVersion < 6 && !db.objectStoreNames.contains('prompts')) {
-                    const promptStore = db.createObjectStore('prompts', { keyPath: 'id' });
-                    promptStore.createIndex('createdAt', 'createdAt', { unique: false });
-                    promptStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
-                    console.log('✅ Created prompts object store with indexes');
-                }
-
-                // v6 → v7: Add folders object store and folderId indexes
-                if (oldVersion < 7) {
-                    if (!db.objectStoreNames.contains(FOLDERS_STORE_NAME)) {
-                        const folderStore = db.createObjectStore(FOLDERS_STORE_NAME, { keyPath: 'id' });
-                        folderStore.createIndex('type', 'type', { unique: false });
-                        folderStore.createIndex('parentId', 'parentId', { unique: false });
-                        console.log('✅ Created folders object store with indexes');
-                    }
-
-                    // Add folderId indexes to existing stores
-                    const sessionStore = transaction.objectStore(STORE_NAME);
-                    if (!sessionStore.indexNames.contains('folderId')) {
-                        sessionStore.createIndex('folderId', 'folderId', { unique: false });
-                    }
-
-                    const memoryStore = transaction.objectStore(MEMORY_STORE_NAME);
-                    if (!memoryStore.indexNames.contains('folderId')) {
-                        memoryStore.createIndex('folderId', 'folderId', { unique: false });
-                    }
-
-                    const promptStore = transaction.objectStore(PROMPT_STORE_NAME);
-                    if (!promptStore.indexNames.contains('folderId')) {
-                        promptStore.createIndex('folderId', 'folderId', { unique: false });
-                    }
-                    console.log('✅ Added folderId indexes to sessions, memories, and prompts');
-                }
-            };
-
-            request.onsuccess = (event) => {
-                this.db = (event.target as IDBOpenDBRequest).result;
-                resolve(this.db);
-            };
-
-            request.onerror = (event) => {
-                reject((event.target as IDBOpenDBRequest).error);
-            };
+            }
         });
+
+        return this.db;
     }
 
     async getAllSessions(): Promise<SavedChatSession[]> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.getAll();
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return db.getAll(STORES.SESSIONS);
     }
 
     async getAllSessionsMetadata(): Promise<SavedChatSessionMetadata[]> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const sessions: SavedChatSessionMetadata[] = [];
-            const request = store.openCursor();
+        const transaction = db.transaction(STORES.SESSIONS, 'readonly');
+        const store = transaction.objectStore(STORES.SESSIONS);
+        const sessions: SavedChatSessionMetadata[] = [];
 
-            request.onsuccess = (event) => {
-                const cursor = (event.target as IDBRequest).result;
-                if (cursor) {
-                    const session = cursor.value;
-                    // Construct lightweight metadata object
-                    // Explicitly excluding inputContent and chatData
-                    const metadata: SavedChatSessionMetadata = {
-                        id: session.id,
-                        name: session.name,
-                        date: session.date,
-                        chatTitle: session.chatTitle,
-                        userName: session.userName,
-                        aiName: session.aiName,
-                        selectedTheme: session.selectedTheme,
-                        parserMode: session.parserMode,
-                        metadata: session.metadata,
-                        normalizedTitle: session.normalizedTitle,
-                        exportStatus: session.exportStatus,
-                        folderId: session.folderId
-                    };
-                    sessions.push(metadata);
-                    cursor.continue();
-                } else {
-                    resolve(sessions);
-                }
+        let cursor = await store.openCursor();
+        while (cursor) {
+            const session = cursor.value;
+            const metadata: SavedChatSessionMetadata = {
+                id: session.id,
+                name: session.name,
+                date: session.date,
+                chatTitle: session.chatTitle,
+                userName: session.userName,
+                aiName: session.aiName,
+                selectedTheme: session.selectedTheme,
+                parserMode: session.parserMode,
+                metadata: session.metadata,
+                normalizedTitle: session.normalizedTitle,
+                exportStatus: session.exportStatus,
+                folderId: session.folderId
             };
-            request.onerror = () => reject(request.error);
-        });
+            sessions.push(metadata);
+            cursor = await cursor.continue();
+        }
+        return sessions;
     }
 
     async getSessionById(id: string): Promise<SavedChatSession | undefined> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.get(id);
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return db.get(STORES.SESSIONS, id);
     }
 
     async getSessionByNormalizedTitle(normalizedTitle: string): Promise<SavedChatSession | undefined> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const index = store.index('normalizedTitle');
-            const request = index.get(normalizedTitle);
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return db.getFromIndex(STORES.SESSIONS, 'normalizedTitle', normalizedTitle);
     }
 
     async saveSession(session: SavedChatSession): Promise<void> {
@@ -252,153 +106,81 @@ class StorageService {
 
         const db = await this.getDB();
 
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
+        try {
+            await db.put(STORES.SESSIONS, session);
+            console.log(`✅ Saved session: "${title}" (ID: ${session.id})`);
+        } catch (error: any) {
+            // Check if error is due to unique constraint violation
+            if (error?.name === 'ConstraintError') {
+                console.log(`🔄 Duplicate detected: "${title}" - renaming old version`);
 
-            // Attempt to insert/update
-            const request = store.put(session);
+                // Find the existing session with this normalized title
+                const existingSession = await this.getSessionByNormalizedTitle(session.normalizedTitle!);
 
-            request.onsuccess = () => {
-                console.log(`✅ Saved session: "${title}" (ID: ${session.id})`);
-                resolve();
-            };
-
-            request.onerror = async (event) => {
-                // Prevent transaction abort from bubbling up immediately if we handle it
-                event.preventDefault();
-                const error = (event.target as IDBRequest).error;
-
-                // Check if error is due to unique constraint violation
-                if (error?.name === 'ConstraintError') {
-                    console.log(`🔄 Duplicate detected: "${title}" - renaming old version`);
-
-                    try {
-                        // Find the existing session with this normalized title
-                        const existingSession = await this.getSessionByNormalizedTitle(session.normalizedTitle!);
-
-                        if (!existingSession) {
-                            reject(new Error('Duplicate detected but could not find existing session'));
-                            return;
-                        }
-
-                        const oldTitle = existingSession.metadata?.title || existingSession.chatTitle || existingSession.name;
-
-                        // Loop-based rename: resolves collision via iteration, not recursion.
-                        // Strategy: try "[Title] (Old Copy)", then "(Old Copy - 1)", etc.
-                        let renamedTitle = `${oldTitle} (Old Copy)`;
-                        let counter = 1;
-                        let collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
-
-                        while (collisionCheck) {
-                            if (counter > 100) {
-                                throw new Error(`Failed to save session: too many naming collisions for "${oldTitle}". Please rename existing copies manually.`);
-                            }
-                            renamedTitle = `${oldTitle} (Old Copy - ${counter})`;
-                            collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
-                            counter++;
-                        }
-
-                        // Update the OLD session's title in-place using the existing transaction
-                        if (existingSession.metadata) {
-                            existingSession.metadata.title = renamedTitle;
-                        }
-                        existingSession.chatTitle = renamedTitle;
-                        existingSession.name = renamedTitle;
-                        existingSession.normalizedTitle = normalizeTitle(renamedTitle);
-
-                        // Use the existing transaction store directly — no recursive saveSession call
-                        const renamedRequest = store.put(existingSession);
-
-                        renamedRequest.onsuccess = () => {
-                            console.log(`✅ Renamed old session to: "${renamedTitle}"`);
-
-                            // Now save the NEW session with the same store
-                            const newRequest = store.put(session);
-
-                            newRequest.onsuccess = () => {
-                                console.log(`✅ Saved session: "${title}" after resolving duplicate`);
-                                resolve();
-                            };
-
-                            newRequest.onerror = () => {
-                                reject(newRequest.error);
-                            };
-                        };
-
-                        renamedRequest.onerror = () => {
-                            reject(renamedRequest.error);
-                        };
-                    } catch (e) {
-                        reject(e);
-                    }
-                } else {
-                    // Other error
-                    reject(error);
+                if (!existingSession) {
+                    throw new Error('Duplicate detected but could not find existing session');
                 }
-            };
 
-            transaction.onerror = () => {
-                // Fallback: only reject if we haven't already handled the error.
-            };
-        });
+                const oldTitle = existingSession.metadata?.title || existingSession.chatTitle || existingSession.name;
+
+                // Loop-based rename: resolves collision via iteration, not recursion.
+                let renamedTitle = `${oldTitle} (Old Copy)`;
+                let counter = 1;
+                let collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
+
+                while (collisionCheck) {
+                    if (counter > 100) {
+                        throw new Error(`Failed to save session: too many naming collisions for "${oldTitle}". Please rename existing copies manually.`);
+                    }
+                    renamedTitle = `${oldTitle} (Old Copy - ${counter})`;
+                    collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
+                    counter++;
+                }
+
+                // Update the OLD session's title in-place
+                if (existingSession.metadata) {
+                    existingSession.metadata.title = renamedTitle;
+                }
+                existingSession.chatTitle = renamedTitle;
+                existingSession.name = renamedTitle;
+                existingSession.normalizedTitle = normalizeTitle(renamedTitle);
+
+                // Use a single transaction for atomicity
+                const tx = db.transaction(STORES.SESSIONS, 'readwrite');
+                await tx.store.put(existingSession);
+                await tx.store.put(session);
+                await tx.done;
+
+                console.log(`✅ Renamed old session to: "${renamedTitle}" and saved new session`);
+            } else {
+                throw error;
+            }
+        }
     }
+
     async deleteSession(id: string): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            store.delete(id);
-
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
-        });
+        await db.delete(STORES.SESSIONS, id);
     }
 
-    /**
-     * Get application settings from IndexedDB.
-     * Returns default settings if none exist.
-     */
     async getSettings(): Promise<AppSettings> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(SETTINGS_STORE_NAME, 'readonly');
-            const store = transaction.objectStore(SETTINGS_STORE_NAME);
-            const request = store.get('appSettings');
-
-            request.onsuccess = () => {
-                if (request.result) {
-                    resolve(request.result.value);
-                } else {
-                    resolve({ ...DEFAULT_SETTINGS });
-                }
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const result = await db.get(STORES.SETTINGS, 'appSettings');
+        if (result) {
+            return result.value;
+        } else {
+            return { ...DEFAULT_SETTINGS };
+        }
     }
 
-    /**
-     * Save application settings to IndexedDB.
-     */
     async saveSettings(settings: AppSettings): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(SETTINGS_STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(SETTINGS_STORE_NAME);
-            const request = store.put({
-                key: 'appSettings',
-                value: settings
-            });
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
+        await db.put(STORES.SETTINGS, {
+            key: 'appSettings',
+            value: settings
         });
     }
 
-    /**
-     * Migrates data from localStorage to IndexedDB if present.
-     * Should be called during app initialization or in the Hub.
-     */
     async migrateLegacyData(): Promise<void> {
         const keys = ['chatSessions', 'ai_chat_sessions'];
 
@@ -422,288 +204,151 @@ class StorageService {
         }
     }
 
-    /**
-     * Attach an artifact to a session
-     */
     async attachArtifact(sessionId: string, artifact: ConversationArtifact): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const getRequest = store.get(sessionId);
+        const tx = db.transaction(STORES.SESSIONS, 'readwrite');
+        const session = await tx.store.get(sessionId);
 
-            getRequest.onsuccess = () => {
-                const session = getRequest.result as SavedChatSession;
-                if (!session) {
-                    reject(new Error(`Session ${sessionId} not found`));
-                    return;
-                }
+        if (!session) {
+            throw new Error(`Session ${sessionId} not found`);
+        }
 
-                if (!session.metadata) {
-                    session.metadata = {} as ChatMetadata;
-                }
-                if (!session.metadata.artifacts) {
-                    session.metadata.artifacts = [];
-                }
+        if (!session.metadata) {
+            session.metadata = {} as ChatMetadata;
+        }
+        if (!session.metadata.artifacts) {
+            session.metadata.artifacts = [];
+        }
 
-                session.metadata.artifacts.push(artifact);
-
-                const putRequest = store.put(session);
-                putRequest.onsuccess = () => resolve();
-                putRequest.onerror = () => reject(putRequest.error);
-            };
-            getRequest.onerror = () => reject(getRequest.error);
-        });
+        session.metadata.artifacts.push(artifact);
+        await tx.store.put(session);
+        await tx.done;
     }
 
-    /**
-     * Remove an artifact from a session
-     */
     async removeArtifact(sessionId: string, artifactId: string): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const getRequest = store.get(sessionId);
+        const tx = db.transaction(STORES.SESSIONS, 'readwrite');
+        const session = await tx.store.get(sessionId);
 
-            getRequest.onsuccess = () => {
-                const session = getRequest.result as SavedChatSession;
-                if (!session) {
-                    reject(new Error(`Session ${sessionId} not found`));
-                    return;
-                }
+        if (!session) {
+            throw new Error(`Session ${sessionId} not found`);
+        }
 
-                if (session.metadata?.artifacts) {
-                    session.metadata.artifacts = session.metadata.artifacts.filter(
-                        artifact => artifact.id !== artifactId
-                    );
-
-                    const putRequest = store.put(session);
-                    putRequest.onsuccess = () => resolve();
-                    putRequest.onerror = () => reject(putRequest.error);
-                } else {
-                    resolve();
-                }
-            };
-            getRequest.onerror = () => reject(getRequest.error);
-        });
+        if (session.metadata?.artifacts) {
+            session.metadata.artifacts = session.metadata.artifacts.filter(
+                (artifact: ConversationArtifact) => artifact.id !== artifactId
+            );
+            await tx.store.put(session);
+        }
+        await tx.done;
     }
 
-    /**
-     * Remove an artifact from a specific message
-     */
     async removeMessageArtifact(sessionId: string, messageIndex: number, artifactId: string): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const getRequest = store.get(sessionId);
+        const tx = db.transaction(STORES.SESSIONS, 'readwrite');
+        const session = await tx.store.get(sessionId);
 
-            getRequest.onsuccess = () => {
-                const session = getRequest.result as SavedChatSession;
-                if (!session) {
-                    reject(new Error(`Session ${sessionId} not found`));
-                    return;
-                }
+        if (!session) {
+            throw new Error(`Session ${sessionId} not found`);
+        }
 
-                if (session.chatData?.messages[messageIndex]?.artifacts) {
-                    session.chatData.messages[messageIndex].artifacts =
-                        session.chatData.messages[messageIndex].artifacts!.filter(
-                            artifact => artifact.id !== artifactId
-                        );
-
-                    const putRequest = store.put(session);
-                    putRequest.onsuccess = () => resolve();
-                    putRequest.onerror = () => reject(putRequest.error);
-                } else {
-                    resolve();
-                }
-            };
-            getRequest.onerror = () => reject(getRequest.error);
-        });
+        if (session.chatData?.messages[messageIndex]?.artifacts) {
+            session.chatData.messages[messageIndex].artifacts =
+                session.chatData.messages[messageIndex].artifacts!.filter(
+                    (artifact: ConversationArtifact) => artifact.id !== artifactId
+                );
+            await tx.store.put(session);
+        }
+        await tx.done;
     }
 
-
-    /**
-     * Get all artifacts for a session
-     */
     async getArtifacts(sessionId: string): Promise<ConversationArtifact[]> {
         const session = await this.getSessionById(sessionId);
         return session?.metadata?.artifacts || [];
     }
 
-    /**
-     * Update artifact metadata
-     */
     async updateArtifact(
         sessionId: string,
         artifactId: string,
         updates: Partial<ConversationArtifact>
     ): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const getRequest = store.get(sessionId);
+        const tx = db.transaction(STORES.SESSIONS, 'readwrite');
+        const session = await tx.store.get(sessionId);
 
-            getRequest.onsuccess = () => {
-                const session = getRequest.result as SavedChatSession;
-                if (!session) {
-                    reject(new Error(`Session ${sessionId} not found`));
-                    return;
-                }
+        if (!session) {
+            throw new Error(`Session ${sessionId} not found`);
+        }
 
-                if (session.metadata?.artifacts) {
-                    const artifactIndex = session.metadata.artifacts.findIndex(a => a.id === artifactId);
-                    if (artifactIndex !== -1) {
-                        session.metadata.artifacts[artifactIndex] = {
-                            ...session.metadata.artifacts[artifactIndex],
-                            ...updates
-                        };
-
-                        const putRequest = store.put(session);
-                        putRequest.onsuccess = () => resolve();
-                        putRequest.onerror = () => reject(putRequest.error);
-                    } else {
-                        reject(new Error(`Artifact ${artifactId} not found`));
-                    }
-                } else {
-                    reject(new Error('No artifacts found for session'));
-                }
-            };
-            getRequest.onerror = () => reject(getRequest.error);
-        });
+        if (session.metadata?.artifacts) {
+            const artifactIndex = session.metadata.artifacts.findIndex((a: ConversationArtifact) => a.id === artifactId);
+            if (artifactIndex !== -1) {
+                session.metadata.artifacts[artifactIndex] = {
+                    ...session.metadata.artifacts[artifactIndex],
+                    ...updates
+                };
+                await tx.store.put(session);
+            } else {
+                throw new Error(`Artifact ${artifactId} not found`);
+            }
+        } else {
+            throw new Error('No artifacts found for session');
+        }
+        await tx.done;
     }
 
     // ==================== Memory Archive CRUD Operations ====================
 
-    /**
-     * Save a memory to IndexedDB
-     */
     async saveMemory(memory: Memory): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([MEMORY_STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(MEMORY_STORE_NAME);
-            const request = store.put(memory);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+        await db.put(STORES.MEMORIES, memory);
     }
 
-    /**
-     * Get all memories from IndexedDB, sorted by creation date (newest first)
-     */
     async getAllMemories(): Promise<Memory[]> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([MEMORY_STORE_NAME], 'readonly');
-            const store = transaction.objectStore(MEMORY_STORE_NAME);
-            const request = store.getAll();
-
-            request.onsuccess = () => {
-                const memories = request.result as Memory[];
-                // Sort by createdAt descending (newest first)
-                memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                resolve(memories);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const memories = await db.getAll(STORES.MEMORIES);
+        return memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    /**
-     * Get a single memory by ID
-     */
     async getMemoryById(id: string): Promise<Memory | undefined> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([MEMORY_STORE_NAME], 'readonly');
-            const store = transaction.objectStore(MEMORY_STORE_NAME);
-            const request = store.get(id);
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return db.get(STORES.MEMORIES, id);
     }
 
-    /**
-     * Update an existing memory (sets updatedAt timestamp)
-     */
     async updateMemory(memory: Memory): Promise<void> {
         memory.updatedAt = new Date().toISOString();
         return this.saveMemory(memory);
     }
 
-    /**
-     * Delete a memory by ID
-     */
     async deleteMemory(id: string): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([MEMORY_STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(MEMORY_STORE_NAME);
-            const request = store.delete(id);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+        await db.delete(STORES.MEMORIES, id);
     }
 
-    /**
-     * Get memories filtered by AI model
-     */
     async getMemoriesByModel(aiModel: string): Promise<Memory[]> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([MEMORY_STORE_NAME], 'readonly');
-            const store = transaction.objectStore(MEMORY_STORE_NAME);
-            const index = store.index('aiModel');
-            const request = index.getAll(aiModel);
-
-            request.onsuccess = () => {
-                const memories = request.result as Memory[];
-                memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                resolve(memories);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const memories = await db.getAllFromIndex(STORES.MEMORIES, 'aiModel', aiModel);
+        return memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    /**
-     * Update the export status of a session
-     */
     async updateExportStatus(id: string, status: 'exported' | 'not_exported'): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const getRequest = store.get(id);
+        const tx = db.transaction(STORES.SESSIONS, 'readwrite');
+        const session = await tx.store.get(id);
 
-            getRequest.onsuccess = () => {
-                const session = getRequest.result as SavedChatSession;
-                if (!session) {
-                    reject(new Error(`Session ${id} not found`));
-                    return;
-                }
+        if (!session) {
+            throw new Error(`Session ${id} not found`);
+        }
 
-                // Update both top-level and metadata for consistency
-                session.exportStatus = status;
-                if (session.metadata) {
-                    session.metadata.exportStatus = status;
-                }
+        session.exportStatus = status;
+        if (session.metadata) {
+            session.metadata.exportStatus = status;
+        }
 
-                const putRequest = store.put(session);
-                putRequest.onsuccess = () => resolve();
-                putRequest.onerror = () => reject(putRequest.error);
-            };
-            getRequest.onerror = () => reject(getRequest.error);
-        });
+        await tx.store.put(session);
+        await tx.done;
     }
 
-    /**
-     * Export the entire database (sessions, settings, memories)
-     */
     async exportDatabase(): Promise<{
         sessions: SavedChatSession[];
         settings: AppSettings;
@@ -724,28 +369,19 @@ class StorageService {
         };
     }
 
-    /**
-     * Import a database backup (sessions, settings, memories)
-     * WITH SECURITY VALIDATION - addresses CURRENT_SECURITY_AUDIT.md findings
-     */
     async importDatabase(data: unknown): Promise<void> {
-        // 1. Validate schema and sanitize content
         const validatedData = validateImportData(data);
 
-        // 2. Import settings if present
         if (validatedData.settings) {
             await this.saveSettings(validatedData.settings);
         }
 
-        // 3. Import sessions if present (content already sanitized by Zod transform)
         if (validatedData.sessions && Array.isArray(validatedData.sessions)) {
             for (const session of validatedData.sessions) {
-                // Cast to SavedChatSession to satisfy TypeScript enum requirements
                 await this.saveSession(session as SavedChatSession);
             }
         }
 
-        // 4. Import memories if present (content already sanitized by Zod transform)
         if (validatedData.memories && Array.isArray(validatedData.memories)) {
             for (const memory of validatedData.memories) {
                 await this.saveMemory(memory);
@@ -755,12 +391,6 @@ class StorageService {
         console.log('✅ Database import complete (validated and sanitized)');
     }
 
-    /**
-     * Import sessions from a directory of Noosphere Reflect export files
-     * Validates attribution and supports JSON, Markdown, and HTML formats
-     * @param files FileList from directory picker
-     * @returns Import results with success/failure counts
-     */
     async importFromDirectory(files: FileList): Promise<{
         successful: number;
         failed: number;
@@ -777,7 +407,6 @@ class StorageService {
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
 
-            // Skip non-file entries (directories, etc.)
             if (!file.type && file.size === 0) {
                 results.skipped++;
                 continue;
@@ -785,8 +414,6 @@ class StorageService {
 
             try {
                 const content = await file.text();
-
-                // Validate Noosphere Reflect attribution
                 const validation = validateReflectFile(file.name, content);
 
                 if (!validation.isValid) {
@@ -798,19 +425,14 @@ class StorageService {
                     continue;
                 }
 
-                // Parse based on file type
                 let session: SavedChatSession | null = null;
 
                 if (validation.type === 'json') {
-                    // Parse JSON export
                     const parsed = JSON.parse(content);
 
-                    // Check if it's a full session export or just chat data
                     if (parsed.id && parsed.chatData) {
-                        // Full session export
                         session = parsed as SavedChatSession;
                     } else if (parsed.messages) {
-                        // Chat data only - create session wrapper
                         session = {
                             id: crypto.randomUUID(),
                             name: parsed.metadata?.title || file.name.replace('.json', ''),
@@ -829,7 +451,6 @@ class StorageService {
                         };
                     }
                 } else if (validation.type === 'markdown') {
-                    // Parse Markdown export with relaxed parser
                     const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
 
                     session = {
@@ -846,8 +467,6 @@ class StorageService {
                         metadata: chatData.metadata
                     };
                 } else if (validation.type === 'html') {
-                    // For HTML, we need to detect which parser mode to use
-                    // For now, skip HTML imports as they require platform-specific parsing
                     results.skipped++;
                     results.errors.push({
                         fileName: file.name,
@@ -857,7 +476,6 @@ class StorageService {
                 }
 
                 if (session) {
-                    // Import the session
                     await this.saveSession(session);
                     results.successful++;
                     console.log(`✅ Imported: ${file.name}`);
@@ -885,114 +503,49 @@ class StorageService {
 
     // ============= PROMPT ARCHIVE METHODS =============
 
-    /**
-     * Save a new prompt to IndexedDB
-     */
     async savePrompt(prompt: Prompt): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([PROMPT_STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(PROMPT_STORE_NAME);
-            const request = store.put(prompt);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+        await db.put(STORES.PROMPTS, prompt);
     }
 
-    /**
-     * Get all prompts from IndexedDB, sorted by creation date (newest first)
-     */
     async getAllPrompts(): Promise<Prompt[]> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([PROMPT_STORE_NAME], 'readonly');
-            const store = transaction.objectStore(PROMPT_STORE_NAME);
-            const request = store.getAll();
-
-            request.onsuccess = () => {
-                const prompts = request.result as Prompt[];
-                // Sort by createdAt descending (newest first)
-                prompts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                resolve(prompts);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const prompts = await db.getAll(STORES.PROMPTS);
+        return prompts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    /**
-     * Get a single prompt by ID
-     */
     async getPromptById(id: string): Promise<Prompt | undefined> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([PROMPT_STORE_NAME], 'readonly');
-            const store = transaction.objectStore(PROMPT_STORE_NAME);
-            const request = store.get(id);
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return db.get(STORES.PROMPTS, id);
     }
 
-    /**
-     * Update an existing prompt (sets updatedAt timestamp)
-     */
     async updatePrompt(prompt: Prompt): Promise<void> {
         prompt.updatedAt = new Date().toISOString();
         return this.savePrompt(prompt);
     }
 
-    /**
-     * Delete a prompt by ID
-     */
     async deletePrompt(id: string): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([PROMPT_STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(PROMPT_STORE_NAME);
-            const request = store.delete(id);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+        await db.delete(STORES.PROMPTS, id);
     }
 
     // ========== FOLDER METHODS ==========
 
     async saveFolder(folder: Folder): Promise<void> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(FOLDERS_STORE_NAME);
-            const request = store.put(folder);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+        await db.put(STORES.FOLDERS, folder);
     }
 
     async getFoldersByType(type: ArchiveType): Promise<Folder[]> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readonly');
-            const store = transaction.objectStore(FOLDERS_STORE_NAME);
-            const index = store.index('type');
-            const request = index.getAll(type);
-
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
+        return db.getAllFromIndex(STORES.FOLDERS, 'type', type);
     }
 
     async deleteFolder(id: string): Promise<void> {
         const db = await this.getDB();
-
-        // First, get the folder to know its type
         const folder = await this.getFolderById(id);
         if (!folder) return;
 
-        // Get all child folders recursively
         const allFolders = await this.getFoldersByType(folder.type);
         const getDescendantIds = (parentId: string): string[] => {
             const children = allFolders.filter(f => f.parentId === parentId);
@@ -1003,57 +556,36 @@ class StorageService {
         };
         const descendantIds = [id, ...getDescendantIds(id)];
 
-        // Move items in these folders back to root
         await this.moveItemsFromFoldersToRoot(descendantIds, folder.type);
 
-        // Delete all folders
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(FOLDERS_STORE_NAME);
-
-            descendantIds.forEach(folderId => store.delete(folderId));
-
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
-        });
+        const tx = db.transaction(STORES.FOLDERS, 'readwrite');
+        for (const folderId of descendantIds) {
+            await tx.store.delete(folderId);
+        }
+        await tx.done;
     }
 
-    private async getFolderById(id: string): Promise<Folder | null> {
+    async getFolderById(id: string): Promise<Folder | undefined> {
         const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([FOLDERS_STORE_NAME], 'readonly');
-            const store = transaction.objectStore(FOLDERS_STORE_NAME);
-            const request = store.get(id);
-
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-        });
+        return db.get(STORES.FOLDERS, id);
     }
 
     private async moveItemsFromFoldersToRoot(folderIds: string[], type: ArchiveType): Promise<void> {
         const db = await this.getDB();
-        const storeName = type === 'chat' ? STORE_NAME : type === 'memory' ? MEMORY_STORE_NAME : PROMPT_STORE_NAME;
+        const storeName = type === 'chat' ? STORES.SESSIONS : type === 'memory' ? STORES.MEMORIES : STORES.PROMPTS;
 
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.openCursor();
+        const tx = db.transaction(storeName, 'readwrite');
+        let cursor = await tx.store.openCursor();
 
-            request.onsuccess = (event) => {
-                const cursor = (event.target as IDBRequest).result;
-                if (cursor) {
-                    const item = cursor.value;
-                    if (item.folderId && folderIds.includes(item.folderId)) {
-                        item.folderId = null;
-                        cursor.update(item);
-                    }
-                    cursor.continue();
-                }
-            };
-
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
-        });
+        while (cursor) {
+            const item = cursor.value;
+            if (item.folderId && folderIds.includes(item.folderId)) {
+                item.folderId = null;
+                await cursor.update(item);
+            }
+            cursor = await cursor.continue();
+        }
+        await tx.done;
     }
 
     async moveFolder(folderId: string, targetParentId: string | null): Promise<void> {
@@ -1067,26 +599,17 @@ class StorageService {
 
     async moveItemsToFolder(itemIds: string[], targetFolderId: string | null, type: ArchiveType): Promise<void> {
         const db = await this.getDB();
-        const storeName = type === 'chat' ? STORE_NAME : type === 'memory' ? MEMORY_STORE_NAME : PROMPT_STORE_NAME;
+        const storeName = type === 'chat' ? STORES.SESSIONS : type === 'memory' ? STORES.MEMORIES : STORES.PROMPTS;
 
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-
-            itemIds.forEach(id => {
-                const getRequest = store.get(id);
-                getRequest.onsuccess = () => {
-                    const item = getRequest.result;
-                    if (item) {
-                        item.folderId = targetFolderId;
-                        store.put(item);
-                    }
-                };
-            });
-
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
-        });
+        const tx = db.transaction(storeName, 'readwrite');
+        for (const id of itemIds) {
+            const item = await tx.store.get(id);
+            if (item) {
+                item.folderId = targetFolderId;
+                await tx.store.put(item);
+            }
+        }
+        await tx.done;
     }
 }
 

@@ -43,6 +43,7 @@ export interface ChatMetadata {
   sourceUrl?: string;
   artifacts?: ConversationArtifact[]; // NEW - Array of uploaded artifacts
   exportStatus?: 'exported' | 'not_exported'; // Status tracking
+  updatedAt?: string; // ISO timestamp
 }
 
 export interface ChatMessage {
