@@ -31,6 +31,7 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
     const [isEditing, setIsEditing] = useState(initialEditing);
     const [dropdownOpen, setDropdownOpen] = useState<{ index: number, type: 'before' | 'after' } | null>(null);
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [messageToDelete, setMessageToDelete] = useState<number | null>(null);
 
@@ -79,6 +80,12 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
         onMessagesChange(newMessages);
         setIsDeleteModalOpen(false);
         setMessageToDelete(null);
+    };
+
+    const handleCopyMessage = (content: string, index: number) => {
+        navigator.clipboard.writeText(content);
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
     };
 
     const handleArtifactClick = (artifactId: string) => {
@@ -474,36 +481,57 @@ export const ReviewEditModal: React.FC<ReviewEditModalProps> = ({
                                             )}
                                         </div>
 
-                                        {/* Edit Button (Visible in Edit Mode) */}
-                                        {isEditing && (
-                                            <div className="flex gap-2">
-                                                {/* Delete button (New) */}
-                                                <button
-                                                    onClick={() => handleDeleteMessage(idx)}
-                                                    className="text-xs font-medium text-red-400 hover:text-white transition-all duration-200 bg-red-600/10 hover:bg-red-600 px-3 py-1.5 rounded-lg border border-red-500/20 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-red-500/50"
-                                                    title="Delete Message"
-                                                >
-                                                    🗑️
-                                                </button>
+                                        <div className="flex items-center gap-2">
+                                            {/* Copy Button */}
+                                            <button
+                                                onClick={() => handleCopyMessage(msg.content, idx)}
+                                                className={`p-1.5 rounded-lg transition-all duration-200 border border-gray-700 hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 ${copiedIndex === idx
+                                                    ? 'bg-green-600 text-white border-green-500 ring-2 ring-green-500/50 shadow-lg shadow-green-500/20'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10 hover:ring-2 hover:ring-green-500/50 focus:ring-green-500'}`}
+                                                title="Copy message to clipboard"
+                                            >
+                                                {copiedIndex === idx ? (
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2M16 3h2a2 2 0 012 2v12a2 2 0 01-2 2h-2M8 9h8M8 13h5" />
+                                                    </svg>
+                                                )}
+                                            </button>
 
-                                                {/* Attach button */}
-                                                <button
-                                                    onClick={() => onAttachToMessage(idx)}
-                                                    className="text-xs font-medium text-purple-300 hover:text-white transition-all duration-200 bg-purple-600/10 hover:bg-purple-600 px-3 py-1.5 rounded-lg border border-purple-500/20 flex items-center gap-2 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/50"
-                                                >
-                                                    <span>📎</span>
-                                                    {msg.artifacts && msg.artifacts.length > 0 ? `Manage (${msg.artifacts.length})` : 'Attach'}
-                                                </button>
+                                            {/* Edit Tools (Visible in Edit Mode) */}
+                                            {isEditing && (
+                                                <div className="flex gap-2">
+                                                    {/* Delete button (New) */}
+                                                    <button
+                                                        onClick={() => handleDeleteMessage(idx)}
+                                                        className="text-xs font-medium text-red-400 hover:text-white transition-all duration-200 bg-red-600/10 hover:bg-red-600 px-3 py-1.5 rounded-lg border border-red-500/20 hover:scale-110 active:scale-95 hover:ring-2 hover:ring-red-500/50"
+                                                        title="Delete Message"
+                                                    >
+                                                        🗑️
+                                                    </button>
 
-                                                {/* Edit button */}
-                                                <button
-                                                    onClick={() => onEditMessage(idx)}
-                                                    className="text-xs font-medium text-gray-400 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/30"
-                                                >
-                                                    Edit Text
-                                                </button>
-                                            </div>
-                                        )}
+                                                    {/* Attach button */}
+                                                    <button
+                                                        onClick={() => onAttachToMessage(idx)}
+                                                        className="text-xs font-medium text-purple-300 hover:text-white transition-all duration-200 bg-purple-600/10 hover:bg-purple-600 px-3 py-1.5 rounded-lg border border-purple-500/20 flex items-center gap-2 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/50"
+                                                    >
+                                                        <span>📎</span>
+                                                        {msg.artifacts && msg.artifacts.length > 0 ? `Manage (${msg.artifacts.length})` : 'Attach'}
+                                                    </button>
+
+                                                    {/* Edit button */}
+                                                    <button
+                                                        onClick={() => onEditMessage(idx)}
+                                                        className="text-xs font-medium text-gray-400 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700 hover:scale-105 active:scale-95 hover:ring-2 hover:ring-purple-500/30"
+                                                    >
+                                                        Edit Text
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="text-gray-300 text-sm overflow-hidden leading-relaxed font-normal opacity-90 pl-11">

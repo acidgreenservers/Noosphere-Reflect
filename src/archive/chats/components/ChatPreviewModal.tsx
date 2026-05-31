@@ -16,6 +16,7 @@ interface ChatPreviewModalProps {
 export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onClose, onSave }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeMessageId, setActiveMessageId] = useState<number | null>(null);
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -296,6 +297,12 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         setEditingMessageIndex(null);
     };
 
+    const handleCopyMessage = (content: string, index: number) => {
+        navigator.clipboard.writeText(content);
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
+    };
+
     return (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-xl p-4 sm:p-6 lg:p-10">
             <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-2xl w-full h-full max-w-7xl border border-gray-700/50 flex flex-col overflow-hidden relative">
@@ -482,18 +489,39 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                 {msg.isEdited && <span className="text-xs text-yellow-500/60 ml-2">(Edited)</span>}
                                             </div>
 
-                                            {/* Edit Button (Visible in Edit Mode) */}
-                                            {isEditing && (
+                                            <div className="flex items-center gap-2">
+                                                {/* Copy Button */}
                                                 <button
-                                                    onClick={() => setEditingMessageIndex(idx)}
-                                                    className="p-1.5 bg-gray-800 hover:bg-purple-600 hover:text-white text-gray-400 rounded-lg transition-all duration-200 border border-gray-700 hover:scale-110 active:scale-95 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20 hover:ring-2 hover:ring-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500 active:bg-purple-600"
-                                                    title="Edit this message"
+                                                    onClick={() => handleCopyMessage(msg.content, idx)}
+                                                    className={`p-1.5 rounded-lg transition-all duration-200 border border-gray-700 hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 ${copiedIndex === idx
+                                                        ? 'bg-green-600 text-white border-green-500 ring-2 ring-green-500/50 shadow-lg shadow-green-500/20'
+                                                        : 'bg-gray-800 text-gray-400 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10 hover:ring-2 hover:ring-green-500/50 focus:ring-green-500'}`}
+                                                    title="Copy message to clipboard"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                    </svg>
+                                                    {copiedIndex === idx ? (
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2M16 3h2a2 2 0 012 2v12a2 2 0 01-2 2h-2M8 9h8M8 13h5" />
+                                                        </svg>
+                                                    )}
                                                 </button>
-                                            )}
+
+                                                {/* Edit Button (Visible in Edit Mode) */}
+                                                {isEditing && (
+                                                    <button
+                                                        onClick={() => setEditingMessageIndex(idx)}
+                                                        className="p-1.5 bg-gray-800 hover:bg-purple-600 hover:text-white text-gray-400 rounded-lg transition-all duration-200 border border-gray-700 hover:scale-110 active:scale-95 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20 hover:ring-2 hover:ring-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500 active:bg-purple-600"
+                                                        title="Edit this message"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Content Bubble */}
