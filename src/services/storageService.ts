@@ -6,6 +6,7 @@ import { normalizeTitle } from '../utils/textNormalization';
 import { validateImportData } from '../utils/importValidator';
 import { validateReflectFile } from '../utils/reflectValidator';
 import { parseChat } from './converterService';
+import { searchService } from './searchService';
 
 class StorageService {
     private db: IDBPDatabase | null = null;
@@ -302,6 +303,14 @@ class StorageService {
     async saveMemory(memory: Memory): Promise<void> {
         const db = await this.getDB();
         await db.put(STORES.MEMORIES, memory);
+
+        // Update search index
+        try {
+            await searchService.init();
+            await searchService.indexMemory(memory);
+        } catch (e) {
+            console.warn('Failed to index memory for search:', e);
+        }
     }
 
     async getAllMemories(): Promise<Memory[]> {
@@ -323,6 +332,14 @@ class StorageService {
     async deleteMemory(id: string): Promise<void> {
         const db = await this.getDB();
         await db.delete(STORES.MEMORIES, id);
+
+        // Remove from search index
+        try {
+            await searchService.init();
+            await searchService.deleteDocument(id);
+        } catch (e) {
+            console.warn('Failed to remove memory from search index:', e);
+        }
     }
 
     async getMemoriesByModel(aiModel: string): Promise<Memory[]> {
@@ -353,17 +370,20 @@ class StorageService {
         sessions: SavedChatSession[];
         settings: AppSettings;
         memories: Memory[];
+        prompts: Prompt[];
         version: number;
         exportedAt: string;
     }> {
         const sessions = await this.getAllSessions();
         const settings = await this.getSettings();
         const memories = await this.getAllMemories();
+        const prompts = await this.getAllPrompts();
 
         return {
             sessions,
             settings,
             memories,
+            prompts,
             version: DB_VERSION,
             exportedAt: new Date().toISOString()
         };
@@ -385,6 +405,12 @@ class StorageService {
         if (validatedData.memories && Array.isArray(validatedData.memories)) {
             for (const memory of validatedData.memories) {
                 await this.saveMemory(memory);
+            }
+        }
+
+        if (validatedData.prompts && Array.isArray(validatedData.prompts)) {
+            for (const prompt of validatedData.prompts) {
+                await this.savePrompt(prompt);
             }
         }
 
@@ -425,35 +451,56 @@ class StorageService {
                     continue;
                 }
 
-                let session: SavedChatSession | null = null;
-
                 if (validation.type === 'json') {
                     const parsed = JSON.parse(content);
 
-                    if (parsed.id && parsed.chatData) {
-                        session = parsed as SavedChatSession;
-                    } else if (parsed.messages) {
-                        session = {
-                            id: crypto.randomUUID(),
-                            name: parsed.metadata?.title || file.name.replace('.json', ''),
-                            date: new Date().toISOString(),
-                            inputContent: content,
-                            chatTitle: parsed.metadata?.title || file.name.replace('.json', ''),
-                            userName: 'User',
-                            aiName: parsed.metadata?.model || 'AI',
-                            selectedTheme: ChatTheme.DarkDefault,
-                            parserMode: ParserMode.Basic,
-                            chatData: {
-                                messages: parsed.messages,
-                                metadata: parsed.metadata
-                            },
-                            metadata: parsed.metadata
-                        };
+                    // Detect Archive Type based on structure
+                    if (parsed.chatData || parsed.messages) {
+                        // It's a Chat Session
+                        let session: SavedChatSession;
+                        if (parsed.id && parsed.chatData) {
+                            session = parsed as SavedChatSession;
+                        } else {
+                            session = {
+                                id: crypto.randomUUID(),
+                                name: parsed.metadata?.title || file.name.replace('.json', ''),
+                                date: new Date().toISOString(),
+                                inputContent: content,
+                                chatTitle: parsed.metadata?.title || file.name.replace('.json', ''),
+                                userName: 'User',
+                                aiName: parsed.metadata?.model || 'AI',
+                                selectedTheme: ChatTheme.DarkDefault,
+                                parserMode: ParserMode.Basic,
+                                chatData: {
+                                    messages: parsed.messages,
+                                    metadata: parsed.metadata
+                                },
+                                metadata: parsed.metadata,
+                                folderId: parsed.folderId || null
+                            };
+                        }
+                        await this.saveSession(session);
+                        results.successful++;
+                    } else if (parsed.aiModel && parsed.metadata && !parsed.metadata.category) {
+                        // It's a Memory
+                        const memory = parsed as Memory;
+                        await this.saveMemory(memory);
+                        results.successful++;
+                    } else if (parsed.metadata && (parsed.metadata.category || parsed.content && !parsed.aiModel)) {
+                        // It's a Prompt
+                        const prompt = parsed as Prompt;
+                        await this.savePrompt(prompt);
+                        results.successful++;
+                    } else {
+                        results.failed++;
+                        results.errors.push({ fileName: file.name, error: 'Unknown JSON export format' });
                     }
                 } else if (validation.type === 'markdown') {
+                    // Markdown imports are primarily for chats in current architecture
+                    // but we check for Noosphere metadata to see if it's a Memory or Prompt
                     const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
 
-                    session = {
+                    const session: SavedChatSession = {
                         id: crypto.randomUUID(),
                         name: file.name.replace('.md', ''),
                         date: new Date().toISOString(),
@@ -466,6 +513,9 @@ class StorageService {
                         chatData,
                         metadata: chatData.metadata
                     };
+
+                    await this.saveSession(session);
+                    results.successful++;
                 } else if (validation.type === 'html') {
                     results.skipped++;
                     results.errors.push({
@@ -475,17 +525,7 @@ class StorageService {
                     continue;
                 }
 
-                if (session) {
-                    await this.saveSession(session);
-                    results.successful++;
-                    console.log(`✅ Imported: ${file.name}`);
-                } else {
-                    results.failed++;
-                    results.errors.push({
-                        fileName: file.name,
-                        error: 'Could not parse file into session'
-                    });
-                }
+                console.log(`✅ Imported: ${file.name}`);
 
             } catch (err) {
                 results.failed++;
@@ -506,6 +546,14 @@ class StorageService {
     async savePrompt(prompt: Prompt): Promise<void> {
         const db = await this.getDB();
         await db.put(STORES.PROMPTS, prompt);
+
+        // Update search index
+        try {
+            await searchService.init();
+            await searchService.indexPrompt(prompt);
+        } catch (e) {
+            console.warn('Failed to index prompt for search:', e);
+        }
     }
 
     async getAllPrompts(): Promise<Prompt[]> {
@@ -527,6 +575,14 @@ class StorageService {
     async deletePrompt(id: string): Promise<void> {
         const db = await this.getDB();
         await db.delete(STORES.PROMPTS, id);
+
+        // Remove from search index
+        try {
+            await searchService.init();
+            await searchService.deleteDocument(id);
+        } catch (e) {
+            console.warn('Failed to remove prompt from search index:', e);
+        }
     }
 
     // ========== FOLDER METHODS ==========

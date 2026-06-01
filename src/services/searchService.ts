@@ -1,14 +1,16 @@
-import type { SavedChatSession, SearchFilters } from '../types';
+import type { SavedChatSession, SearchFilters, Memory, Prompt, ArchiveType } from '../types';
 
 interface SearchResult {
     id: string;
-    sessionId: string;
-    messageIndex: number;
+    archiveType: ArchiveType;
+    sessionId?: string;
+    messageIndex?: number;
     snippet: string;
-    type: string;
+    type?: string;
     timestamp: number;
-    sessionTitle: string;
+    title: string;
     model?: string;
+    tags?: string[];
     score: number;
 }
 
@@ -79,17 +81,38 @@ class SearchService {
         await this.sendMessage('INDEX_SESSION', { session });
     }
 
-    async indexSessions(sessions: SavedChatSession[]): Promise<void> {
-        await this.sendMessage('INDEX_SESSIONS', { sessions });
+    async indexMemory(memory: Memory): Promise<void> {
+        await this.sendMessage('INDEX_MEMORY', { memory });
+    }
+
+    async indexPrompt(prompt: Prompt): Promise<void> {
+        await this.sendMessage('INDEX_PROMPT', { prompt });
+    }
+
+    async indexSessions(
+        sessions: SavedChatSession[],
+        memories: Memory[] = [],
+        prompts: Prompt[] = []
+    ): Promise<void> {
+        await this.sendMessage('INDEX_SESSIONS', { sessions, memories, prompts });
     }
 
     async search(query: string, filters?: SearchFilters): Promise<SearchResult[]> {
-        const result = await this.sendMessage('SEARCH', { query, filters });
-        return result.results || [];
+        try {
+            const result = await this.sendMessage('SEARCH', { query, filters });
+            return result.results || [];
+        } catch (e) {
+            console.error('Search failed:', e);
+            return [];
+        }
     }
 
     async indexSessionWithCheck(session: SavedChatSession): Promise<void> {
         await this.sendMessage('INDEX_WITH_CHECK', { session });
+    }
+
+    async deleteDocument(id: string): Promise<void> {
+        await this.sendMessage('DELETE_DOCUMENT', { id });
     }
 
     async clearIndex(): Promise<void> {
