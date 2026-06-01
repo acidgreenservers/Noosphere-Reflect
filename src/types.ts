@@ -198,6 +198,7 @@ export interface Prompt {
 
 // Search Filters
 export interface SearchFilters {
+  archiveTypes?: ArchiveType[];
   messageTypes?: ('prompt' | 'response' | 'thought')[];
   dateRange?: { start: number; end: number };
   models?: string[];

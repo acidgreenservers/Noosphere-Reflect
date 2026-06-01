@@ -92,7 +92,13 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
     }, [query, selectedMessageTypes, dateFrom, dateTo, selectedModels]);
 
     const handleResultClick = useCallback((result: SearchResult) => {
-        onResultSelect(result.sessionId, result.messageIndex);
+        if (result.archiveType === 'chat' && result.sessionId !== undefined && result.messageIndex !== undefined) {
+            onResultSelect(result.sessionId, result.messageIndex);
+        } else if (result.archiveType === 'memory') {
+            window.location.hash = `#/memory-archive?id=${result.id}`;
+        } else if (result.archiveType === 'prompt') {
+            window.location.hash = `#/prompt-archive?id=${result.id}`;
+        }
         onClose();
     }, [onResultSelect, onClose]);
 
@@ -245,18 +251,21 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
                             <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-medium text-purple-400 truncate max-w-[200px]">
-                                        {result.sessionTitle}
+                                        {result.title}
                                     </span>
                                     {result.model && (
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-400 border border-gray-600/30">
                                             {result.model}
                                         </span>
                                     )}
-                                    <span className={`text-xs px-2 py-0.5 rounded ${result.type === 'prompt'
-                                        ? 'bg-blue-500/20 text-blue-300'
-                                        : 'bg-green-500/20 text-green-300'
-                                        }`}>
-                                        {result.type}
+                                    <span className={`text-xs px-2 py-0.5 rounded ${
+                                        result.archiveType === 'chat'
+                                            ? (result.type === 'prompt' ? 'bg-blue-500/20 text-blue-300' : 'bg-green-500/20 text-green-300')
+                                            : result.archiveType === 'memory'
+                                            ? 'bg-purple-500/20 text-purple-300'
+                                            : 'bg-cyan-500/20 text-cyan-300'
+                                    }`}>
+                                        {result.archiveType === 'chat' ? (result.type || 'message') : result.archiveType}
                                     </span>
                                 </div>
                                 <span className="text-xs text-gray-500">

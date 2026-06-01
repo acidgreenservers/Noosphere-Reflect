@@ -5,43 +5,12 @@
  */
 
 import { z } from 'zod';
-import { SavedChatSession, AppSettings, Memory, ChatMessage, ConversationArtifact, ChatMetadata } from '../types';
+import { sanitizeHtml } from './securityUtils';
 
 /**
  * Maximum depth for nested objects to prevent DOS attacks
  */
 const MAX_OBJECT_DEPTH = 50;
-
-/**
- * Sanitizes HTML content in chat messages to prevent XSS.
- * Removes script tags, event handlers, and dangerous protocols.
- */
-function sanitizeMessageContent(html: string): string {
-    if (!html || typeof html !== 'string') {
-        return '';
-    }
-
-    // 1. Remove script tags and content
-    let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-
-    // 2. Remove event handlers (onclick, onerror, etc.)
-    sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
-    sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, '');
-
-    // 3. Remove javascript: and data: protocols
-    sanitized = sanitized.replace(/href\s*=\s*["']?\s*javascript:/gi, 'href="#"');
-    sanitized = sanitized.replace(/src\s*=\s*["']?\s*javascript:/gi, 'src=""');
-    sanitized = sanitized.replace(/href\s*=\s*["']?\s*data:/gi, 'href="#"');
-    sanitized = sanitized.replace(/src\s*=\s*["']?\s*data:/gi, 'src=""');
-
-    // 4. Remove iframe tags
-    sanitized = sanitized.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
-
-    // 5. Remove object and embed tags
-    sanitized = sanitized.replace(/<(object|embed)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, '');
-
-    return sanitized;
-}
 
 /**
  * Validates object depth to prevent deeply nested objects (DOS attack)
@@ -79,7 +48,7 @@ const ChatMessageSchema = z.object({
     artifacts: z.array(ConversationArtifactSchema).max(50).optional()
 }).transform((msg) => ({
     ...msg,
-    content: sanitizeMessageContent(msg.content) // Re-sanitize on import
+    content: sanitizeHtml(msg.content) // Re-sanitize on import using robust DOMPurify
 }));
 
 // Chat Metadata Schema - matching ChatMetadata interface
@@ -146,12 +115,33 @@ const MemoryMetadataSchema = z.object({
 // Memory Schema - matching Memory interface
 const MemorySchema = z.object({
     id: z.string(),
-    content: z.string().max(1_000_000).transform(sanitizeMessageContent), // Sanitize memory content too
+    content: z.string().max(1_000_000).transform(sanitizeHtml), // Sanitize memory content too
     aiModel: z.string().max(100),
     tags: z.array(z.string().max(50)).max(20),
     createdAt: z.string(),
     updatedAt: z.string(),
-    metadata: MemoryMetadataSchema
+    metadata: MemoryMetadataSchema,
+    folderId: z.string().nullable().optional()
+});
+
+// Prompt Metadata Schema - matching PromptMetadata interface
+const PromptMetadataSchema = z.object({
+    title: z.string().max(200),
+    category: z.string().max(100).optional(),
+    wordCount: z.number(),
+    characterCount: z.number(),
+    exportStatus: z.enum(['exported', 'not_exported']).optional()
+});
+
+// Prompt Schema - matching Prompt interface
+const PromptSchema = z.object({
+    id: z.string(),
+    content: z.string().max(1_000_000).transform(sanitizeHtml), // Sanitize prompt content too
+    tags: z.array(z.string().max(50)).max(20),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    metadata: PromptMetadataSchema,
+    folderId: z.string().nullable().optional()
 });
 
 // Database Export Schema
@@ -159,6 +149,7 @@ const DatabaseExportSchema = z.object({
     sessions: z.array(SavedChatSessionSchema).max(10_000).optional(),
     settings: AppSettingsSchema.optional(),
     memories: z.array(MemorySchema).max(10_000).optional(),
+    prompts: z.array(PromptSchema).max(10_000).optional(),
     version: z.number().optional(),
     exportedAt: z.string().optional()
 });
@@ -184,7 +175,7 @@ export function validateImportData(data: unknown): ValidatedDatabaseExport {
     try {
         const validated = DatabaseExportSchema.parse(data);
         return validated;
-    } catch (err) {
+    } catch (err: unknown) {
         if (err instanceof z.ZodError) {
             const firstError = err.issues[0];
             throw new Error(`Import validation failed: ${firstError.path.join('.')} - ${firstError.message}`);
@@ -195,5 +186,6 @@ export function validateImportData(data: unknown): ValidatedDatabaseExport {
 
 /**
  * Export sanitization function for use in other modules
+ * Re-exporting sanitizeHtml for consistency in the import validator context
  */
-export { sanitizeMessageContent };
+export { sanitizeHtml as sanitizeMessageContent };

@@ -1,38 +1,30 @@
 import MiniSearch from 'minisearch';
 import { openDB, type IDBPDatabase } from 'idb';
-import type { SavedChatSession, ChatMessage, SearchFilters } from '../types';
+import type { SavedChatSession, ChatMessage, SearchFilters, Memory, Prompt, ArchiveType } from '../types';
 
 interface SearchDocument {
     id: string;
-    sessionId: string;
-    messageIndex: number;
+    archiveType: ArchiveType;
+    sessionId?: string; // For chats
+    messageIndex?: number; // For chats
     content: string;
-    type: 'prompt' | 'response' | 'thought';
+    type?: 'prompt' | 'response' | 'thought'; // For chats
     timestamp: number;
-    sessionTitle: string;
+    title: string;
     model?: string;
+    tags?: string[];
 }
 
-interface SearchResult {
-    id: string;
-    sessionId: string;
-    messageIndex: number;
-    snippet: string;
-    type: string;
-    timestamp: number;
-    sessionTitle: string;
-    score: number;
-}
 
 let miniSearch: MiniSearch<SearchDocument>;
 let db: IDBPDatabase | null = null;
 
 // Initialize MiniSearch
 miniSearch = new MiniSearch<SearchDocument>({
-    fields: ['content', 'sessionTitle'], // fields to index
-    storeFields: ['sessionId', 'messageIndex', 'type', 'timestamp', 'sessionTitle', 'content', 'model'], // fields to return
+    fields: ['content', 'title', 'tags'], // fields to index
+    storeFields: ['id', 'archiveType', 'sessionId', 'messageIndex', 'type', 'timestamp', 'title', 'content', 'model', 'tags'], // fields to return
     searchOptions: {
-        boost: { sessionTitle: 2 }, // boost title matches
+        boost: { title: 2, tags: 1.5 }, // boost title and tag matches
         fuzzy: 0.2, // allow typos
         prefix: true // prefix matching
     }
@@ -58,10 +50,10 @@ async function loadIndex() {
     const stored = await db!.get('index', 'minisearch-data');
     if (stored?.data) {
         miniSearch = MiniSearch.loadJSON(stored.data, {
-            fields: ['content', 'sessionTitle'],
-            storeFields: ['sessionId', 'messageIndex', 'type', 'timestamp', 'sessionTitle', 'content', 'model'],
+            fields: ['content', 'title', 'tags'],
+            storeFields: ['id', 'archiveType', 'sessionId', 'messageIndex', 'type', 'timestamp', 'title', 'content', 'model', 'tags'],
             searchOptions: {
-                boost: { sessionTitle: 2 },
+                boost: { title: 2, tags: 1.5 },
                 fuzzy: 0.2,
                 prefix: true
             }
@@ -90,54 +82,99 @@ async function recordIndexTime(sessionId: string, timestamp: number): Promise<vo
 }
 
 
-// Index a session
+// Index a session (Chat)
 function indexSession(session: SavedChatSession) {
-    const sessionTitle = session.metadata?.title || session.chatTitle || 'Untitled';
+    const title = session.metadata?.title || session.chatTitle || 'Untitled';
     const model = session.metadata?.model || '';
+    const tags = session.metadata?.tags || [];
     const documents: SearchDocument[] = [];
 
     session.chatData?.messages.forEach((message: ChatMessage, index: number) => {
         documents.push({
             id: `${session.id}-${index}`,
+            archiveType: 'chat',
             sessionId: session.id,
             messageIndex: index,
             content: message.content,
             type: message.type,
-            timestamp: Date.now(),
-            sessionTitle,
-            model
+            timestamp: new Date(session.date).getTime() || Date.now(),
+            title,
+            model,
+            tags
         });
     });
 
     // Remove old documents for this session
-    // Discard each document ID before re-adding to prevent duplicates
-    documents.forEach(doc => {
-        if (miniSearch.has(doc.id)) {
-            miniSearch.discard(doc.id);
-        }
-    });
+    const oldDocs = miniSearch.where(doc => doc.sessionId === session.id);
+    oldDocs.forEach(doc => miniSearch.discard(doc.id));
 
     // Add new documents
     miniSearch.addAll(documents);
 }
 
+// Index a Memory
+function indexMemory(memory: Memory) {
+    const doc: SearchDocument = {
+        id: memory.id,
+        archiveType: 'memory',
+        content: memory.content,
+        timestamp: new Date(memory.createdAt).getTime(),
+        title: memory.metadata.title || 'Untitled Memory',
+        model: memory.aiModel,
+        tags: memory.tags
+    };
+
+    if (miniSearch.has(doc.id)) {
+        miniSearch.discard(doc.id);
+    }
+    miniSearch.add(doc);
+}
+
+// Index a Prompt
+function indexPrompt(prompt: Prompt) {
+    const doc: SearchDocument = {
+        id: prompt.id,
+        archiveType: 'prompt',
+        content: prompt.content,
+        timestamp: new Date(prompt.createdAt).getTime(),
+        title: prompt.metadata.title || 'Untitled Prompt',
+        tags: prompt.tags
+    };
+
+    if (miniSearch.has(doc.id)) {
+        miniSearch.discard(doc.id);
+    }
+    miniSearch.add(doc);
+}
+
 // Search
-function search(query: string, filters?: SearchFilters): SearchResult[] {
-    if (!query || query.length < 2) return [];
+function search(query: string, filters?: SearchFilters): any[] {
+    if (!query || query.length < 1) return [];
 
     let results = miniSearch.search(query, {
-        combineWith: 'AND'
+        combineWith: 'OR',
+        prefix: true,
+        fuzzy: 0.2
     });
 
     // Apply filters
     if (filters) {
         results = results.filter(result => {
-            const doc = result as unknown as SearchDocument & { score: number };
+            const doc = result as unknown as SearchDocument;
 
-            // Filter by message type
-            if (filters.messageTypes && filters.messageTypes.length > 0) {
-                if (!filters.messageTypes.includes(doc.type as 'prompt' | 'response' | 'thought')) {
+            // Filter by archive type
+            if (filters.archiveTypes && filters.archiveTypes.length > 0) {
+                if (!filters.archiveTypes.includes(doc.archiveType)) {
                     return false;
+                }
+            }
+
+            // Filter by message type (only for chats)
+            if (filters.messageTypes && filters.messageTypes.length > 0) {
+                if (doc.archiveType === 'chat') {
+                    if (!filters.messageTypes.includes(doc.type as any)) {
+                        return false;
+                    }
                 }
             }
 
@@ -152,38 +189,37 @@ function search(query: string, filters?: SearchFilters): SearchResult[] {
             // Filter by model with category mapping
             if (filters.models && filters.models.length > 0) {
                 const docModel = (doc.model || '').toLowerCase();
-                const sessionTitle = (doc.sessionTitle || '').toLowerCase();
-                
+                const title = (doc.title || '').toLowerCase();
+
                 const matchesModel = filters.models.some(filterModel => {
                     const fm = filterModel.toLowerCase();
-                    
+
                     // Specific mapping for categories
                     if (fm === 'chatgpt') {
-                        return docModel.includes('gpt') || docModel.includes('openai') || 
-                               sessionTitle.includes('chatgpt') || sessionTitle.includes('gpt');
+                        return docModel.includes('gpt') || docModel.includes('openai') ||
+                            title.includes('chatgpt') || title.includes('gpt');
                     }
                     if (fm === 'gemini') {
-                        return docModel.includes('gemini') || docModel.includes('google') || 
-                               sessionTitle.includes('gemini') || sessionTitle.includes('google');
+                        return docModel.includes('gemini') || docModel.includes('google') ||
+                            title.includes('gemini') || title.includes('google');
                     }
                     if (fm === 'claude') {
-                        return docModel.includes('claude') || docModel.includes('anthropic') || 
-                               sessionTitle.includes('claude');
+                        return docModel.includes('claude') || docModel.includes('anthropic') ||
+                            title.includes('claude');
                     }
                     if (fm === 'lechat') {
-                        return docModel.includes('lechat') || docModel.includes('mistral') || 
-                               sessionTitle.includes('lechat') || sessionTitle.includes('mistral');
+                        return docModel.includes('lechat') || docModel.includes('mistral') ||
+                            title.includes('lechat') || title.includes('mistral');
                     }
                     if (fm === 'other') {
-                        // Match if NOT any of the main categories
-                        const isMain = docModel.includes('gpt') || docModel.includes('openai') || 
-                                      docModel.includes('gemini') || docModel.includes('google') ||
-                                      docModel.includes('claude') || docModel.includes('anthropic') ||
-                                      docModel.includes('mistral') || docModel.includes('lechat');
+                        const isMain = docModel.includes('gpt') || docModel.includes('openai') ||
+                            docModel.includes('gemini') || docModel.includes('google') ||
+                            docModel.includes('claude') || docModel.includes('anthropic') ||
+                            docModel.includes('mistral') || docModel.includes('lechat');
                         return !isMain || docModel === '' || docModel === 'unknown';
                     }
-                    
-                    return docModel.includes(fm) || sessionTitle.includes(fm);
+
+                    return docModel.includes(fm) || title.includes(fm);
                 });
                 if (!matchesModel) return false;
             }
@@ -206,22 +242,23 @@ function search(query: string, filters?: SearchFilters): SearchResult[] {
                 content.substring(start, end) +
                 (end < content.length ? '...' : '');
         } else {
-            // Fallback to first 100 chars
             snippet = content.substring(0, 100) + (content.length > 100 ? '...' : '');
         }
 
         return {
             id: doc.id,
+            archiveType: doc.archiveType,
             sessionId: doc.sessionId,
             messageIndex: doc.messageIndex,
             snippet,
             type: doc.type,
             timestamp: doc.timestamp,
-            sessionTitle: doc.sessionTitle,
+            title: doc.title,
             model: doc.model,
+            tags: doc.tags,
             score: doc.score
         };
-    }).slice(0, 50); // Limit to top 50 results
+    }).slice(0, 50);
 }
 
 // Message handler
@@ -238,7 +275,19 @@ self.onmessage = async (e: MessageEvent) => {
             case 'INDEX_SESSION':
                 indexSession(payload.session);
                 await saveIndex();
-                self.postMessage({ type: 'INDEX_COMPLETE', payload: { sessionId: payload.session.id }, messageId });
+                self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.session.id }, messageId });
+                break;
+
+            case 'INDEX_MEMORY':
+                indexMemory(payload.memory);
+                await saveIndex();
+                self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.memory.id }, messageId });
+                break;
+
+            case 'INDEX_PROMPT':
+                indexPrompt(payload.prompt);
+                await saveIndex();
+                self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.prompt.id }, messageId });
                 break;
 
             case 'INDEX_WITH_CHECK': {
@@ -269,23 +318,38 @@ self.onmessage = async (e: MessageEvent) => {
 
             case 'INDEX_SESSIONS': {
                 const sessions: SavedChatSession[] = payload.sessions || [];
+                const memories: Memory[] = payload.memories || [];
+                const prompts: Prompt[] = payload.prompts || [];
                 let indexedCount = 0;
                 let skippedCount = 0;
                 const now = Date.now();
 
+                // Index Sessions
                 for (const session of sessions) {
                     const lastIdx = await getLastIndexedTime(session.id);
                     const updated = session.metadata?.updatedAt
                         ? new Date(session.metadata.updatedAt).getTime()
                         : now;
 
-                    if (lastIdx && updated <= lastIdx && lastIdx > 1736636400000 /* SCHEMA_CUTOFF_DATE */ ) {
+                    if (lastIdx && updated <= lastIdx && lastIdx > 1736636400000 /* SCHEMA_CUTOFF_DATE */) {
                         skippedCount++;
                     } else {
                         indexSession(session);
                         await recordIndexTime(session.id, now);
                         indexedCount++;
                     }
+                }
+
+                // Index Memories (always re-index for now as they are small)
+                for (const memory of memories) {
+                    indexMemory(memory);
+                    indexedCount++;
+                }
+
+                // Index Prompts
+                for (const prompt of prompts) {
+                    indexPrompt(prompt);
+                    indexedCount++;
                 }
 
                 if (indexedCount > 0) {
@@ -305,6 +369,14 @@ self.onmessage = async (e: MessageEvent) => {
                 self.postMessage({ type: 'SEARCH_RESULTS', payload: { results }, messageId });
                 break;
             }
+
+            case 'DELETE_DOCUMENT':
+                if (miniSearch.has(payload.id)) {
+                    miniSearch.discard(payload.id);
+                    await saveIndex();
+                }
+                self.postMessage({ type: 'DELETE_COMPLETE', payload: { id: payload.id }, messageId });
+                break;
 
             case 'CLEAR':
                 miniSearch.removeAll();
