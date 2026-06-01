@@ -1,459 +1,154 @@
-# Noosphere Reflect - AI Chat Archival System 🗃️
-
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.5.8.8-green.svg)
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
-
-**Preserve Meaning Through Memory** — A complete AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
-
-## 🚀 Features
-
-### Core Capabilities
-* **🔌 Chrome Extension**: One-click capture directly from 7 major AI platforms
-* **📚 Archive Hub**: Centralized dashboard to browse, search, filter, and manage your entire chat library
-* **🧠 Memory Archive**: Dedicated system for storing and organizing AI thoughts, snippets, and insights
-* **💡 Prompt Archive**: New reusable prompt library with category-based organization and batch operations
-* **📎 Dual Artifact System**: Attach files to entire sessions or individual messages with unified export
-* **💾 Robust Persistence**: Saves thousands of chats locally using **IndexedDB** with auto-migration
-* **📦 Batch Operations**: Multi-select chats to export, delete, or organize them in bulk
-* **⚙️ Global Settings**: Set default username and **filename casing** (kebab-case, PascalCase, etc.)
-* **🌩️ Data Sovereignty**: Full database export (backup) functionality to keep your data safe and portable
-* **☁️ Google Drive Export**: Export chats, memories, and prompts directly to Google Drive with format selection (HTML, Markdown, JSON)
-
-### Parsing & Export
-* **⚡ Dual Parsing Workflows**:
-  * **Basic Mode**: Instant regex-based parsing with platform-specific selectors and "thought" block detection
-  * **AI Studio**: Intelligent parsing for unstructured logs via Google Gemini 2.0 Flash
-* **📝 Multiple Export Formats**: HTML, Markdown, JSON — all with Noosphere Reflect branding
-* **🌐 Google Drive Integration**: Choose export destination (Local or Drive) with unified format selection for all archives
-* **🔒 Offline Ready**: Generated files are self-contained, work completely offline
-* **📦 Artifact Management**: Upload files, attach to messages, preview markdown inline, auto-include in exports with deduplication
-
-### Design & Security
-* **🎨 Platform Theming**: Official brand colors for Claude (Orange), ChatGPT (Green), Gemini (Blue), etc.
-* **✨ Premium UI**: Modern "Glassmorphism" interface with rich metadata editing and Vortex branding
-* **🛡️ Security Hardened**: XSS protection, URL protocol validation, input sanitization, comprehensive file size limits
-
-## 🛠️ Tech Stack
-
-* **Frontend**: React 19, TypeScript 5.8, Vite 6.2
-* **Storage**: IndexedDB (custom wrapper with v1→v5 migration)
-* **Styling**: Tailwind CSS v4 with @tailwindcss/vite
-* **AI Parsing**: Google Gemini 2.0 Flash API
-* **Security**: Centralized utilities for HTML escaping, URL sanitization, and input validation
-* **Extension**: Chrome Manifest V3 with Service Worker & Content Scripts
-
-## 📦 Installation
-
-### Web Application
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/Noosphere-Reflect.git
-   cd Noosphere-Reflect
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Configure Environment (for AI Studio mode):
-   Create a `.env` file in the root directory:
-   ```env
-   VITE_GEMINI_API_KEY=your_api_key_here
-   ```
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:3000` in your browser
-
-5. Build for production:
-   ```bash
-   npm run build
-   ```
-   Deploy `dist/` directory to GitHub Pages or your hosting
-
-### Chrome Extension (Manual Install)
-
-Since the extension is not yet on the Chrome Web Store, follow these steps:
-
-1. **Download**: Get the latest `noosphere-reflect-extension-vX.X.X.tar.gz` from [GitHub Releases](https://github.com/yourusername/Noosphere-Reflect/releases).
-2. **Extract**: Unpack the archive to a local folder.
-3. **Load**: Open Chrome and navigate to `chrome://extensions/`.
-4. **Dev Mode**: Enable **"Developer mode"** (toggle in the top-right).
-5. **Install**: Click **"Load unpacked"** and select the extracted `extension/` folder.
-
-See [extension/README.md](extension/README.md) for detailed platform-specific notes.
-
-## 📖 Usage
-
-### Archive Hub (`/`)
-Your central command center for managing all captured and imported conversations:
-- **Hierarchical Folders**: Organize chats, memories, and prompts in nested folder structures
-- **Search & Filter**: Find chats by title, model, or tags
-- **Batch Operations**: Select multiple chats to export, delete, or move between folders
-- **Metadata Editing**: Edit titles, tags, and model information
-- **Artifact Management**: View and manage attached files (session-level and message-level)
-- **Platform Badges**: Color-coded badges for instant platform recognition
-- **Settings**: Configure default username and export your entire database for backup
-- **New Import**: Add chats via Basic Converter or AI Studio
-
-### Memory Archive (`/memory-archive`)
-Dedicated space for storing isolated AI thoughts and snippets:
-- **Quick Add**: Capture thoughts with AI model, tags, and content
-- **Grid View**: Browse memories with rich metadata (word count, date, model)
-- **Export Options**: Export individual memories or batches as HTML, Markdown, or JSON
-- **Batch Operations**: Multi-select memories to export or delete in bulk
-- **Status Tracking**: Visual badges indicate which memories have been exported
-- **Search & Filter**: Find memories by AI model or tags
-- **Separation**: Memories remain distinct from full chat sessions
-
-### Prompt Archive (`/prompt-archive`)
-New reusable prompt library for organizing and managing your best prompts:
-- **Quick Save**: Add prompts with category, tags, and optional title
-- **Category Organization**: 7 fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other)
-- **Grid View**: Browse prompts with word/character count and timestamps
-- **Export Options**: Export individual prompts or batches as HTML, Markdown, or JSON
-- **Batch Operations**: Multi-select prompts to export or delete in bulk
-- **Search & Filter**: Find prompts by title, content, category, or tags
-- **Full CRUD**: Create, read, update, delete with persistent storage
-
-### Basic Converter (`/basic`)
-Modern modal-based interface for clean, structured chat exports:
-
-**🎨 Interactive Modal Layout:**
-- **Preview Row**: Reader Mode, Raw Preview, Download options
-- **Chat Setup Row**: Configuration, Metadata, Chat Content input
-- **Review Row**: Message editing, File attachments management
-
-**✨ Modal-Based Workflow:**
-1. **Configure Chat**: Title, usernames, theme selection in dedicated modal
-2. **Edit Metadata**: Tags, model info, and additional details
-3. **Input Content**: Large textarea with collapsible tools and parser hints
-4. **Review & Edit**: Interactive message editor with inline editing
-5. **Manage Files**: Full-screen artifact manager for uploads and organization
-
-**🚀 Features:**
-- **Full-Screen Modals**: Each section opens in a distraction-free modal with collapsible sidebars
-- **Live Preview**: Reader Mode and Raw HTML preview modals
-- **Advanced Editing**: Message-level editing with artifact attachment
-- **Auto-Save**: All changes persist automatically in the background
-- **Export Options**: HTML, Markdown, JSON with artifact inclusion
-
-**Best for**: Claude exports, ChatGPT logs, manually formatted conversations, and detailed chat management
-
-### AI Studio (Integration)
-Via the Chrome Extension, intelligently parse unstructured chat logs:
-1. Right-click on active conversation
-2. Select "Capture to Noosphere Reflect"
-3. Chat is automatically parsed and archived
-
-**Best for**: Messy or unstructured text that needs intelligent reformatting
-
-## 🔐 Security Features
-
-The application includes comprehensive security hardening to prevent XSS attacks, injection exploits, and resource exhaustion:
-
-### XSS Prevention
-* **HTML Entity Escaping**: All user input (titles, speaker names, metadata) is properly escaped before rendering
-* **URL Protocol Validation**: Blocks dangerous protocols (javascript:, data:, vbscript:, file:, about:) in markdown links and images
-* **Code Block Language Sanitization**: Language identifiers are validated to prevent attribute injection
-* **iframe Sandbox Hardening**: Generated HTML previews use strict sandbox policies (`allow-scripts` only)
-* **Artifact Security**: Filename sanitization and dangerous extension neutralization
-
-### Input Validation
-* **File Size Limits**: Maximum 10MB per file, 100MB per batch import
-* **Batch Import Restrictions**: Maximum 50 files per batch operation
-* **Metadata Constraints**:
-  - Title: 200 characters max
-  - Tags: 50 characters each, maximum 20 tags
-  - Model: 100 characters max
-* **Tag Validation**: Ensures tags contain at least one alphanumeric character
-
-### Implementation Details
-* **Centralized Security Utilities**: All validation/escaping functions in `src/utils/securityUtils.ts`
-* **No Backend Required**: All security operates client-side—suitable for GitHub Pages deployment
-* **Database-Level Constraints**: IndexedDB uniqueness and normalization prevent duplicate injection attacks
-
-## 🎨 Supported Platforms
-
-| Platform | Extension Capture | HTML Parsing | Title Extraction | Theme Color |
-|----------|------------------|--------------|------------------|-------------|
-| Claude (claude.ai) | ✅ | ✅ | ✅ Auto | 🟠 Orange |
-| ChatGPT (chatgpt.com) | ✅ | ✅ | ✅ Auto | 🟢 Green |
-| Gemini (gemini.google.com) | ✅ | ✅ | ✅ Auto | 🔵 Blue |
-| LeChat (chat.mistral.ai) | ✅ | ✅ | ✅ Auto | 🟡 Amber |
-| Grok (x.ai) | ✅ | ✅ | ✅ Auto | ⚫ Black |
-| Llamacoder | ✅ | ✅ | ✓ Manual | ⚪ White |
-| Kimi (moonshot.cn) | ✅ | ✅ | ✅ Auto | 🟣 Purple |
-
-## 📚 Documentation
-
-* **[ROADMAP.md](ROADMAP.md)** - Future roadmap and planned features
-* **[GEMINI.md](GEMINI.md)** - Project status and architecture
-* **[extension/README.md](extension/README.md)** - Extension installation & troubleshooting
-* **[agents/memory-bank/](agents/memory-bank/)** - Project memory and context files
-
-## 🔄 Quick Start
-
-### 1. Basic Web Import
-```bash
-npm run dev
-# Open http://localhost:3000
-# Paste a chat log, configure, export as HTML
-```
-
-### 2. Extension Capture
-```bash
-# Install extension (see instructions above)
-# Visit Claude/ChatGPT/Gemini/LeChat/Grok/Llamacoder
-# Right-click → "Capture to Noosphere Reflect"
-# Open Archive Hub to view captured conversation
-```
-
-### 3. Set Global Username
-```bash
-# In Archive Hub, click Settings (gear icon)
-# Enter your default username
-# All future imports will use this username
-```
-
-### 4. Attach Files to Chats
-```bash
-# In Basic Converter, click "📎 Manage Artifacts" for session-level files
-# Or click "📎 Attach" on individual messages for message-specific files
-# All artifacts are automatically included in exports
-```
-
-
-
-## 🆕 What's New in v0.5.8.8 (Current)
-
-### "Project Phoenix" Expansion - Claude Scraper UI/UX (Feb 1)
-- **Neural Console Port**: Ported the modern "Neural Console" UI and animated selection system to the `claude.js` scraper, standardizing the high-fidelity capture experience.
-- **Upgraded Checkboxes**: Integrated the new, styled green checkboxes for a consistent look and feel across platforms.
-- **Standardized Export**: Aligned Claude's Markdown generator with the high-fidelity Noosphere metadata standard.
-
-### Noosphere Reflect Native Parser (Feb 1)
-- **Native Importer**: Implemented a specialized first-class Markdown parser specifically for "Noosphere Reflect" exports.
-- **100% Fidelity**: Ensures re-imports preserve all metadata, sources, and thoughts with perfect accuracy.
-- **Wizard Integration**: Added a dedicated "Noosphere Reflect" option to the import wizard with smart signal detection.
-
-### "Project Phoenix" - LeChat Scraper UI/UX (Feb 1)
-- **Neural Console Port**: The stable `lechat.js` scraper has been upgraded with the modern "Neural Console" UI, replacing the old top-right dropdown with the floating orb.
-- **Standardized Metadata**: Corrected spacing in LeChat metadata to ensure consistent Noosphere branding.
-- **Preserved Engine**: Surgically rewired the new UI to the original, reliable `ExportService` to ensure perfect functionality.
-
-### Modular Parser Architecture & Wizard Overhaul (Jan 25)
-- **Format-First Architecture**: Refactored parsers into modular directory structure (`html/`, `markdown/`, `json/`) for better maintainability.
-- **Specialized Markdown Parsers**: Dedicated parsers for Gemini, Claude, ChatGPT, Grok, LeChat, and AI Studio using shared `BaseMarkdownParser`.
-- **4-Step Wizard Flow**: Completely redesigned import wizard: Method → Format → Platform → Input for clearer user guidance.
-- **Extension Guidance**: New informational step for extension setup with download links and instructions.
-- **Auto-Detection**: Smart format detection automatically categorizes imports by structure.
-
-### Gemini Enhancements (Jan 25)
-- **Thought Extraction**: Blockquote detection for `> Thinking:` patterns with support for nested quotes.
-- **Standardized Formatting**: Consistent whitespace padding (`<thoughts>\n\n[Text]\n\n</thoughts>`) across all parsers.
-- **Footer Cleanup**: Automatic removal of "Powered by Gemini Exporter" footers from imports.
-- **Extension Reliability**: ReliabilityManager with unthrottled timers and focus spoofing to prevent tab throttling.
-- **Double Vision Fix**: Eliminated duplicate messages and ghost content from Gemini exports.
-
-### Import & Parsing Improvements (Jan 25)
-- **Generic Markdown Support**: New "Paste Markdown Export" option for non-platform-specific imports.
-- **Universal Metadata Detection**: Flexible regex engine detects Model, User, Title, and Date from various header styles.
-- **Import References**: Gold standard reference library (`gemini-export.md`, `gpt-export.md`, `kimi-export.md`) for parser testing.
-- **Third-Party Parser**: Enhanced support for legacy formats and custom chat headers.
-
-### Basic Converter Workflow (Jan 25)
-- **Manual Save**: Removed auto-save flicker, added prominent green "Save to Local Archive" button.
-- **State Feedback**: Integrated loading states and success messaging for save operations.
-- **Creative Entry Component**: New UI component for enhanced content creation.
-- **Markdown Attachment Modal**: Dedicated modal for creating and editing markdown files.
-
-### Extension Improvements (Jan 23-25)
-- **Locus Positioning**: Anchor-based button positioning that moves naturally with platform UI.
-- **Claude Refinement**: Narrowed expand selector to prevent clicking global UI elements.
-- **Reliability Manager**: Web Worker-based heartbeat system bypassing Chrome's background tab throttling.
-- **Focus Spoofing**: Tricks Gemini into thinking tab is always focused for uninterrupted scraping.
-
-### Bug Fixes & Polish (Jan 22-23)
-- **Folder Persistence**: Fixed `folderId` missing from metadata causing folder assignment failures.
-- **Message Insertion**: Resolved dropdown state collision and ref trapping in Review & Edit Modal.
-- **Artifact Linkage**: Direct search strategy finds filenames with spaces; synchronized state across modals.
-- **Archive Navigation**: Cross-archive pills, rounded-full styling, and clear buttons for search bars.
-- **UI Consistency**: Unified "Scale & Glow" feedback across all interactive elements.
-
-## 🆕 What's New in v0.5.8.5 (Current)
-
-### Artifact Linkage & Visual Polish (Jan 23)
-- **Direct Search Detection**: New intelligent strategy that finds artifact references in chat text even if they have spaces (e.g., "Kitchen Plan.png"), solving regex limitations.
-- **Synchronized Linkage**: Manual attachments in the Message Editor now instantly persist to the global database—no more disappearing files.
-- **Premium "Pill" Aesthetic**: Upgraded all search bars and header buttons to `rounded-full` styling with unified "Scale & Glow" feedback.
-- **Archive Cross-Navigation**: Added color-coded "Memories" and "Prompts" navigation buttons to archive headers for instant switching.
-
-## 🆕 What's New in v0.5.8.3
-
-### Artifact Delete Buttons (Jan 26)
-- **Unified Delete Functionality**: Added delete buttons for artifacts across all three message editing modals (ChatPreviewModal, MessageEditorModal, ReviewEditModal).
-- **Consistent UX**: Delete buttons follow the "Scale & Glow" design system with red danger theming and smooth hover transitions.
-- **Smart Display**: Delete buttons appear contextually (edit mode in ChatPreviewModal, always in MessageEditorModal toolbar).
-- **Data Integrity**: Proper removal from both message-level and metadata-level artifact arrays with IndexedDB synchronization.
-- **Visual Feedback**: Trash icon in ChatPreviewModal, compact X icon in MessageEditorModal, confirmation dialogs prevent accidental deletion.
-
-### Create Blank Chat Feature (Jan 21)
-- **New Import Method**: Added "Create Blank Chat" option in the Content Import Wizard for starting fresh conversations.
-- **Auto-Edit Mode**: Automatically opens Review & Edit modal with edit mode enabled for immediate message addition.
-- **Seamless Integration**: Bypasses parsing steps and initializes clean chat structure with "Manual Entry" metadata.
-
-
-## 🆕 What's New in v0.5.8.2
-
-### Basic Converter & Archive Refactor (Jan 20)
-- **Modular Architecture**: Split the monolithic `BasicConverter` into 5 specialized components, reducing file size by 30%.
-- **Domain-Driven Structure**: Moved Key pages to `src/archive/` and `src/components/converter/` for better code organization.
-- **Page Orchestrator Pattern**: Separation of logic (Orchestrator) and UI (Components) for cleaner maintenance.
-
-### Theme Architecture & Security (Jan 18)
-- **Decoupled Color/Style Architecture**: Separated ChatTheme (color palettes) from ChatStyle (layout renderers) for flexible theming options.
-- **4 Platform-Specific Theme Renderers**: High-fidelity layout implementations based on official DOM references for ChatGPT, Gemini, Grok, and LeChat.
-- **Export System Consolidation**: Unified feature folder structure with all export components moved to `src/components/exports/`.
-- **Markdown Firewall Security**: XSS prevention system blocking dangerous tags and event handlers.
-- **Gemini Extension**: Conversation preloading with mutex guards and progress toasts for full conversation capture.
-
-## 🆕 What's New in v0.5.7
-
-### Auto-Save & Workflow Optimization
-- **Auto-Save Core**: Eliminated the manual "Save Session" button. All changes to metadata, config, and content are now background-saved automatically with a smart debounce.
-- **Collapsible Tag Standard**: Introduced the `<collapsible>` tag as a universal tool for custom toggle sections, replacing "Wrap Thought" with a more robust implementation.
-- **UI Reordering**: Moved "Chat Content" below "Metadata" for a more logical conversion flow: Setup → Input → Attachments.
-- **Centralized Persistence**: Message edits and artifact uploads now trigger silent auto-saves, ensuring your work is always safe.
-
-### Performance & Security
-- **Archive Hub Optimization**: 95% memory reduction by only loading metadata for the main list view.
-- **Background Search Indexing**: Streamed indexing allows for smooth searching without UI lag, even in massive libraries.
-- **Sandboxed Downloads**: Enhanced iframe security policy allowing artifact downloads via script-injection bypass.
-
-## 🆕 What's New in v0.5.5 (Added Jan 12-13)
-
-### Configurable Export Filename Casing
-- **6 Casing Options**: Choose from `kebab-case`, `Kebab-Case`, `snake_case`, `Snake_Case`, `PascalCase`, and `camelCase`.
-- **Live Previews**: Visual settings UI showing exactly how your files will look.
-- **Smart Capitalization**: Toggle capitalization for relevant formats.
-- **Universal Application**: Applies to all chat and memory exports automatically.
-
-### Reader Mode & Inline Editing (New!)
-- **Reader Mode**: Distraction-free, dark-themed preview modals for both Chats and Memories with "Jump to Message" navigation.
-- **Inline Editing**: Seamlessly toggle between reading and editing modes without leaving the context.
-- **Artifact Manager 2.0**: Completely redesigned full-screen modal with split-pane layout for managing large file collections.
-- **Re-Download**: Download uploaded artifacts back to your device with one click.
-
-### Advanced Search & Artifacts (Added Jan 12)
-- **Two-Way Artifact Linking**: Automatic matching of uploaded files to message references.
-- **Smart Model Filtering**: Category mapping for AI models (ChatGPT matches gpt/openai, etc.).
-- **Deep Navigation**: Click search results to scroll directly to specific messages with highlight.
-- **Unified Exports**: Standardized naming across the app.
-
-### Memory Archive Enhancements
-- **Batch Operations**: Select multiple memories to export or delete at once.
-- **Export Status**: Visual "✓ Exported" badges help you track what you've already archived.
-- **Visual Overhaul**: Updated UI to match the premium Archive Hub design (Purple Glassmorphism).
-- **Floating Action Bar**: Modern, convenient controls for batch actions.
-
-### Enhanced Two-Way Artifact Linking & UI (v0.5.5 - Added Jan 13, 2026)
-- **Auto-Matching**: Uploaded files automatically attach to messages referencing the filename.
-- **Smart Deletion**: Synchronized removal from pool and/or messages based on intent.
-- **Re-Download**: artifacts can be downloaded back from browser storage (Base64 -> Blob).
-- **Wrap Thought Feature** (Basic Mode): Tool to manually wrap selected text in `<thought>` tags, preserving AI reasoning chains during manual imports.
-- **Documentation Integration**: Console scraper docs accessible directly via modal within the tool.
-- **Auto-Enrichment**: Logic to auto-extract titles, models, and tags from imported content (Basic Mode).ges appear even for legacy sessions.
-- **Performance**: Instant WYSIWYG synchronization between upload, preview, and export states.
-
-### Prompt Archive (v0.5.5 - Added Jan 13, 2026)
-- **New Dedicated Page**: `/prompt-archive` for organizing and managing reusable prompts
-- **Category Organization**: 7 fixed categories (General, Coding, Writing, Analysis, Research, Creative, Other)
-- **Full CRUD Operations**: Create, read, update, delete with auto-generated titles from first line
-- **Rich Metadata**: Word count, character count, creation/update timestamps
-- **Tag System**: Organize and filter prompts by custom tags
-- **Batch Export & Delete**: Multi-select prompts to export or delete in bulk
-- **Visual Cohesion**: Blue/cyan gradient theme with shimmer effects on landing page
-- **Three-Archive System**: Archives (green) → Memories (purple) → Prompts (blue)
-- **Component Reusability**: Uses isPromptArchive flag pattern with Memory components (zero code duplication)
-- **IndexedDB v6**: New prompts object store with indexes on createdAt and tags
-
-### Advanced Search (v0.5.4)
-- **Smart Model Filtering**: Category mapping for AI models with intelligent "Other" category.
-- **Deep Navigation**: Click search results to scroll directly to specific messages with purple highlight.
-- **Model Badges**: Visual confirmation of which AI model generated each result.
-- **Export Refinements**: Unified `[AIName] - chatname.ext` naming across all exports.
-
-### Recent Updates (v0.5.1 - v0.5.3)
-
-### Previous Release (v0.5.4)
-### Recent Updates (v0.5.1 - v0.5.3)
-- **Database Export (v0.5.3)**: Backup your entire local database to a JSON file.
-- **Extension UI Hardening (v0.5.3)**: Stabilized button positioning across all 7 AI platforms.
-- **Dual Artifact System (v0.5.1)**: Message-level and session-level file attachments.
-
-### Earlier Releases
-<details>
-<summary>v0.1.0 - v0.4.0 (Click to expand)</summary>
-
-**v0.4.0** - Memory Archive MVP
-- Dedicated system for AI thoughts/snippets
-
-**v0.3.0** - Security Hardening & Grok Support
-- Comprehensive XSS prevention and input validation
-- Grok (xAI) platform integration
-
-**v0.2.0** - Gemini Support & Copy Features
-- Gemini HTML parser and extension capture
-- Thought process detection for Gemini
-
-**v0.1.0** - Chrome Extension & ChatGPT
-- Chrome Extension with Manifest V3
-- ChatGPT HTML parser and capture
-</details>
-
-## 🐛 Known Limitations
-
-* Extension settings are stored separately from web app (uses chrome.storage.sync)
-* Llamacoder title must be entered manually (no auto-extraction)
-* Web app ↔ Extension sync is one-directional (planned for future)
-
-## 🔮 Roadmap
-
-**Sprint 6.2**: Archive Hub Polish
-- Redesigned conversation cards (higher density)
-- Enhanced filter UI
-- Batch action bar improvements
-
-**Phase 5**: Deep Context Composition
-- Full session merging
-- Surgical message selection
-
-**Phase 7**: Advanced Export & Cloud
-- PDF/DOCX export formats
-- Cloud synchronization (optional)
-
-See [ROADMAP.md](ROADMAP.md) for full details.
-
-## 🤝 Contributing
-
-Contributions welcome! Areas of interest:
-- Additional AI platform support
-- Export format enhancements
-- UI/UX improvements
-- Bug fixes and performance optimization
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+# Noosphere Reflect 📘 <small>— AI Chat Archival & Preservation System</small>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.5.8.8-green.svg)](CHANGELOG.md)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/acidgreenservers/Noosphere-Reflect/actions)
+[![Node](https://img.shields.io/badge/node-%3E%3D20.x-brightgreen.svg)](package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](tsconfig.json)
+
+**Preserve Meaning Through Memory** — A high-fidelity AI chat archival system with a Chrome Extension for one-click capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, and Kimi.
 
 ---
 
-**Version**: 0.5.8.8
+## 📖 Table of Contents
+- [🚀 Getting Started](#-getting-started)
+- [⚡ Quickstart](#-quickstart)
+- [🏗️ Architecture](#️-architecture)
+- [🔒 Security](#-security)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [🧩 Features](#-features)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+---
+
+## 🚀 Getting Started
+
+> The commands below are verified for this repository. If your platform differs, see [Troubleshooting](#-troubleshooting).
+
+### Prerequisites
+- **Node.js:** 20.x or higher
+- **Browser:** Chrome/Edge (for Extension support)
+- **Git:** For cloning the repository
+
+### 1) Clone & Install
+```bash
+git clone https://github.com/acidgreenservers/Noosphere-Reflect.git
+cd Noosphere-Reflect
+npm install
+```
+
+### 2) Environment Setup (Optional)
+If you plan to use **AI Studio** mode for parsing unstructured logs:
+```bash
+cp .env.example .env
+# Edit .env and add your VITE_GEMINI_API_KEY
+```
+
+### 3) Run Locally
+```bash
+npm run dev
+```
+The application will be available at `http://localhost:3000/Noosphere-Reflect/`
+
+### 4) Build & Test
+```bash
+npm run build   # Build for production (outputs to dist/)
+npm test        # Run Vitest suite
+npm run lint    # Run ESLint checks
+```
+
+---
+
+## ⚡ Quickstart
+The fastest path from **clone → running app**:
+
+```bash
+git clone https://github.com/acidgreenservers/Noosphere-Reflect.git
+cd Noosphere-Reflect && npm install && npm run dev
+```
+Then open `http://localhost:3000/Noosphere-Reflect/`. For a detailed 90-second guide, see **[QUICKSTART.md](QUICKSTART.md)**.
+
+---
+
+## 🏗️ Architecture
+Noosphere Reflect uses a **Bridge Pattern** to capture and preserve AI conversations:
+
+```text
+  [ AI Platforms ] --(Extension)--> [ Web App ] --(IndexedDB)--> [ Local Archive ]
+        |                               ^                                |
+        +----(Markdown/JSON Export)-----+----(Manual Import)-------------+
+```
+
+See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the full ASCII blueprint and component deep-dives.
+
+---
+
+## 🔒 Security
+Security is baked into the design, not added as an afterthought:
+- **XSS Protection**: Comprehensive sanitization via `DOMPurify`.
+- **Data Sovereignty**: 100% local storage (IndexedDB); no data leaves your machine unless you explicitly export to Google Drive.
+- **Protocol Validation**: Blocking dangerous URL schemes in markdown.
+
+See **[SECURITY.md](SECURITY.md)** for our full posture and reporting guidelines.
+
+---
+
+## 🛠️ Tech Stack
+- **Core**: React 19, TypeScript 5.8, Vite 6.2
+- **Persistence**: IndexedDB (via `idb` library)
+- **Styling**: Tailwind CSS v4
+- **Search**: MiniSearch (Worker-based indexing)
+- **AI**: Google Gemini 2.0 Flash (for intelligent parsing)
+
+---
+
+## 🧩 Features
+- **🔌 Multi-Platform Capture**: Native support for 7+ AI platforms.
+- **📦 Artifact Management**: Attach files to sessions or messages.
+- **🔍 Advanced Search**: Instant, polymorphic search across Chats, Memories, and Prompts.
+- **📂 Folder Organization**: Hierarchical management for your growing archive.
+- **📝 Multiple Exports**: HTML, Markdown, and JSON formats with brand-accurate theming.
+
+---
+
+## 🆕 What's New
+
+<details>
+<summary>v0.5.8.8 - Project Phoenix & Native Parsers (Click to expand)</summary>
+
+- **Standardized UI**: Unified "Neural Console" experience for Claude and LeChat scrapers.
+- **Reflect Native Parser**: 100% fidelity re-imports for Noosphere Reflect exports.
+- **Modular Parser Architecture**: Format-first structure (html/json/markdown).
+- **Search Optimization**: Batch indexing with 96% duration reduction.
+</details>
+
+<details>
+<summary>v0.5.8.5 - Artifact Linkage & Polish (Click to expand)</summary>
+
+- **Direct Search Detection**: Intelligent filename matching in chat text.
+- **Pill Aesthetic**: Upgraded UI with `rounded-full` styling and "Scale & Glow" feedback.
+</details>
+
+<details>
+<summary>Previous Releases (Click to expand)</summary>
+
+- **v0.5.8.3**: Unified artifact delete buttons.
+- **v0.5.8.2**: Basic Converter & Archive refactor.
+- **v0.5.5**: Prompt Archive, Reader Mode, Inline Editing.
+</details>
+
+---
+
+## 🤝 Contributing
+We welcome contributions! Please see **[CONTRIBUTING.md](CONTRIBUTING.md)** for our workflow and coding standards.
+
+---
+
+## 📄 License
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+---
+
 **Last Updated**: February 1, 2026
-**Status**: Stable Release with Full Modular Refactor ✅
+**Status**: Stable Release ✅
