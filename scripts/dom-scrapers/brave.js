@@ -379,6 +379,20 @@
         return clone.innerText?.trim() || '';
     }
 
+    function extractAITextWithHeading(element) {
+        if (!element) return { heading: '', text: '' };
+        const clone = element.cloneNode(true);
+        // Extract the heading (h2/h3 with class 'heading') before removing citations
+        let heading = '';
+        const headingEl = clone.querySelector('h2.heading, h3.heading');
+        if (headingEl) {
+            heading = headingEl.innerText?.trim() || '';
+        }
+        clone.querySelectorAll(CONFIG.SELECTORS.INLINE_CITATION).forEach(el => el.remove());
+        const text = clone.innerText?.trim() || '';
+        return { heading, text };
+    }
+
     function extractAugmentUrls(augmentElement) {
         if (!augmentElement) return [];
         const urls = new Set();
@@ -797,19 +811,34 @@
 
 `;
 
+            let lastType = null;
+
             selectedMessages.forEach((msg, index) => {
                 if (msg.type === 'user') {
                     const text = extractUserText(msg.element);
                     markdown += `#### Prompt - User 👤:\n\n`;
                     markdown += `${text}\n\n`;
+                    lastType = 'user';
                 }
 
                 if (msg.type === 'assistant') {
-                    const text = extractAIText(msg.element);
-                    markdown += `#### Response - Brave Search AI 🤖:\n\n`;
+                    // Open a new response block only when transitioning into assistant
+                    const isNewResponse = (lastType !== 'assistant');
+                    if (isNewResponse) {
+                        markdown += `#### Response - Brave Search AI 🤖:\n\n`;
+                    }
+
+                    // Extract heading from the h2/h3 in this assistant message
+                    const { heading, text } = extractAITextWithHeading(msg.element);
+
+                    // Sub-header from the block's own heading (h2/h3)
+                    if (heading) {
+                        markdown += `##### ${heading}\n\n`;
+                    }
+
                     markdown += `${text}\n\n`;
 
-                    // Append augment URLs if present
+                    // Append augment URLs if present (inline after this sub-block)
                     if (msg.augmentUrls && msg.augmentUrls.length > 0) {
                         markdown += `**📎 Augment References:**\n\n`;
                         msg.augmentUrls.forEach(url => {
@@ -817,6 +846,8 @@
                         });
                         markdown += `\n`;
                     }
+
+                    lastType = 'assistant';
                 }
 
                 if (msg.type === 'research') {
@@ -910,6 +941,7 @@
                             }
                         });
                     }
+                    lastType = 'research';
                 }
 
                 if (index < selectedMessages.length - 1) {
