@@ -19,6 +19,7 @@
             USER_MESSAGE: '.user-bubble',
             AI_MESSAGE: '.message.assistant.llm-output',
             AUGMENT_MESSAGE: '.message.augment',
+            RESEARCH_MESSAGE: '.message.research',
 
             // Copy buttons (for native fallback detection)
             USER_COPY_BTN: '.user-message-action[aria-label="Copy"]',
@@ -31,6 +32,38 @@
             ENRICHMENT_FOOTER_QUERY: '.enrichment-footer-query',
             ENRICHMENT_CARD_ITEM: '.enrichment-card-item',
             ENRICHMENT_CARD_IMG: '.enrichment-card-item img',
+
+            // Deep research panel
+            DEEP_RESEARCH_CONTAINER: '.deep-research.noscrollbar',
+            DEEP_RESEARCH_HEADER: '.deep-research-header',
+            DEEP_RESEARCH_STATS: '.deep-research-stats',
+            DEEP_RESEARCH_STATS_ITEM: '.deep-research-stats-item',
+            DEEP_RESEARCH_STATS_VALUE: '.deep-research-stats-item-value',
+            DEEP_RESEARCH_STATS_LABEL: '.deep-research-stats-item-label',
+
+            // Deep research iteration blocks
+            DEEP_RESEARCH_QUERIES: '.deep-research-queries',
+            DEEP_RESEARCH_QUERY: '.deep-research-query',
+            DEEP_RESEARCH_THINKING: '.deep-research-thinking',
+            DEEP_RESEARCH_THINKING_INNER: '.deep-research-thinking-inner',
+            DEEP_RESEARCH_ANSWER: '.deep-research-answer',
+            DEEP_RESEARCH_BLINDSPOTS: '.deep-research-blindspots',
+            DEEP_RESEARCH_BLINDSPOTS_CONTENT: '.deep-research-blindspots-content',
+            DEEP_RESEARCH_PROGRESS: '.deep-research-progress',
+
+            // Source chips within thinking blocks
+            DEEP_RESEARCH_SOURCE_CHIP: '.deep-research-source-chip[href]',
+            DEEP_RESEARCH_SOURCE_CHIP_BUTTON: '.deep-research-source-chip',
+            DEEP_RESEARCH_FAVICON_IMG: '.deep-research-source-chip-favicon img',
+
+            // Research content areas
+            DEEP_RESEARCH_CONTENT: '.deep-research-content',
+            DEEP_RESEARCH_ITERATION_CONTENT: '.deep-research-iteration-content',
+            DEEP_RESEARCH_QUERIES_CONTENT: '.deep-research-queries-content',
+            DEEP_RESEARCH_THINKING_CONTENT: '.deep-research-thinking-content',
+            DEEP_RESEARCH_THINKING_INNER_WRAPPER: '.deep-research-thinking-inner-wrapper',
+            DEEP_RESEARCH_ANSWER_CONTENT: '.deep-research-answer-content',
+            DEEP_RESEARCH_BLINDSPOTS_CONTENT_WRAPPER: '.deep-research-blindspots-content-wrapper',
 
             // Chat container (for scrolling if needed)
             CHAT_CONTAINER: '.conversation-page, .chat-container, main',
@@ -313,6 +346,12 @@
             el.classList.add('ai-message-container');
             createCheckbox('assistant', el);
         });
+
+        // Research messages (deep research panel — inline message type)
+        document.querySelectorAll(CONFIG.SELECTORS.RESEARCH_MESSAGE).forEach(el => {
+            el.classList.add('research-message-container');
+            createCheckbox('research', el);
+        });
     }
 
     function setupObserver() {
@@ -379,6 +418,237 @@
     }
 
     // ============================================================================
+    // DEEP RESEARCH PANEL EXTRACTION
+    // ============================================================================
+
+    /**
+     * Extracts the Brave Search Deep Research panel content faithfully.
+     * Walks .deep-research-iteration-content blocks in DOM order
+     * to preserve the full repeating pattern — no truncation.
+     *
+     * Verified DOM structure:
+     *   .deep-research.noscrollbar
+     *     ├── .deep-research-sticky (header + stats)
+     *     └── .deep-research-content (or .deep-research-last-event)
+     *           └── .deep-research-iteration-content × N
+     *                 ├── .deep-research-queries
+     *                 │     └── .deep-research-queries-content
+     *                 │           └── .deep-research-query > span  (query text)
+     *                 ├── .deep-research-thinking × N
+     *                 │     └── .deep-research-thinking-content
+     *                 │           ├── .deep-research-query > span  (query being thought)
+     *                 │           └── .deep-research-thinking-inner-wrapper
+     *                 │                 └── .deep-research-thinking-inner
+     *                 │                       ├── .deep-research-query > span  (steps)
+     *                 │                       └── .deep-research-thinking-relevant-sources
+     *                 │                             ├── a.deep-research-source-chip[href]  (source links)
+     *                 │                             └── button.deep-research-source-chip  ("+ N more")
+     *                 ├── .deep-research-answer
+     *                 │     ├── .deep-research-answer-header (label text)
+     *                 │     └── .deep-research-answer-content.llm-output (rich HTML body)
+     *                 ├── .deep-research-blindspots
+     *                 │     └── .deep-research-blindspots-content-wrapper × N
+     *                 │           └── .deep-research-blindspots-content
+     *                 │                 └── .deep-research-query > span  (blindspot text)
+     *                 └── .deep-research-progress ("Researched for ...")
+     *
+     * @returns {Object|null} { stats, iterations } or null if panel absent
+     */
+    function extractDeepResearchPanel() {
+        const panel = document.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_CONTAINER);
+        if (!panel) return null;
+
+        // ------------------------------------------------------------------
+        // 1. Stats bar
+        // ------------------------------------------------------------------
+        const stats = {};
+        const statsItems = panel.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_STATS_ITEM);
+        statsItems.forEach(item => {
+            const valueEl = item.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_STATS_VALUE);
+            const labelEl = item.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_STATS_LABEL);
+            if (valueEl && labelEl) {
+                const label = labelEl.innerText?.trim() || '';
+                const value = valueEl.innerText?.trim() || '';
+                const longLabel = labelEl.querySelector('.long-label');
+                const key = longLabel ? longLabel.innerText?.trim() : label;
+                if (key) stats[key] = value;
+            }
+        });
+        const statsRaw = panel.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_STATS);
+        const statsText = statsRaw ? statsRaw.innerText?.trim() : '';
+
+        // ------------------------------------------------------------------
+        // 2. Find iteration wrappers
+        // ------------------------------------------------------------------
+        // The iteration content lives inside the .deep-research-content area,
+        // or directly in .deep-research-last-event for the final event.
+        let iterationEls = panel.querySelectorAll(
+            CONFIG.SELECTORS.DEEP_RESEARCH_ITERATION_CONTENT
+        );
+
+        // If none found via the standard wrapper, try .deep-research-last-event
+        // which is the container for a single iteration's blocks
+        if (iterationEls.length === 0) {
+            const lastEvent = panel.querySelector('.deep-research-last-event');
+            if (lastEvent) {
+                // Wrap the last-event content in a synthetic wrapper for uniform processing
+                const wrapper = document.createElement('div');
+                wrapper.className = 'deep-research-iteration-content';
+                // Move child blocks into the wrapper (clone to avoid mutating live DOM)
+                const clone = lastEvent.cloneNode(true);
+                while (clone.firstChild) {
+                    wrapper.appendChild(clone.firstChild);
+                }
+                iterationEls = [wrapper];
+            }
+        }
+
+        // Final fallback: use the .deep-research-content container itself
+        if (iterationEls.length === 0) {
+            const contentArea = panel.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_CONTENT);
+            if (contentArea) {
+                iterationEls = contentArea.children;
+            }
+        }
+
+        const iterations = [];
+
+        // Helper: extract query text from a .deep-research-query element
+        function extractQueryText(queryEl) {
+            // The text is in the first span.desktop-default-regular or span.desktop-small-regular
+            const span = queryEl.querySelector('span.desktop-default-regular, span.desktop-small-regular');
+            if (span) return span.innerText?.trim() || '';
+            // Fallback: any span
+            const anySpan = queryEl.querySelector('span');
+            if (anySpan) return anySpan.innerText?.trim() || '';
+            return queryEl.innerText?.trim() || '';
+        }
+
+        Array.from(iterationEls).forEach((iterEl) => {
+            const iteration = {
+                queries: [],
+                thinking: [],
+                answerHeader: null,
+                answerHtml: null,
+                answerText: null,
+                blindspots: [],
+                progress: null
+            };
+
+            // --- Queries ---
+            iterEl.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_QUERIES).forEach(queriesBlock => {
+                queriesBlock.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_QUERY).forEach(queryEl => {
+                    const text = extractQueryText(queryEl);
+                    if (text) iteration.queries.push(text);
+                });
+            });
+
+            // --- Thinking blocks ---
+            iterEl.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_THINKING).forEach(thinkingBlock => {
+                const thinkingEntry = {
+                    query: '',
+                    steps: [],
+                    sources: []
+                };
+
+                // Extract the query text at the top of this thinking block
+                const contentWrapper = thinkingBlock.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_THINKING_CONTENT);
+                if (contentWrapper) {
+                    contentWrapper.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_QUERY).forEach(queryEl => {
+                        const text = extractQueryText(queryEl);
+                        if (text && !thinkingEntry.query) {
+                            thinkingEntry.query = text;
+                        }
+                    });
+                }
+
+                // Extract steps and sources from the inner wrapper
+                const innerWrapper = thinkingBlock.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_THINKING_INNER_WRAPPER);
+                if (innerWrapper) {
+                    // Steps: .deep-research-query > span text
+                    innerWrapper.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_QUERY).forEach(stepEl => {
+                        const text = extractQueryText(stepEl);
+                        if (text) thinkingEntry.steps.push(text);
+                    });
+
+                    // Source chips: linked sources
+                    innerWrapper.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_SOURCE_CHIP).forEach(chip => {
+                        if (chip.href) {
+                            thinkingEntry.sources.push({
+                                url: chip.href,
+                                label: chip.innerText?.trim() || chip.href
+                            });
+                        }
+                    });
+
+                    // "Show more" buttons (non-linked chips)
+                    const moreBtns = innerWrapper.querySelectorAll(
+                        CONFIG.SELECTORS.DEEP_RESEARCH_SOURCE_CHIP_BUTTON + ':not([href])'
+                    );
+                    moreBtns.forEach(btn => {
+                        const text = btn.innerText?.trim();
+                        if (text) thinkingEntry.sources.push({ url: null, label: text });
+                    });
+                }
+
+                // Only add if it has meaningful content
+                if (thinkingEntry.query || thinkingEntry.steps.length > 0 || thinkingEntry.sources.length > 0) {
+                    iteration.thinking.push(thinkingEntry);
+                }
+            });
+
+            // --- Answer blocks ---
+            iterEl.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_ANSWER).forEach(answerBlock => {
+                // Extract the header text (e.g. "Evaluating possible answer" or "Answer outline")
+                const headerEl = answerBlock.querySelector('.deep-research-answer-header');
+                if (headerEl) {
+                    iteration.answerHeader = headerEl.innerText?.trim() || '';
+                }
+
+                // Extract the rich content if present
+                const contentEl = answerBlock.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_ANSWER_CONTENT);
+                if (contentEl) {
+                    const clone = contentEl.cloneNode(true);
+                    clone.querySelectorAll('svg, .table-sticky, .table-tools').forEach(el => el.remove());
+                    iteration.answerHtml = clone.innerHTML?.trim() || null;
+                    iteration.answerText = clone.innerText?.trim() || null;
+                }
+            });
+
+            // --- Blindspots ---
+            iterEl.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_BLINDSPOTS).forEach(bsBlock => {
+                bsBlock.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_BLINDSPOTS_CONTENT).forEach(bsContent => {
+                    const queryEl = bsContent.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_QUERY);
+                    if (queryEl) {
+                        const text = extractQueryText(queryEl);
+                        if (text) iteration.blindspots.push(text);
+                    }
+                });
+            });
+
+            // --- Progress ---
+            const progressEl = iterEl.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_PROGRESS);
+            if (progressEl) {
+                iteration.progress = progressEl.innerText?.trim() || '';
+            }
+
+            const hasContent = iteration.queries.length > 0
+                || iteration.thinking.length > 0
+                || iteration.answerText
+                || iteration.answerHeader
+                || iteration.blindspots.length > 0
+                || iteration.progress;
+            if (hasContent) iterations.push(iteration);
+        });
+
+        return {
+            stats,
+            statsText,
+            iterations
+        };
+    }
+
+    // ============================================================================
     // EXPORT SERVICE
     // ============================================================================
     const ExportService = {
@@ -432,12 +702,14 @@
             const allMessages = Array.from(document.querySelectorAll([
                 CONFIG.SELECTORS.USER_MESSAGE,
                 CONFIG.SELECTORS.AI_MESSAGE,
-                CONFIG.SELECTORS.AUGMENT_MESSAGE
+                CONFIG.SELECTORS.AUGMENT_MESSAGE,
+                CONFIG.SELECTORS.RESEARCH_MESSAGE
             ].join(', ')));
 
             let userCount = 0;
             let aiCount = 0;
             let augmentCount = 0;
+            let researchCount = 0;
             let selectedMessages = [];
 
             // First pass: collect selected messages and associate augments
@@ -475,6 +747,17 @@
                         urls.forEach(u => lastAIMessage.augmentUrls.push(u));
                         augmentCount++;
                     }
+                } else if (el.matches(CONFIG.SELECTORS.RESEARCH_MESSAGE)) {
+                    const cb = el.querySelector('.ns-checkbox');
+                    if (cb && cb.checked) {
+                        selectedMessages.push({
+                            type: 'research',
+                            element: el,
+                            augmentUrls: []
+                        });
+                        researchCount++;
+                    }
+                    // Don't break the augment chain — research doesn't consume AI context
                 }
             });
 
@@ -502,6 +785,8 @@
 >> **Total AI Messages:** ${aiCount}
 >>
 >> **Total Augments:** ${augmentCount}
+>>
+>> **Total Deep Research Messages:** ${researchCount}
 ---
 
 ## Title:
@@ -534,6 +819,99 @@
                     }
                 }
 
+                if (msg.type === 'research') {
+                    const deepResearch = extractDeepResearchPanel();
+                    if (deepResearch && deepResearch.iterations && deepResearch.iterations.length > 0) {
+                        markdown += `#### 🔬 Deep Research Panel\n\n`;
+                        markdown += `> *Brave Search AI Deep Research — separate research panel, not part of standard chat exchange.*\n\n`;
+
+                        // Stats bar
+                        if (deepResearch.stats && Object.keys(deepResearch.stats).length > 0) {
+                            markdown += `**📊 Research Stats:** `;
+                            const statEntries = Object.entries(deepResearch.stats);
+                            statEntries.forEach(([key, value], idx) => {
+                                markdown += `${value} ${key}`;
+                                if (idx < statEntries.length - 1) markdown += ` | `;
+                            });
+                            markdown += `\n\n`;
+                        }
+
+                        // Each iteration
+                        deepResearch.iterations.forEach((iteration, iterIndex) => {
+                            if (deepResearch.iterations.length > 1) {
+                                markdown += `##### Iteration ${iterIndex + 1} 🔍\n\n`;
+                            }
+
+                            // Queries
+                            if (iteration.queries && iteration.queries.length > 0) {
+                                markdown += `**📋 Search Queries**\n\n`;
+                                iteration.queries.forEach((queryText) => {
+                                    markdown += `> ${queryText}\n`;
+                                });
+                                markdown += `\n`;
+                            }
+
+                            // Thinking blocks
+                            if (iteration.thinking && iteration.thinking.length > 0) {
+                                iteration.thinking.forEach((thinkingEntry, thinkIdx) => {
+                                    markdown += `**🧠 Reasoning Chain${iteration.thinking.length > 1 ? ` ${thinkIdx + 1}` : ''}**\n\n`;
+
+                                    if (thinkingEntry.query) {
+                                        markdown += `> ${thinkingEntry.query}\n`;
+                                        markdown += `>\n`;
+                                    }
+
+                                    if (thinkingEntry.steps && thinkingEntry.steps.length > 0) {
+                                        thinkingEntry.steps.forEach((step) => {
+                                            markdown += `> ${step}\n`;
+                                        });
+                                        markdown += `\n`;
+                                    }
+
+                                    if (thinkingEntry.sources && thinkingEntry.sources.length > 0) {
+                                        markdown += `  **Sources examined:**\n\n`;
+                                        thinkingEntry.sources.forEach((source) => {
+                                            if (source.url) {
+                                                markdown += `  - [${source.label}](${source.url})\n`;
+                                            } else {
+                                                markdown += `  - ${source.label}\n`;
+                                            }
+                                        });
+                                        markdown += `\n`;
+                                    }
+                                });
+                            }
+
+                            // Answer
+                            if (iteration.answerText) {
+                                markdown += `**📝 ${iteration.answerHeader || 'Answer'}**\n\n`;
+                                // Use blockquote for the rich answer text
+                                markdown += `> ${iteration.answerText.replace(/\n\n/g, '\n>\n> ').replace(/\n/g, '\n> ')}\n\n`;
+                            } else if (iteration.answerHeader) {
+                                markdown += `**${iteration.answerHeader}**\n\n`;
+                            }
+
+                            // Blindspots
+                            if (iteration.blindspots && iteration.blindspots.length > 0) {
+                                markdown += `**👁️ Blindspots Identified**\n\n`;
+                                iteration.blindspots.forEach((bs) => {
+                                    markdown += `- ${bs}\n`;
+                                });
+                                markdown += `\n`;
+                            }
+
+                            // Progress
+                            if (iteration.progress) {
+                                markdown += `**⏱️ Progress:** ${iteration.progress}\n\n`;
+                            }
+
+                            if (iterIndex < deepResearch.iterations.length - 1) {
+                                markdown += `---\n\n`;
+                            }
+                        });
+                    }
+                }
+
                 if (index < selectedMessages.length - 1) {
                     markdown += `---\n\n`;
                 }
@@ -554,7 +932,8 @@
             const allMessages = Array.from(document.querySelectorAll([
                 CONFIG.SELECTORS.USER_MESSAGE,
                 CONFIG.SELECTORS.AI_MESSAGE,
-                CONFIG.SELECTORS.AUGMENT_MESSAGE
+                CONFIG.SELECTORS.AUGMENT_MESSAGE,
+                CONFIG.SELECTORS.RESEARCH_MESSAGE
             ].join(', ')));
 
             const messages = [];
@@ -596,8 +975,23 @@
                     if (urls.length > 0 && lastAIMessage) {
                         urls.forEach(u => lastAIMessage.augmentUrls.push(u));
                     }
+                } else if (el.matches(CONFIG.SELECTORS.RESEARCH_MESSAGE)) {
+                    const cb = el.querySelector('.ns-checkbox');
+                    if (cb && cb.checked) {
+                        const deepResearch = extractDeepResearchPanel();
+                        messages.push({
+                            type: 'research',
+                            content: deepResearch ? (deepResearch.answerText || '') : '',
+                            stats: deepResearch ? deepResearch.stats : {},
+                            iterations: deepResearch ? deepResearch.iterations : [],
+                            platform: 'brave'
+                        });
+                    }
                 }
             });
+
+            // Check if any research messages exist in the collected messages
+            const hasDeepResearch = messages.some(m => m.type === 'research');
 
             const chatData = {
                 messages: messages,
@@ -607,7 +1001,8 @@
                     date: now.toISOString(),
                     tags: ['Brave', 'AI-Chat', 'Noosphere'],
                     sourceUrl: sourceUrl,
-                    platform: 'brave'
+                    platform: 'brave',
+                    hasDeepResearch: hasDeepResearch
                 },
                 exportedBy: {
                     tool: 'Noosphere Reflect',
@@ -616,7 +1011,8 @@
                     noosphereMetadata: {
                         userMarker: '#### Prompt - User 👤:',
                         aiMarker: '#### Response - Brave Search AI 🤖:',
-                        augmentMarker: '📎 Augment References:'
+                        augmentMarker: '📎 Augment References:',
+                        deepResearchMarker: '#### 🔬 Deep Research Panel'
                     }
                 }
             };
