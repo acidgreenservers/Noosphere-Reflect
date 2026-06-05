@@ -244,6 +244,7 @@
             /* Brave Specific Overrides */
             .user-message-container .ns-checkbox-container { position: absolute; right: -30px; top: 12px; }
             .ai-message-container .ns-checkbox-container { position: absolute; left: -30px; top: 12px; }
+            .research-message-container .ns-checkbox-container { position: absolute; left: -30px; top: 12px; }
         `;
         document.head.appendChild(style);
     }
@@ -662,6 +663,55 @@
         };
     }
 
+    /**
+     * Simple, direct extraction of the deep research answer text.
+     * Queries within a .message.research element for the proven content path:
+     *   .deep-research.noscrollbar → .deep-research-answer-content.llm-output
+     *
+     * Falls back to .innerText on the research panel if the specific selectors
+     * aren't found (covers edge cases where DOM structure varies).
+     *
+     * @param {Element} researchEl - The .message.research element
+     * @returns {string} The research answer text, or empty string if not found
+     */
+    function extractDeepResearchAnswerContent(researchEl) {
+        if (!researchEl) return '';
+
+        // Proven path from DOM reference: .deep-research.noscrollbar → .deep-research-answer-content.llm-output
+        const panel = researchEl.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_CONTAINER);
+        if (panel) {
+            const answerEls = panel.querySelectorAll(
+                CONFIG.SELECTORS.DEEP_RESEARCH_ANSWER_CONTENT + '.llm-output'
+            );
+            if (answerEls.length > 0) {
+                return Array.from(answerEls).map(el => {
+                    const clone = el.cloneNode(true);
+                    clone.querySelectorAll('svg, .table-sticky, .table-tools').forEach(s => s.remove());
+                    return clone.innerText?.trim() || '';
+                }).filter(Boolean).join('\n\n');
+            }
+        }
+
+        // Fallback: try any .deep-research-answer-content within the element
+        const answerEls = researchEl.querySelectorAll(
+            CONFIG.SELECTORS.DEEP_RESEARCH_ANSWER_CONTENT
+        );
+        if (answerEls.length > 0) {
+            return Array.from(answerEls).map(el => {
+                const clone = el.cloneNode(true);
+                clone.querySelectorAll('svg, .table-sticky, .table-tools').forEach(s => s.remove());
+                return clone.innerText?.trim() || '';
+            }).filter(Boolean).join('\n\n');
+        }
+
+        // Final fallback: innerText of the entire deep research panel
+        if (panel) {
+            return panel.innerText?.trim() || '';
+        }
+
+        return '';
+    }
+
     // ============================================================================
     // EXPORT SERVICE
     // ============================================================================
@@ -851,96 +901,96 @@
                 }
 
                 if (msg.type === 'research') {
-                    const deepResearch = extractDeepResearchPanel();
-                    if (deepResearch && deepResearch.iterations && deepResearch.iterations.length > 0) {
-                        markdown += `#### 🔬 Deep Research Panel\n\n`;
-                        markdown += `> *Brave Search AI Deep Research — separate research panel, not part of standard chat exchange.*\n\n`;
+                    // Direct extraction from the .message.research element —
+                    // reliable path without relying on iteration structure
+                    const researchContent = extractDeepResearchAnswerContent(msg.element);
+                    if (researchContent) {
+                        markdown += `#### Response - Deep Research 🤖:\n\n`;
+                        markdown += `${researchContent}\n\n`;
 
-                        // Stats bar
-                        if (deepResearch.stats && Object.keys(deepResearch.stats).length > 0) {
-                            markdown += `**📊 Research Stats:** `;
-                            const statEntries = Object.entries(deepResearch.stats);
-                            statEntries.forEach(([key, value], idx) => {
-                                markdown += `${value} ${key}`;
-                                if (idx < statEntries.length - 1) markdown += ` | `;
-                            });
-                            markdown += `\n\n`;
-                        }
-
-                        // Each iteration
-                        deepResearch.iterations.forEach((iteration, iterIndex) => {
-                            if (deepResearch.iterations.length > 1) {
-                                markdown += `##### Iteration ${iterIndex + 1} 🔍\n\n`;
-                            }
-
-                            // Queries
-                            if (iteration.queries && iteration.queries.length > 0) {
-                                markdown += `**📋 Search Queries**\n\n`;
-                                iteration.queries.forEach((queryText) => {
-                                    markdown += `> ${queryText}\n`;
+                        // Also include structured data from the full panel extraction
+                        const deepResearch = extractDeepResearchPanel();
+                        if (deepResearch) {
+                            // Stats bar
+                            if (deepResearch.stats && Object.keys(deepResearch.stats).length > 0) {
+                                markdown += `**📊 Research Stats:** `;
+                                const statEntries = Object.entries(deepResearch.stats);
+                                statEntries.forEach(([key, value], idx) => {
+                                    markdown += `${value} ${key}`;
+                                    if (idx < statEntries.length - 1) markdown += ` | `;
                                 });
-                                markdown += `\n`;
+                                markdown += `\n\n`;
                             }
 
-                            // Thinking blocks
-                            if (iteration.thinking && iteration.thinking.length > 0) {
-                                iteration.thinking.forEach((thinkingEntry, thinkIdx) => {
-                                    markdown += `**🧠 Reasoning Chain${iteration.thinking.length > 1 ? ` ${thinkIdx + 1}` : ''}**\n\n`;
-
-                                    if (thinkingEntry.query) {
-                                        markdown += `> ${thinkingEntry.query}\n`;
-                                        markdown += `>\n`;
+                            // Iterations detail (queries, thinking, sources)
+                            if (deepResearch.iterations && deepResearch.iterations.length > 0) {
+                                deepResearch.iterations.forEach((iteration, iterIndex) => {
+                                    if (deepResearch.iterations.length > 1) {
+                                        markdown += `##### Iteration ${iterIndex + 1} 🔍\n\n`;
                                     }
 
-                                    if (thinkingEntry.steps && thinkingEntry.steps.length > 0) {
-                                        thinkingEntry.steps.forEach((step) => {
-                                            markdown += `> ${step}\n`;
+                                    // Queries
+                                    if (iteration.queries && iteration.queries.length > 0) {
+                                        markdown += `**📋 Search Queries**\n\n`;
+                                        iteration.queries.forEach((queryText) => {
+                                            markdown += `> ${queryText}\n`;
                                         });
                                         markdown += `\n`;
                                     }
 
-                                    if (thinkingEntry.sources && thinkingEntry.sources.length > 0) {
-                                        markdown += `  **Sources examined:**\n\n`;
-                                        thinkingEntry.sources.forEach((source) => {
-                                            if (source.url) {
-                                                markdown += `  - [${source.label}](${source.url})\n`;
-                                            } else {
-                                                markdown += `  - ${source.label}\n`;
+                                    // Thinking blocks
+                                    if (iteration.thinking && iteration.thinking.length > 0) {
+                                        iteration.thinking.forEach((thinkingEntry, thinkIdx) => {
+                                            markdown += `**🧠 Reasoning Chain${iteration.thinking.length > 1 ? ` ${thinkIdx + 1}` : ''}**\n\n`;
+
+                                            if (thinkingEntry.query) {
+                                                markdown += `> ${thinkingEntry.query}\n`;
+                                                markdown += `>\n`;
+                                            }
+
+                                            if (thinkingEntry.steps && thinkingEntry.steps.length > 0) {
+                                                thinkingEntry.steps.forEach((step) => {
+                                                    markdown += `> ${step}\n`;
+                                                });
+                                                markdown += `\n`;
+                                            }
+
+                                            if (thinkingEntry.sources && thinkingEntry.sources.length > 0) {
+                                                markdown += `  **Sources examined:**\n\n`;
+                                                thinkingEntry.sources.forEach((source) => {
+                                                    if (source.url) {
+                                                        markdown += `  - [${source.label}](${source.url})\n`;
+                                                    } else {
+                                                        markdown += `  - ${source.label}\n`;
+                                                    }
+                                                });
+                                                markdown += `\n`;
                                             }
                                         });
+                                    }
+
+                                    // Blindspots
+                                    if (iteration.blindspots && iteration.blindspots.length > 0) {
+                                        markdown += `**👁️ Blindspots Identified**\n\n`;
+                                        iteration.blindspots.forEach((bs) => {
+                                            markdown += `- ${bs}\n`;
+                                        });
                                         markdown += `\n`;
                                     }
+
+                                    // Progress
+                                    if (iteration.progress) {
+                                        markdown += `**⏱️ Progress:** ${iteration.progress}\n\n`;
+                                    }
+
+                                    if (iterIndex < deepResearch.iterations.length - 1) {
+                                        markdown += `---\n\n`;
+                                    }
                                 });
-                            }
-
-                            // Answer
-                            if (iteration.answerText) {
-                                markdown += `**📝 ${iteration.answerHeader || 'Answer'}**\n\n`;
-                                // Use blockquote for the rich answer text
-                                markdown += `> ${iteration.answerText.replace(/\n\n/g, '\n>\n> ').replace(/\n/g, '\n> ')}\n\n`;
-                            } else if (iteration.answerHeader) {
-                                markdown += `**${iteration.answerHeader}**\n\n`;
-                            }
-
-                            // Blindspots
-                            if (iteration.blindspots && iteration.blindspots.length > 0) {
-                                markdown += `**👁️ Blindspots Identified**\n\n`;
-                                iteration.blindspots.forEach((bs) => {
-                                    markdown += `- ${bs}\n`;
-                                });
-                                markdown += `\n`;
-                            }
-
-                            // Progress
-                            if (iteration.progress) {
-                                markdown += `**⏱️ Progress:** ${iteration.progress}\n\n`;
-                            }
-
-                            if (iterIndex < deepResearch.iterations.length - 1) {
-                                markdown += `---\n\n`;
-                            }
-                        });
+                        }
                     }
+                    }
+
                     lastType = 'research';
                 }
 
@@ -1010,14 +1060,16 @@
                 } else if (el.matches(CONFIG.SELECTORS.RESEARCH_MESSAGE)) {
                     const cb = el.querySelector('.ns-checkbox');
                     if (cb && cb.checked) {
-                        const deepResearch = extractDeepResearchPanel();
-                        messages.push({
-                            type: 'research',
-                            content: deepResearch ? (deepResearch.answerText || '') : '',
-                            stats: deepResearch ? deepResearch.stats : {},
-                            iterations: deepResearch ? deepResearch.iterations : [],
-                            platform: 'brave'
-                        });
+                    // Direct extraction from the .message.research element
+                    const researchContent = extractDeepResearchAnswerContent(el);
+                    const deepResearch = extractDeepResearchPanel();
+                    messages.push({
+                        type: 'research',
+                        content: researchContent || '',
+                        stats: deepResearch ? deepResearch.stats : {},
+                        iterations: deepResearch ? deepResearch.iterations : [],
+                        platform: 'brave'
+                    });
                     }
                 }
             });
@@ -1044,7 +1096,7 @@
                         userMarker: '#### Prompt - User 👤:',
                         aiMarker: '#### Response - Brave Search AI 🤖:',
                         augmentMarker: '📎 Augment References:',
-                        deepResearchMarker: '#### 🔬 Deep Research Panel'
+                        deepResearchMarker: '#### Response - Deep Research 🤖:'
                     }
                 }
             };

@@ -73,7 +73,7 @@ export class NoosphereMarkdownParser extends BaseMarkdownParser {
         const messages: ChatMessage[] = [];
         // Pattern matches "#### Prompt - User 👤:" or "#### Response - Model 🤖:"
         // and also supports the user's request for varied headings like "### Claude", "### Gemini"
-        const headerPattern = /^(?:###|####)\s+(Prompt|User|Response|Model|Claude|Gemini|Grok|Le\s*Chat|Assistant|Human|You|Me)(?:\s+-\s+[^:\n]+)?(?:\s+[👤🤖])?:/gim;
+        const headerPattern = /^(?:###|####)\s+(Prompt|User|Response|Model|Claude|Gemini|Grok|Le\s*Chat|Assistant|Human|You|Me|Deep\s+Research)(?:\s+-\s+[^:\n]+)?(?:\s+[👤🤖])?:/gim;
 
         const matches = Array.from(input.matchAll(headerPattern));
         if (matches.length === 0) return [];
