@@ -3,7 +3,7 @@ import { migrations } from './db/migrations';
 import { DB_NAME, DB_VERSION, STORES } from './db/schema';
 import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme, Folder, ArchiveType } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
-import { validateImportData } from '../utils/importValidator';
+import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema } from '../utils/importValidator';
 import { validateReflectFile } from '../utils/reflectValidator';
 import { parseChat } from './converterService';
 import { searchService } from './searchService';
@@ -162,6 +162,14 @@ class StorageService {
     async deleteSession(id: string): Promise<void> {
         const db = await this.getDB();
         await db.delete(STORES.SESSIONS, id);
+
+        // Remove from search index
+        try {
+            await searchService.init();
+            await searchService.deleteDocument(id);
+        } catch (e) {
+            console.warn('Failed to remove session from search index:', e);
+        }
     }
 
     async getSettings(): Promise<AppSettings> {
@@ -454,14 +462,15 @@ class StorageService {
                 if (validation.type === 'json') {
                     const parsed = JSON.parse(content);
 
-                    // Detect Archive Type based on structure
+                    // Detect and Validate Archive Type based on structure
                     if (parsed.chatData || parsed.messages) {
-                        // It's a Chat Session
+                        // It's a Chat Session - Attempt validation
                         let session: SavedChatSession;
                         if (parsed.id && parsed.chatData) {
-                            session = parsed as SavedChatSession;
+                            session = SavedChatSessionSchema.parse(parsed) as SavedChatSession;
                         } else {
-                            session = {
+                            // Minimal transform to match schema if it's a raw message export
+                            const sessionData = {
                                 id: crypto.randomUUID(),
                                 name: parsed.metadata?.title || file.name.replace('.json', ''),
                                 date: new Date().toISOString(),
@@ -478,17 +487,18 @@ class StorageService {
                                 metadata: parsed.metadata,
                                 folderId: parsed.folderId || null
                             };
+                            session = SavedChatSessionSchema.parse(sessionData) as SavedChatSession;
                         }
                         await this.saveSession(session);
                         results.successful++;
                     } else if (parsed.aiModel && parsed.metadata && !parsed.metadata.category) {
                         // It's a Memory
-                        const memory = parsed as Memory;
+                        const memory = MemorySchema.parse(parsed) as Memory;
                         await this.saveMemory(memory);
                         results.successful++;
-                    } else if (parsed.metadata && (parsed.metadata.category || parsed.content && !parsed.aiModel)) {
+                    } else if (parsed.metadata && (parsed.metadata.category || (parsed.content && !parsed.aiModel))) {
                         // It's a Prompt
-                        const prompt = parsed as Prompt;
+                        const prompt = PromptSchema.parse(parsed) as Prompt;
                         await this.savePrompt(prompt);
                         results.successful++;
                     } else {
@@ -500,7 +510,7 @@ class StorageService {
                     // but we check for Noosphere metadata to see if it's a Memory or Prompt
                     const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
 
-                    const session: SavedChatSession = {
+                    const sessionData = {
                         id: crypto.randomUUID(),
                         name: file.name.replace('.md', ''),
                         date: new Date().toISOString(),
@@ -514,6 +524,7 @@ class StorageService {
                         metadata: chatData.metadata
                     };
 
+                    const session = SavedChatSessionSchema.parse(sessionData) as SavedChatSession;
                     await this.saveSession(session);
                     results.successful++;
                 } else if (validation.type === 'html') {
