@@ -381,6 +381,13 @@ self.onmessage = async (e: MessageEvent) => {
             case 'CLEAR':
                 miniSearch.removeAll();
                 await saveIndex();
+
+                // Clear metadata store
+                if (!db) await initDB();
+                const tx = db!.transaction('index-metadata', 'readwrite');
+                await tx.store.clear();
+                await tx.done;
+
                 self.postMessage({ type: 'CLEAR_COMPLETE', messageId });
                 break;
 

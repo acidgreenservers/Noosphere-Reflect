@@ -65,7 +65,7 @@ const ChatMetadataSchema = z.object({
 });
 
 // Saved Chat Session Schema - matching SavedChatSession interface
-const SavedChatSessionSchema = z.object({
+export const SavedChatSessionSchema = z.object({
     id: z.string(),
     name: z.string().max(200),
     date: z.string(),
@@ -113,7 +113,7 @@ const MemoryMetadataSchema = z.object({
 });
 
 // Memory Schema - matching Memory interface
-const MemorySchema = z.object({
+export const MemorySchema = z.object({
     id: z.string(),
     content: z.string().max(1_000_000).transform(sanitizeHtml), // Sanitize memory content too
     aiModel: z.string().max(100),
@@ -134,7 +134,7 @@ const PromptMetadataSchema = z.object({
 });
 
 // Prompt Schema - matching Prompt interface
-const PromptSchema = z.object({
+export const PromptSchema = z.object({
     id: z.string(),
     content: z.string().max(1_000_000).transform(sanitizeHtml), // Sanitize prompt content too
     tags: z.array(z.string().max(50)).max(20),
