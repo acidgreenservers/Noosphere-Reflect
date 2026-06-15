@@ -1,193 +1,71 @@
-import { openDB, IDBPDatabase } from 'idb';
-import { migrations } from './db/migrations';
-import { DB_NAME, DB_VERSION, STORES } from './db/schema';
-import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme, Folder, ArchiveType } from '../types';
-import { normalizeTitle } from '../utils/textNormalization';
+import { IDBPDatabase } from 'idb';
+import { dbService } from './storage/DBService';
+import { sessionStore } from './storage/SessionStore';
+import { memoryStore } from './storage/MemoryStore';
+import { promptStore } from './storage/PromptStore';
+import { settingsStore } from './storage/SettingsStore';
+import { folderStore } from './storage/FolderStore';
+import { STORES, DB_VERSION } from './db/schema';
+import {
+    SavedChatSession,
+    SavedChatSessionMetadata,
+    AppSettings,
+    ConversationArtifact,
+    ChatMetadata,
+    Memory,
+    Prompt,
+    ParserMode,
+    ChatTheme,
+    Folder,
+    ArchiveType
+} from '../types';
 import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema } from '../utils/importValidator';
 import { validateReflectFile } from '../utils/reflectValidator';
 import { parseChat } from './converterService';
 import { searchService } from './searchService';
 
 class StorageService {
-    private db: IDBPDatabase | null = null;
-
+    // Forward to dbService
     private async getDB(): Promise<IDBPDatabase> {
-        if (this.db) {
-            try {
-                // Heartbeat to check if connection is still alive
-                await this.db.get(STORES.SETTINGS, 'heartbeat');
-                return this.db;
-            } catch (e) {
-                this.db = null;
-            }
-        }
-
-        this.db = await openDB(DB_NAME, DB_VERSION, {
-            upgrade(db, oldVersion, newVersion, transaction) {
-                for (const migration of migrations) {
-                    if (oldVersion < migration.version && (newVersion === null || migration.version <= newVersion)) {
-                        migration.migrate(db as any, transaction as any, oldVersion);
-                    }
-                }
-            }
-        });
-
-        return this.db;
+        return dbService.getDB();
     }
 
+    // Sessions
     async getAllSessions(): Promise<SavedChatSession[]> {
-        const db = await this.getDB();
-        return db.getAll(STORES.SESSIONS);
+        return sessionStore.getAll();
     }
 
     async getAllSessionsMetadata(): Promise<SavedChatSessionMetadata[]> {
-        const db = await this.getDB();
-        const transaction = db.transaction(STORES.SESSIONS, 'readonly');
-        const store = transaction.objectStore(STORES.SESSIONS);
-        const sessions: SavedChatSessionMetadata[] = [];
+        return sessionStore.getAllMetadata();
+    }
 
-        let cursor = await store.openCursor();
-        while (cursor) {
-            const session = cursor.value;
-            const metadata: SavedChatSessionMetadata = {
-                id: session.id,
-                name: session.name,
-                date: session.date,
-                chatTitle: session.chatTitle,
-                userName: session.userName,
-                aiName: session.aiName,
-                selectedTheme: session.selectedTheme,
-                parserMode: session.parserMode,
-                metadata: session.metadata,
-                normalizedTitle: session.normalizedTitle,
-                exportStatus: session.exportStatus,
-                folderId: session.folderId
-            };
-            sessions.push(metadata);
-            cursor = await cursor.continue();
-        }
-        return sessions;
+    async getPaginatedSessions(pageSize: number = 25, offsetKey?: any) {
+        return sessionStore.getPaginatedMetadata(pageSize, offsetKey);
     }
 
     async getSessionById(id: string): Promise<SavedChatSession | undefined> {
-        const db = await this.getDB();
-        return db.get(STORES.SESSIONS, id);
+        return sessionStore.getById(id);
     }
 
     async getSessionByNormalizedTitle(normalizedTitle: string): Promise<SavedChatSession | undefined> {
-        const db = await this.getDB();
-        return db.getFromIndex(STORES.SESSIONS, 'normalizedTitle', normalizedTitle);
+        return sessionStore.getByNormalizedTitle(normalizedTitle);
     }
 
     async saveSession(session: SavedChatSession): Promise<void> {
-        const title = session.metadata?.title || session.chatTitle || session.name;
-
-        // Validate title
-        if (!title) {
-            console.warn('⚠️ Session saved without title - cannot detect duplicates');
-            if (!session.id) {
-                session.id = crypto.randomUUID(); // Use secure UUID
-            }
-        } else {
-            // Normalize title for indexing
-            try {
-                session.normalizedTitle = normalizeTitle(title);
-            } catch (e: any) {
-                throw new Error(`Invalid title: ${e.message}`);
-            }
-        }
-
-        // Default exportStatus to 'not_exported' for new sessions
-        if (!session.exportStatus) {
-            session.exportStatus = 'not_exported';
-            if (session.metadata) {
-                session.metadata.exportStatus = 'not_exported';
-            }
-        }
-
-        const db = await this.getDB();
-
-        try {
-            await db.put(STORES.SESSIONS, session);
-            console.log(`✅ Saved session: "${title}" (ID: ${session.id})`);
-        } catch (error: any) {
-            // Check if error is due to unique constraint violation
-            if (error?.name === 'ConstraintError') {
-                console.log(`🔄 Duplicate detected: "${title}" - renaming old version`);
-
-                // Find the existing session with this normalized title
-                const existingSession = await this.getSessionByNormalizedTitle(session.normalizedTitle!);
-
-                if (!existingSession) {
-                    throw new Error('Duplicate detected but could not find existing session');
-                }
-
-                const oldTitle = existingSession.metadata?.title || existingSession.chatTitle || existingSession.name;
-
-                // Loop-based rename: resolves collision via iteration, not recursion.
-                let renamedTitle = `${oldTitle} (Old Copy)`;
-                let counter = 1;
-                let collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
-
-                while (collisionCheck) {
-                    if (counter > 100) {
-                        throw new Error(`Failed to save session: too many naming collisions for "${oldTitle}". Please rename existing copies manually.`);
-                    }
-                    renamedTitle = `${oldTitle} (Old Copy - ${counter})`;
-                    collisionCheck = await this.getSessionByNormalizedTitle(normalizeTitle(renamedTitle));
-                    counter++;
-                }
-
-                // Update the OLD session's title in-place
-                if (existingSession.metadata) {
-                    existingSession.metadata.title = renamedTitle;
-                }
-                existingSession.chatTitle = renamedTitle;
-                existingSession.name = renamedTitle;
-                existingSession.normalizedTitle = normalizeTitle(renamedTitle);
-
-                // Use a single transaction for atomicity
-                const tx = db.transaction(STORES.SESSIONS, 'readwrite');
-                await tx.store.put(existingSession);
-                await tx.store.put(session);
-                await tx.done;
-
-                console.log(`✅ Renamed old session to: "${renamedTitle}" and saved new session`);
-            } else {
-                throw error;
-            }
-        }
+        return sessionStore.save(session);
     }
 
     async deleteSession(id: string): Promise<void> {
-        const db = await this.getDB();
-        await db.delete(STORES.SESSIONS, id);
-
-        // Remove from search index
-        try {
-            await searchService.init();
-            await searchService.deleteDocument(id);
-        } catch (e) {
-            console.warn('Failed to remove session from search index:', e);
-        }
+        return sessionStore.deleteWithSearch(id);
     }
 
+    // Settings
     async getSettings(): Promise<AppSettings> {
-        const db = await this.getDB();
-        const result = await db.get(STORES.SETTINGS, 'appSettings');
-        if (result) {
-            return result.value;
-        } else {
-            return { ...DEFAULT_SETTINGS };
-        }
+        return settingsStore.getSettings();
     }
 
     async saveSettings(settings: AppSettings): Promise<void> {
-        const db = await this.getDB();
-        await db.put(STORES.SETTINGS, {
-            key: 'appSettings',
-            value: settings
-        });
+        return settingsStore.saveSettings(settings);
     }
 
     async migrateLegacyData(): Promise<void> {
@@ -213,6 +91,7 @@ class StorageService {
         }
     }
 
+    // Artifacts
     async attachArtifact(sessionId: string, artifact: ConversationArtifact): Promise<void> {
         const db = await this.getDB();
         const tx = db.transaction(STORES.SESSIONS, 'readwrite');
@@ -306,30 +185,21 @@ class StorageService {
         await tx.done;
     }
 
-    // ==================== Memory Archive CRUD Operations ====================
-
+    // Memories
     async saveMemory(memory: Memory): Promise<void> {
-        const db = await this.getDB();
-        await db.put(STORES.MEMORIES, memory);
-
-        // Update search index
-        try {
-            await searchService.init();
-            await searchService.indexMemory(memory);
-        } catch (e) {
-            console.warn('Failed to index memory for search:', e);
-        }
+        return memoryStore.save(memory);
     }
 
     async getAllMemories(): Promise<Memory[]> {
-        const db = await this.getDB();
-        const memories = await db.getAll(STORES.MEMORIES);
-        return memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return memoryStore.getAllSorted();
+    }
+
+    async getPaginatedMemories(pageSize: number = 25, offsetKey?: any) {
+        return memoryStore.getPaginatedSorted(pageSize, offsetKey);
     }
 
     async getMemoryById(id: string): Promise<Memory | undefined> {
-        const db = await this.getDB();
-        return db.get(STORES.MEMORIES, id);
+        return memoryStore.getById(id);
     }
 
     async updateMemory(memory: Memory): Promise<void> {
@@ -338,24 +208,14 @@ class StorageService {
     }
 
     async deleteMemory(id: string): Promise<void> {
-        const db = await this.getDB();
-        await db.delete(STORES.MEMORIES, id);
-
-        // Remove from search index
-        try {
-            await searchService.init();
-            await searchService.deleteDocument(id);
-        } catch (e) {
-            console.warn('Failed to remove memory from search index:', e);
-        }
+        return memoryStore.deleteWithSearch(id);
     }
 
     async getMemoriesByModel(aiModel: string): Promise<Memory[]> {
-        const db = await this.getDB();
-        const memories = await db.getAllFromIndex(STORES.MEMORIES, 'aiModel', aiModel);
-        return memories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return memoryStore.getByModel(aiModel);
     }
 
+    // Export/Import
     async updateExportStatus(id: string, status: 'exported' | 'not_exported'): Promise<void> {
         const db = await this.getDB();
         const tx = db.transaction(STORES.SESSIONS, 'readwrite');
@@ -382,10 +242,12 @@ class StorageService {
         version: number;
         exportedAt: string;
     }> {
-        const sessions = await this.getAllSessions();
-        const settings = await this.getSettings();
-        const memories = await this.getAllMemories();
-        const prompts = await this.getAllPrompts();
+        const [sessions, settings, memories, prompts] = await Promise.all([
+            this.getAllSessions(),
+            this.getSettings(),
+            this.getAllMemories(),
+            this.getAllPrompts()
+        ]);
 
         return {
             sessions,
@@ -462,14 +324,11 @@ class StorageService {
                 if (validation.type === 'json') {
                     const parsed = JSON.parse(content);
 
-                    // Detect and Validate Archive Type based on structure
                     if (parsed.chatData || parsed.messages) {
-                        // It's a Chat Session - Attempt validation
                         let session: SavedChatSession;
                         if (parsed.id && parsed.chatData) {
                             session = SavedChatSessionSchema.parse(parsed) as SavedChatSession;
                         } else {
-                            // Minimal transform to match schema if it's a raw message export
                             const sessionData = {
                                 id: crypto.randomUUID(),
                                 name: parsed.metadata?.title || file.name.replace('.json', ''),
@@ -492,12 +351,10 @@ class StorageService {
                         await this.saveSession(session);
                         results.successful++;
                     } else if (parsed.aiModel && parsed.metadata && !parsed.metadata.category) {
-                        // It's a Memory
                         const memory = MemorySchema.parse(parsed) as Memory;
                         await this.saveMemory(memory);
                         results.successful++;
                     } else if (parsed.metadata && (parsed.metadata.category || (parsed.content && !parsed.aiModel))) {
-                        // It's a Prompt
                         const prompt = PromptSchema.parse(parsed) as Prompt;
                         await this.savePrompt(prompt);
                         results.successful++;
@@ -506,8 +363,6 @@ class StorageService {
                         results.errors.push({ fileName: file.name, error: 'Unknown JSON export format' });
                     }
                 } else if (validation.type === 'markdown') {
-                    // Markdown imports are primarily for chats in current architecture
-                    // but we check for Noosphere metadata to see if it's a Memory or Prompt
                     const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
 
                     const sessionData = {
@@ -552,30 +407,21 @@ class StorageService {
         return results;
     }
 
-    // ============= PROMPT ARCHIVE METHODS =============
-
+    // Prompts
     async savePrompt(prompt: Prompt): Promise<void> {
-        const db = await this.getDB();
-        await db.put(STORES.PROMPTS, prompt);
-
-        // Update search index
-        try {
-            await searchService.init();
-            await searchService.indexPrompt(prompt);
-        } catch (e) {
-            console.warn('Failed to index prompt for search:', e);
-        }
+        return promptStore.save(prompt);
     }
 
     async getAllPrompts(): Promise<Prompt[]> {
-        const db = await this.getDB();
-        const prompts = await db.getAll(STORES.PROMPTS);
-        return prompts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return promptStore.getAllSorted();
+    }
+
+    async getPaginatedPrompts(pageSize: number = 25, offsetKey?: any) {
+        return promptStore.getPaginatedSorted(pageSize, offsetKey);
     }
 
     async getPromptById(id: string): Promise<Prompt | undefined> {
-        const db = await this.getDB();
-        return db.get(STORES.PROMPTS, id);
+        return promptStore.getById(id);
     }
 
     async updatePrompt(prompt: Prompt): Promise<void> {
@@ -584,57 +430,24 @@ class StorageService {
     }
 
     async deletePrompt(id: string): Promise<void> {
-        const db = await this.getDB();
-        await db.delete(STORES.PROMPTS, id);
-
-        // Remove from search index
-        try {
-            await searchService.init();
-            await searchService.deleteDocument(id);
-        } catch (e) {
-            console.warn('Failed to remove prompt from search index:', e);
-        }
+        return promptStore.deleteWithSearch(id);
     }
 
-    // ========== FOLDER METHODS ==========
-
+    // Folders
     async saveFolder(folder: Folder): Promise<void> {
-        const db = await this.getDB();
-        await db.put(STORES.FOLDERS, folder);
+        return folderStore.save(folder);
     }
 
     async getFoldersByType(type: ArchiveType): Promise<Folder[]> {
-        const db = await this.getDB();
-        return db.getAllFromIndex(STORES.FOLDERS, 'type', type);
+        return folderStore.getByType(type);
     }
 
     async deleteFolder(id: string): Promise<void> {
-        const db = await this.getDB();
-        const folder = await this.getFolderById(id);
-        if (!folder) return;
-
-        const allFolders = await this.getFoldersByType(folder.type);
-        const getDescendantIds = (parentId: string): string[] => {
-            const children = allFolders.filter(f => f.parentId === parentId);
-            return children.reduce(
-                (acc, child) => [...acc, child.id, ...getDescendantIds(child.id)],
-                [] as string[]
-            );
-        };
-        const descendantIds = [id, ...getDescendantIds(id)];
-
-        await this.moveItemsFromFoldersToRoot(descendantIds, folder.type);
-
-        const tx = db.transaction(STORES.FOLDERS, 'readwrite');
-        for (const folderId of descendantIds) {
-            await tx.store.delete(folderId);
-        }
-        await tx.done;
+        return folderStore.deleteWithCleanup(id, (folderIds, type) => this.moveItemsFromFoldersToRoot(folderIds, type));
     }
 
     async getFolderById(id: string): Promise<Folder | undefined> {
-        const db = await this.getDB();
-        return db.get(STORES.FOLDERS, id);
+        return folderStore.getById(id);
     }
 
     private async moveItemsFromFoldersToRoot(folderIds: string[], type: ArchiveType): Promise<void> {
