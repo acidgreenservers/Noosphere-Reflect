@@ -3,8 +3,8 @@ import { migrations } from './db/migrations';
 import { DB_NAME, DB_VERSION, STORES } from './db/schema';
 import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme, Folder, ArchiveType } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
-import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema } from '../utils/importValidator';
-import { validateReflectFile } from '../utils/reflectValidator';
+import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema, sanitizeMessageContent } from '../utils/importValidator';
+import { detectImportSource } from '../utils/importDetector';
 import { parseChat } from './converterService';
 import { searchService } from './searchService';
 
@@ -448,18 +448,18 @@ class StorageService {
 
             try {
                 const content = await file.text();
-                const validation = validateReflectFile(file.name, content);
+                const detection = detectImportSource(content, file.name);
 
-                if (!validation.isValid) {
+                if (!detection.isSupported) {
                     results.failed++;
                     results.errors.push({
                         fileName: file.name,
-                        error: validation.error || 'Invalid Noosphere Reflect export'
+                        error: detection.error || 'Unsupported file format or missing chat structure'
                     });
                     continue;
                 }
 
-                if (validation.type === 'json') {
+                if (detection.type === 'json') {
                     const parsed = JSON.parse(content);
 
                     // Detect and Validate Archive Type based on structure
@@ -467,6 +467,10 @@ class StorageService {
                         // It's a Chat Session - Attempt validation
                         let session: SavedChatSession;
                         if (parsed.id && parsed.chatData) {
+                            // Guard Noosphere attribution: Only allow it if detection confirmed it
+                            if (parsed.metadata?.exportedBy && detection.source !== 'noosphere') {
+                                delete parsed.metadata.exportedBy;
+                            }
                             session = SavedChatSessionSchema.parse(parsed) as SavedChatSession;
                         } else {
                             // Minimal transform to match schema if it's a raw message export
@@ -479,12 +483,12 @@ class StorageService {
                                 userName: 'User',
                                 aiName: parsed.metadata?.model || 'AI',
                                 selectedTheme: ChatTheme.DarkDefault,
-                                parserMode: ParserMode.Basic,
+                                parserMode: detection.source === 'noosphere' ? ParserMode.Noosphere : ParserMode.Basic,
                                 chatData: {
-                                    messages: parsed.messages,
-                                    metadata: parsed.metadata
+                                    messages: parsed.messages || [],
+                                    metadata: parsed.metadata || {}
                                 },
-                                metadata: parsed.metadata,
+                                metadata: parsed.metadata || {},
                                 folderId: parsed.folderId || null
                             };
                             session = SavedChatSessionSchema.parse(sessionData) as SavedChatSession;
@@ -505,21 +509,28 @@ class StorageService {
                         results.failed++;
                         results.errors.push({ fileName: file.name, error: 'Unknown JSON export format' });
                     }
-                } else if (validation.type === 'markdown') {
+                } else if (detection.type === 'markdown') {
                     // Markdown imports are primarily for chats in current architecture
-                    // but we check for Noosphere metadata to see if it's a Memory or Prompt
                     const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
+
+                    // Sanitize all messages content for 3rd-party imports
+                    if (detection.source === '3rd-party') {
+                        chatData.messages = chatData.messages.map(msg => ({
+                            ...msg,
+                            content: sanitizeMessageContent(msg.content)
+                        }));
+                    }
 
                     const sessionData = {
                         id: crypto.randomUUID(),
-                        name: file.name.replace('.md', ''),
+                        name: file.name.replace('.md', '').replace('.txt', ''),
                         date: new Date().toISOString(),
                         inputContent: content,
-                        chatTitle: chatData.metadata?.title || file.name.replace('.md', ''),
+                        chatTitle: chatData.metadata?.title || file.name.replace('.md', '').replace('.txt', ''),
                         userName: 'User',
                         aiName: chatData.metadata?.model || 'AI',
                         selectedTheme: ChatTheme.DarkDefault,
-                        parserMode: ParserMode.Basic,
+                        parserMode: detection.source === 'noosphere' ? ParserMode.Noosphere : ParserMode.Basic,
                         chatData,
                         metadata: chatData.metadata
                     };
@@ -527,12 +538,23 @@ class StorageService {
                     const session = SavedChatSessionSchema.parse(sessionData) as SavedChatSession;
                     await this.saveSession(session);
                     results.successful++;
-                } else if (validation.type === 'html') {
-                    results.skipped++;
-                    results.errors.push({
-                        fileName: file.name,
-                        error: 'HTML import not yet supported (coming soon)'
-                    });
+                } else if (detection.type === 'html') {
+                    // If it's a genuine Noosphere HTML export, it might be parseable as markdown/text
+                    // but for now we treat platform HTML separately
+                    if (detection.source === 'platform-html') {
+                        // TODO: Implement platform-specific HTML parsing in this flow
+                        results.skipped++;
+                        results.errors.push({
+                            fileName: file.name,
+                            error: `${detection.platform} HTML import via directory not yet optimized`
+                        });
+                    } else {
+                        results.skipped++;
+                        results.errors.push({
+                            fileName: file.name,
+                            error: 'HTML import not yet supported via directory'
+                        });
+                    }
                     continue;
                 }
 
