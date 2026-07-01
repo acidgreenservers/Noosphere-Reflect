@@ -4,7 +4,7 @@ import { DB_NAME, DB_VERSION, STORES } from './db/schema';
 import { SavedChatSession, SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, ChatMetadata, Memory, Prompt, ParserMode, ChatTheme, Folder, ArchiveType } from '../types';
 import { normalizeTitle } from '../utils/textNormalization';
 import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema, sanitizeMessageContent } from '../utils/importValidator';
-import { detectImportSource } from '../utils/importDetector';
+import { detectImportSource, detectPlatformFromHTML } from '../utils/importDetector';
 import { parseChat } from './converterService';
 import { searchService } from './searchService';
 
@@ -80,6 +80,19 @@ class StorageService {
     }
 
     async saveSession(session: SavedChatSession): Promise<void> {
+        // Sanitize content and metadata
+        session.chatTitle = sanitizeMessageContent(session.chatTitle || '');
+        session.name = sanitizeMessageContent(session.name || '');
+        if (session.metadata?.title) {
+            session.metadata.title = sanitizeMessageContent(session.metadata.title);
+        }
+        if (session.chatData?.messages) {
+            session.chatData.messages = session.chatData.messages.map(msg => ({
+                ...msg,
+                content: sanitizeMessageContent(msg.content)
+            }));
+        }
+
         const title = session.metadata?.title || session.chatTitle || session.name;
 
         // Validate title
@@ -153,9 +166,26 @@ class StorageService {
                 await tx.done;
 
                 console.log(`✅ Renamed old session to: "${renamedTitle}" and saved new session`);
+
+                // Update search index for both
+                try {
+                    await searchService.init();
+                    await searchService.indexSession(existingSession);
+                    await searchService.indexSession(session);
+                } catch (e) {
+                    console.warn('Failed to update search index for renamed sessions:', e);
+                }
             } else {
                 throw error;
             }
+        }
+
+        // Index session if save was successful (and not handled by duplicate logic)
+        try {
+            await searchService.init();
+            await searchService.indexSession(session);
+        } catch (e) {
+            console.warn('Failed to index session for search:', e);
         }
     }
 
@@ -309,6 +339,12 @@ class StorageService {
     // ==================== Memory Archive CRUD Operations ====================
 
     async saveMemory(memory: Memory): Promise<void> {
+        // Sanitize memory content and title
+        memory.content = sanitizeMessageContent(memory.content);
+        if (memory.metadata?.title) {
+            memory.metadata.title = sanitizeMessageContent(memory.metadata.title);
+        }
+
         const db = await this.getDB();
         await db.put(STORES.MEMORIES, memory);
 
@@ -542,12 +578,33 @@ class StorageService {
                     // If it's a genuine Noosphere HTML export, it might be parseable as markdown/text
                     // but for now we treat platform HTML separately
                     if (detection.source === 'platform-html') {
-                        // TODO: Implement platform-specific HTML parsing in this flow
-                        results.skipped++;
-                        results.errors.push({
-                            fileName: file.name,
-                            error: `${detection.platform} HTML import via directory not yet optimized`
-                        });
+                        const platformMode = detectPlatformFromHTML(content);
+                        if (platformMode) {
+                            const chatData = await parseChat(content, 'auto', platformMode);
+                            const sessionData = {
+                                id: crypto.randomUUID(),
+                                name: file.name.replace('.html', '').replace('.htm', ''),
+                                date: new Date().toISOString(),
+                                inputContent: content,
+                                chatTitle: chatData.metadata?.title || file.name.replace('.html', '').replace('.htm', ''),
+                                userName: 'User',
+                                aiName: chatData.metadata?.model || 'AI',
+                                selectedTheme: ChatTheme.DarkDefault,
+                                parserMode: platformMode,
+                                chatData,
+                                metadata: chatData.metadata
+                            };
+
+                            const session = SavedChatSessionSchema.parse(sessionData) as SavedChatSession;
+                            await this.saveSession(session);
+                            results.successful++;
+                        } else {
+                            results.failed++;
+                            results.errors.push({
+                                fileName: file.name,
+                                error: `Failed to detect specific platform mode for ${detection.platform}`
+                            });
+                        }
                     } else {
                         results.skipped++;
                         results.errors.push({
@@ -577,6 +634,12 @@ class StorageService {
     // ============= PROMPT ARCHIVE METHODS =============
 
     async savePrompt(prompt: Prompt): Promise<void> {
+        // Sanitize prompt content and title
+        prompt.content = sanitizeMessageContent(prompt.content);
+        if (prompt.metadata?.title) {
+            prompt.metadata.title = sanitizeMessageContent(prompt.metadata.title);
+        }
+
         const db = await this.getDB();
         await db.put(STORES.PROMPTS, prompt);
 

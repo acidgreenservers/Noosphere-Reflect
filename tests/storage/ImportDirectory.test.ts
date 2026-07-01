@@ -56,6 +56,41 @@ describe('ImportFromDirectory Integrity', () => {
         expect(retrieved?.name).toBe('Imported Session');
     });
 
+    it('should successfully import platform HTML (Claude)', async () => {
+        // Mock Claude HTML content
+        const claudeHtml = `
+            <html>
+                <body>
+                    <div class="font-claude-response">Hello, I am Claude.</div>
+                    <div class="font-user-query">Hello Claude, how are you?</div>
+                </body>
+            </html>
+            <!-- Claude Specific Marker -->
+        `;
+        const file = {
+            name: 'claude-chat.html',
+            size: claudeHtml.length,
+            type: 'text/html',
+            text: async () => claudeHtml
+        } as unknown as File;
+
+        const fileList = {
+            0: file,
+            length: 1,
+            item: (index: number) => file,
+            [Symbol.iterator]: function* () { yield file; }
+        } as unknown as FileList;
+
+        const results = await storageService.importFromDirectory(fileList);
+        expect(results.successful).toBe(1);
+        expect(results.failed).toBe(0);
+
+        const sessions = await storageService.getAllSessions();
+        const claudeSession = sessions.find(s => s.name === 'claude-chat');
+        expect(claudeSession).toBeDefined();
+        expect(claudeSession?.parserMode).toBe(ParserMode.ClaudeHtml);
+    });
+
     it('should fail to import malformed JSON that violates Zod schema', async () => {
         const invalidSession = {
             exportedBy: { tool: 'Noosphere Reflect' },
