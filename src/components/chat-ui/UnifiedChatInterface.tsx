@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { storageService } from '../../services/storageService';
 import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ParserMode } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
@@ -229,18 +230,17 @@ export default function UnifiedChatInterface() {
         await loadSession();
     };
 
-    const handleCopyText = (text: string) => {
+    const handleCopyText = useCallback((text: string) => {
         navigator.clipboard.writeText(text);
         showToast('✓ Message copied to clipboard', 'success');
-    };
+    }, []);
 
     const showToast = (msg: string, type: 'success' | 'info' = 'success') => {
         setNotification({ message: msg, type });
         setTimeout(() => setNotification(null), 3000);
     };
 
-    // Save Message turn to Memory / Prompt / Skill
-    const handleSaveAsMemory = async (msg: ChatMessage) => {
+    const handleSaveAsMemory = useCallback(async (msg: ChatMessage) => {
         const title = prompt('Enter a Title for this Memory:', session?.chatTitle ? `Memory from ${session.chatTitle}` : 'New Memory');
         if (title === null) return; // cancelled
 
@@ -248,69 +248,88 @@ export default function UnifiedChatInterface() {
             id: crypto.randomUUID(),
             content: msg.content,
             aiModel: session?.aiName || 'Unknown AI',
-            tags: session?.metadata?.tags || ['proxy-extracted'],
+            tags: session?.metadata?.tags || [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             metadata: {
-                title: title.trim() || 'Untitled Memory',
+                title: title,
                 wordCount: msg.content.split(/\s+/).length,
                 characterCount: msg.content.length,
-                exportStatus: 'not_exported'
+                exportStatus: 'not_exported',
             }
         };
 
-        await storageService.saveMemory(memory);
-        showToast('🧠 Saved as Memory in Archive!', 'success');
-    };
+        try {
+            await storageService.saveMemory(memory);
+            showToast('🧠 Saved as Memory');
+        } catch (error) {
+            console.error('Failed to save memory', error);
+            showToast('Failed to save memory', 'info');
+        }
+    }, [session]);
 
-    const handleSaveAsPrompt = async (msg: ChatMessage) => {
-        const title = prompt('Enter a Title for this Prompt:', session?.chatTitle ? `Prompt from ${session.chatTitle}` : 'New Prompt');
+    // Save Message turn to Prompt
+    const handleSaveAsPrompt = useCallback(async (msg: ChatMessage) => {
+        const title = prompt('Enter a Title for this Prompt Template:', 'New Prompt Template');
         if (title === null) return;
 
-        const pr: Prompt = {
+        const promptTemplate: Prompt = {
             id: crypto.randomUUID(),
             content: msg.content,
-            tags: session?.metadata?.tags || ['proxy-extracted'],
+            tags: session?.metadata?.tags || [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             metadata: {
-                title: title.trim() || 'Untitled Prompt',
-                category: 'Extracted',
+                title: title,
+                category: session?.aiName || 'General',
                 wordCount: msg.content.split(/\s+/).length,
                 characterCount: msg.content.length,
-                exportStatus: 'not_exported'
+                exportStatus: 'not_exported',
             }
         };
 
-        await storageService.savePrompt(pr);
-        showToast('💡 Saved as Prompt template in Archive!', 'success');
-    };
+        try {
+            await storageService.savePrompt(promptTemplate);
+            showToast('💡 Saved as Prompt');
+        } catch (error) {
+            console.error('Failed to save prompt', error);
+            showToast('Failed to save prompt', 'info');
+        }
+    }, [session]);
 
-    const handleSaveAsSkill = async (msg: ChatMessage) => {
-        const title = prompt('Enter a Title for this Skill:', session?.chatTitle ? `Skill from ${session.chatTitle}` : 'New Skill');
+    // Save Message turn to Skill
+    const handleSaveAsSkill = useCallback(async (msg: ChatMessage) => {
+        const title = prompt('Enter a Title for this Skill:', 'New Skill');
         if (title === null) return;
 
-        const sk: Skill = {
+        const skill: Skill = {
             id: crypto.randomUUID(),
             content: msg.content,
-            tags: session?.metadata?.tags || ['proxy-extracted'],
+            tags: session?.metadata?.tags || [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             metadata: {
-                title: title.trim() || 'Untitled Skill',
+                title: title,
+                category: session?.aiName || 'General',
                 wordCount: msg.content.split(/\s+/).length,
                 characterCount: msg.content.length,
-                exportStatus: 'not_exported'
+                exportStatus: 'not_exported',
             }
         };
 
-        await storageService.saveSkill(sk);
-        showToast('⚡ Saved as Skill in Archive!', 'success');
-    };
-    const handleForkChat = async (msgIndex: number) => {
+        try {
+            await storageService.saveSkill(skill);
+            showToast('⚡ Saved as Skill');
+        } catch (error) {
+            console.error('Failed to save skill', error);
+            showToast('Failed to save skill', 'info');
+        }
+    }, [session]);
+
+    const handleForkChat = useCallback(async (messageIndex: number) => {
         if (!session) return;
         
-        const forkedMessages = messages.slice(0, msgIndex + 1);
+        const forkedMessages = messages.slice(0, messageIndex + 1);
         const newSessionId = crypto.randomUUID();
         const forkedTitle = `${session.chatTitle} - Fork`;
         
@@ -340,9 +359,7 @@ export default function UnifiedChatInterface() {
         
         window.open(`/chat/${newSessionId}`, '_blank');
         showToast('✓ Chat forked in new tab', 'success');
-        window.open(`/chat/${newSessionId}`, '_blank');
-        showToast('✓ Chat forked in new tab', 'success');
-    };
+    }, [session, messages]);
 
     const handleExport = async (format: 'html' | 'markdown' | 'json', toClipboard: boolean = false) => {
         if (!session || !session.chatData) return;
@@ -702,7 +719,7 @@ export default function UnifiedChatInterface() {
                 <div className="w-full max-w-3xl mx-auto space-y-6 flex flex-col pb-4">
                     {messages.map((msg, index) => (
                         <ChatMessageBubble 
-                            key={index}
+                            key={`${session?.id || 'new'}-${index}`}
                             msg={msg}
                             index={index}
                             aiName={session?.aiName || 'AI'}
