@@ -26,11 +26,11 @@ export abstract class BaseMarkdownParser implements BaseParser {
         const linkMatch = input.match(/(?:\*\*|#\s*)?Link(?:\*\*|:)\s*(.+)/i) ||
             input.match(/(?:\*\*|#\s*)?Source(?:\*\*|:)\s*(.+)/i);
 
-        if (titleMatch) metadata.title = titleMatch[1].trim();
-        if (modelMatch) metadata.model = modelMatch[1].trim();
-        if (userMatch) metadata.author = userMatch[1].trim();
-        if (dateMatch) metadata.date = dateMatch[1].trim();
-        if (linkMatch) metadata.sourceUrl = linkMatch[1].trim();
+        if (titleMatch) metadata.title = titleMatch[1].replace(/^[*:_#]+|[*:_]+$/g, '').trim();
+        if (modelMatch) metadata.model = modelMatch[1].replace(/^[*:_#]+|[*:_]+$/g, '').trim();
+        if (userMatch) metadata.author = userMatch[1].replace(/^[*:_#]+|[*:_]+$/g, '').trim();
+        if (dateMatch) metadata.date = dateMatch[1].replace(/^[*:_#]+|[*:_]+$/g, '').trim();
+        if (linkMatch) metadata.sourceUrl = linkMatch[1].replace(/^[*:_#]+|[*:_]+$/g, '').trim();
 
         if (metadata.model && metadata.model !== 'AI Assistant') {
             metadata.tags?.push(metadata.model.toLowerCase());

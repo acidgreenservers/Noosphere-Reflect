@@ -510,16 +510,42 @@ const BasicConverter: React.FC = () => {
                     setChatData(data); // Set data first
 
                     // Apply enriched metadata
-                    setChatTitle(enrichedMetadata.title);
+                    const finalTitle = enrichedMetadata.title || 'Untitled Import';
+                    setChatTitle(finalTitle);
+                    
+                    let resolvedUserName = userName;
+                    if (enrichedMetadata.author) {
+                        resolvedUserName = enrichedMetadata.author;
+                        setUserName(resolvedUserName);
+                    }
+
+                    let resolvedAiName = aiName;
+                    let resolvedTheme = selectedTheme;
+                    if (enrichedMetadata.model) {
+                        resolvedAiName = enrichedMetadata.model;
+                        setAiName(resolvedAiName);
+                        
+                        // Auto-select theme based on the AI model
+                        const modelStr = enrichedMetadata.model.toLowerCase();
+                        if (modelStr.includes('claude')) {
+                            resolvedTheme = ChatTheme.Claude;
+                        } else if (modelStr.includes('gemini')) {
+                            resolvedTheme = ChatTheme.DarkPurple;
+                        } else if (modelStr.includes('gpt') || modelStr.includes('chatgpt')) {
+                            resolvedTheme = ChatTheme.DarkGreen;
+                        } else {
+                            resolvedTheme = ChatTheme.DarkDefault;
+                        }
+                        setSelectedTheme(resolvedTheme);
+                    }
+
                     setMetadata(prev => ({
                         ...prev, // Keep existing metadata state if any
                         ...enrichedMetadata,
+                        title: finalTitle,
                         // Ensure artifacts sync from parsed data if any
                         artifacts: data.metadata?.artifacts || []
                     }));
-
-                    // Sync top-level state
-                    if (enrichedMetadata.title && chatTitle === 'AI Chat Export') setChatTitle(enrichedMetadata.title);
 
                     // HYDRATION: If imported JSON has artifacts in metadata, sync them to messages
                     if (data.metadata?.artifacts && data.metadata.artifacts.length > 0) {
@@ -547,12 +573,12 @@ const BasicConverter: React.FC = () => {
                     const html = await exportService.generate(
                         'html',
                         data,
-                        enrichedMetadata.title,
-                        selectedTheme,
-                        userName,
-                        aiName,
+                        finalTitle,
+                        resolvedTheme,
+                        resolvedUserName,
+                        resolvedAiName,
                         detectedMode,
-                        { ...enrichedMetadata, tags: [...new Set([...metadata.tags, ...(enrichedMetadata.tags || [])])] },
+                        { ...enrichedMetadata },
                         false,
                         true // isPreview
                     );
