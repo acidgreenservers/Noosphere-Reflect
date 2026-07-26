@@ -233,4 +233,84 @@ describe('Database Integrity Suite', () => {
             expect(await storageService.getSessionById(sharedId)).toBeDefined();
         });
     });
+
+    describe('Security & Sanitization Integrity', () => {
+        it('should sanitize session titles and message content on save', async () => {
+            const xssTitle = 'XSS Test <script>alert("title")</script>';
+            const xssContent = 'XSS Content <img src=x onerror=alert("img")>';
+
+            const session = {
+                id: 'xss-session-1',
+                name: xssTitle,
+                chatTitle: xssTitle,
+                date: new Date().toISOString(),
+                selectedTheme: ChatTheme.DarkDefault,
+                parserMode: ParserMode.Basic,
+                inputContent: 'some input',
+                chatData: {
+                    messages: [
+                        { type: 'prompt', content: xssContent }
+                    ]
+                },
+                metadata: {
+                    title: xssTitle,
+                    model: 'gpt-4',
+                    date: new Date().toISOString(),
+                    tags: []
+                }
+            };
+
+            await storageService.saveSession(session as any);
+            const retrieved = await storageService.getSessionById('xss-session-1');
+
+            expect(retrieved?.chatTitle).not.toContain('<script>');
+            expect(retrieved?.name).not.toContain('<script>');
+            expect(retrieved?.metadata?.title).not.toContain('<script>');
+            expect(retrieved?.chatData?.messages[0].content).not.toContain('onerror');
+        });
+
+        it('should sanitize memory and prompt content on save', async () => {
+            const xssContent = 'Memory <svg onload=alert(1)>';
+            const xssTitle = 'Memory <iframe src="javascript:alert(1)"></iframe>';
+
+            const memory: Memory = {
+                id: 'xss-mem-1',
+                content: xssContent,
+                aiModel: 'Claude',
+                tags: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                metadata: {
+                    title: xssTitle,
+                    wordCount: 0,
+                    characterCount: 0
+                }
+            };
+
+            await storageService.saveMemory(memory);
+            const retrievedMem = await storageService.getMemoryById('xss-mem-1');
+
+            expect(retrievedMem?.content).not.toContain('onload');
+            expect(retrievedMem?.metadata.title).not.toContain('<iframe');
+
+            const prompt: Prompt = {
+                id: 'xss-prompt-1',
+                content: xssContent,
+                tags: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                metadata: {
+                    title: xssTitle,
+                    wordCount: 0,
+                    characterCount: 0
+                }
+            };
+
+            await storageService.savePrompt(prompt);
+            const retrievedPrompt = await storageService.getPromptById('xss-prompt-1');
+
+            expect(retrievedPrompt?.content).not.toContain('onload');
+            expect(retrievedPrompt?.metadata.title).not.toContain('<iframe');
+        });
+    });
 });

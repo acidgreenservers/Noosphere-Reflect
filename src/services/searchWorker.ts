@@ -375,6 +375,13 @@ self.onmessage = async (e: MessageEvent) => {
                     miniSearch.discard(payload.id);
                     await saveIndex();
                 }
+
+                // Also remove from incremental indexing metadata
+                if (!db) await initDB();
+                const dtx = db!.transaction('index-metadata', 'readwrite');
+                await dtx.store.delete(payload.id);
+                await dtx.done;
+
                 self.postMessage({ type: 'DELETE_COMPLETE', payload: { id: payload.id }, messageId });
                 break;
 

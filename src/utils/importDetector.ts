@@ -66,14 +66,14 @@ export const hasChatStructure = (content: string): boolean => {
  * Detect platform from HTML content markers
  */
 export const detectPlatformFromHTML = (content: string): ParserMode | null => {
+  if (content.includes('font-claude-response')) {
+    return ParserMode.ClaudeHtml;
+  }
   if (content.includes('model-response') || content.includes('user-query') || content.includes('gemini.google.com')) {
     return ParserMode.GeminiHtml;
   }
   if (content.includes('bg-basic-gray-alpha-4') || content.includes('data-message-author-role')) {
     return ParserMode.LeChatHtml;
-  }
-  if (content.includes('font-claude-response')) {
-    return ParserMode.ClaudeHtml;
   }
   if (content.includes('[data-turn]') || content.includes('data-message-id')) {
     return ParserMode.ChatGptHtml;
