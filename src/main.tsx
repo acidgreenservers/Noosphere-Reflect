@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { GoogleAuthProvider } from './contexts/GoogleAuthContext';
 import App from './App';
+import MathJaxProvider from './components/MathJaxProvider';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -17,7 +18,9 @@ root.render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={googleClientId}>
       <GoogleAuthProvider>
-        <App />
+        <MathJaxProvider>
+          <App />
+        </MathJaxProvider>
       </GoogleAuthProvider>
     </GoogleOAuthProvider>
   </React.StrictMode>

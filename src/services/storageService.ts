@@ -3,8 +3,8 @@ import { dbService } from './storage/DBService';
 import { sessionStore } from './storage/SessionStore';
 import { memoryStore } from './storage/MemoryStore';
 import { promptStore } from './storage/PromptStore';
+import { skillStore } from './storage/SkillStore';
 import { settingsStore } from './storage/SettingsStore';
-import { folderStore } from './storage/FolderStore';
 import { STORES, DB_VERSION } from './db/schema';
 import {
     SavedChatSession,
@@ -14,9 +14,9 @@ import {
     ChatMetadata,
     Memory,
     Prompt,
+    Skill,
     ParserMode,
     ChatTheme,
-    Folder,
     ArchiveType
 } from '../types';
 import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema, sanitizeMessageContent } from '../utils/importValidator';
@@ -239,14 +239,16 @@ class StorageService {
         settings: AppSettings;
         memories: Memory[];
         prompts: Prompt[];
+        skills: Skill[];
         version: number;
         exportedAt: string;
     }> {
-        const [sessions, settings, memories, prompts] = await Promise.all([
+        const [sessions, settings, memories, prompts, skills] = await Promise.all([
             this.getAllSessions(),
             this.getSettings(),
             this.getAllMemories(),
-            this.getAllPrompts()
+            this.getAllPrompts(),
+            this.getAllSkills()
         ]);
 
         return {
@@ -254,6 +256,7 @@ class StorageService {
             settings,
             memories,
             prompts,
+            skills,
             version: DB_VERSION,
             exportedAt: new Date().toISOString()
         };
@@ -470,63 +473,30 @@ class StorageService {
         return promptStore.deleteWithSearch(id);
     }
 
-    // Folders
-    async saveFolder(folder: Folder): Promise<void> {
-        return folderStore.save(folder);
+    // Skills
+    async saveSkill(skill: Skill): Promise<void> {
+        return skillStore.save(skill);
     }
 
-    async getFoldersByType(type: ArchiveType): Promise<Folder[]> {
-        return folderStore.getByType(type);
+    async getAllSkills(): Promise<Skill[]> {
+        return skillStore.getAllSorted();
     }
 
-    async deleteFolder(id: string): Promise<void> {
-        return folderStore.deleteWithCleanup(id, (folderIds, type) => this.moveItemsFromFoldersToRoot(folderIds, type));
+    async getPaginatedSkills(pageSize: number = 25, offsetKey?: any) {
+        return skillStore.getPaginatedSorted(pageSize, offsetKey);
     }
 
-    async getFolderById(id: string): Promise<Folder | undefined> {
-        return folderStore.getById(id);
+    async getSkillById(id: string): Promise<Skill | undefined> {
+        return skillStore.getById(id);
     }
 
-    private async moveItemsFromFoldersToRoot(folderIds: string[], type: ArchiveType): Promise<void> {
-        const db = await this.getDB();
-        const storeName = type === 'chat' ? STORES.SESSIONS : type === 'memory' ? STORES.MEMORIES : STORES.PROMPTS;
-
-        const tx = db.transaction(storeName, 'readwrite');
-        let cursor = await tx.store.openCursor();
-
-        while (cursor) {
-            const item = cursor.value;
-            if (item.folderId && folderIds.includes(item.folderId)) {
-                item.folderId = null;
-                await cursor.update(item);
-            }
-            cursor = await cursor.continue();
-        }
-        await tx.done;
+    async updateSkill(skill: Skill): Promise<void> {
+        skill.updatedAt = new Date().toISOString();
+        return this.saveSkill(skill);
     }
 
-    async moveFolder(folderId: string, targetParentId: string | null): Promise<void> {
-        const folder = await this.getFolderById(folderId);
-        if (!folder) return;
-
-        folder.parentId = targetParentId;
-        folder.updatedAt = new Date().toISOString();
-        await this.saveFolder(folder);
-    }
-
-    async moveItemsToFolder(itemIds: string[], targetFolderId: string | null, type: ArchiveType): Promise<void> {
-        const db = await this.getDB();
-        const storeName = type === 'chat' ? STORES.SESSIONS : type === 'memory' ? STORES.MEMORIES : STORES.PROMPTS;
-
-        const tx = db.transaction(storeName, 'readwrite');
-        for (const id of itemIds) {
-            const item = await tx.store.get(id);
-            if (item) {
-                item.folderId = targetFolderId;
-                await tx.store.put(item);
-            }
-        }
-        await tx.done;
+    async deleteSkill(id: string): Promise<void> {
+        return skillStore.deleteWithSearch(id);
     }
 }
 

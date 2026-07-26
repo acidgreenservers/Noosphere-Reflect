@@ -1,6 +1,6 @@
 import MiniSearch from 'minisearch';
 import { openDB, type IDBPDatabase } from 'idb';
-import type { SavedChatSession, ChatMessage, SearchFilters, Memory, Prompt, ArchiveType } from '../types';
+import type { SavedChatSession, ChatMessage, SearchFilters, Memory, Prompt, Skill, ArchiveType } from '../types';
 
 interface SearchDocument {
     id: string;
@@ -105,8 +105,11 @@ function indexSession(session: SavedChatSession) {
     });
 
     // Remove old documents for this session
-    const oldDocs = miniSearch.where(doc => doc.sessionId === session.id);
-    oldDocs.forEach(doc => miniSearch.discard(doc.id));
+    let i = 0;
+    while (miniSearch.has(`${session.id}-${i}`)) {
+        miniSearch.discard(`${session.id}-${i}`);
+        i++;
+    }
 
     // Add new documents
     miniSearch.addAll(documents);
@@ -139,6 +142,23 @@ function indexPrompt(prompt: Prompt) {
         timestamp: new Date(prompt.createdAt).getTime(),
         title: prompt.metadata.title || 'Untitled Prompt',
         tags: prompt.tags
+    };
+
+    if (miniSearch.has(doc.id)) {
+        miniSearch.discard(doc.id);
+    }
+    miniSearch.add(doc);
+}
+
+// Index a Skill
+function indexSkill(skill: Skill) {
+    const doc: SearchDocument = {
+        id: skill.id,
+        archiveType: 'skill',
+        content: skill.content,
+        timestamp: new Date(skill.createdAt).getTime(),
+        title: skill.metadata.title || 'Untitled Skill',
+        tags: skill.tags
     };
 
     if (miniSearch.has(doc.id)) {
@@ -290,6 +310,12 @@ self.onmessage = async (e: MessageEvent) => {
                 self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.prompt.id }, messageId });
                 break;
 
+            case 'INDEX_SKILL':
+                indexSkill(payload.skill);
+                await saveIndex();
+                self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.skill.id }, messageId });
+                break;
+
             case 'INDEX_WITH_CHECK': {
                 // Incremental indexing: skip if session unchanged
                 const lastIndexed = await getLastIndexedTime(payload.session.id);
@@ -320,6 +346,7 @@ self.onmessage = async (e: MessageEvent) => {
                 const sessions: SavedChatSession[] = payload.sessions || [];
                 const memories: Memory[] = payload.memories || [];
                 const prompts: Prompt[] = payload.prompts || [];
+                const skills: Skill[] = payload.skills || [];
                 let indexedCount = 0;
                 let skippedCount = 0;
                 const now = Date.now();
@@ -349,6 +376,12 @@ self.onmessage = async (e: MessageEvent) => {
                 // Index Prompts
                 for (const prompt of prompts) {
                     indexPrompt(prompt);
+                    indexedCount++;
+                }
+
+                // Index Skills
+                for (const skill of skills) {
+                    indexSkill(skill);
                     indexedCount++;
                 }
 

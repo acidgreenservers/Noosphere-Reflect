@@ -136,5 +136,48 @@ export const migrations: Migration[] = [
                 sessionStore.createIndex('date', 'date', { unique: false });
             }
         }
+    },
+    {
+        version: 9,
+        description: 'Create skills store',
+        migrate: (db, transaction) => {
+            if (!db.objectStoreNames.contains(STORES.SKILLS)) {
+                const skillStore = db.createObjectStore(STORES.SKILLS, { keyPath: 'id' });
+                skillStore.createIndex('createdAt', 'createdAt', { unique: false });
+                skillStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+                skillStore.createIndex('folderId', 'folderId', { unique: false });
+            }
+        }
+    },
+    {
+        version: 10,
+        description: 'Remove folders store and folderId indexes',
+        migrate: (db, transaction) => {
+            // Delete the orphaned folders store if it exists
+            if (db.objectStoreNames.contains(STORES.FOLDERS)) {
+                db.deleteObjectStore(STORES.FOLDERS);
+            }
+
+            // Remove the folderId index from all stores to clean up DB
+            const sessionStore = transaction.objectStore(STORES.SESSIONS);
+            if (sessionStore.indexNames.contains('folderId')) {
+                sessionStore.deleteIndex('folderId');
+            }
+
+            const memoryStore = transaction.objectStore(STORES.MEMORIES);
+            if (memoryStore.indexNames.contains('folderId')) {
+                memoryStore.deleteIndex('folderId');
+            }
+
+            const promptStore = transaction.objectStore(STORES.PROMPTS);
+            if (promptStore.indexNames.contains('folderId')) {
+                promptStore.deleteIndex('folderId');
+            }
+            
+            const skillStore = transaction.objectStore(STORES.SKILLS);
+            if (skillStore.indexNames.contains('folderId')) {
+                skillStore.deleteIndex('folderId');
+            }
+        }
     }
 ];

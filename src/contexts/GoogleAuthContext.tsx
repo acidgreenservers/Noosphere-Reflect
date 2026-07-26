@@ -21,6 +21,7 @@ interface GoogleAuthContextType {
     chatsFolderId: string | null;
     memoriesFolderId: string | null;
     promptsFolderId: string | null;
+    skillsFolderId: string | null;
     initDriveFolder: () => Promise<void>;
 }
 
@@ -37,6 +38,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
     const [chatsFolderId, setChatsFolderId] = useState<string | null>(localStorage.getItem('drive_chats_folder_id'));
     const [memoriesFolderId, setMemoriesFolderId] = useState<string | null>(localStorage.getItem('drive_memories_folder_id'));
     const [promptsFolderId, setPromptsFolderId] = useState<string | null>(localStorage.getItem('drive_prompts_folder_id'));
+    const [skillsFolderId, setSkillsFolderId] = useState<string | null>(localStorage.getItem('drive_skills_folder_id'));
 
     const login = useGoogleLogin({
         onSuccess: async (tokenResponse: TokenResponse) => {
@@ -94,6 +96,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         setChatsFolderId(null);
         setMemoriesFolderId(null);
         setPromptsFolderId(null);
+        setSkillsFolderId(null);
         sessionStorage.removeItem('google_access_token');
         sessionStorage.removeItem('google_token_expires_at');
         localStorage.removeItem('google_user');
@@ -101,6 +104,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         localStorage.removeItem('drive_chats_folder_id');
         localStorage.removeItem('drive_memories_folder_id');
         localStorage.removeItem('drive_prompts_folder_id');
+        localStorage.removeItem('drive_skills_folder_id');
     };
 
     const initializeFolder = async (token: string) => {
@@ -121,6 +125,10 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
             const promptsId = await googleDriveService.ensureFolder(token, 'Noosphere-Nexus-Prompts', mainFolderId);
             setPromptsFolderId(promptsId);
             localStorage.setItem('drive_prompts_folder_id', promptsId);
+
+            const skillsId = await googleDriveService.ensureFolder(token, 'Noosphere-Nexus-Skills', mainFolderId);
+            setSkillsFolderId(skillsId);
+            localStorage.setItem('drive_skills_folder_id', skillsId);
 
             console.log('Category folders ready');
         } catch (error) {
@@ -174,6 +182,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         chatsFolderId,
         memoriesFolderId,
         promptsFolderId,
+        skillsFolderId,
         initDriveFolder
     };
 

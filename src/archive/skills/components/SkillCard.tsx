@@ -1,20 +1,20 @@
 import React from 'react';
-import { Memory } from '../types';
+import { Skill } from '../types';
 
 interface Props {
-    memory: Memory;
+    skill: Skill;
     viewMode?: 'list' | 'grid';
-    onEdit: (memory: Memory) => void;
+    onEdit: (skill: Skill) => void;
     onDelete: (id: string) => void;
-    onExport: (memory: Memory, format: 'html' | 'markdown' | 'json') => void;
-    onStatusToggle: (memory: Memory, e: React.MouseEvent) => void;
-    onPreview: (memory: Memory) => void;
+    onExport: (skill: Skill, format: 'html' | 'markdown' | 'json') => void;
+    onStatusToggle: (skill: Skill, e: React.MouseEvent) => void;
+    onPreview: (skill: Skill) => void;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, isSelected, onToggleSelect }: Props) {
-    const formattedDate = new Date(memory.createdAt).toLocaleDateString(undefined, {
+export default function SkillCard({ skill, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, isSelected, onToggleSelect }: Props) {
+    const formattedDate = new Date(skill.createdAt).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -22,50 +22,49 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
 
     const handleStatusToggleLocal = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        onStatusToggle(memory, e);
+        onStatusToggle(skill, e);
     };
 
-    const previewContent = memory.content.length > 300
-        ? memory.content.substring(0, 300) + '...'
-        : memory.content;
+    const previewContent = skill.content.length > 300
+        ? skill.content.substring(0, 300) + '...'
+        : skill.content;
 
-    const getModelColor = (model: string) => {
-        switch (model.toLowerCase()) {
-            case 'claude': return 'bg-orange-900/40 text-orange-200 border-orange-700/50';
-            case 'gemini': return 'bg-blue-900/40 text-blue-200 border-blue-700/50';
-            case 'chatgpt': return 'bg-emerald-900/40 text-emerald-200 border-emerald-700/50';
-            case 'lechat': return 'bg-amber-900/40 text-amber-200 border-amber-700/50';
-            case 'grok': return 'bg-black text-white border-white/20';
-            case 'llamacoder': return 'bg-white text-black border-gray-200 font-medium';
+    const getCategoryColor = (category: string) => {
+        switch (category?.toLowerCase()) {
+            case 'coding': return 'bg-emerald-900/40 text-emerald-200 border-emerald-700/50';
+            case 'writing': return 'bg-amber-900/40 text-amber-200 border-amber-700/50';
+            case 'analysis': return 'bg-purple-900/40 text-purple-200 border-purple-700/50';
+            case 'research': return 'bg-cyan-900/40 text-cyan-200 border-cyan-700/50';
+            case 'creative': return 'bg-pink-900/40 text-pink-200 border-pink-700/50';
             default: return 'bg-gray-800 text-gray-300 border-gray-600';
         }
     };
 
     const handleDragStart = (e: React.DragEvent) => {
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', memory.id);
+        e.dataTransfer.setData('text/plain', skill.id);
     };
 
     if (viewMode === 'list') {
         return (
             <div
-                onClick={() => onPreview(memory)}
+                onClick={() => onPreview(skill)}
                 draggable
                 onDragStart={handleDragStart}
                 className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer border-b border-transparent hover:bg-white/5 ${
-                    isSelected ? 'bg-purple-900/20' : ''
+                    isSelected ? 'bg-blue-900/20' : ''
                 }`}
             >
                 <div className="flex items-center gap-4 min-w-0">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onToggleSelect(memory.id);
+                            onToggleSelect(skill.id);
                         }}
                         className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${
                             isSelected
-                                ? 'bg-purple-500 border-purple-500 text-white'
-                                : 'border-gray-500 group-hover:border-purple-400 text-transparent'
+                                ? 'bg-blue-500 border-blue-500 text-white'
+                                : 'border-gray-500 group-hover:border-blue-400 text-transparent'
                         }`}
                     >
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,15 +73,15 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
                     </button>
                     
                     <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-semibold text-gray-200 truncate group-hover:text-purple-300 transition-colors">
-                            {memory.metadata.title}
+                        <span className="text-sm font-semibold text-gray-200 truncate group-hover:text-blue-300 transition-colors">
+                            {skill.metadata.title}
                         </span>
                         <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                            <span className="opacity-80">{memory.aiModel}</span>
-                            {memory.tags.length > 0 && (
+                            <span className="opacity-80">{skill.metadata.category || 'General'}</span>
+                            {skill.tags.length > 0 && (
                                 <>
                                     <span>•</span>
-                                    <span className="truncate max-w-[200px]">{memory.tags.join(', ')}</span>
+                                    <span className="truncate max-w-[200px]">{skill.tags.join(', ')}</span>
                                 </>
                             )}
                         </div>
@@ -94,16 +93,16 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onEdit(memory);
+                            onEdit(skill);
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-white transition-opacity"
-                        title="Edit memory"
+                        title="Edit skill"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                     </button>
-                    <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-400 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 text-gray-600 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                 </div>
@@ -113,13 +112,13 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
 
     return (
         <div
-            onClick={() => onPreview(memory)}
+            onClick={() => onPreview(skill)}
             draggable
             onDragStart={handleDragStart}
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer
             ${isSelected
-                    ? 'bg-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20 ring-2 ring-purple-500/50 scale-[1.03]'
-                    : 'bg-[#122622]/40 hover:bg-[#122622]/60 border-green-500/10 hover:border-purple-500/30 hover:shadow-purple-900/10 hover:shadow-purple-500/20 hover:shadow-lg'
+                    ? 'bg-blue-900/20 border-blue-500/50 shadow-lg shadow-blue-900/10 shadow-blue-500/20 ring-2 ring-blue-500/50 scale-[1.03]'
+                    : 'bg-[#122622]/40 hover:bg-[#122622]/60 border-green-500/10 hover:border-blue-500/30 hover:shadow-blue-900/10 hover:shadow-blue-500/20 hover:shadow-lg'
                 }`}>
             {/* Selection Checkbox & Edit Button */}
             <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
@@ -127,11 +126,11 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
                     onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        onEdit(memory);
+                        onEdit(skill);
                     }}
-                    className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/40 rounded transition-all hover:scale-110 active:scale-95"
-                    title="Edit memory content"
-                    aria-label="Edit memory"
+                    className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/40 rounded transition-all hover:scale-110 active:scale-95"
+                    title="Edit skill content"
+                    aria-label="Edit skill"
                 >
                     Edit
                 </button>
@@ -139,15 +138,15 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
                     onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        onToggleSelect(memory.id);
+                        onToggleSelect(skill.id);
                     }}
                     className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110 active:scale-95
                         ${isSelected
-                            ? 'bg-purple-500 border-purple-500 text-white opacity-100'
-                            : 'bg-[#09100c]/50 border-gray-600 hover:border-purple-400 text-transparent opacity-100'
+                            ? 'bg-blue-500 border-blue-500 text-white opacity-100'
+                            : 'bg-[#09100c]/50 border-gray-600 hover:border-blue-400 text-transparent opacity-100'
                         }`}
-                    title={isSelected ? "Deselect this memory" : "Select this memory"}
-                    aria-label={isSelected ? "Deselect this memory" : "Select this memory"}
+                    title={isSelected ? "Deselect this skill" : "Select this skill"}
+                    aria-label={isSelected ? "Deselect this skill" : "Select this skill"}
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -157,22 +156,22 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
 
             <div className="flex justify-between items-start mb-3 gap-4">
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-gray-200 truncate group-hover:text-purple-300 transition-colors">
-                        {memory.metadata.title}
+                    <h3 className="text-lg font-bold text-gray-200 truncate group-hover:text-blue-300 transition-colors">
+                        {skill.metadata.title}
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-gray-400 mt-1 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded border ${getModelColor(memory.aiModel)}`}>
-                            {memory.aiModel}
+                        <span className={`px-2 py-0.5 rounded border ${getCategoryColor(skill.metadata.category || 'General')}`}>
+                            {skill.metadata.category || 'General'}
                         </span>
                         <span>•</span>
-                        <span title={memory.createdAt}>{formattedDate}</span>
-                        {memory.metadata.wordCount > 0 && (
+                        <span title={skill.createdAt}>{formattedDate}</span>
+                        {skill.metadata.wordCount > 0 && (
                             <>
                                 <span>•</span>
-                                <span>{memory.metadata.wordCount} words</span>
+                                <span>{skill.metadata.wordCount} words</span>
                             </>
                         )}
-                        {memory.metadata.exportStatus === 'exported' && (
+                        {skill.metadata.exportStatus === 'exported' && (
                             <>
                                 <span>•</span>
                                 <span className="px-2 py-0.5 bg-green-900/40 text-green-300 border border-green-700/50 rounded flex items-center gap-1">
@@ -186,28 +185,28 @@ export default function MemoryCard({ memory, viewMode = 'grid', onEdit, onDelete
                 <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={handleStatusToggleLocal}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-95 ${memory.metadata.exportStatus === 'exported'
-                            ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
+                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-95 ${skill.metadata.exportStatus === 'exported'
+                            ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                             : 'bg-red-500/20 border-red-500/50 text-red-400'
                             }`}
-                        title={`Export Status: ${memory.metadata.exportStatus === 'exported' ? 'Exported' : 'Not Exported'} (Click to toggle)`}
-                        aria-label={`Toggle Export Status: Currently ${memory.metadata.exportStatus === 'exported' ? 'Exported' : 'Not Exported'}`}
+                        title={`Export Status: ${skill.metadata.exportStatus === 'exported' ? 'Exported' : 'Not Exported'} (Click to toggle)`}
+                        aria-label={`Toggle Export Status: Currently ${skill.metadata.exportStatus === 'exported' ? 'Exported' : 'Not Exported'}`}
                     >
-                        {memory.metadata.exportStatus === 'exported' ? '📤' : '📥'}
+                        {skill.metadata.exportStatus === 'exported' ? '📤' : '📥'}
                     </button>
                 </div>
             </div>
 
             <div className="text-sm text-gray-300 font-mono whitespace-pre-wrap mb-4 bg-[#09100c]/30 border border-green-500/5 rounded p-3 max-h-48 overflow-hidden relative">
                 {previewContent}
-                {memory.content.length > 300 && (
+                {skill.content.length > 300 && (
                     <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#122622]/80 to-transparent pointer-events-none" />
                 )}
             </div>
 
-            {memory.tags.length > 0 && (
+            {skill.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                    {memory.tags.map((tag, i) => (
+                    {skill.tags.map((tag, i) => (
                         <span key={i} className="px-2 py-1 bg-[#09100c]/50 rounded text-xs text-gray-400 border border-green-500/10">
                             #{tag}
                         </span>

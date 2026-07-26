@@ -16,10 +16,10 @@ import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService, DriveFile } from '../../../services/googleDriveService';
 import { GoogleDriveImportModal } from '../../../components/GoogleDriveImportModal';
 import { deduplicateMessages } from '../../../utils/messageDedupe';
-import { ChatSessionCard, ArchiveHeader, ArchiveSearchBar, ArchiveBatchActionBar, ChatPreviewModal } from '../components';
+import { ChatSessionCard, ArchiveBatchActionBar } from '../components';
 import { useExtensionBridge } from '../hooks/useExtensionBridge';
 import { useArchiveSearch } from '../hooks/useArchiveSearch';
-import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
+import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 
@@ -37,34 +37,15 @@ const ArchiveHub: React.FC = () => {
     const [settingsModalOpen, setSettingsModalOpen] = useState(false);
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [selectedSessionForArtifacts, setSelectedSessionForArtifacts] = useState<SavedChatSession | null>(null);
-    const [previewSession, setPreviewSession] = useState<SavedChatSession | null>(null);
+    // Previews now route directly to the main interface in read-only mode
     const [showArtifactManager, setShowArtifactManager] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [showGoogleImportModal, setShowGoogleImportModal] = useState(false);
     const [isImportingFromDrive, setIsImportingFromDrive] = useState(false);
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
 
-    // Folder System
-    const {
-        folders,
-        currentFolderId,
-        setCurrentFolderId,
-        breadcrumbs,
-        createFolder,
-        updateFolder,
-        deleteFolder,
-        moveFolder,
-        moveItemsToFolder,
-        currentFolders
-    } = useFolders('chat');
-
-    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-    const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
-    const [moveModalOpen, setMoveModalOpen] = useState(false);
-    const [movingItemIds, setMovingItemIds] = useState<string[]>([]);
-    const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -166,6 +147,10 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
+    const handlePreview = (session: SavedChatSession) => {
+        navigate(`/chat/${session.id}`, { state: { readOnly: true } });
+    };
+
     const toggleSelection = (id: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -216,12 +201,6 @@ const ArchiveHub: React.FC = () => {
         setShowExportDestination(true);
     };
 
-    const handleBatchMove = () => {
-        if (selectedIds.size === 0) return;
-        setMovingItemIds(Array.from(selectedIds));
-        setMovingFolderId(null);
-        setMoveModalOpen(true);
-    };
 
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json', _packageType?: 'directory' | 'zip' | 'single') => {
         const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
@@ -1176,202 +1155,82 @@ const ArchiveHub: React.FC = () => {
     const handleSearchResult = (sessionId: string, messageIndex: number) => {
         // Navigate to the converter page with the session loaded
         navigate(`/converter?load=${sessionId}&msg=${messageIndex}`);
-        // Note: messageIndex could be used in future to scroll to specific message
     };
 
-    return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 pb-24">
-            {/* Header */}
-            <ArchiveHeader
-                logo={logo}
-                onToggleSearch={() => setShowSearch(true)}
-                onOpenSettings={() => setSettingsModalOpen(true)}
-                onSyncFromDrive={handleSyncFromDrive}
-                isLoggedIn={isLoggedIn}
-                isSyncing={isSendingToDrive}
-            />
-
-
-            {/* Noosphere Reflect Header */}
-            <div className="bg-gradient-to-r from-green-900/20 via-emerald-900/20 to-green-900/20 border-b border-green-500/20 py-6">
-                <div className="max-w-7xl mx-auto px-4">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-emerald-500 to-green-600 bg-clip-text text-transparent text-center mb-2">
-                        Noosphere Reflect
-                    </h2>
-                    <p className="text-center text-gray-400 text-sm">
-                        Preserving Meaning Through Memory
-                    </p>
-                </div>
-            </div>
-
-            <main className="max-w-7xl mx-auto px-4 py-8">
-                {/* Disclaimer */}
-                <div className="mb-4 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-full flex items-start gap-3">
-                    <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-sm text-green-200">
-                        <span className="font-semibold">Tip:</span> Click the Refresh button after importing chats via the extension for them to populate
-                    </p>
-                </div>
-
-                {/* Search & Filters */}
-                <ArchiveSearchBar
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    onSelectAll={handleSelectAll}
-                    onRefresh={handleManualRefresh}
-                    areAllSelected={areAllSelected}
-                    filteredCount={filteredSessions.length}
-                    isRefreshing={isRefreshing}
+    const itemsComponent = isLoading ? (
+        <div className="col-span-full py-20 text-center">
+            <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-400">Archiving system initialization...</p>
+        </div>
+    ) : (
+        <>
+            {filteredSessions.map(session => (
+                <ChatSessionCard
+                    key={session.id}
+                    session={session}
+                    isSelected={selectedIds.has(session.id)}
+                    onSelect={toggleSelection}
+                    onDelete={handleDelete}
+                    onStatusToggle={handleStatusToggle}
+                    onPreview={handlePreview}
+                    onManageArtifacts={(full) => {
+                        setSelectedSessionForArtifacts(full);
+                        setShowArtifactManager(true);
+                    }}
+                    getModelBadgeColor={getModelBadgeColor}
+                    viewMode={viewMode}
                 />
-
-                {/* Folder Navigation */}
-                <div className="flex justify-between items-center mb-6">
-                    <FolderBreadcrumbs
-                        path={breadcrumbs}
-                        onNavigate={setCurrentFolderId}
-                        accentColor="green"
-                        onDrop={async (folderId: string | null, draggedId: string, type: 'item' | 'folder') => {
-                            if (type === 'folder') {
-                                await moveFolder(draggedId, folderId);
-                            } else {
-                                const itemsToMove = selectedIds.has(draggedId) ? Array.from(selectedIds) : [draggedId];
-                                await moveItemsToFolder(itemsToMove, folderId);
-                                if (selectedIds.has(draggedId)) setSelectedIds(new Set());
-                                await loadSessions();
-                            }
-                        }}
-                    />
-                    <FolderActionsDropdown
-                        accentColor="green"
-                        onAddFolder={() => { setEditingFolder(null); setIsFolderModalOpen(true); }}
-                        onRenameFolder={() => {
-                            if (currentFolderId) {
-                                const folder = folders.find(f => f.id === currentFolderId);
-                                if (folder) {
-                                    setEditingFolder(folder);
-                                    setIsFolderModalOpen(true);
-                                }
-                            } else {
-                                alert('Please navigate into a folder to rename it');
-                            }
-                        }}
-                        onDeleteFolder={() => {
-                            if (currentFolderId) {
-                                const folder = folders.find(f => f.id === currentFolderId);
-                                if (folder) {
-                                    setEditingFolder(folder);
-                                    setShowDeleteModal(true);
-                                }
-                            } else {
-                                alert('Please navigate into a folder to delete it');
-                            }
-                        }}
-                    />
+            ))}
+            {!searchTerm && filteredSessions.length === 0 && (
+                <div className="col-span-full py-20 text-center text-gray-500">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-gray-800/50 border border-white/5 flex items-center justify-center">
+                        <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                    </div>
+                    <p className="text-lg font-medium mb-1">No archives found</p>
+                    <p className="text-sm opacity-60">Import a new chat or search for something else.</p>
+                    <Link to="/" className="inline-block mt-4 text-green-400 hover:text-green-300">
+                        Start a New Chat
+                    </Link>
                 </div>
+            )}
+        </>
+    );
 
-                {/* Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {isLoading ? (
-                        <div className="col-span-full py-20 text-center">
-                            <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
-                            <p className="text-gray-400">Archiving system initialization...</p>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Current Folders - Only show if not searching */}
-                            {!searchTerm && currentFolders.map((folder: Folder) => {
-                                const stats = calculateFolderStats(folder.id, folders, sessions);
-                                return (
-                                    <FolderCard
-                                        key={folder.id}
-                                        folder={folder}
-                                        accentColor="green"
-                                        stats={stats}
-                                        onClick={(f: Folder) => setCurrentFolderId(f.id)}
-                                        onDelete={(id: string, e: React.MouseEvent) => {
-                                            e.stopPropagation();
-                                            if (confirm('Delete this folder and all its contents?')) {
-                                                deleteFolder(id);
-                                            }
-                                        }}
-                                        onRename={(f: Folder, e: React.MouseEvent) => {
-                                            e.stopPropagation();
-                                            setEditingFolder(f);
-                                            setIsFolderModalOpen(true);
-                                        }}
-                                        onTagClick={(tag: string, e: React.MouseEvent) => {
-                                            e.stopPropagation();
-                                            setSearchTerm(tag);
-                                        }}
-                                        onDrop={async (folderId: string, draggedId: string, type: 'item' | 'folder') => {
-                                            if (type === 'folder') {
-                                                await moveFolder(draggedId, folderId);
-                                            } else {
-                                                const itemsToMove = selectedIds.has(draggedId) ? Array.from(selectedIds) : [draggedId];
-                                                await moveItemsToFolder(itemsToMove, folderId);
-                                                if (selectedIds.has(draggedId)) setSelectedIds(new Set());
-                                                await loadSessions();
-                                            }
-                                        }}
-                                    />
-                                );
-                            })}
-
-                            {/* Sessions */}
-                            {filteredSessions
-                                .filter(s => {
-                                    if (searchTerm) return true; // Search overrides folder filtering
-                                    if (currentFolderId === null) return !s.folderId; // Root: only unfoldered items
-                                    return s.folderId === currentFolderId; // Folder: only items in this folder
-                                })
-                                .map(session => (
-                                    <ChatSessionCard
-                                        key={session.id}
-                                        session={session}
-                                        isSelected={selectedIds.has(session.id)}
-                                        onSelect={toggleSelection}
-                                        onDelete={handleDelete}
-                                        onStatusToggle={handleStatusToggle}
-                                        onPreview={setPreviewSession}
-                                        onManageArtifacts={(full) => {
-                                            setSelectedSessionForArtifacts(full);
-                                            setShowArtifactManager(true);
-                                        }}
-                                        getModelBadgeColor={getModelBadgeColor}
-                                    />
-                                ))}
-
-                            {/* Empty state */}
-                            {!searchTerm && currentFolders.length === 0 && filteredSessions.filter(s => currentFolderId === null ? !s.folderId : s.folderId === currentFolderId).length === 0 && (
-                                <div className="col-span-full py-20 text-center text-gray-500">
-                                    <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-gray-800/50 border border-white/5 flex items-center justify-center">
-                                        <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                        </svg>
-                                    </div>
-                                    <p className="text-lg font-medium mb-1">No archives found</p>
-                                    <p className="text-sm opacity-60">Import a new chat or search for something else.</p>
-                                    <Link to="/converter" className="inline-block mt-4 text-green-400 hover:text-green-300">
-                                        Go to Converter
-                                    </Link>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </main>
-
-            {/* Floating Action Bar (Batch Actions) */}
-            <ArchiveBatchActionBar
-                selectedCount={selectedIds.size}
-                onExport={handleExportStart}
-                onDelete={handleBatchDelete}
-                onMove={handleBatchMove}
-                onClearSelection={() => setSelectedIds(new Set())}
-            />
-
+    return (
+        <ArchiveLayout
+            icon="💬"
+            title="Chat Archive"
+            description="Your saved proxy chat sessions."
+            searchQuery={searchTerm}
+            onSearchChange={setSearchTerm}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onSelectAll={handleSelectAll}
+            isAllSelected={areAllSelected}
+            totalFilteredItems={filteredSessions.length}
+            itemsComponent={itemsComponent}
+            batchActionsComponent={
+                <ArchiveBatchActionBar
+                    selectedCount={selectedIds.size}
+                    onExport={handleExportStart}
+                    onDelete={handleBatchDelete}
+                    onClearSelection={() => setSelectedIds(new Set())}
+                    accentColor="green"
+                    itemLabel="chats"
+                />
+            }
+        >
+            {/* Disclaimer / Tip */}
+            <div className="mb-4 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-xl flex items-start gap-3">
+                <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-green-200">
+                    <span className="font-semibold">Tip:</span> Click the refresh icon above if you've imported chats recently to populate the list.
+                </p>
+            </div>
 
             {/* Export Destination Modal */}
             <ExportDestinationModal
@@ -1470,18 +1329,6 @@ const ArchiveHub: React.FC = () => {
                 </div>
             )}
 
-            {/* Chat Preview Modal */}
-            {previewSession && (
-                <ChatPreviewModal
-                    session={previewSession}
-                    onClose={() => setPreviewSession(null)}
-                    onSave={async (updatedSession) => {
-                        await storageService.saveSession(updatedSession);
-                        await loadSessions();
-                        setPreviewSession(updatedSession);
-                    }}
-                />
-            )}
 
             {/* Search Interface */}
             {showSearch && (
@@ -1506,55 +1353,7 @@ const ArchiveHub: React.FC = () => {
                 onImport={handleImportFromGoogleDrive}
                 isImporting={isImportingFromDrive}
             />
-
-            {/* Folder Modals */}
-            <CreateFolderModal
-                isOpen={isFolderModalOpen}
-                onClose={() => { setIsFolderModalOpen(false); setEditingFolder(null); }}
-                onSave={async (name, tags) => {
-                    if (editingFolder) {
-                        await updateFolder({ ...editingFolder, name, tags });
-                    } else {
-                        await createFolder(name, tags);
-                    }
-                }}
-                folder={editingFolder}
-                accentColor="green"
-                type="chat"
-            />
-
-            <MoveSelectionModal
-                isOpen={moveModalOpen}
-                onClose={() => setMoveModalOpen(false)}
-                onMove={async (targetFolderId) => {
-                    if (movingFolderId) {
-                        await moveFolder(movingFolderId, targetFolderId);
-                    } else {
-                        await moveItemsToFolder(movingItemIds, targetFolderId);
-                        await loadSessions();
-                    }
-                    setMovingItemIds([]);
-                    setMovingFolderId(null);
-                }}
-                folders={folders}
-                currentFolderId={currentFolderId}
-                accentColor="green"
-                movingFolderId={movingFolderId}
-            />
-
-            <DeleteFolderModal
-                isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                onConfirm={() => {
-                    if (editingFolder) {
-                        deleteFolder(editingFolder.id);
-                    }
-                }}
-                folder={editingFolder}
-                accentColor="green"
-                stats={editingFolder ? calculateFolderStats(editingFolder.id, folders, sessions) : undefined}
-            />
-        </div>
+        </ArchiveLayout>
     );
 };
 

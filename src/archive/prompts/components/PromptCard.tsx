@@ -3,6 +3,7 @@ import { Prompt } from '../types';
 
 interface Props {
     prompt: Prompt;
+    viewMode?: 'list' | 'grid';
     onEdit: (prompt: Prompt) => void;
     onDelete: (id: string) => void;
     onExport: (prompt: Prompt, format: 'html' | 'markdown' | 'json') => void;
@@ -12,16 +13,15 @@ interface Props {
     onToggleSelect: (id: string) => void;
 }
 
-export default function PromptCard({ prompt, onEdit, onDelete, onExport, onStatusToggle, onPreview, isSelected, onToggleSelect }: Props) {
+export default function PromptCard({ prompt, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, isSelected, onToggleSelect }: Props) {
     const formattedDate = new Date(prompt.createdAt).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: 'numeric'
     });
 
     const handleStatusToggleLocal = async (e: React.MouseEvent) => {
+        e.stopPropagation();
         onStatusToggle(prompt, e);
     };
 
@@ -45,6 +45,71 @@ export default function PromptCard({ prompt, onEdit, onDelete, onExport, onStatu
         e.dataTransfer.setData('text/plain', prompt.id);
     };
 
+    if (viewMode === 'list') {
+        return (
+            <div
+                onClick={() => onPreview(prompt)}
+                draggable
+                onDragStart={handleDragStart}
+                className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer border-b border-transparent hover:bg-white/5 ${
+                    isSelected ? 'bg-blue-900/20' : ''
+                }`}
+            >
+                <div className="flex items-center gap-4 min-w-0">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelect(prompt.id);
+                        }}
+                        className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${
+                            isSelected
+                                ? 'bg-blue-500 border-blue-500 text-white'
+                                : 'border-gray-500 group-hover:border-blue-400 text-transparent'
+                        }`}
+                    >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </button>
+                    
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-semibold text-gray-200 truncate group-hover:text-blue-300 transition-colors">
+                            {prompt.metadata.title}
+                        </span>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                            <span className="opacity-80">{prompt.metadata.category || 'General'}</span>
+                            {prompt.tags.length > 0 && (
+                                <>
+                                    <span>•</span>
+                                    <span className="truncate max-w-[200px]">{prompt.tags.join(', ')}</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0 pl-4">
+                    <span className="text-xs text-gray-500">{formattedDate}</span>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(prompt);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-white transition-opacity"
+                        title="Edit prompt"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                    </button>
+                    <svg className="w-4 h-4 text-gray-600 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             onClick={() => onPreview(prompt)}
@@ -53,7 +118,7 @@ export default function PromptCard({ prompt, onEdit, onDelete, onExport, onStatu
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer
             ${isSelected
                     ? 'bg-blue-900/20 border-blue-500/50 shadow-lg shadow-blue-900/10 shadow-blue-500/20 ring-2 ring-blue-500/50 scale-[1.03]'
-                    : 'bg-gray-800/30 hover:bg-gray-800/50 border-gray-700/50 hover:border-blue-500/30 hover:shadow-blue-900/10 hover:shadow-blue-500/20 hover:shadow-lg'
+                    : 'bg-[#122622]/40 hover:bg-[#122622]/60 border-green-500/10 hover:border-blue-500/30 hover:shadow-blue-900/10 hover:shadow-blue-500/20 hover:shadow-lg'
                 }`}>
             {/* Selection Checkbox & Edit Button */}
             <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
@@ -78,7 +143,7 @@ export default function PromptCard({ prompt, onEdit, onDelete, onExport, onStatu
                     className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110 active:scale-95
                         ${isSelected
                             ? 'bg-blue-500 border-blue-500 text-white opacity-100'
-                            : 'bg-gray-900/50 border-gray-600 hover:border-blue-400 text-transparent opacity-100'
+                            : 'bg-[#09100c]/50 border-gray-600 hover:border-blue-400 text-transparent opacity-100'
                         }`}
                     title={isSelected ? "Deselect this prompt" : "Select this prompt"}
                     aria-label={isSelected ? "Deselect this prompt" : "Select this prompt"}
@@ -132,17 +197,17 @@ export default function PromptCard({ prompt, onEdit, onDelete, onExport, onStatu
                 </div>
             </div>
 
-            <div className="text-sm text-gray-300 font-mono whitespace-pre-wrap mb-4 bg-gray-900/30 rounded p-3 max-h-48 overflow-hidden">
+            <div className="text-sm text-gray-300 font-mono whitespace-pre-wrap mb-4 bg-[#09100c]/30 border border-green-500/5 rounded p-3 max-h-48 overflow-hidden relative">
                 {previewContent}
                 {prompt.content.length > 300 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-900/80 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#122622]/80 to-transparent pointer-events-none" />
                 )}
             </div>
 
             {prompt.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                     {prompt.tags.map((tag, i) => (
-                        <span key={i} className="px-2 py-1 bg-gray-700/50 rounded text-xs text-gray-400 border border-gray-700">
+                        <span key={i} className="px-2 py-1 bg-[#09100c]/50 rounded text-xs text-gray-400 border border-green-500/10">
                             #{tag}
                         </span>
                     ))}

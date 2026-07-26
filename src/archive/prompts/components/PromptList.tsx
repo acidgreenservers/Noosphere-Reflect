@@ -4,6 +4,7 @@ import PromptCard from './PromptCard';
 
 interface Props {
     prompts: Prompt[];
+    viewMode?: 'list' | 'grid';
     onEdit: (prompt: Prompt) => void;
     onDelete: (id: string) => void;
     onExport: (prompt: Prompt, format: 'html' | 'markdown' | 'json') => void;
@@ -13,25 +14,16 @@ interface Props {
     onToggleSelect: (id: string) => void;
 }
 
-export default function PromptList({ prompts, onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedPrompts, onToggleSelect }: Props) {
-    if (prompts.length === 0) {
-        return (
-            <div className="text-center py-20 bg-gray-800/20 rounded-xl border border-dashed border-gray-700">
-                <div className="text-6xl mb-4 opacity-50">💡</div>
-                <h3 className="text-xl font-bold text-gray-400 mb-2">No prompts found</h3>
-                <p className="text-gray-500 max-w-md mx-auto">
-                    Start building your prompt archive by pasting content above. You can filter by category, tags, or search content.
-                </p>
-            </div>
-        );
-    }
+export default function PromptList({ prompts, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedPrompts, onToggleSelect }: Props) {
+    if (prompts.length === 0) return null;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <>
             {prompts.map(prompt => (
                 <PromptCard
                     key={prompt.id}
                     prompt={prompt}
+                    viewMode={viewMode}
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onExport={onExport}
@@ -41,6 +33,6 @@ export default function PromptList({ prompts, onEdit, onDelete, onExport, onStat
                     onToggleSelect={onToggleSelect}
                 />
             ))}
-        </div>
+        </>
     );
 }

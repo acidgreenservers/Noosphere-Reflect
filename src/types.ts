@@ -135,7 +135,7 @@ export interface SavedChatSession {
   metadata?: ChatMetadata; // Explicit metadata for easier hub access
   normalizedTitle?: string; // Normalized title for duplicate detection indexing
   exportStatus?: 'exported' | 'not_exported'; // Mirror of metadata.exportStatus
-  folderId?: string | null; // Folder organization
+  date: string; // fallback
 }
 
 export type SavedChatSessionMetadata = Omit<SavedChatSession, 'inputContent' | 'chatData'>;
@@ -174,7 +174,6 @@ export interface Memory {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: MemoryMetadata;
-  folderId?: string | null;      // Folder organization
 }
 
 // Prompt Archive Types
@@ -193,7 +192,24 @@ export interface Prompt {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: PromptMetadata;
-  folderId?: string | null;      // Folder organization
+}
+
+// Skill Archive Types
+export interface SkillMetadata {
+  title: string;                 // User-defined skill title
+  category?: string;             // Category/purpose
+  wordCount: number;             // Calculated from content
+  characterCount: number;
+  exportStatus?: 'exported' | 'not_exported'; // Export tracking
+}
+
+export interface Skill {
+  id: string;                    // UUID
+  content: string;               // Raw skill text
+  tags: string[];                // User-defined tags
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp (for edits)
+  metadata: SkillMetadata;
 }
 
 // Search Filters
@@ -205,15 +221,4 @@ export interface SearchFilters {
 }
 
 // Archive Types for Foldering System
-export type ArchiveType = 'chat' | 'memory' | 'prompt';
-
-// Folder System Types
-export interface Folder {
-  id: string;
-  name: string;
-  parentId: string | null;
-  type: ArchiveType;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
+export type ArchiveType = 'chat' | 'memory' | 'prompt' | 'skill';

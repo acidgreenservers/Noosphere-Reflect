@@ -15,6 +15,7 @@ interface ChatSessionCardProps {
     onPreview: (session: SavedChatSession) => void;
     onManageArtifacts: (session: SavedChatSession) => void;
     getModelBadgeColor: (model: string | undefined) => string;
+    viewMode?: 'grid' | 'list';
 }
 
 export function ChatSessionCard({
@@ -25,7 +26,8 @@ export function ChatSessionCard({
     onStatusToggle,
     onPreview,
     onManageArtifacts,
-    getModelBadgeColor
+    getModelBadgeColor,
+    viewMode = 'grid'
 }: ChatSessionCardProps) {
     const navigate = useNavigate();
 
@@ -62,14 +64,111 @@ export function ChatSessionCard({
         e.dataTransfer.setData('text/plain', session.id);
     };
 
+    const formattedDate = new Date(session.metadata?.date || session.date).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+
+    if (viewMode === 'list') {
+        return (
+            <div
+                draggable
+                onDragStart={handleDragStart}
+                className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all border-b border-transparent hover:bg-white/5 ${
+                    isSelected ? 'bg-green-900/20' : ''
+                }`}
+            >
+                <div className="flex items-center gap-4 min-w-0">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect(session.id, e);
+                        }}
+                        className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${
+                            isSelected
+                                ? 'bg-green-500 border-green-500 text-[#0e1511]'
+                                : 'border-gray-500 group-hover:border-green-400 text-transparent'
+                        }`}
+                    >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </button>
+                    
+                    <div className="flex flex-col min-w-0">
+                        <span 
+                            onClick={handleCardClick}
+                            className="text-sm font-semibold text-gray-200 truncate hover:text-green-300 transition-colors cursor-pointer hover:underline"
+                        >
+                            {session.metadata?.title || session.chatTitle || 'Untitled Chat'}
+                        </span>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                            <span className="opacity-80">{session.metadata?.model || session.aiName}</span>
+                            {session.metadata?.tags && session.metadata.tags.length > 0 && (
+                                <>
+                                    <span>•</span>
+                                    <span className="truncate max-w-[200px]">{session.metadata.tags.join(', ')}</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0 pl-4">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusToggle(session, e);
+                            }}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center border transition-colors ${
+                                session.exportStatus === 'exported'
+                                    ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
+                                    : 'bg-red-500/20 border-red-500/50 text-red-400'
+                            }`}
+                            title={session.exportStatus === 'exported' ? 'Exported' : 'Not Exported'}
+                        >
+                            <span className="text-[10px]">{session.exportStatus === 'exported' ? '📤' : '📥'}</span>
+                        </button>
+                        
+                        {artifactCount > 0 && (
+                            <button
+                                onClick={handleArtifactsClick}
+                                className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold border border-blue-500/50 hover:bg-blue-500/40 transition-colors"
+                                title="Manage Artifacts"
+                            >
+                                {artifactCount}
+                            </button>
+                        )}
+                    </div>
+                    
+                    <span className="text-xs text-gray-500 w-24 text-right">{formattedDate}</span>
+                    
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(session.id, e);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400 transition-opacity"
+                        title="Delete chat"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
-            onClick={handleCardClick}
             draggable
             onDragStart={handleDragStart}
-            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 block cursor-pointer
+            className={`group relative border rounded-2xl p-4 transition-all duration-300 hover:shadow-xl hover:z-10 block
                 ${isSelected
-                    ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20 ring-2 ring-green-500/50 scale-[1.03]'
+                    ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20 ring-2 ring-green-500/50'
                     : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-green-500/30 hover:shadow-green-900/10 hover:shadow-lg hover:shadow-green-500/20'
                 }`}
         >
@@ -86,7 +185,7 @@ export function ChatSessionCard({
                     {/* Export Status Toggle */}
                     <button
                         onClick={(e) => onStatusToggle(session, e)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-95 ${session.exportStatus === 'exported'
+                        className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-95 text-xs ${session.exportStatus === 'exported'
                             ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
                             : 'bg-red-500/20 border-red-500/50 text-red-400'
                             }`}
@@ -100,44 +199,29 @@ export function ChatSessionCard({
                     {artifactCount > 0 ? (
                         <button
                             onClick={handleArtifactsClick}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-medium transition-all hover:scale-110 active:scale-95 shadow-lg shadow-emerald-500/50"
-                            title="Manage artifacts for this chat"
-                            aria-label={`Manage ${artifactCount} artifacts`}
+                            className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold border border-blue-500/50 hover:bg-blue-500/40 hover:scale-110 transition-all active:scale-95"
+                            title={`Manage ${artifactCount} Artifact${artifactCount === 1 ? '' : 's'}`}
                         >
-                            <span>📎</span>
-                            <span>{artifactCount}</span>
+                            {artifactCount}
                         </button>
                     ) : (
-                        <button
-                            onClick={handleArtifactsClick}
-                            className="text-xs px-3 py-1 rounded-full bg-gray-700/50 hover:bg-emerald-600/50 text-gray-300 hover:text-white transition-all font-medium hover:scale-110 active:scale-95"
-                            title="Add artifacts to this chat"
-                            aria-label="Add artifacts"
-                        >
-                            + Add Artifacts
-                        </button>
+                        <div className="w-7 h-7" /> 
                     )}
-
-                    {/* Delete Button */}
-                    <button
-                        onClick={(e) => onDelete(session.id, e)}
-                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95"
-                        aria-label="Delete chat"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
                 </div>
             </div>
 
-            {/* Title */}
-            <h3 className="text-lg font-semibold text-gray-100 mb-2 line-clamp-2 group-hover:text-green-300 transition-colors">
-                {session.metadata?.title || session.chatTitle || session.name || 'Untitled Chat'}
-            </h3>
+            {/* Title & Preview */}
+            <div className="mb-3">
+                <h3 
+                    onClick={handleCardClick}
+                    className="font-semibold text-base mb-1 truncate text-gray-100 hover:text-green-400 transition-colors cursor-pointer hover:underline"
+                >
+                    {session.metadata?.title || session.chatTitle || 'Untitled Chat'}
+                </h3>
+            </div>
 
             {/* Tags */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-3">
                 {(session.metadata?.tags || []).map((tag, i) => (
                     <span key={i} className="text-xs text-gray-400 bg-white/5 px-2 py-0.5 rounded-full">
                         #{tag}
