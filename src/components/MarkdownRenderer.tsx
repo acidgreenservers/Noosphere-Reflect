@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeRaw from 'rehype-raw';
-import { sanitizeUrl } from '../utils/securityUtils';
+import { sanitizeUrl, sanitizeImageUrl } from '../utils/securityUtils';
 import { useMathJax } from './MathJaxProvider';
 
 interface MarkdownRendererProps {
@@ -30,7 +30,7 @@ const CustomComponents = {
   },
 
   img: ({ src, alt }: { src?: string; alt?: string }) => {
-    const safeUrl = sanitizeUrl(src || '');
+    const safeUrl = sanitizeImageUrl(src || '');
     if (!safeUrl) {
       return <span className="text-red-500">Invalid image URL</span>;
     }
@@ -43,10 +43,16 @@ const CustomComponents = {
     );
   },
 
-  code: ({ inline, children, className }: { inline?: boolean; children: React.ReactNode; className?: string }) => {
-    if (inline) {
+  pre: ({ children, ...props }: any) => {
+    return <>{children}</>;
+  },
+
+  code: ({ inline, className, children, node, ...props }: any) => {
+    const isInline = node?.parent?.tagName !== 'pre';
+
+    if (isInline) {
       return (
-        <code className="bg-gray-800/50 px-1.5 py-0.5 rounded text-purple-300 font-mono text-sm border border-gray-700/50">
+        <code className="bg-gray-800/50 px-1.5 py-0.5 rounded text-purple-300 font-mono text-sm border border-gray-700/50" {...props}>
           {children}
         </code>
       );
@@ -57,7 +63,7 @@ const CustomComponents = {
 
     return (
       <div className="group relative my-4">
-        <pre className="hljs bg-gray-950/80 p-4 rounded-xl border border-gray-800/50 overflow-x-auto">
+        <pre className="hljs bg-gray-950/80 p-4 rounded-xl border border-gray-800/50 overflow-x-auto" {...props}>
           <code className={`language-${language} text-sm text-gray-300 font-mono`}>{children}</code>
         </pre>
         <button
@@ -157,9 +163,13 @@ const CollapsibleBlock: React.FC<CollapsibleBlockProps> = ({ title, children, ic
   );
 };
 
-// Customize sanitization schema to allow <collapsible>, <thoughts>, and <thought> tags
+// Customize sanitization schema to allow custom tags and data URIs for images
 const schema = {
   ...defaultSchema,
+  protocols: {
+    ...defaultSchema.protocols,
+    src: [...(defaultSchema.protocols?.src || []), 'data']
+  },
   tagNames: [...(defaultSchema.tagNames || []), 'collapsible', 'thoughts', 'thought'],
 };
 
@@ -242,6 +252,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, schema], rehypeHighlight]}
         components={CustomComponents as any}
+        urlTransform={(url) => {
+          if (url.startsWith('data:image/')) return url;
+          return defaultUrlTransform(url);
+        }}
       >
         {processedContent}
       </ReactMarkdown>

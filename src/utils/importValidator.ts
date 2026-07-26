@@ -43,13 +43,10 @@ const ConversationArtifactSchema = z.object({
 // Chat Message Schema with content sanitization - matching ChatMessage interface
 const ChatMessageSchema = z.object({
     type: z.enum(['prompt', 'response', 'thought']),
-    content: z.string().max(1_000_000), // 1MB limit per message
+    content: z.string().max(1_000_000), // 1MB limit per message (Raw content preserved)
     isEdited: z.boolean().optional(),
     artifacts: z.array(ConversationArtifactSchema).max(50).optional()
-}).transform((msg) => ({
-    ...msg,
-    content: sanitizeHtml(msg.content) // Re-sanitize on import using robust DOMPurify
-}));
+});
 
 // Chat Metadata Schema - matching ChatMetadata interface
 const ChatMetadataSchema = z.object({
@@ -115,7 +112,7 @@ const MemoryMetadataSchema = z.object({
 // Memory Schema - matching Memory interface
 export const MemorySchema = z.object({
     id: z.string(),
-    content: z.string().max(1_000_000).transform(sanitizeHtml), // Sanitize memory content too
+    content: z.string().max(1_000_000), // Raw content preserved
     aiModel: z.string().max(100),
     tags: z.array(z.string().max(50)).max(20),
     createdAt: z.string(),
@@ -136,7 +133,7 @@ const PromptMetadataSchema = z.object({
 // Prompt Schema - matching Prompt interface
 export const PromptSchema = z.object({
     id: z.string(),
-    content: z.string().max(1_000_000).transform(sanitizeHtml), // Sanitize prompt content too
+    content: z.string().max(1_000_000), // Raw content preserved
     tags: z.array(z.string().max(50)).max(20),
     createdAt: z.string(),
     updatedAt: z.string(),

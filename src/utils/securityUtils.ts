@@ -100,6 +100,30 @@ export function sanitizeUrl(url: string): string {
 }
 
 /**
+ * Validates and sanitizes image URLs, specifically allowing data:image URIs.
+ * This ensures inline base64 images from markdown exports are permitted
+ * while still blocking dangerous protocols like data:text/html.
+ *
+ * @param url - URL string to validate
+ * @returns Sanitized URL or empty string if invalid
+ */
+export function sanitizeImageUrl(url: string): string {
+  if (!url || typeof url !== 'string') {
+    return '';
+  }
+
+  const trimmed = url.trim();
+
+  // Explicitly allow data:image/ protocols for inline images
+  if (trimmed.toLowerCase().startsWith('data:image/')) {
+    return trimmed;
+  }
+
+  // Fall back to standard URL sanitization
+  return sanitizeUrl(trimmed);
+}
+
+/**
  * Validates code block language identifier to prevent attribute injection.
  * Only allows alphanumeric characters, hyphens, and underscores.
  *

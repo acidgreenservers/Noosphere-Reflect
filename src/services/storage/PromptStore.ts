@@ -10,8 +10,7 @@ export class PromptStore extends BaseStore<Prompt, typeof STORES.PROMPTS> {
     }
 
     async save(prompt: Prompt): Promise<void> {
-        // Sanitize prompt content and title
-        prompt.content = sanitizeMessageContent(prompt.content);
+        // Sanitize metadata titles
         if (prompt.metadata?.title) {
             prompt.metadata.title = sanitizeMessageContent(prompt.metadata.title);
         }

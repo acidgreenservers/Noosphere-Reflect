@@ -70,8 +70,7 @@ export class SessionStore extends BaseStore<SavedChatSession, typeof STORES.SESS
         }
         if (session.chatData?.messages) {
             session.chatData.messages = session.chatData.messages.map(msg => ({
-                ...msg,
-                content: sanitizeMessageContent(msg.content)
+                ...msg
             }));
         }
 

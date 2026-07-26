@@ -370,14 +370,6 @@ class StorageService {
                     // Markdown imports are primarily for chats in current architecture
                     const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
 
-                    // Sanitize all messages content for 3rd-party imports
-                    if (detection.source === '3rd-party') {
-                        chatData.messages = chatData.messages.map(msg => ({
-                            ...msg,
-                            content: sanitizeMessageContent(msg.content)
-                        }));
-                    }
-
                     const sessionData = {
                         id: crypto.randomUUID(),
                         name: file.name.replace('.md', '').replace('.txt', ''),

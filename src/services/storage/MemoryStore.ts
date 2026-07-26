@@ -10,8 +10,7 @@ export class MemoryStore extends BaseStore<Memory, typeof STORES.MEMORIES> {
     }
 
     async save(memory: Memory): Promise<void> {
-        // Sanitize memory content and title
-        memory.content = sanitizeMessageContent(memory.content);
+        // Sanitize metadata titles
         if (memory.metadata?.title) {
             memory.metadata.title = sanitizeMessageContent(memory.metadata.title);
         }

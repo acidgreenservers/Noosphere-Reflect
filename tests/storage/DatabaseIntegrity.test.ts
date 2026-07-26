@@ -235,7 +235,7 @@ describe('Database Integrity Suite', () => {
     });
 
     describe('Security & Sanitization Integrity', () => {
-        it('should sanitize session titles and message content on save', async () => {
+        it('should sanitize session titles but preserve raw message content on save', async () => {
             const xssTitle = 'XSS Test <script>alert("title")</script>';
             const xssContent = 'XSS Content <img src=x onerror=alert("img")>';
 
@@ -266,10 +266,10 @@ describe('Database Integrity Suite', () => {
             expect(retrieved?.chatTitle).not.toContain('<script>');
             expect(retrieved?.name).not.toContain('<script>');
             expect(retrieved?.metadata?.title).not.toContain('<script>');
-            expect(retrieved?.chatData?.messages[0].content).not.toContain('onerror');
+            expect(retrieved?.chatData?.messages[0].content).toContain('onerror'); // Raw content is preserved
         });
 
-        it('should sanitize memory and prompt content on save', async () => {
+        it('should sanitize memory and prompt titles but preserve raw content on save', async () => {
             const xssContent = 'Memory <svg onload=alert(1)>';
             const xssTitle = 'Memory <iframe src="javascript:alert(1)"></iframe>';
 
@@ -290,7 +290,7 @@ describe('Database Integrity Suite', () => {
             await storageService.saveMemory(memory);
             const retrievedMem = await storageService.getMemoryById('xss-mem-1');
 
-            expect(retrievedMem?.content).not.toContain('onload');
+            expect(retrievedMem?.content).toContain('onload'); // Raw content is preserved
             expect(retrievedMem?.metadata.title).not.toContain('<iframe');
 
             const prompt: Prompt = {
@@ -309,7 +309,7 @@ describe('Database Integrity Suite', () => {
             await storageService.savePrompt(prompt);
             const retrievedPrompt = await storageService.getPromptById('xss-prompt-1');
 
-            expect(retrievedPrompt?.content).not.toContain('onload');
+            expect(retrievedPrompt?.content).toContain('onload'); // Raw content is preserved
             expect(retrievedPrompt?.metadata.title).not.toContain('<iframe');
         });
     });
