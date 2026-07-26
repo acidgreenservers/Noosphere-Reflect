@@ -3,8 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
 import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ParserMode } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
-import { exportService } from '../../services/export/exportService';
-import { sanitizeFilename } from '../../utils/textNormalization';
+import { exportService } from '../exports/services';
+import { sanitizeFilename } from '../../utils/securityUtils';
 
 export default function UnifiedChatInterface() {
     const { id } = useParams<{ id: string }>();
