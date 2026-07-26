@@ -1,10 +1,114 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { storageService } from '../../services/storageService';
 import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ParserMode } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
 import { sanitizeFilename } from '../../utils/securityUtils';
+
+const ChatMessageBubble = React.memo(({ 
+    msg, 
+    index, 
+    aiName, 
+    onCopyText, 
+    onForkChat, 
+    onSaveMemory, 
+    onSavePrompt, 
+    onSaveSkill 
+}: { 
+    msg: ChatMessage; 
+    index: number; 
+    aiName: string; 
+    onCopyText: (text: string) => void; 
+    onForkChat: (index: number) => void; 
+    onSaveMemory: (msg: ChatMessage) => void; 
+    onSavePrompt: (msg: ChatMessage) => void; 
+    onSaveSkill: (msg: ChatMessage) => void; 
+}) => {
+    const isUser = msg.type === ChatMessageType.Prompt;
+    return (
+        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+            {/* Message Bubble Header (Meta) */}
+            <div className="flex items-center gap-2 mb-1.5 px-2 text-[10px] font-mono text-gray-500">
+                <span>{isUser ? '👤 You' : `🤖 ${aiName}`}</span>
+            </div>
+
+            {/* Render associated artifacts/attachments ABOVE the bubble */}
+            {msg.artifacts && msg.artifacts.length > 0 && (
+                <div className="w-full max-w-xl flex flex-wrap gap-2 mb-2">
+                    {msg.artifacts.map((art) => (
+                        <div
+                            key={art.id}
+                            className="px-3 py-2 bg-[#09100c] border border-green-500/10 rounded-xl flex items-center gap-2 text-xs"
+                        >
+                            <span>📎</span>
+                            <span className="font-medium text-gray-300 truncate max-w-[150px]">{art.fileName}</span>
+                            <span className="text-[9px] text-gray-500 font-mono">({Math.round(art.fileSize / 1024)} KB)</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Message Turn Bubble */}
+            <div
+                className={`w-full max-w-2xl px-5 py-4 rounded-3xl text-sm leading-relaxed border shadow-sm ${
+                    isUser
+                        ? 'bg-[#122622]/60 border-blue-500/15 text-blue-100 rounded-tr-sm'
+                        : 'bg-[#1a211d]/40 border-green-500/10 text-green-100 rounded-tl-sm'
+                }`}
+            >
+                <MarkdownRenderer content={msg.content} />
+
+                {/* Interactive Actions Row under the bubble */}
+                <div className="mt-3 pt-3 border-t border-green-500/5 flex justify-between items-center text-[10px] font-mono text-gray-500 select-none">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => onCopyText(msg.content)}
+                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
+                            title="Copy message contents"
+                        >
+                            📋 Copy Message
+                        </button>
+                        <span className="text-gray-700">|</span>
+                        <button
+                            onClick={() => onForkChat(index)}
+                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
+                            title="Fork conversation from this message"
+                        >
+                            🌿 Fork
+                        </button>
+                    </div>
+
+                    {/* Extraction / Saving Options */}
+                    <div className="flex items-center gap-2.5">
+                        <button
+                            onClick={() => onSaveMemory(msg)}
+                            className="px-2 py-1 rounded hover:bg-purple-500/10 hover:text-purple-400 transition-all"
+                            title="Archive as Memory"
+                        >
+                            🧠 Save Memory
+                        </button>
+                        <span className="text-gray-700">|</span>
+                        <button
+                            onClick={() => onSavePrompt(msg)}
+                            className="px-2 py-1 rounded hover:bg-blue-500/10 hover:text-blue-400 transition-all"
+                            title="Archive as Prompt template"
+                        >
+                            💡 Save Prompt
+                        </button>
+                        <span className="text-gray-700">|</span>
+                        <button
+                            onClick={() => onSaveSkill(msg)}
+                            className="px-2 py-1 rounded hover:bg-amber-500/10 hover:text-amber-400 transition-all"
+                            title="Archive as Skill"
+                        >
+                            ⚡ Save Skill
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+});
 
 export default function UnifiedChatInterface() {
     const { id } = useParams<{ id: string }>();
@@ -596,92 +700,19 @@ export default function UnifiedChatInterface() {
             {/* Conversation Feed */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
                 <div className="w-full max-w-3xl mx-auto space-y-6 flex flex-col pb-4">
-                    {messages.map((msg, index) => {
-                    const isUser = msg.type === ChatMessageType.Prompt;
-                    return (
-                        <div key={index} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-                            {/* Message Bubble Header (Meta) */}
-                            <div className="flex items-center gap-2 mb-1.5 px-2 text-[10px] font-mono text-gray-500">
-                                <span>{isUser ? '👤 You' : `🤖 ${session.aiName}`}</span>
-                            </div>
-
-                            {/* Render associated artifacts/attachments ABOVE the bubble */}
-                            {msg.artifacts && msg.artifacts.length > 0 && (
-                                <div className="w-full max-w-xl flex flex-wrap gap-2 mb-2">
-                                    {msg.artifacts.map((art) => (
-                                        <div
-                                            key={art.id}
-                                            className="px-3 py-2 bg-[#09100c] border border-green-500/10 rounded-xl flex items-center gap-2 text-xs"
-                                        >
-                                            <span>📎</span>
-                                            <span className="font-medium text-gray-300 truncate max-w-[150px]">{art.fileName}</span>
-                                            <span className="text-[9px] text-gray-500 font-mono">({Math.round(art.fileSize / 1024)} KB)</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Message Turn Bubble */}
-                            <div
-                                className={`w-full max-w-2xl px-5 py-4 rounded-3xl text-sm leading-relaxed border shadow-sm ${
-                                    isUser
-                                        ? 'bg-[#122622]/60 border-blue-500/15 text-blue-100 rounded-tr-sm'
-                                        : 'bg-[#1a211d]/40 border-green-500/10 text-green-100 rounded-tl-sm'
-                                }`}
-                            >
-                                <MarkdownRenderer content={msg.content} />
-
-                                {/* Interactive Actions Row under the bubble */}
-                                <div className="mt-3 pt-3 border-t border-green-500/5 flex justify-between items-center text-[10px] font-mono text-gray-500 select-none">
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => handleCopyText(msg.content)}
-                                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
-                                            title="Copy message contents"
-                                        >
-                                            📋 Copy Message
-                                        </button>
-                                        <span className="text-gray-700">|</span>
-                                        <button
-                                            onClick={() => handleForkChat(index)}
-                                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
-                                            title="Fork conversation from this message"
-                                        >
-                                            🌿 Fork
-                                        </button>
-                                    </div>
-
-                                    {/* Extraction / Saving Options */}
-                                    <div className="flex items-center gap-2.5">
-                                        <button
-                                            onClick={() => handleSaveAsMemory(msg)}
-                                            className="px-2 py-1 rounded hover:bg-purple-500/10 hover:text-purple-400 transition-all"
-                                            title="Archive as Memory"
-                                        >
-                                            🧠 Save Memory
-                                        </button>
-                                        <span className="text-gray-700">|</span>
-                                        <button
-                                            onClick={() => handleSaveAsPrompt(msg)}
-                                            className="px-2 py-1 rounded hover:bg-blue-500/10 hover:text-blue-400 transition-all"
-                                            title="Archive as Prompt template"
-                                        >
-                                            💡 Save Prompt
-                                        </button>
-                                        <span className="text-gray-700">|</span>
-                                        <button
-                                            onClick={() => handleSaveAsSkill(msg)}
-                                            className="px-2 py-1 rounded hover:bg-amber-500/10 hover:text-amber-400 transition-all"
-                                            title="Archive as Skill"
-                                        >
-                                            ⚡ Save Skill
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                    {messages.map((msg, index) => (
+                        <ChatMessageBubble 
+                            key={index}
+                            msg={msg}
+                            index={index}
+                            aiName={session?.aiName || 'AI'}
+                            onCopyText={handleCopyText}
+                            onForkChat={handleForkChat}
+                            onSaveMemory={handleSaveAsMemory}
+                            onSavePrompt={handleSaveAsPrompt}
+                            onSaveSkill={handleSaveAsSkill}
+                        />
+                    ))}
                 {messages.length === 0 && (
                     <div className="text-center py-20 text-gray-500">
                         No messages in this chat. Start typing below!
