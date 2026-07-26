@@ -31,3 +31,7 @@ agents/implementation-plans
 reference-html-dom
 
 .shellcheck/
+
+.agents/
+
+.clinerules/
