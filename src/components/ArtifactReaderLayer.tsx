@@ -11,6 +11,7 @@ interface ArtifactReaderLayerProps {
     onWidthChange?: (width: number) => void;
     onDragStart?: () => void;
     onDragEnd?: () => void;
+    onCopyChat?: () => void;
 }
 const isBase64 = (str: string) => {
     if (str === '' || str.trim() === '') return false;
@@ -73,10 +74,11 @@ const VirtualizedTextReader = ({ content }: { content: string }) => {
     );
 };
 
-export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd }) => {
+export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd, onCopyChat }) => {
     const [isAnimatingIn, setIsAnimatingIn] = useState(false);
     const readerRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<{ isDragging: boolean; startX: number; startWidth: number }>({ isDragging: false, startX: 0, startWidth: 50 });
+    const [isChatCopied, setIsChatCopied] = useState(false);
 
     const { isLoaded: mathJaxLoaded, typeset } = useMathJax();
 
@@ -168,6 +170,14 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifa
         });
     };
 
+    const handleCopyChatInternal = async () => {
+        if (onCopyChat) {
+            await onCopyChat();
+            setIsChatCopied(true);
+            setTimeout(() => setIsChatCopied(false), 2000);
+        }
+    };
+
     const handleExpand = () => {
         if (onWidthChange) {
             // Toggle between 50% and 90% (almost fullscreen)
@@ -247,6 +257,29 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifa
                         </svg>
                     </button>
                     
+                    {onCopyChat && (
+                        <button
+                            onClick={handleCopyChatInternal}
+                            className={`p-1.5 rounded-md transition-colors flex items-center gap-1 border text-xs px-2 ml-2 ${
+                                isChatCopied
+                                    ? 'bg-green-600/50 text-green-300 border-green-500/50'
+                                    : 'text-gray-400 hover:bg-green-500/20 hover:text-green-400 border-gray-600/50 bg-gray-800'
+                            }`}
+                            title="Copy full chat (Noosphere Format)"
+                        >
+                            {isChatCopied ? (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                            )}
+                            {isChatCopied ? 'Copied!' : 'Copy Chat'}
+                        </button>
+                    )}
+
                     <button
                         onClick={handleExpand}
                         className="p-1.5 text-gray-400 hover:bg-gray-700 hover:text-white rounded-md transition-colors border border-gray-600/50 bg-gray-800 ml-1"

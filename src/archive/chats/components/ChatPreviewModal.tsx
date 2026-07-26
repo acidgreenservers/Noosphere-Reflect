@@ -6,6 +6,7 @@ import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { useMathJax } from '../../../hooks/useMathJax';
 import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
+import { exportService } from '../../../components/exports/services';
 
 interface ChatPreviewModalProps {
     session: SavedChatSession;
@@ -25,6 +26,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     const [isSavingTitle, setIsSavingTitle] = useState(false);
     const [isDeleteArtifactModalOpen, setIsDeleteArtifactModalOpen] = useState(false);
     const [artifactToDelete, setArtifactToDelete] = useState<{ messageIndex: number; artifactId: string; fileName: string } | null>(null);
+    const [isChatCopied, setIsChatCopied] = useState(false);
 
     // MathJax for LaTeX rendering
     const { isLoaded: mathJaxLoaded, typeset } = useMathJax();
@@ -193,6 +195,30 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
             alert('Failed to save title.');
         } finally {
             setIsSavingTitle(false);
+        }
+    };
+
+    const handleCopyChat = async () => {
+        if (!session.chatData) return;
+        try {
+            const markdown = await exportService.generate(
+                'markdown',
+                session.chatData,
+                session.chatTitle,
+                session.selectedTheme || 'Claude',
+                session.userName || 'User',
+                session.aiName || 'AI',
+                session.parserMode,
+                session.metadata,
+                false,
+                false
+            );
+            await navigator.clipboard.writeText(markdown);
+            setIsChatCopied(true);
+            setTimeout(() => setIsChatCopied(false), 2000);
+        } catch (error) {
+            console.error('Failed to copy chat:', error);
+            alert('Failed to copy chat to clipboard.');
         }
     };
 
@@ -369,14 +395,41 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                             <span className="uppercase">{session.metadata?.model || 'Unknown Model'}</span>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-green-500/10 p-2 rounded-lg border border-gray-700 hover:scale-110 active:scale-95 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600"
-                    >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleCopyChat}
+                            className={`transition-all duration-200 p-2 rounded-lg border hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 flex items-center gap-2 ${
+                                isChatCopied
+                                    ? 'bg-green-600 text-white border-green-500 ring-2 ring-green-500/50 shadow-lg shadow-green-500/20'
+                                    : 'text-gray-400 bg-gray-800 border-gray-700 hover:text-green-400 hover:bg-green-500/10 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:ring-green-500'
+                            }`}
+                            title="Copy full chat (Noosphere Format)"
+                        >
+                            {isChatCopied ? (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                            )}
+                            <span className="text-sm font-semibold hidden sm:inline">
+                                {isChatCopied ? 'Copied!' : 'Copy Chat'}
+                            </span>
+                        </button>
+                        
+                        <button
+                            onClick={onClose}
+                            className="text-gray-500 hover:text-white transition-all duration-200 bg-gray-800 hover:bg-green-500/10 p-2 rounded-lg border border-gray-700 hover:scale-110 active:scale-95 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/20 hover:ring-2 hover:ring-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 active:bg-green-600"
+                            title="Close Preview"
+                        >
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
@@ -648,6 +701,7 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                 onWidthChange={setReaderWidth}
                 onDragStart={() => setIsDraggingReader(true)}
                 onDragEnd={() => setIsDraggingReader(false)}
+                onCopyChat={handleCopyChat}
             />
 
             {/* Delete Artifact Confirmation Modal */}

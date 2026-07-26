@@ -1179,6 +1179,28 @@ const BasicConverter: React.FC = () => {
         }
     };
 
+    const handleCopyChat = async () => {
+        if (!chatData) return;
+        try {
+            const markdown = await exportService.generate(
+                'markdown',
+                chatData,
+                chatTitle,
+                selectedTheme,
+                userName,
+                aiName,
+                parserMode,
+                metadata,
+                false,
+                false
+            );
+            await navigator.clipboard.writeText(markdown);
+        } catch (error) {
+            console.error('Failed to copy chat:', error);
+            alert('Failed to copy chat to clipboard.');
+        }
+    };
+
     return (
         <div 
             className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 overflow-x-hidden"
@@ -1570,6 +1592,7 @@ const BasicConverter: React.FC = () => {
                     onWidthChange={setReaderWidth}
                     onDragStart={() => setIsDraggingReader(true)}
                     onDragEnd={() => setIsDraggingReader(false)}
+                    onCopyChat={handleCopyChat}
                 />
             )}
         </div >
