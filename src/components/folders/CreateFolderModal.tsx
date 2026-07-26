@@ -7,7 +7,7 @@ interface CreateFolderModalProps {
     onSave: (name: string, tags: string[]) => void;
     folder?: Folder | null;
     accentColor: 'green' | 'purple' | 'blue';
-    type: 'chat' | 'memory' | 'prompt';
+    type: 'chat' | 'memory' | 'prompt' | 'skill';
 }
 
 const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
@@ -50,7 +50,8 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     const typeLabels = {
         chat: 'Chat',
         memory: 'Memory',
-        prompt: 'Prompt'
+        prompt: 'Prompt',
+        skill: 'Skill'
     };
 
     const handleAddTag = () => {

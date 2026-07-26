@@ -1,4 +1,4 @@
-import type { SavedChatSession, SearchFilters, Memory, Prompt, ArchiveType } from '../types';
+import type { SavedChatSession, SearchFilters, Memory, Prompt, Skill, ArchiveType } from '../types';
 
 interface SearchResult {
     id: string;
@@ -89,12 +89,17 @@ class SearchService {
         await this.sendMessage('INDEX_PROMPT', { prompt });
     }
 
+    async indexSkill(skill: Skill): Promise<void> {
+        await this.sendMessage('INDEX_SKILL', { skill });
+    }
+
     async indexSessions(
         sessions: SavedChatSession[],
         memories: Memory[] = [],
-        prompts: Prompt[] = []
+        prompts: Prompt[] = [],
+        skills: Skill[] = []
     ): Promise<void> {
-        await this.sendMessage('INDEX_SESSIONS', { sessions, memories, prompts });
+        await this.sendMessage('INDEX_SESSIONS', { sessions, memories, prompts, skills });
     }
 
     async search(query: string, filters?: SearchFilters): Promise<SearchResult[]> {

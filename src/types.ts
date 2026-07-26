@@ -204,8 +204,26 @@ export interface SearchFilters {
   models?: string[];
 }
 
+// Skill Archive Types
+export interface SkillMetadata {
+  title: string;                 // User-defined or auto-generated skill title
+  wordCount: number;             // Calculated from content
+  characterCount: number;
+  exportStatus?: 'exported' | 'not_exported'; // Export tracking
+}
+
+export interface Skill {
+  id: string;                    // UUID
+  content: string;               // Raw skill description or text
+  tags: string[];                // User-defined tags
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp (for edits)
+  metadata: SkillMetadata;
+  folderId?: string | null;      // Folder organization
+}
+
 // Archive Types for Foldering System
-export type ArchiveType = 'chat' | 'memory' | 'prompt';
+export type ArchiveType = 'chat' | 'memory' | 'prompt' | 'skill';
 
 // Folder System Types
 export interface Folder {

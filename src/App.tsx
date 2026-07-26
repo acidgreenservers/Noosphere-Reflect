@@ -1,10 +1,16 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 
-// Pages
-import Home from './pages/Home';
-import ArchiveHub from './archive/chats/pages/ArchiveHub';
-import BasicConverter from './components/converter/pages/BasicConverter';
+// Layout
+import AppShell from './components/layout/AppShell';
+
+// Chat Workspace Pages
+import NewChatView from './components/chat-ui/NewChatView';
+import UnifiedChatInterface from './components/chat-ui/UnifiedChatInterface';
+import ChatsListView from './components/chat-ui/ChatsListView';
+import SkillsArchive from './components/chat-ui/SkillsArchive';
+
+// Hub Pages
 import MemoryArchive from './archive/memories/pages/MemoryArchive';
 import PromptArchive from './archive/prompts/pages/PromptArchive';
 import Changelog from './pages/Changelog';
@@ -13,16 +19,25 @@ import Features from './pages/Features';
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/hub" element={<ArchiveHub />} />
-        <Route path="/memory-archive" element={<MemoryArchive />} />
-        <Route path="/prompt-archive" element={<PromptArchive />} />
-        <Route path="/converter" element={<BasicConverter />} />
-        <Route path="/basic" element={<BasicConverter />} />
-        <Route path="/changelog" element={<Changelog />} />
-        <Route path="/features" element={<Features />} />
-      </Routes>
+      <AppShell>
+        <Routes>
+          {/* Main workspace pathways wrapped inside the Unified App Shell */}
+          <Route path="/" element={<NewChatView />} />
+          <Route path="/chat/:id" element={<UnifiedChatInterface />} />
+          <Route path="/chats" element={<ChatsListView />} />
+
+          {/* Backwards compatible / hub routes */}
+          <Route path="/hub" element={<ChatsListView />} />
+          <Route path="/memories" element={<MemoryArchive />} />
+          <Route path="/memory-archive" element={<MemoryArchive />} />
+          <Route path="/prompts" element={<PromptArchive />} />
+          <Route path="/prompt-archive" element={<PromptArchive />} />
+          <Route path="/skills" element={<SkillsArchive />} />
+
+          <Route path="/changelog" element={<Changelog />} />
+          <Route path="/features" element={<Features />} />
+        </Routes>
+      </AppShell>
     </Router>
   );
 }

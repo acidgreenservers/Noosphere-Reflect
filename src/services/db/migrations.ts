@@ -136,5 +136,17 @@ export const migrations: Migration[] = [
                 sessionStore.createIndex('date', 'date', { unique: false });
             }
         }
+    },
+    {
+        version: 9,
+        description: 'Create skills store and add folderId index',
+        migrate: (db) => {
+            if (!db.objectStoreNames.contains(STORES.SKILLS)) {
+                const skillStore = db.createObjectStore(STORES.SKILLS, { keyPath: 'id' });
+                skillStore.createIndex('createdAt', 'createdAt', { unique: false });
+                skillStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+                skillStore.createIndex('folderId', 'folderId', { unique: false });
+            }
+        }
     }
 ];

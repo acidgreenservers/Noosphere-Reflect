@@ -141,12 +141,32 @@ export const PromptSchema = z.object({
     folderId: z.string().nullable().optional()
 });
 
+// Skill Metadata Schema - matching SkillMetadata interface
+const SkillMetadataSchema = z.object({
+    title: z.string().max(200),
+    wordCount: z.number(),
+    characterCount: z.number(),
+    exportStatus: z.enum(['exported', 'not_exported']).optional()
+});
+
+// Skill Schema - matching Skill interface
+export const SkillSchema = z.object({
+    id: z.string(),
+    content: z.string().max(1_000_000), // Raw content preserved
+    tags: z.array(z.string().max(50)).max(20),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    metadata: SkillMetadataSchema,
+    folderId: z.string().nullable().optional()
+});
+
 // Database Export Schema
 const DatabaseExportSchema = z.object({
     sessions: z.array(SavedChatSessionSchema).max(10_000).optional(),
     settings: AppSettingsSchema.optional(),
     memories: z.array(MemorySchema).max(10_000).optional(),
     prompts: z.array(PromptSchema).max(10_000).optional(),
+    skills: z.array(SkillSchema).max(10_000).optional(),
     version: z.number().optional(),
     exportedAt: z.string().optional()
 });

@@ -3,6 +3,7 @@ import { dbService } from './storage/DBService';
 import { sessionStore } from './storage/SessionStore';
 import { memoryStore } from './storage/MemoryStore';
 import { promptStore } from './storage/PromptStore';
+import { skillStore } from './storage/SkillStore';
 import { settingsStore } from './storage/SettingsStore';
 import { folderStore } from './storage/FolderStore';
 import { STORES, DB_VERSION } from './db/schema';
@@ -14,12 +15,13 @@ import {
     ChatMetadata,
     Memory,
     Prompt,
+    Skill,
     ParserMode,
     ChatTheme,
     Folder,
     ArchiveType
 } from '../types';
-import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema, sanitizeMessageContent } from '../utils/importValidator';
+import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema, SkillSchema, sanitizeMessageContent } from '../utils/importValidator';
 import { detectImportSource, detectPlatformFromHTML } from '../utils/importDetector';
 import { parseChat } from './converterService';
 import { searchService } from './searchService';
@@ -239,14 +241,16 @@ class StorageService {
         settings: AppSettings;
         memories: Memory[];
         prompts: Prompt[];
+        skills: Skill[];
         version: number;
         exportedAt: string;
     }> {
-        const [sessions, settings, memories, prompts] = await Promise.all([
+        const [sessions, settings, memories, prompts, skills] = await Promise.all([
             this.getAllSessions(),
             this.getSettings(),
             this.getAllMemories(),
-            this.getAllPrompts()
+            this.getAllPrompts(),
+            this.getAllSkills()
         ]);
 
         return {
@@ -254,6 +258,7 @@ class StorageService {
             settings,
             memories,
             prompts,
+            skills,
             version: DB_VERSION,
             exportedAt: new Date().toISOString()
         };
@@ -281,6 +286,12 @@ class StorageService {
         if (validatedData.prompts && Array.isArray(validatedData.prompts)) {
             for (const prompt of validatedData.prompts) {
                 await this.savePrompt(prompt);
+            }
+        }
+
+        if (validatedData.skills && Array.isArray(validatedData.skills)) {
+            for (const skill of validatedData.skills) {
+                await this.saveSkill(skill);
             }
         }
 
@@ -342,7 +353,7 @@ class StorageService {
                                 userName: 'User',
                                 aiName: parsed.metadata?.model || 'AI',
                                 selectedTheme: ChatTheme.DarkDefault,
-                                parserMode: detection.source === 'noosphere' ? ParserMode.Noosphere : ParserMode.Basic,
+                                parserMode: detection.source === 'noosphere' ? ParserMode.NoosphereMarkdown : ParserMode.Basic,
                                 chatData: {
                                     messages: parsed.messages || [],
                                     metadata: parsed.metadata || {}
@@ -358,10 +369,21 @@ class StorageService {
                         const memory = MemorySchema.parse(parsed) as Memory;
                         await this.saveMemory(memory);
                         results.successful++;
-                    } else if (parsed.metadata && (parsed.metadata.category || (parsed.content && !parsed.aiModel))) {
+                    } else if (parsed.metadata && parsed.metadata.category) {
                         const prompt = PromptSchema.parse(parsed) as Prompt;
                         await this.savePrompt(prompt);
                         results.successful++;
+                    } else if (parsed.metadata && parsed.metadata.title && parsed.content && !parsed.aiModel) {
+                        // Check if it fits Skill or Prompt (skills don't have category)
+                        try {
+                            const skill = SkillSchema.parse(parsed) as Skill;
+                            await this.saveSkill(skill);
+                            results.successful++;
+                        } catch {
+                            const prompt = PromptSchema.parse(parsed) as Prompt;
+                            await this.savePrompt(prompt);
+                            results.successful++;
+                        }
                     } else {
                         results.failed++;
                         results.errors.push({ fileName: file.name, error: 'Unknown JSON export format' });
@@ -379,7 +401,7 @@ class StorageService {
                         userName: 'User',
                         aiName: chatData.metadata?.model || 'AI',
                         selectedTheme: ChatTheme.DarkDefault,
-                        parserMode: detection.source === 'noosphere' ? ParserMode.Noosphere : ParserMode.Basic,
+                        parserMode: detection.source === 'noosphere' ? ParserMode.NoosphereMarkdown : ParserMode.Basic,
                         chatData,
                         metadata: chatData.metadata
                     };
@@ -470,6 +492,32 @@ class StorageService {
         return promptStore.deleteWithSearch(id);
     }
 
+    // Skills
+    async saveSkill(skill: Skill): Promise<void> {
+        return skillStore.save(skill);
+    }
+
+    async getAllSkills(): Promise<Skill[]> {
+        return skillStore.getAllSorted();
+    }
+
+    async getPaginatedSkills(pageSize: number = 25, offsetKey?: any) {
+        return skillStore.getPaginatedSorted(pageSize, offsetKey);
+    }
+
+    async getSkillById(id: string): Promise<Skill | undefined> {
+        return skillStore.getById(id);
+    }
+
+    async updateSkill(skill: Skill): Promise<void> {
+        skill.updatedAt = new Date().toISOString();
+        return this.saveSkill(skill);
+    }
+
+    async deleteSkill(id: string): Promise<void> {
+        return skillStore.deleteWithSearch(id);
+    }
+
     // Folders
     async saveFolder(folder: Folder): Promise<void> {
         return folderStore.save(folder);
@@ -489,7 +537,16 @@ class StorageService {
 
     private async moveItemsFromFoldersToRoot(folderIds: string[], type: ArchiveType): Promise<void> {
         const db = await this.getDB();
-        const storeName = type === 'chat' ? STORES.SESSIONS : type === 'memory' ? STORES.MEMORIES : STORES.PROMPTS;
+        let storeName: string;
+        if (type === 'chat') {
+            storeName = STORES.SESSIONS;
+        } else if (type === 'memory') {
+            storeName = STORES.MEMORIES;
+        } else if (type === 'prompt') {
+            storeName = STORES.PROMPTS;
+        } else {
+            storeName = STORES.SKILLS;
+        }
 
         const tx = db.transaction(storeName, 'readwrite');
         let cursor = await tx.store.openCursor();
@@ -516,7 +573,16 @@ class StorageService {
 
     async moveItemsToFolder(itemIds: string[], targetFolderId: string | null, type: ArchiveType): Promise<void> {
         const db = await this.getDB();
-        const storeName = type === 'chat' ? STORES.SESSIONS : type === 'memory' ? STORES.MEMORIES : STORES.PROMPTS;
+        let storeName: string;
+        if (type === 'chat') {
+            storeName = STORES.SESSIONS;
+        } else if (type === 'memory') {
+            storeName = STORES.MEMORIES;
+        } else if (type === 'prompt') {
+            storeName = STORES.PROMPTS;
+        } else {
+            storeName = STORES.SKILLS;
+        }
 
         const tx = db.transaction(storeName, 'readwrite');
         for (const id of itemIds) {
