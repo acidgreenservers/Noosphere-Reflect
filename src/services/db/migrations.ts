@@ -126,5 +126,15 @@ export const migrations: Migration[] = [
                 promptStore.createIndex('folderId', 'folderId', { unique: false });
             }
         }
+    },
+    {
+        version: 8,
+        description: 'Add date index to sessions',
+        migrate: (db, transaction) => {
+            const sessionStore = transaction.objectStore(STORES.SESSIONS);
+            if (!sessionStore.indexNames.contains('date')) {
+                sessionStore.createIndex('date', 'date', { unique: false });
+            }
+        }
     }
 ];

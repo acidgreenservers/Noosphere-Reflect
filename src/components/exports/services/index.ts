@@ -11,3 +11,6 @@ export { JsonGenerator, jsonGenerator } from './JsonGenerator';
 export { FilePackager } from './FilePackager';
 export { MemoryExportService } from './MemoryExportService';
 export { MarkdownProcessor } from './MarkdownProcessor';
+export { NamingService, namingService } from './NamingService';
+export { ExportValidator } from './ExportValidator';
+export { BatchExportService, batchExportService } from './BatchExportService';
