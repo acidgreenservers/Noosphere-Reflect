@@ -7,7 +7,7 @@ interface Props {
     viewMode?: 'list' | 'grid';
     onEdit: (memory: Memory) => void;
     onDelete: (id: string) => void;
-    onExport: (memory: Memory, format: 'html' | 'markdown' | 'json') => void;
+    onExport: (memory: Memory, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
     onStatusToggle: (memory: Memory, e: React.MouseEvent) => void;
     onPreview: (memory: Memory) => void;
     selectedMemories: Set<string>;

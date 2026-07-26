@@ -8,7 +8,7 @@ interface Props {
     isSelectionMode?: boolean;
     onEdit: (memory: Memory) => void;
     onDelete: (id: string) => void;
-    onExport: (memory: Memory, format: \'html\' | \'markdown\' | \'json\', toClipboard?: boolean) => void;|onExport: (memory: Memory, format: \'html\' | \'markdown\' | \'json\', toClipboard?: boolean) => void;| 'json', toClipboard?: boolean) => void;
+    onExport: (memory: Memory, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
     onPreview: (memory: Memory) => void;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;

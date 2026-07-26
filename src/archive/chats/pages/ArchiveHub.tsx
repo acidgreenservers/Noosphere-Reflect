@@ -29,7 +29,7 @@ const ArchiveHub: React.FC = () => {
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
-    const [exportFormat, setExportFormat] = useState<\'html\' | \'markdown\' | \'json\' | \'text\'>('html');
+    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json' | 'text'>('html');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [, setExportDropdownOpen] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -203,7 +203,7 @@ const ArchiveHub: React.FC = () => {
     };
 
 
-    const handleBatchExport = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType?: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json' | 'text', _packageType?: 'directory' | 'zip' | 'single') => {
         const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
         if (selectedMetas.length === 0) return;
         
@@ -269,7 +269,7 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleSingleExport = async (sessionMeta: SavedChatSessionMetadata, format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single', toClipboard: boolean = false) => {
+    const handleSingleExport = async (sessionMeta: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single', toClipboard: boolean = false) => {
         try {
             // Fetch FULL session
             const session = await storageService.getSessionById(sessionMeta.id);
@@ -555,7 +555,7 @@ const ArchiveHub: React.FC = () => {
     };
 
 
-    const handleDirectoryExportToDrive = async (session: SavedChatSession, format: \'html\' | \'markdown\' | \'json\' | \'text\', appSettings: AppSettings, accessToken: string, chatsFolderId: string) => {
+    const handleDirectoryExportToDrive = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json' | 'text', appSettings: AppSettings, accessToken: string, chatsFolderId: string) => {
         const theme = session.selectedTheme || ChatTheme.DarkDefault;
         const userName = session.userName || 'User';
         const aiName = session.aiName || 'AI';
@@ -729,7 +729,7 @@ const ArchiveHub: React.FC = () => {
         };
     };
 
-    const handleExportToDriveWithFormat = async (sessionMeta: SavedChatSessionMetadata, format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single') => {
+    const handleExportToDriveWithFormat = async (sessionMeta: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
@@ -991,7 +991,7 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleBatchExportToDrive = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json' | 'text', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;

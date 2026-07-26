@@ -36,7 +36,7 @@ export default function PromptArchive() {
     const [selectedPrompts, setSelectedPrompts] = useState<Set<string>>(new Set());
     const [, setShowExportModal] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
-    const [exportFormat, setExportFormat] = useState<\'html\' | \'markdown\' | \'json\' | \'text\'>('html');
+    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json' | 'text'>('html');
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
@@ -157,7 +157,7 @@ export default function PromptArchive() {
         }
     };
 
-    const handleExport = async (prompt: Prompt, format: \'html\' | \'markdown\' | \'json\' | \'text\', toClipboard: boolean = false) => {
+    const handleExport = async (prompt: Prompt, format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
         setIsExporting(true);
         try {
             const memoryLike = {
@@ -277,7 +277,7 @@ export default function PromptArchive() {
         /* Manual toggle removed */
     };
 
-    const handleBatchExport = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedPrompts.size === 0) return;
         const selected = prompts.filter(p => selectedPrompts.has(p.id));
         const caseFormat = appSettings.fileNamingCase;
@@ -351,7 +351,7 @@ export default function PromptArchive() {
         }
     };
 
-    const handleBatchExportToDrive = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json' | 'text', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !promptsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;

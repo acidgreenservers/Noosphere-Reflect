@@ -7,7 +7,7 @@ interface Props {
     viewMode?: 'list' | 'grid';
     onEdit: (prompt: Prompt) => void;
     onDelete: (id: string) => void;
-    onExport: (prompt: Prompt, format: 'html' | 'markdown' | 'json') => void;
+    onExport: (prompt: Prompt, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
     onStatusToggle: (prompt: Prompt, e: React.MouseEvent) => void;
     onPreview: (prompt: Prompt) => void;
     selectedPrompts: Set<string>;

@@ -36,7 +36,7 @@ export default function MemoryArchive() {
     const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
     const [, setShowExportModal] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
-    const [exportFormat, setExportFormat] = useState<\'html\' | \'markdown\' | \'json\' | \'text\'>('html');
+    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json' | 'text'>('html');
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
@@ -145,7 +145,7 @@ export default function MemoryArchive() {
         }
     };
 
-    const handleExport = async (memory: Memory, format: \'html\' | \'markdown\' | \'json\' | \'text\', toClipboard: boolean = false) => {
+    const handleExport = async (memory: Memory, format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
         setIsExporting(true);
         try {
             let content = '';
@@ -247,7 +247,7 @@ export default function MemoryArchive() {
         /* Manual toggle removed */
     };
 
-    const handleBatchExport = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedMemories.size === 0) return;
         const selected = memories.filter(m => selectedMemories.has(m.id));
         const caseFormat = appSettings.fileNamingCase;
@@ -306,7 +306,7 @@ export default function MemoryArchive() {
         }
     };
 
-    const handleBatchExportToDrive = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json' | 'text', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !memoriesFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;

@@ -14,7 +14,7 @@ interface ChatSessionCardProps {
     onManageArtifacts: (session: SavedChatSession) => void;
     getModelBadgeColor: (model: string | undefined) => string;
     viewMode?: 'grid' | 'list';
-    onExport: (session: SavedChatSessionMetadata, format: \'html\' | \'markdown\' | \'json\' | \'text\', toClipboard?: boolean) => void;
+    onExport: (session: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
 }
 
 export function ChatSessionCard({
