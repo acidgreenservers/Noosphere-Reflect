@@ -55,6 +55,7 @@ export const ArtifactManager: React.FC<ArtifactManagerProps> = (props) => {
                 onDownload={downloadArtifact}
                 onRemove={handleRemove}
                 onInsertLink={handleInsertLink}
+                onRead={props.onRead}
             />
         </div>
     );

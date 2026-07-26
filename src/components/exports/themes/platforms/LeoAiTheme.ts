@@ -21,7 +21,8 @@ export class LeoAiThemeRenderer implements ThemeRenderer {
     parserMode: ParserMode,
     metadata?: ChatMetadata,
     includeFooter: boolean = true,
-    isPreview: boolean = false
+    isPreview: boolean = false,
+    blobUrlMap?: Record<string, string>
   ): string {
     const chatMessagesHtml = chatData.messages
       .map((message, index) => this.generateMessageHtml(message, index, userName, aiName, parserMode))

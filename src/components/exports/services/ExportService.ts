@@ -21,7 +21,8 @@ export interface ExportGenerator {
     parserMode?: ParserMode,
     metadata?: ChatMetadata,
     includeFooter?: boolean,
-    isPreview?: boolean
+    isPreview?: boolean,
+    blobUrlMap?: Record<string, string>
   ): string;
 }
 
@@ -65,7 +66,8 @@ export class ExportService {
     metadata?: ChatMetadata,
     includeFooter: boolean = true,
     isPreview: boolean = false,
-    style?: ChatStyle // New: Layout style parameter
+    style?: ChatStyle, // New: Layout style parameter
+    blobUrlMap?: Record<string, string>
   ): Promise<string> {
     const generator = this.generators.get(format);
     if (!generator) {
@@ -87,7 +89,8 @@ export class ExportService {
               parserMode,
               metadata,
               includeFooter,
-              isPreview
+              isPreview,
+              blobUrlMap
             );
           }
         }
@@ -102,7 +105,8 @@ export class ExportService {
           parserMode,
           metadata,
           includeFooter,
-          isPreview
+          isPreview,
+          blobUrlMap
         );
 
       case 'markdown':

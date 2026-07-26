@@ -311,8 +311,17 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
+    const [readerWidth, setReaderWidth] = useState<number>(50);
+    const [isDraggingReader, setIsDraggingReader] = useState(false);
+
     return (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-xl p-4 sm:p-6 lg:p-10">
+        <div 
+            className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-xl p-4 sm:p-6 lg:p-10"
+            style={{ 
+                paddingRight: viewingArtifact ? `calc(${readerWidth}vw + 1rem)` : undefined,
+                transition: isDraggingReader ? 'none' : 'all 0.3s ease-out'
+            }}
+        >
             <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-2xl w-full h-full max-w-7xl border border-gray-700/50 flex flex-col overflow-hidden relative">
                 {/* Gradient Overlay for Depth */}
                 <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-purple-500/5 pointer-events-none" />
@@ -635,6 +644,10 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
             <ArtifactReaderLayer
                 artifact={viewingArtifact}
                 onClose={() => setViewingArtifact(null)}
+                width={readerWidth}
+                onWidthChange={setReaderWidth}
+                onDragStart={() => setIsDraggingReader(true)}
+                onDragEnd={() => setIsDraggingReader(false)}
             />
 
             {/* Delete Artifact Confirmation Modal */}

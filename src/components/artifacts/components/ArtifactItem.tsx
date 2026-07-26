@@ -7,9 +7,18 @@ export const ArtifactItem: React.FC<ArtifactItemProps> = ({
     messages,
     onDownload,
     onRemove,
-    onInsertLink
+    onInsertLink,
+    onRead
 }) => {
     const isAttached = artifact.insertedAfterMessageIndex !== undefined;
+    const isViewable = artifact.fileName.toLowerCase().endsWith('.md') ||
+        artifact.fileName.toLowerCase().endsWith('.markdown') ||
+        artifact.fileName.toLowerCase().endsWith('.txt') ||
+        artifact.fileName.toLowerCase().endsWith('.json') ||
+        artifact.fileName.toLowerCase().endsWith('.csv') ||
+        artifact.fileName.toLowerCase().endsWith('.ts') ||
+        artifact.fileName.toLowerCase().endsWith('.tsx') ||
+        artifact.fileName.toLowerCase().endsWith('.js');
 
     return (
         <div
@@ -59,6 +68,15 @@ export const ArtifactItem: React.FC<ArtifactItemProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-2 shrink-0">
+                    {isViewable && onRead && (
+                        <button
+                            onClick={() => onRead(artifact)}
+                            className="p-1.5 text-purple-500 hover:bg-purple-50 rounded transition-colors"
+                            title="Read / View"
+                        >
+                            📖
+                        </button>
+                    )}
                     <button
                         onClick={() => onDownload(artifact)}
                         className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors"

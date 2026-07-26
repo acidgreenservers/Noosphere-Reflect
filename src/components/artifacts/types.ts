@@ -5,6 +5,7 @@ export interface ArtifactManagerProps {
     messages: ChatMessage[];
     onArtifactsChange: (artifacts: ConversationArtifact[]) => void;
     onMessagesChange?: (messages: ChatMessage[]) => void;
+    onRead?: (artifact: ConversationArtifact) => void;
     manualMode?: boolean;
 }
 
@@ -14,4 +15,5 @@ export interface ArtifactItemProps {
     onDownload: (artifact: ConversationArtifact) => void;
     onRemove: (artifactId: string, messageIndex?: number) => void;
     onInsertLink: (artifactId: string, messageIndex: number) => void;
+    onRead?: (artifact: ConversationArtifact) => void;
 }

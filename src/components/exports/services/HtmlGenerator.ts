@@ -100,7 +100,8 @@ export class HtmlGenerator {
     parserMode: ParserMode = ParserMode.Basic,
     metadata?: ChatMetadata,
     includeFooter: boolean = true,
-    isPreview: boolean = false
+    isPreview: boolean = false,
+    blobUrlMap?: Record<string, string>
   ): string {
     // Check if this is a platform theme and delegate to the new theme system
     const platformTheme = themeRegistry.get(theme);
@@ -113,7 +114,8 @@ export class HtmlGenerator {
         parserMode,
         metadata,
         includeFooter,
-        isPreview
+        isPreview,
+        blobUrlMap
       );
     }
 
@@ -139,6 +141,15 @@ export class HtmlGenerator {
         function downloadArtifact(e) {
           e.preventDefault();
           const link = e.currentTarget;
+          const id = link.getAttribute('data-id');
+          
+          // Try to open in the parent's immersive reader first
+          if (window.parent !== window) {
+              window.parent.postMessage({ type: 'open_artifact', artifactId: id }, '*');
+              return;
+          }
+
+          // Fallback to direct download if not in iframe or parent doesn't intercept
           const b64 = link.getAttribute('data-b64');
           const mime = link.getAttribute('data-mime');
           const filename = link.getAttribute('download');
@@ -245,9 +256,14 @@ export class HtmlGenerator {
           const downloadAttr = isPreview ? `download="${escapeHtml(artifact.fileName)}"` : '';
           const targetAttr = isPreview ? '' : 'target="_blank"';
 
+          // Use Blob URL if provided, otherwise fallback to Data URI
+          const isBlobAvailable = !!(blobUrlMap && blobUrlMap[artifact.id]);
+          const artifactDataUrl = isBlobAvailable ? blobUrlMap[artifact.id] : `data:${artifact.mimeType};base64,${artifact.fileData}`;
+
           // In preview, we use a script (onclick) to handle the download via Blob URL
           // because direct navigation to Data URIs or even target="_blank" is often blocked by sandbox/browser security.
-          const dataAttrs = isPreview ? `data-b64="${artifact.fileData}" data-mime="${artifact.mimeType}" onclick="downloadArtifact(event)"` : '';
+          // Note: If we use the provided Blob URL, we don't need to embed the massive data-b64 string!
+          const dataAttrs = isPreview ? `data-id="${escapeHtml(artifact.id)}" data-b64="${isBlobAvailable ? '' : artifact.fileData}" data-mime="${artifact.mimeType}" onclick="downloadArtifact(event)"` : '';
 
           if (isImage) {
             return `
@@ -255,7 +271,7 @@ export class HtmlGenerator {
                   <a href="${href}" ${downloadAttr} ${targetAttr} ${dataAttrs} class="text-blue-400 hover:underline text-sm">
                     ${escapeHtml(artifact.fileName)}
                   </a>
-                  <img src="${isPreview ? `data:${artifact.mimeType};base64,${artifact.fileData}` : `artifacts/${escapeHtml(artifact.fileName)}`}" alt="${escapeHtml(artifact.fileName)}" class="mt-2 max-w-full rounded border border-gray-600" style="max-height: 300px;" />
+                  <img src="${isPreview ? artifactDataUrl : `artifacts/${escapeHtml(artifact.fileName)}`}" alt="${escapeHtml(artifact.fileName)}" loading="lazy" decoding="async" class="mt-2 max-w-full rounded border border-gray-600" style="max-height: 300px;" />
                 </div>
               `;
           } else {

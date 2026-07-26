@@ -40,7 +40,8 @@ export interface ThemeRenderer {
     parserMode: ParserMode,
     metadata?: ChatMetadata,
     includeFooter?: boolean,
-    isPreview?: boolean
+    isPreview?: boolean,
+    blobUrlMap?: Record<string, string>
   ): string;
 
   /**

@@ -4,12 +4,14 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { useMathJax } from '../hooks/useMathJax';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { getFileIcon } from './artifacts/utils';
-
 interface ArtifactReaderLayerProps {
     artifact: ConversationArtifact | null;
     onClose: () => void;
+    width?: number;
+    onWidthChange?: (width: number) => void;
+    onDragStart?: () => void;
+    onDragEnd?: () => void;
 }
-
 const isBase64 = (str: string) => {
     if (str === '' || str.trim() === '') return false;
     try {
@@ -22,17 +24,14 @@ const isBase64 = (str: string) => {
 const safeDecode = (fileData: string): string => {
     if (isBase64(fileData)) {
         try {
-            // decodeURIComponent(escape(atob(fileData))) correctly decodes UTF-8 base64 strings
             return decodeURIComponent(escape(atob(fileData)));
         } catch (e) {
-            // fallback if it fails
             return atob(fileData);
         }
     }
     return fileData;
 };
 
-// Component for virtualized plain text
 const VirtualizedTextReader = ({ content }: { content: string }) => {
     const parentRef = useRef<HTMLDivElement>(null);
     const lines = useMemo(() => content.split('\n'), [content]);
@@ -74,13 +73,11 @@ const VirtualizedTextReader = ({ content }: { content: string }) => {
     );
 };
 
-export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifact, onClose }) => {
-    const [isControlsVisible, setIsControlsVisible] = useState(true);
+export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd }) => {
     const [isAnimatingIn, setIsAnimatingIn] = useState(false);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const readerRef = useRef<HTMLDivElement>(null);
+    const dragRef = useRef<{ isDragging: boolean; startX: number; startWidth: number }>({ isDragging: false, startX: 0, startWidth: 50 });
 
-    // MathJax
     const { isLoaded: mathJaxLoaded, typeset } = useMathJax();
 
     useEffect(() => {
@@ -100,23 +97,38 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifa
         }
     }, [artifact, mathJaxLoaded, typeset]);
 
-    // Handle idle fading of UI chrome
-    const handleMouseMove = () => {
-        setIsControlsVisible(true);
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-            setIsControlsVisible(false);
-        }, 3000);
-    };
-
+    // Resizing logic
     useEffect(() => {
-        handleMouseMove();
-        return () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!dragRef.current.isDragging) return;
+            // Calculate new width based on mouse movement (moving left increases width since panel is on the right)
+            const deltaX = dragRef.current.startX - e.clientX;
+            const deltaVw = (deltaX / window.innerWidth) * 100;
+            let newWidth = dragRef.current.startWidth + deltaVw;
+            // Constrain between 30vw and 90vw
+            newWidth = Math.max(30, Math.min(newWidth, 90));
+            if (onWidthChange) {
+                onWidthChange(newWidth);
+            }
         };
-    }, []);
 
-    if (!artifact) return null;
+        const handleMouseUp = () => {
+            if (dragRef.current.isDragging) {
+                dragRef.current.isDragging = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                if (onDragEnd) onDragEnd();
+            }
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [onWidthChange]);
+
 
     const handleDownload = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -148,65 +160,113 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifa
         }
     };
 
-    const isMarkdown = artifact.fileName.toLowerCase().endsWith('.md') ||
-        artifact.fileName.toLowerCase().endsWith('.markdown');
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const content = safeDecode(artifact.fileData);
+        navigator.clipboard.writeText(content).then(() => {
+            alert('Copied to clipboard!');
+        });
+    };
+
+    const handleExpand = () => {
+        if (onWidthChange) {
+            // Toggle between 50% and 90% (almost fullscreen)
+            onWidthChange(width > 80 ? 50 : 90);
+        }
+    };
+
+    const isMarkdown = artifact?.fileName?.toLowerCase().endsWith('.md') ||
+        artifact?.fileName?.toLowerCase().endsWith('.markdown') || false;
         
-    const isText = artifact.fileName.toLowerCase().endsWith('.txt') ||
-        artifact.fileName.toLowerCase().endsWith('.json') ||
-        artifact.fileName.toLowerCase().endsWith('.csv') ||
-        artifact.fileName.toLowerCase().endsWith('.ts') ||
-        artifact.fileName.toLowerCase().endsWith('.tsx') ||
-        artifact.fileName.toLowerCase().endsWith('.js');
+    const isText = artifact?.fileName?.toLowerCase().endsWith('.txt') ||
+        artifact?.fileName?.toLowerCase().endsWith('.json') ||
+        artifact?.fileName?.toLowerCase().endsWith('.csv') ||
+        artifact?.fileName?.toLowerCase().endsWith('.ts') ||
+        artifact?.fileName?.toLowerCase().endsWith('.tsx') ||
+        artifact?.fileName?.toLowerCase().endsWith('.js') || false;
 
     const decodedContent = useMemo(() => {
+        if (!artifact) return '';
         if (isMarkdown || isText) {
             return safeDecode(artifact.fileData);
         }
         return '';
     }, [artifact, isMarkdown, isText]);
 
+    if (!artifact) return null;
+
     return (
         <div 
-            className={`fixed inset-0 z-[100] flex flex-col transition-all duration-700 ease-out ${
-                isAnimatingIn ? 'opacity-0 backdrop-blur-none bg-black/0' : 'opacity-100 backdrop-blur-xl bg-black/80'
+            className={`fixed right-0 top-0 h-full z-[100] flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl ${
+                isAnimatingIn ? 'translate-x-full' : 'translate-x-0'
             }`}
-            onMouseMove={handleMouseMove}
-            onScrollCapture={handleMouseMove}
+            style={{ 
+                width: `${width}vw`,
+                transition: dragRef.current.isDragging ? 'none' : 'transform 0.5s ease-out'
+            }}
         >
-            {/* Minimalist Top Control Bar */}
+            {/* Drag Handle */}
             <div 
-                className={`fixed top-0 left-0 right-0 p-6 flex justify-between items-center transition-all duration-500 z-50 ${
-                    isControlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
-                }`}
-            >
-                <div className="flex items-center gap-4 bg-gray-900/40 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/5 shadow-2xl">
-                    <span className="text-2xl">{getFileIcon(artifact.mimeType)}</span>
-                    <h3 className="text-gray-200 font-medium tracking-wide">
+                className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-purple-500/50 transition-colors z-[101]"
+                onMouseDown={(e) => {
+                    dragRef.current = { isDragging: true, startX: e.clientX, startWidth: width };
+                    document.body.style.cursor = 'col-resize';
+                    document.body.style.userSelect = 'none'; // prevent text selection during drag
+                    if (onDragStart) onDragStart();
+                }}
+            />
+
+            {/* Split Screen Header */}
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-700/50 bg-[#161b22]">
+                <div className="flex items-center gap-3 truncate">
+                    <span className="text-xl">{getFileIcon(artifact.mimeType)}</span>
+                    <h3 className="text-gray-200 font-medium tracking-wide truncate">
                         {artifact.fileName}
                     </h3>
-                    <span className="text-xs text-gray-500 ml-2">
-                        {(artifact.fileSize / 1024).toFixed(1)} KB
-                    </span>
                 </div>
                 
-                <div className="flex items-center gap-3 bg-gray-900/40 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/5 shadow-2xl">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                        onClick={handleCopy}
+                        className="p-1.5 text-gray-400 hover:bg-gray-700 hover:text-white rounded-md transition-colors flex items-center gap-1 border border-gray-600/50 bg-gray-800 text-xs px-2"
+                        title="Copy file contents"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy
+                    </button>
+                    
                     <button
                         onClick={handleDownload}
-                        className="px-4 py-2 hover:bg-white/10 text-gray-300 hover:text-white rounded-xl transition-all duration-300 flex items-center gap-2 group"
+                        className="p-1.5 text-gray-400 hover:bg-gray-700 hover:text-white rounded-md transition-colors border border-gray-600/50 bg-gray-800"
                         title="Download file"
                     >
-                        <svg className="w-5 h-5 text-gray-400 group-hover:text-green-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
-                        <span className="font-medium">Download</span>
                     </button>
-                    <div className="w-px h-6 bg-white/10" />
+                    
+                    <button
+                        onClick={handleExpand}
+                        className="p-1.5 text-gray-400 hover:bg-gray-700 hover:text-white rounded-md transition-colors border border-gray-600/50 bg-gray-800 ml-1"
+                        title="Toggle full width"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            {width > 80 ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h8V4M4 8l5-5m11 13h-8v4m8-4l-5 5" />
+                            )}
+                        </svg>
+                    </button>
+
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-all duration-300"
+                        className="p-1.5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 rounded-md transition-colors ml-1"
                         title="Close reader"
                     >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
@@ -214,41 +274,38 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ artifa
             </div>
 
             {/* Reading Area */}
-            <div className="flex-1 w-full h-full relative flex justify-center">
-                <div className="absolute inset-0 bg-gradient-to-b from-gray-950/50 via-gray-950/95 to-gray-950/95 pointer-events-none -z-10" />
-                
+            <div className="flex-1 w-full h-full relative flex justify-center bg-gray-900 overflow-hidden">
                 {isMarkdown ? (
                     <div 
                         ref={readerRef} 
-                        className="w-full max-w-3xl h-full overflow-y-auto custom-scrollbar px-6 pt-32 pb-32"
+                        className="w-full max-w-4xl h-full overflow-y-auto custom-scrollbar px-6 pt-8 pb-32"
                     >
-                        {/* Reader Prose Wrapper - Extends MarkdownRenderer styles specifically for Reader Mode */}
                         <div className="reader-prose max-w-none">
                             <MarkdownRenderer content={decodedContent} />
                         </div>
                     </div>
                 ) : isText ? (
-                    <div className="w-full h-full max-w-6xl pt-32 pb-16 bg-[#0d1117]/80 backdrop-blur-md rounded-t-3xl border-t border-x border-white/5 shadow-2xl overflow-hidden">
+                    <div className="w-full h-full bg-[#0d1117] overflow-hidden pt-2">
                         <VirtualizedTextReader content={decodedContent} />
                     </div>
                 ) : (
                     <div className="flex items-center justify-center h-full text-center">
                         <div>
-                            <div className="w-24 h-24 bg-gray-900/60 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5 shadow-2xl">
+                            <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5 shadow-lg">
                                 <span className="text-5xl">{getFileIcon(artifact.mimeType)}</span>
                             </div>
-                            <h2 className="text-2xl text-gray-200 mb-2 tracking-wide">Preview Unavailable</h2>
-                            <p className="text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
-                                This file format cannot be rendered in the immersive reader. You can still download the raw file locally.
+                            <h2 className="text-xl text-gray-200 mb-2 tracking-wide">Preview Unavailable</h2>
+                            <p className="text-gray-500 mb-8 max-w-xs mx-auto leading-relaxed text-sm">
+                                This format cannot be rendered here.
                             </p>
                             <button
                                 onClick={handleDownload}
-                                className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all duration-300 shadow-xl flex items-center gap-3 mx-auto group"
+                                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors shadow-lg flex items-center gap-2 mx-auto"
                             >
-                                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                Download {artifact.fileName}
+                                Download
                             </button>
                         </div>
                     </div>

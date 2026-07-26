@@ -22,7 +22,8 @@ export class LeChatThemeRenderer implements ThemeRenderer {
     parserMode: ParserMode,
     metadata?: ChatMetadata,
     includeFooter: boolean = true,
-    isPreview: boolean = false
+    isPreview: boolean = false,
+    blobUrlMap?: Record<string, string>
   ): string {
     const previewScript = isPreview ? `
     <script>

@@ -9,6 +9,7 @@ interface ArtifactLibraryProps {
     onDownload: (artifact: ConversationArtifact) => void;
     onRemove: (artifactId: string, messageIndex?: number) => void;
     onInsertLink: (artifactId: string, messageIndex: number) => void;
+    onRead?: (artifact: ConversationArtifact) => void;
 }
 
 export const ArtifactLibrary: React.FC<ArtifactLibraryProps> = ({
@@ -17,7 +18,8 @@ export const ArtifactLibrary: React.FC<ArtifactLibraryProps> = ({
     messageArtifacts,
     onDownload,
     onRemove,
-    onInsertLink
+    onInsertLink,
+    onRead
 }) => {
     const globalArtifacts = artifacts.filter(a => a.insertedAfterMessageIndex === undefined);
     const attachedArtifacts = artifacts.filter(a => a.insertedAfterMessageIndex !== undefined);
@@ -61,6 +63,7 @@ export const ArtifactLibrary: React.FC<ArtifactLibraryProps> = ({
                                     onDownload={onDownload}
                                     onRemove={onRemove}
                                     onInsertLink={onInsertLink}
+                                    onRead={onRead}
                                 />
                             ))}
                         </div>
@@ -87,6 +90,7 @@ export const ArtifactLibrary: React.FC<ArtifactLibraryProps> = ({
                                     onDownload={onDownload}
                                     onRemove={onRemove}
                                     onInsertLink={onInsertLink}
+                                    onRead={onRead}
                                 />
                             ))}
                         </div>

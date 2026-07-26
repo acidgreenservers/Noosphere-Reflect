@@ -31,12 +31,14 @@ import { MessageEditorModal } from '../../../components/MessageEditorModal';
 import { ImportMethodGuide } from '../../../components/ImportMethodGuide';
 import { DocsModal } from '../../../components/DocsModal';
 import { ChatPreviewModal } from '../../../archive/chats/components/ChatPreviewModal';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReaderLayer';
 import { RawPreviewModal } from '../../../components/RawPreviewModal';
 import { ConfigurationModal } from '../../../components/ConfigurationModal';
 import { MetadataModal } from '../../../components/MetadataModal';
 import { ReviewEditModal } from '../../../components/ReviewEditModal';
 import { ContentImportWizard } from '../../../components/wizard';
 import { enrichMetadata } from '../../../utils/metadataEnricher';
+import { useArtifactBlobs } from '../../../hooks/useArtifactBlobs';
 // Converter Components
 import {
     ConverterHeader,
@@ -141,6 +143,10 @@ const BasicConverter: React.FC = () => {
         artifacts: []
     });
     const [artifacts, setArtifacts] = useState<ConversationArtifact[]>([]);
+    
+    // Convert base64 images to Blob URLs for massive performance boost
+    const artifactBlobUrls = useArtifactBlobs(artifacts);
+
     const [loadedSessionId, setLoadedSessionId] = useState<string | null>(null);
     const artifactFileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -151,6 +157,8 @@ const BasicConverter: React.FC = () => {
     const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
     const [showRawPreviewModal, setShowRawPreviewModal] = useState<boolean>(false);
     const [showConfigurationModal, setShowConfigurationModal] = useState<boolean>(false);
+    const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const [isDraggingReader, setIsDraggingReader] = useState(false);
     const [showMetadataModal, setShowMetadataModal] = useState<boolean>(false);
     const [showChatContentModal, setShowChatContentModal] = useState<boolean>(false);
     const [showReviewEditModal, setShowReviewEditModal] = useState<boolean>(false);
@@ -232,7 +240,9 @@ const BasicConverter: React.FC = () => {
                 session.parserMode || ParserMode.Basic,
                 undefined,
                 false,
-                true // isPreview
+                true, // isPreview
+                ChatStyle.Default,
+                artifactBlobUrls
             );
             setGeneratedHtml(html);
         } else {
@@ -250,18 +260,6 @@ const BasicConverter: React.FC = () => {
 
     // Load sessions from storage
     const [searchParams] = useSearchParams();
-    // ... (omitted lines to match context if needed, but replacement is clean)
-
-    // ... (lines 430-432 in original view, we need to match carefully)
-    // Actually handleConvert is defined earlier. I need to be careful with line numbers.
-    // Let's use multi_replace for safety as they are far apart.
-
-    // I will use multi_replace for:
-    // 1. handleConvert signature and logic (approx line 432)
-    // 2. handleWizardImport logic (approx line 666)
-    // 3. UI Button (approx line 1402)
-    // 4. State definition (approx line 219)
-
 
     useEffect(() => {
         const init = async () => {
@@ -292,7 +290,39 @@ const BasicConverter: React.FC = () => {
         init();
     }, [searchParams, loadSession]);
 
+    // Handle postMessage from generated HTML iframe (e.g., clicking an artifact)
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'open_artifact' && event.data.artifactId) {
+                const artifact = artifacts.find(a => a.id === event.data.artifactId);
+                if (artifact) {
+                    const isViewable = artifact.fileName.toLowerCase().endsWith('.md') ||
+                        artifact.fileName.toLowerCase().endsWith('.markdown') ||
+                        artifact.fileName.toLowerCase().endsWith('.txt') ||
+                        artifact.fileName.toLowerCase().endsWith('.json') ||
+                        artifact.fileName.toLowerCase().endsWith('.csv') ||
+                        artifact.fileName.toLowerCase().endsWith('.ts') ||
+                        artifact.fileName.toLowerCase().endsWith('.tsx') ||
+                        artifact.fileName.toLowerCase().endsWith('.js');
 
+                    if (isViewable) {
+                        setViewingArtifact(artifact);
+                    } else {
+                        // Fallback to downloading if not viewable
+                        const a = document.createElement('a');
+                        a.href = `data:${artifact.mimeType};base64,${artifact.fileData}`;
+                        a.download = artifact.fileName;
+                        a.click();
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [artifacts]);
+
+    // Cleanup resources
 
     // Unified Merge Logic
     const mergeChatData = useCallback(async (newChatData: ChatData, newMetadata: ChatMetadata, newContent: string) => {
@@ -411,7 +441,9 @@ const BasicConverter: React.FC = () => {
                     detectedMode,
                     finalData.metadata || enrichedMetadata, // Fallback
                     false,
-                    true
+                    true,
+                    ChatStyle.Default,
+                    artifactBlobUrls
                 );
                 setGeneratedHtml(html);
 
@@ -500,7 +532,9 @@ const BasicConverter: React.FC = () => {
                         detectedMode,
                         mergedMetadata,
                         false,
-                        true
+                        true,
+                        ChatStyle.Default,
+                        artifactBlobUrls
                     );
                     setGeneratedHtml(html);
 
@@ -580,7 +614,9 @@ const BasicConverter: React.FC = () => {
                         detectedMode,
                         { ...enrichedMetadata },
                         false,
-                        true // isPreview
+                        true, // isPreview
+                        ChatStyle.Default,
+                        artifactBlobUrls
                     );
                     setGeneratedHtml(html);
 
@@ -738,7 +774,9 @@ const BasicConverter: React.FC = () => {
                 updatedSession.parserMode || ParserMode.Basic,
                 updatedSession.metadata,
                 false,
-                true // isPreview
+                true, // isPreview
+                ChatStyle.Default,
+                artifactBlobUrls
             );
             setGeneratedHtml(html);
 
@@ -804,7 +842,9 @@ const BasicConverter: React.FC = () => {
             parserMode,
             metadata,
             false,
-            true // isPreview
+            true, // isPreview
+            ChatStyle.Default,
+            artifactBlobUrls
         );
         setGeneratedHtml(html);
 
@@ -954,7 +994,9 @@ const BasicConverter: React.FC = () => {
             parserMode,
             newMetadata,
             false,
-            true // isPreview
+            true, // isPreview
+            ChatStyle.Default,
+            artifactBlobUrls
         );
         setGeneratedHtml(html);
     };
@@ -1032,7 +1074,9 @@ const BasicConverter: React.FC = () => {
                 parserMode,
                 { ...metadata, title: chatTitle, artifacts: result.updatedArtifacts },
                 false,
-                true // isPreview
+                true, // isPreview
+                ChatStyle.Default,
+                artifactBlobUrls
             );
             setGeneratedHtml(html);
 
@@ -1122,7 +1166,9 @@ const BasicConverter: React.FC = () => {
                 parserMode,
                 { ...metadata, title: chatTitle, artifacts },
                 false,
-                true // isPreview
+                true, // isPreview
+                ChatStyle.Default,
+                artifactBlobUrls
             );
             setGeneratedHtml(html);
 
@@ -1133,10 +1179,14 @@ const BasicConverter: React.FC = () => {
         }
     };
 
-
-
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30">
+        <div 
+            className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-green-500/30 overflow-x-hidden"
+            style={{ 
+                width: viewingArtifact ? `calc(100vw - ${readerWidth}vw)` : '100%', 
+                transition: isDraggingReader ? 'none' : 'width 0.3s ease-out' 
+            }}
+        >
 
             {/* Navigation Header */}
             <ConverterHeader
@@ -1312,14 +1362,70 @@ const BasicConverter: React.FC = () => {
                                     }}
                                     messages={chatData?.messages || []}
                                     manualMode={!loadedSessionId}
+                                    onRead={setViewingArtifact}
                                     onArtifactsChange={async (newArtifacts) => {
                                         setArtifacts(newArtifacts);
+                                        
+                                        // HYDRATION: Re-sync artifacts to messages
+                                        let updatedMessages = chatData ? [...chatData.messages] : [];
+                                        let hasChanges = false;
+                                        
+                                        if (chatData) {
+                                            // Clear old artifacts that were removed or unlinked
+                                            for (let i = 0; i < updatedMessages.length; i++) {
+                                                if (updatedMessages[i].artifacts) {
+                                                    const originalLength = updatedMessages[i].artifacts!.length;
+                                                    updatedMessages[i].artifacts = updatedMessages[i].artifacts!.filter(a => newArtifacts.some(na => na.id === a.id && na.insertedAfterMessageIndex === i));
+                                                    if (updatedMessages[i].artifacts!.length !== originalLength) {
+                                                        hasChanges = true;
+                                                    }
+                                                }
+                                            }
+
+                                            // Add new artifacts
+                                            newArtifacts.forEach(art => {
+                                                if (art.insertedAfterMessageIndex !== undefined && updatedMessages[art.insertedAfterMessageIndex]) {
+                                                    const msg = updatedMessages[art.insertedAfterMessageIndex];
+                                                    const existing = msg.artifacts || [];
+                                                    if (!existing.some(a => a.id === art.id)) {
+                                                        updatedMessages[art.insertedAfterMessageIndex] = {
+                                                            ...msg,
+                                                            artifacts: [...existing, art]
+                                                        };
+                                                        hasChanges = true;
+                                                    }
+                                                }
+                                            });
+
+                                            if (hasChanges) {
+                                                const newChatData = { ...chatData, messages: updatedMessages };
+                                                setChatData(newChatData);
+                                                
+                                                // Re-generate HTML immediately
+                                                const html = await exportService.generate(
+                                                    'html',
+                                                    newChatData,
+                                                    chatTitle,
+                                                    selectedTheme,
+                                                    userName,
+                                                    aiName,
+                                                    parserMode,
+                                                    { ...metadata, artifacts: newArtifacts },
+                                                    false,
+                                                    true // isPreview
+                                                );
+                                                setGeneratedHtml(html);
+                                            }
+                                        }
+
                                         if (loadedSessionId) {
                                             const newMetadata = { ...metadata, artifacts: newArtifacts };
                                             setMetadata(newMetadata);
-
-                                            // Use unified handleSaveChat
-                                            handleSaveChat(chatTitle, true, chatData || undefined, newMetadata);
+                                            // Pass updated chatData if it changed
+                                            const finalChatData = (chatData && hasChanges) ? { ...chatData, messages: updatedMessages } : (chatData || undefined);
+                                            handleSaveChat(chatTitle, true, finalChatData, newMetadata);
+                                        } else {
+                                            setMetadata(prev => ({ ...prev, artifacts: newArtifacts }));
                                         }
                                     }}
                                 />
@@ -1452,7 +1558,18 @@ const BasicConverter: React.FC = () => {
                     onRemoveMessageArtifact={handleRemoveMessageArtifact}
                     onMessagesChange={handleMessagesUpdate}
                     onClose={() => setShowReviewEditModal(false)}
-                    initialEditing={parserMode === ParserMode.Blank}
+                />
+            )}
+
+            {/* Immersive Reader Layer */}
+            {viewingArtifact && (
+                <ArtifactReaderLayer
+                    artifact={viewingArtifact}
+                    onClose={() => setViewingArtifact(null)}
+                    width={readerWidth}
+                    onWidthChange={setReaderWidth}
+                    onDragStart={() => setIsDraggingReader(true)}
+                    onDragEnd={() => setIsDraggingReader(false)}
                 />
             )}
         </div >
