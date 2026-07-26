@@ -198,6 +198,45 @@ export const UnifiedChatInterface: React.FC = () => {
         showToast('⚡ Saved as Skill in Archive!', 'success');
     };
 
+    const handleForkChat = async (messageIndex: number) => {
+        if (!session) return;
+        const currentTitle = session.metadata?.title || session.chatTitle || 'Untitled Session';
+        const forkedTitle = `${currentTitle} - Fork`;
+        const slicedMessages = messages.slice(0, messageIndex + 1);
+
+        const forkedId = crypto.randomUUID();
+        const forkedSession: SavedChatSession = {
+            ...session,
+            id: forkedId,
+            name: forkedTitle,
+            chatTitle: forkedTitle,
+            date: new Date().toISOString(),
+            chatData: {
+                ...session.chatData,
+                messages: slicedMessages,
+                metadata: {
+                    ...(session.metadata || { title: currentTitle, model: session.aiName, date: session.date, tags: [] }),
+                    title: forkedTitle,
+                    updatedAt: new Date().toISOString()
+                }
+            },
+            metadata: {
+                ...(session.metadata || { title: currentTitle, model: session.aiName, date: session.date, tags: [] }),
+                title: forkedTitle,
+                updatedAt: new Date().toISOString()
+            }
+        };
+
+        await storageService.saveSession(forkedSession);
+
+        // Dispatch updated recent chats list
+        window.dispatchEvent(new Event('chatSaved'));
+
+        // Open in new tab using HashRouter format
+        window.open(`#/chat/${forkedId}`, '_blank');
+        showToast('🍴 Chat successfully forked in a new tab!', 'success');
+    };
+
     // Load shortcuts into draft
     const handleLoadShortcut = async (type: 'memory' | 'prompt' | 'skill') => {
         setShowAttachMenu(false);
@@ -471,6 +510,14 @@ export const UnifiedChatInterface: React.FC = () => {
                                             title="Copy message contents"
                                         >
                                             📋 Copy Message
+                                        </button>
+                                        <span className="text-gray-700">|</span>
+                                        <button
+                                            onClick={() => handleForkChat(index)}
+                                            className="hover:text-gray-300 transition-colors flex items-center gap-1"
+                                            title="Fork conversation from this point"
+                                        >
+                                            🍴 Fork Chat
                                         </button>
                                     </div>
 
