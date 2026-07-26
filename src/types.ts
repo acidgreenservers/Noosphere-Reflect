@@ -42,7 +42,10 @@ export interface ChatMetadata {
   author?: string;
   sourceUrl?: string;
   artifacts?: ConversationArtifact[]; // NEW - Array of uploaded artifacts
-  exportStatus?: 'exported' | 'not_exported'; // Status tracking
+  exportStatus?: 'exported' | 'not_exported' | 'modified'; // Enhanced status tracking
+  lastExportDate?: string; // ISO timestamp
+  exportFormats?: string[]; // Array of formats exported
+  exportCount?: number; // Number of times physically exported
   updatedAt?: string; // ISO timestamp
 }
 
@@ -134,7 +137,7 @@ export interface SavedChatSession {
   chatData?: ChatData;
   metadata?: ChatMetadata; // Explicit metadata for easier hub access
   normalizedTitle?: string; // Normalized title for duplicate detection indexing
-  exportStatus?: 'exported' | 'not_exported'; // Mirror of metadata.exportStatus
+  exportStatus?: 'exported' | 'not_exported' | 'modified'; // Mirror of metadata.exportStatus
   date: string; // fallback
 }
 
@@ -163,7 +166,10 @@ export interface MemoryMetadata {
   characterCount: number;
   sourceUrl?: string;            // Optional: where memory came from
   notes?: string;                // User notes about the memory
-  exportStatus?: 'exported' | 'not_exported'; // Export tracking
+  exportStatus?: 'exported' | 'not_exported' | 'modified'; // Enhanced status tracking
+  lastExportDate?: string;
+  exportFormats?: string[];
+  exportCount?: number;
 }
 
 export interface Memory {
@@ -182,7 +188,10 @@ export interface PromptMetadata {
   category?: string;             // Category/purpose (e.g., "Coding", "Writing", "Analysis")
   wordCount: number;             // Calculated from content
   characterCount: number;
-  exportStatus?: 'exported' | 'not_exported'; // Export tracking
+  exportStatus?: 'exported' | 'not_exported' | 'modified'; // Enhanced status tracking
+  lastExportDate?: string;
+  exportFormats?: string[];
+  exportCount?: number;
 }
 
 export interface Prompt {
@@ -200,7 +209,10 @@ export interface SkillMetadata {
   category?: string;             // Category/purpose
   wordCount: number;             // Calculated from content
   characterCount: number;
-  exportStatus?: 'exported' | 'not_exported'; // Export tracking
+  exportStatus?: 'exported' | 'not_exported' | 'modified'; // Enhanced status tracking
+  lastExportDate?: string;
+  exportFormats?: string[];
+  exportCount?: number;
 }
 
 export interface Skill {

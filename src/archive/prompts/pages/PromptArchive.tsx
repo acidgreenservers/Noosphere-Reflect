@@ -22,7 +22,7 @@ import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
 
-import { ArchiveBatchActionBar } from '../../chats/components/ArchiveBatchActionBar';
+// Removed ArchiveBatchActionBar
 
 
 export default function PromptArchive() {
@@ -32,10 +32,11 @@ export default function PromptArchive() {
     const [previewPrompt, setPreviewPrompt] = useState<Prompt | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [, setIsExporting] = useState(false);
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedPrompts, setSelectedPrompts] = useState<Set<string>>(new Set());
     const [, setShowExportModal] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
-    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
+    const [exportFormat, setExportFormat] = useState<\'html\' | \'markdown\' | \'json\' | \'text\'>('html');
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
@@ -156,7 +157,7 @@ export default function PromptArchive() {
         }
     };
 
-    const handleExport = async (prompt: Prompt, format: 'html' | 'markdown' | 'json') => {
+    const handleExport = async (prompt: Prompt, format: \'html\' | \'markdown\' | \'json\' | \'text\', toClipboard: boolean = false) => {
         setIsExporting(true);
         try {
             const memoryLike = {
@@ -186,10 +187,28 @@ export default function PromptArchive() {
                 content = generateMemoryMarkdown(memoryLike as any);
                 extension = 'md';
                 mimeType = 'text/markdown';
+            } else if (format === 'text') {
+                content = generateMemoryMarkdown(memoryLike as any);
+                extension = 'txt';
+                mimeType = 'text/plain';
             } else {
                 content = generateMemoryJson(memoryLike as any);
                 extension = 'json';
                 mimeType = 'application/json';
+            }
+
+            if (toClipboard) {
+                if (format === 'html') {
+                    const clipboardItem = new ClipboardItem({
+                        'text/html': new Blob([content], { type: 'text/html' }),
+                        'text/plain': new Blob([content], { type: 'text/plain' })
+                    });
+                    await navigator.clipboard.write([clipboardItem]);
+                } else {
+                    await navigator.clipboard.writeText(content);
+                }
+                alert('Copied to clipboard!');
+                return;
             }
 
             const blob = new Blob([content], { type: mimeType });
@@ -202,6 +221,8 @@ export default function PromptArchive() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
+            const currentCount = prompt.metadata?.exportCount || 0;
+            await storageService.updateExportStatus('prompts', prompt.id, 'exported', format, currentCount + 1);
             const updated = {
                 ...prompt,
                 metadata: { ...prompt.metadata, exportStatus: 'exported' as const }
@@ -253,14 +274,10 @@ export default function PromptArchive() {
     const handleStatusToggle = async (prompt: Prompt, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const current = prompt.metadata.exportStatus || 'not_exported';
-        const next: 'exported' | 'not_exported' = current === 'exported' ? 'not_exported' : 'exported';
-        const updated = { ...prompt, metadata: { ...prompt.metadata, exportStatus: next } };
-        await storageService.updatePrompt(updated);
-        await loadPrompts();
+        /* Manual toggle removed */
     };
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedPrompts.size === 0) return;
         const selected = prompts.filter(p => selectedPrompts.has(p.id));
         const caseFormat = appSettings.fileNamingCase;
@@ -322,8 +339,8 @@ export default function PromptArchive() {
             ));
 
             for (const prompt of selected) {
-                const updated = { ...prompt, metadata: { ...prompt.metadata, exportStatus: 'exported' as const } };
-                await storageService.updatePrompt(updated);
+                const currentCount = prompt.metadata?.exportCount || 0;
+                await storageService.updateExportStatus('prompts', prompt.id, 'exported', format, currentCount + 1);
             }
             await loadPrompts();
             setSelectedPrompts(new Set());
@@ -334,7 +351,7 @@ export default function PromptArchive() {
         }
     };
 
-    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', _packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !promptsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
@@ -402,6 +419,7 @@ export default function PromptArchive() {
             onExport={handleExport}
             onStatusToggle={handleStatusToggle}
             onPreview={setPreviewPrompt}
+            isSelectionMode={isSelectionMode}
             selectedPrompts={selectedPrompts}
             onToggleSelect={handleToggleSelect}
         />
@@ -421,21 +439,23 @@ export default function PromptArchive() {
             addLabel="Add New Prompt"
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={() => {
+                setIsSelectionMode(!isSelectionMode);
+                if (isSelectionMode) setSelectedPrompts(new Set());
+            }}
             onSelectAll={handleSelectAll}
             isAllSelected={areAllSelected}
+            onExportSelected={() => setShowExportDestination(true)}
+            onDeleteSelected={handleBatchDelete}
+            onCancelSelection={() => {
+                setIsSelectionMode(false);
+                setSelectedPrompts(new Set());
+            }}
+            selectedCount={selectedPrompts.size}
+            itemLabel="prompts"
             totalFilteredItems={filteredPrompts.length}
-
             itemsComponent={itemsComponent}
-            batchActionsComponent={
-                <ArchiveBatchActionBar
-                    selectedCount={selectedPrompts.size}
-                    onExport={() => setShowExportDestination(true)}
-                    onDelete={handleBatchDelete}
-                    onClearSelection={() => setSelectedPrompts(new Set())}
-                    accentColor="blue"
-                    itemLabel="prompts"
-                />
-            }
         >
             <ArchiveItemModal
                 isOpen={isAddModalOpen}

@@ -2,12 +2,13 @@ import { ChatData, ChatTheme, ChatStyle, ParserMode, ChatMetadata } from '../../
 import { HtmlGenerator, htmlGenerator } from './HtmlGenerator';
 import { MarkdownGenerator, markdownGenerator } from './MarkdownGenerator';
 import { JsonGenerator, jsonGenerator } from './JsonGenerator';
+import { TextGenerator, textGenerator } from './TextGenerator';
 import { themeRegistry } from '../themes';
 
 /**
  * Export format types
  */
-export type ExportFormat = 'html' | 'markdown' | 'json';
+export type ExportFormat = 'html' | 'markdown' | 'json' | 'text';
 
 /**
  * Export generator interface
@@ -130,6 +131,14 @@ export class ExportService {
           metadata
         );
 
+      case 'text':
+        return (generator as TextGenerator).generateText(
+          chatData,
+          title,
+          userName,
+          aiName,
+          metadata
+        );
       default:
         throw new Error(`Unsupported export format: ${format}`);
     }
@@ -154,6 +163,7 @@ export class ExportService {
     this.register('html', htmlGenerator);
     this.register('markdown', markdownGenerator);
     this.register('json', jsonGenerator);
+    this.register('text', textGenerator);
   }
 }
 

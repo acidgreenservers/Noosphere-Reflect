@@ -22,7 +22,7 @@ import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
 
-import { ArchiveBatchActionBar } from '../../chats/components/ArchiveBatchActionBar';
+// Removed ArchiveBatchActionBar
 
 
 export default function SkillArchive() {
@@ -32,10 +32,11 @@ export default function SkillArchive() {
     const [previewSkill, setPreviewSkill] = useState<Skill | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [, setIsExporting] = useState(false);
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
     const [, setShowExportModal] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
-    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
+    const [exportFormat, setExportFormat] = useState<\'html\' | \'markdown\' | \'json\' | \'text\'>('html');
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
@@ -156,16 +157,12 @@ export default function SkillArchive() {
         }
     };
 
-    const handleExport = async (skill: Skill, format: 'html' | 'markdown' | 'json') => {
+    const handleExport = async (skill: Skill, format: \'html\' | \'markdown\' | \'json\' | \'text\', toClipboard: boolean = false) => {
         setIsExporting(true);
         try {
             const memoryLike = {
-                id: skill.id,
-                content: skill.content,
-                aiModel: skill.metadata.category || 'General',
-                tags: skill.tags,
-                createdAt: skill.createdAt,
-                updatedAt: skill.updatedAt,
+                ...skill,
+                content: skill.description,
                 metadata: {
                     title: skill.metadata.title,
                     wordCount: skill.metadata.wordCount,
@@ -186,10 +183,28 @@ export default function SkillArchive() {
                 content = generateMemoryMarkdown(memoryLike as any);
                 extension = 'md';
                 mimeType = 'text/markdown';
+            } else if (format === 'text') {
+                content = generateMemoryMarkdown(memoryLike as any);
+                extension = 'txt';
+                mimeType = 'text/plain';
             } else {
                 content = generateMemoryJson(memoryLike as any);
                 extension = 'json';
                 mimeType = 'application/json';
+            }
+
+            if (toClipboard) {
+                if (format === 'html') {
+                    const clipboardItem = new ClipboardItem({
+                        'text/html': new Blob([content], { type: 'text/html' }),
+                        'text/plain': new Blob([content], { type: 'text/plain' })
+                    });
+                    await navigator.clipboard.write([clipboardItem]);
+                } else {
+                    await navigator.clipboard.writeText(content);
+                }
+                alert('Copied to clipboard!');
+                return;
             }
 
             const blob = new Blob([content], { type: mimeType });
@@ -202,6 +217,8 @@ export default function SkillArchive() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
+            const currentCount = skill.metadata?.exportCount || 0;
+            await storageService.updateExportStatus('skills', skill.id, 'exported', format, currentCount + 1);
             const updated = {
                 ...skill,
                 metadata: { ...skill.metadata, exportStatus: 'exported' as const }
@@ -253,14 +270,10 @@ export default function SkillArchive() {
     const handleStatusToggle = async (skill: Skill, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const current = skill.metadata.exportStatus || 'not_exported';
-        const next: 'exported' | 'not_exported' = current === 'exported' ? 'not_exported' : 'exported';
-        const updated = { ...skill, metadata: { ...skill.metadata, exportStatus: next } };
-        await storageService.updateSkill(updated);
-        await loadSkills();
+        /* Manual toggle removed */
     };
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedSkills.size === 0) return;
         const selected = skills.filter(p => selectedSkills.has(p.id));
         const caseFormat = appSettings.fileNamingCase;
@@ -322,8 +335,8 @@ export default function SkillArchive() {
             ));
 
             for (const skill of selected) {
-                const updated = { ...skill, metadata: { ...skill.metadata, exportStatus: 'exported' as const } };
-                await storageService.updateSkill(updated);
+                const currentCount = skill.metadata?.exportCount || 0;
+                await storageService.updateExportStatus('skills', skill.id, 'exported', format, currentCount + 1);
             }
             await loadSkills();
             setSelectedSkills(new Set());
@@ -334,7 +347,7 @@ export default function SkillArchive() {
         }
     };
 
-    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', _packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !skillsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
@@ -402,6 +415,7 @@ export default function SkillArchive() {
             onExport={handleExport}
             onStatusToggle={handleStatusToggle}
             onPreview={setPreviewSkill}
+            isSelectionMode={isSelectionMode}
             selectedSkills={selectedSkills}
             onToggleSelect={handleToggleSelect}
         />
@@ -421,21 +435,23 @@ export default function SkillArchive() {
             addLabel="Add New Skill"
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={() => {
+                setIsSelectionMode(!isSelectionMode);
+                if (isSelectionMode) setSelectedSkills(new Set());
+            }}
             onSelectAll={handleSelectAll}
             isAllSelected={areAllSelected}
+            onExportSelected={() => setShowExportDestination(true)}
+            onDeleteSelected={handleBatchDelete}
+            onCancelSelection={() => {
+                setIsSelectionMode(false);
+                setSelectedSkills(new Set());
+            }}
+            selectedCount={selectedSkills.size}
+            itemLabel="skills"
             totalFilteredItems={filteredSkills.length}
-
             itemsComponent={itemsComponent}
-            batchActionsComponent={
-                <ArchiveBatchActionBar
-                    selectedCount={selectedSkills.size}
-                    onExport={() => setShowExportDestination(true)}
-                    onDelete={handleBatchDelete}
-                    onClearSelection={() => setSelectedSkills(new Set())}
-                    accentColor="blue"
-                    itemLabel="skills"
-                />
-            }
         >
             <ArchiveItemModal
                 isOpen={isAddModalOpen}

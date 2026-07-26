@@ -22,7 +22,7 @@ import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
 
-import { ArchiveBatchActionBar } from '../../chats/components/ArchiveBatchActionBar';
+// Removed ArchiveBatchActionBar
 
 
 export default function MemoryArchive() {
@@ -32,10 +32,11 @@ export default function MemoryArchive() {
     const [previewMemory, setPreviewMemory] = useState<Memory | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [, setIsExporting] = useState(false);
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
     const [, setShowExportModal] = useState(false);
     const [showExportDestination, setShowExportDestination] = useState(false);
-    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
+    const [exportFormat, setExportFormat] = useState<\'html\' | \'markdown\' | \'json\' | \'text\'>('html');
     const [exportPackage, setExportPackage] = useState<'directory' | 'zip' | 'single'>('zip');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
@@ -144,7 +145,7 @@ export default function MemoryArchive() {
         }
     };
 
-    const handleExport = async (memory: Memory, format: 'html' | 'markdown' | 'json') => {
+    const handleExport = async (memory: Memory, format: \'html\' | \'markdown\' | \'json\' | \'text\', toClipboard: boolean = false) => {
         setIsExporting(true);
         try {
             let content = '';
@@ -159,10 +160,30 @@ export default function MemoryArchive() {
                 content = generateMemoryMarkdown(memory);
                 extension = 'md';
                 mimeType = 'text/markdown';
+            } else if (format === 'text') {
+                // Since memory export doesn't have a plain text generator yet, we'll fall back to markdown without the .md extension, 
+                // or just strip markdown if possible. Actually, text format is primarily for Clipboard in archives, but let's support it.
+                content = generateMemoryMarkdown(memory);
+                extension = 'txt';
+                mimeType = 'text/plain';
             } else {
                 content = generateMemoryJson(memory);
                 extension = 'json';
                 mimeType = 'application/json';
+            }
+
+            if (toClipboard) {
+                if (format === 'html') {
+                    const clipboardItem = new ClipboardItem({
+                        'text/html': new Blob([content], { type: 'text/html' }),
+                        'text/plain': new Blob([content], { type: 'text/plain' })
+                    });
+                    await navigator.clipboard.write([clipboardItem]);
+                } else {
+                    await navigator.clipboard.writeText(content);
+                }
+                showToast('Copied to clipboard!', 'success');
+                return;
             }
 
             const blob = new Blob([content], { type: mimeType });
@@ -175,8 +196,8 @@ export default function MemoryArchive() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            const updated = { ...memory, metadata: { ...memory.metadata, exportStatus: 'exported' as const } };
-            await storageService.updateMemory(updated);
+            const currentCount = memory.metadata?.exportCount || 0;
+            await storageService.updateExportStatus('memories', memory.id, 'exported', format, currentCount + 1);
             await loadMemories();
         } catch (error) {
             console.error('Export failed:', error);
@@ -223,14 +244,10 @@ export default function MemoryArchive() {
     const handleStatusToggle = async (memory: Memory, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const current = memory.metadata.exportStatus || 'not_exported';
-        const next: 'exported' | 'not_exported' = current === 'exported' ? 'not_exported' : 'exported';
-        const updated = { ...memory, metadata: { ...memory.metadata, exportStatus: next } };
-        await storageService.updateMemory(updated);
-        await loadMemories();
+        /* Manual toggle removed */
     };
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedMemories.size === 0) return;
         const selected = memories.filter(m => selectedMemories.has(m.id));
         const caseFormat = appSettings.fileNamingCase;
@@ -277,8 +294,8 @@ export default function MemoryArchive() {
             ));
 
             for (const memory of selected) {
-                const updated = { ...memory, metadata: { ...memory.metadata, exportStatus: 'exported' as const } };
-                await storageService.updateMemory(updated);
+                const currentCount = memory.metadata?.exportCount || 0;
+                await storageService.updateExportStatus('memories', memory.id, 'exported', format, currentCount + 1);
             }
             await loadMemories();
             setSelectedMemories(new Set());
@@ -289,7 +306,7 @@ export default function MemoryArchive() {
         }
     };
 
-    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', _packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !memoriesFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
@@ -357,6 +374,7 @@ export default function MemoryArchive() {
             onExport={handleExport}
             onStatusToggle={handleStatusToggle}
             onPreview={setPreviewMemory}
+            isSelectionMode={isSelectionMode}
             selectedMemories={selectedMemories}
             onToggleSelect={handleToggleSelect}
         />
@@ -376,21 +394,23 @@ export default function MemoryArchive() {
             addLabel="Add New Memory"
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={() => {
+                setIsSelectionMode(!isSelectionMode);
+                if (isSelectionMode) setSelectedMemories(new Set());
+            }}
             onSelectAll={handleSelectAll}
             isAllSelected={areAllSelected}
+            onExportSelected={() => setShowExportDestination(true)}
+            onDeleteSelected={handleBatchDelete}
+            onCancelSelection={() => {
+                setIsSelectionMode(false);
+                setSelectedMemories(new Set());
+            }}
+            selectedCount={selectedMemories.size}
+            itemLabel="memories"
             totalFilteredItems={filteredMemories.length}
-
             itemsComponent={itemsComponent}
-            batchActionsComponent={
-                <ArchiveBatchActionBar
-                    selectedCount={selectedMemories.size}
-                    onExport={() => setShowExportDestination(true)}
-                    onDelete={handleBatchDelete}
-                    onClearSelection={() => setSelectedMemories(new Set())}
-                    accentColor="purple"
-                    itemLabel="memories"
-                />
-            }
         >
             <ArchiveItemModal
                 isOpen={isAddModalOpen}

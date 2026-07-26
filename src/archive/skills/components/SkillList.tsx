@@ -11,10 +11,11 @@ interface Props {
     onStatusToggle: (skill: Skill, e: React.MouseEvent) => void;
     onPreview: (skill: Skill) => void;
     selectedSkills: Set<string>;
+    isSelectionMode?: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function SkillList({ skills, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedSkills, onToggleSelect }: Props) {
+export default function SkillList({ skills, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedSkills, isSelectionMode = false, onToggleSelect }: Props) {
     if (skills.length === 0) return null;
 
     return (
@@ -29,6 +30,7 @@ export default function SkillList({ skills, viewMode = 'grid', onEdit, onDelete,
                     onExport={onExport}
                     onStatusToggle={onStatusToggle}
                     onPreview={onPreview}
+                    isSelectionMode={isSelectionMode}
                     isSelected={selectedSkills.has(skill.id)}
                     onToggleSelect={onToggleSelect}
                 />

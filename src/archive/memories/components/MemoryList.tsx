@@ -11,10 +11,11 @@ interface Props {
     onStatusToggle: (memory: Memory, e: React.MouseEvent) => void;
     onPreview: (memory: Memory) => void;
     selectedMemories: Set<string>;
+    isSelectionMode?: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function MemoryList({ memories, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedMemories, onToggleSelect }: Props) {
+export default function MemoryList({ memories, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedMemories, isSelectionMode = false, onToggleSelect }: Props) {
     if (memories.length === 0) return null;
 
     return (
@@ -29,6 +30,7 @@ export default function MemoryList({ memories, viewMode = 'grid', onEdit, onDele
                     onExport={onExport}
                     onStatusToggle={onStatusToggle}
                     onPreview={onPreview}
+                    isSelectionMode={isSelectionMode}
                     isSelected={selectedMemories.has(memory.id)}
                     onToggleSelect={onToggleSelect}
                 />

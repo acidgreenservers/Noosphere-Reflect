@@ -456,11 +456,13 @@ export default function UnifiedChatInterface() {
             showToast(`✓ Exported ${format.toUpperCase()}`, 'success');
             setShowChatActionsMenu(false);
             
-            if (session.exportStatus !== 'exported') {
-                await storageService.updateExportStatus(session.id, 'exported');
-                setSession({ ...session, exportStatus: 'exported', metadata: { ...session.metadata, exportStatus: 'exported' } as any });
-                window.dispatchEvent(new Event('chatSaved'));
+            if (!toClipboard) {
+                const currentCount = session.metadata?.exportCount || 0;
+                await storageService.updateExportStatus('sessions', session.id, 'exported', format, currentCount + 1);
             }
+            setSession({ ...session, exportStatus: 'exported', metadata: { ...session.metadata, exportStatus: 'exported' } as any });
+            window.dispatchEvent(new Event('chatSaved'));
+            
         } catch (e) {
             console.error('Export failed', e);
             showToast('❌ Export failed', 'info');
@@ -586,22 +588,6 @@ export default function UnifiedChatInterface() {
         }
     };
 
-    const handleToggleExportStatus = async () => {
-        if (!session) return;
-        const current = session.metadata?.exportStatus || 'not_exported';
-        const next = current === 'exported' ? 'not_exported' : 'exported';
-        await storageService.updateExportStatus(session.id, next);
-        setSession({
-            ...session,
-            exportStatus: next,
-            metadata: {
-                ...(session.metadata || { title: session.chatTitle, model: session.aiName, date: session.date, tags: [] }),
-                exportStatus: next
-            }
-        });
-        showToast(`Export status marked as: ${next}`, 'info');
-        setShowChatActionsMenu(false);
-    };
 
     const modelsList = [
         'Claude 3.5 Sonnet',
@@ -677,7 +663,7 @@ export default function UnifiedChatInterface() {
                     {showChatActionsMenu && (
                         <>
                             <div className="fixed inset-0 z-30" onClick={() => setShowChatActionsMenu(false)} />
-                            <div className="absolute right-0 top-full mt-2 w-56 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl z-40 overflow-hidden animate-fade-in">
+                            <div className="absolute right-0 top-full mt-2 w-56 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl z-40 animate-fade-in">
                                 <div className="py-1">
                                     <button
                                         onClick={() => {
@@ -694,16 +680,9 @@ export default function UnifiedChatInterface() {
                                     >
                                         ✏️ Rename Conversation
                                     </button>
-                                    <button
-                                        onClick={handleToggleExportStatus}
-                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
-                                    >
-                                        {session.metadata?.exportStatus === 'exported' ? '❌ Mark Unexported' : '✅ Mark Exported'}
-                                    </button>
-                                    
                                     {/* Export Menu */}
-                                    <div className="relative group/export">
-                                        <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center">
+                                    <div className="relative group/export rounded-b-xl">
+                                        <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center rounded-b-xl">
                                             <span>📤 Export</span>
                                             <span className="text-[10px]">◀</span>
                                         </button>
@@ -716,14 +695,15 @@ export default function UnifiedChatInterface() {
                                                     <span className="text-[10px]">◀</span>
                                                 </button>
                                                 <div className="absolute right-full top-0 mr-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
-                                                    <button onClick={() => handleExport('markdown', true)} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Text (MD)</button>
-                                                    <button onClick={() => handleExport('html', true)} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">🌐 HTML</button>
+                                                    <button onClick={() => { handleExport('text', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Text</button>
+                                                    <button onClick={() => { handleExport('markdown', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Markdown</button>
                                                 </div>
                                             </div>
                                             
-                                            <button onClick={() => handleExport('markdown')} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Markdown</button>
-                                            <button onClick={() => handleExport('html')} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">🌐 HTML</button>
-                                            <button onClick={() => handleExport('json')} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📊 JSON</button>
+                                            <button onClick={() => { handleExport('text'); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Plain Text</button>
+                                            <button onClick={() => { handleExport('markdown'); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Markdown</button>
+                                            <button onClick={() => { handleExport('html'); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">🌐 HTML</button>
+                                            <button onClick={() => { handleExport('json'); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📊 JSON</button>
                                         </div>
                                     </div>
 

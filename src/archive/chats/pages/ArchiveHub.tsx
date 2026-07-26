@@ -16,7 +16,7 @@ import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService, DriveFile } from '../../../services/googleDriveService';
 import { GoogleDriveImportModal } from '../../../components/GoogleDriveImportModal';
 import { deduplicateMessages } from '../../../utils/messageDedupe';
-import { ChatSessionCard, ArchiveBatchActionBar } from '../components';
+import { ChatSessionCard } from '../components';
 import { useExtensionBridge } from '../hooks/useExtensionBridge';
 import { useArchiveSearch } from '../hooks/useArchiveSearch';
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
@@ -26,9 +26,10 @@ const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const ArchiveHub: React.FC = () => {
     const [sessions, setSessions] = useState<SavedChatSessionMetadata[]>([]);
 
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
-    const [exportFormat, setExportFormat] = useState<'html' | 'markdown' | 'json'>('html');
+    const [exportFormat, setExportFormat] = useState<\'html\' | \'markdown\' | \'json\' | \'text\'>('html');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [, setExportDropdownOpen] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -180,7 +181,7 @@ const ArchiveHub: React.FC = () => {
         const current = session.exportStatus || 'not_exported';
         const next: 'exported' | 'not_exported' = current === 'exported' ? 'not_exported' : 'exported';
 
-        await storageService.updateExportStatus(session.id, next);
+        // await storageService.updateExportStatus('sessions', session.id, next);
 
         // Optimistic update
         setSessions((prev: SavedChatSessionMetadata[]) => prev.map(s =>
@@ -202,7 +203,7 @@ const ArchiveHub: React.FC = () => {
     };
 
 
-    const handleBatchExport = async (format: 'html' | 'markdown' | 'json', _packageType?: 'directory' | 'zip' | 'single') => {
+    const handleBatchExport = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType?: 'directory' | 'zip' | 'single') => {
         const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
         if (selectedMetas.length === 0) return;
         
@@ -253,7 +254,8 @@ const ArchiveHub: React.FC = () => {
             ));
 
             for (const s of selectedMetas) {
-                await storageService.updateExportStatus(s.id, 'exported');
+                const currentCount = s.metadata?.exportCount || 0;
+                await storageService.updateExportStatus('sessions', s.id, 'exported', format, currentCount + 1);
             }
 
             // Reload to show new status
@@ -267,7 +269,7 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleSingleExport = async (sessionMeta: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+    const handleSingleExport = async (sessionMeta: SavedChatSessionMetadata, format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single', toClipboard: boolean = false) => {
         try {
             // Fetch FULL session
             const session = await storageService.getSessionById(sessionMeta.id);
@@ -335,6 +337,23 @@ const ArchiveHub: React.FC = () => {
                 }
 
                 // Create blob and download (simple single-file download)
+                if (toClipboard) {
+                    if (format === 'html') {
+                        const clipboardItem = new ClipboardItem({
+                            'text/html': new Blob([content], { type: 'text/html' }),
+                            'text/plain': new Blob([content], { type: 'text/plain' })
+                        });
+                        await navigator.clipboard.write([clipboardItem]);
+                    } else {
+                        await navigator.clipboard.writeText(content);
+                    }
+                    // We don't trigger the updateExportStatus for clipboard exports
+                    alert('Copied to clipboard!');
+                    setExportModalOpen(false);
+                    setExportDropdownOpen(false);
+                    return;
+                }
+
                 const blob = new Blob([content], { type: mimeType });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -346,7 +365,7 @@ const ArchiveHub: React.FC = () => {
                 URL.revokeObjectURL(url);
 
                 // Mark as exported
-                await storageService.updateExportStatus(session.id, 'exported');
+                await storageService.updateExportStatus('sessions', session.id, 'exported');
                 await loadSessions();
 
                 setExportModalOpen(false);
@@ -372,7 +391,7 @@ const ArchiveHub: React.FC = () => {
                 URL.revokeObjectURL(url);
 
                 // Mark as exported
-                await storageService.updateExportStatus(session.id, 'exported');
+                await storageService.updateExportStatus('sessions', session.id, 'exported');
                 await loadSessions();
             } else {
                 // Directory export - use File System Access API
@@ -515,7 +534,7 @@ const ArchiveHub: React.FC = () => {
                     alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${uniqueArtifacts.length} files)\n  - export-metadata.json`);
 
                     // Mark as exported
-                    await storageService.updateExportStatus(session.id, 'exported');
+                    await storageService.updateExportStatus('sessions', session.id, 'exported');
                     await loadSessions();
                 } catch (error: any) {
                     if (error.name === 'AbortError') {
@@ -536,7 +555,7 @@ const ArchiveHub: React.FC = () => {
     };
 
 
-    const handleDirectoryExportToDrive = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json', appSettings: AppSettings, accessToken: string, chatsFolderId: string) => {
+    const handleDirectoryExportToDrive = async (session: SavedChatSession, format: \'html\' | \'markdown\' | \'json\' | \'text\', appSettings: AppSettings, accessToken: string, chatsFolderId: string) => {
         const theme = session.selectedTheme || ChatTheme.DarkDefault;
         const userName = session.userName || 'User';
         const aiName = session.aiName || 'AI';
@@ -710,7 +729,7 @@ const ArchiveHub: React.FC = () => {
         };
     };
 
-    const handleExportToDriveWithFormat = async (sessionMeta: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => {
+    const handleExportToDriveWithFormat = async (sessionMeta: SavedChatSessionMetadata, format: \'html\' | \'markdown\' | \'json\' | \'text\', packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
@@ -729,7 +748,7 @@ const ArchiveHub: React.FC = () => {
                 const result = await handleDirectoryExportToDrive(session, format, appSettings, accessToken, chatsFolderId);
 
                 // Mark as exported
-                await storageService.updateExportStatus(session.id, 'exported');
+                await storageService.updateExportStatus('sessions', session.id, 'exported');
                 await loadSessions();
 
                 alert(`✅ Exported to Google Drive folder:\n- ${result.folderName}/\n  - ${result.mainFile}\n  - artifacts/ (${result.artifactsUploaded} files)\n  - export-metadata.json`);
@@ -801,7 +820,7 @@ const ArchiveHub: React.FC = () => {
                 );
 
                 // Mark as exported
-                await storageService.updateExportStatus(session.id, 'exported');
+                await storageService.updateExportStatus('sessions', session.id, 'exported');
                 await loadSessions();
                 alert(`✅ Uploaded to Google Drive: ${uploadFilename}`);
             }
@@ -972,7 +991,7 @@ const ArchiveHub: React.FC = () => {
         }
     };
 
-    const handleBatchExportToDrive = async (format: 'html' | 'markdown' | 'json', _packageType: 'directory' | 'zip' | 'single') => {
+    const handleBatchExportToDrive = async (format: \'html\' | \'markdown\' | \'json\' | \'text\', _packageType: 'directory' | 'zip' | 'single') => {
         if (!isLoggedIn || !accessToken || !chatsFolderId) {
             alert('Please connect Google Drive in Settings first.');
             return;
@@ -1059,7 +1078,7 @@ const ArchiveHub: React.FC = () => {
                 );
 
                 // Mark as exported
-                await storageService.updateExportStatus(session.id, 'exported');
+                await storageService.updateExportStatus('sessions', session.id, 'exported');
             }
 
             await loadSessions();
@@ -1128,7 +1147,7 @@ const ArchiveHub: React.FC = () => {
                 );
 
                 // Mark as exported
-                await storageService.updateExportStatus(session.id, 'exported');
+                await storageService.updateExportStatus('sessions', session.id, 'exported');
             }
 
             await loadSessions();
@@ -1189,10 +1208,11 @@ const ArchiveHub: React.FC = () => {
                 <ChatSessionCard
                     key={session.id}
                     session={session}
+                    isSelectionMode={isSelectionMode}
                     isSelected={selectedIds.has(session.id)}
                     onSelect={toggleSelection}
                     onDelete={handleDelete}
-                    onStatusToggle={handleStatusToggle}
+                    onExport={(session, format, toClipboard) => handleSingleExport(session, format, 'single', toClipboard)}
                     onPreview={handlePreview}
                     onManageArtifacts={(full) => {
                         setSelectedSessionForArtifacts(full);
@@ -1228,20 +1248,23 @@ const ArchiveHub: React.FC = () => {
             onSearchChange={setSearchTerm}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={() => {
+                setIsSelectionMode(!isSelectionMode);
+                if (isSelectionMode) setSelectedIds(new Set()); // Clear on cancel
+            }}
             onSelectAll={handleSelectAll}
             isAllSelected={areAllSelected}
+            onExportSelected={handleExportStart}
+            onDeleteSelected={handleBatchDelete}
+            onCancelSelection={() => {
+                setIsSelectionMode(false);
+                setSelectedIds(new Set());
+            }}
+            selectedCount={selectedIds.size}
+            itemLabel="chats"
             totalFilteredItems={filteredSessions.length}
             itemsComponent={itemsComponent}
-            batchActionsComponent={
-                <ArchiveBatchActionBar
-                    selectedCount={selectedIds.size}
-                    onExport={handleExportStart}
-                    onDelete={handleBatchDelete}
-                    onClearSelection={() => setSelectedIds(new Set())}
-                    accentColor="green"
-                    itemLabel="chats"
-                />
-            }
         >
             {/* Disclaimer / Tip */}
             <div className="mb-4 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-xl flex items-start gap-3">

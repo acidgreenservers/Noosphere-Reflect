@@ -11,10 +11,11 @@ interface Props {
     onStatusToggle: (prompt: Prompt, e: React.MouseEvent) => void;
     onPreview: (prompt: Prompt) => void;
     selectedPrompts: Set<string>;
+    isSelectionMode?: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function PromptList({ prompts, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedPrompts, onToggleSelect }: Props) {
+export default function PromptList({ prompts, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedPrompts, isSelectionMode = false, onToggleSelect }: Props) {
     if (prompts.length === 0) return null;
 
     return (
@@ -29,6 +30,7 @@ export default function PromptList({ prompts, viewMode = 'grid', onEdit, onDelet
                     onExport={onExport}
                     onStatusToggle={onStatusToggle}
                     onPreview={onPreview}
+                    isSelectionMode={isSelectionMode}
                     isSelected={selectedPrompts.has(prompt.id)}
                     onToggleSelect={onToggleSelect}
                 />

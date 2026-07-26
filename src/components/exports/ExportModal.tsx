@@ -3,16 +3,16 @@ import React from 'react';
 interface ExportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onExport: (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => void;
+    onExport: (format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => void;
     selectedCount: number;
     hasArtifacts?: boolean;
     exportFormat: 'html' | 'markdown' | 'json';
-    setExportFormat: (format: 'html' | 'markdown' | 'json') => void;
+    setExportFormat: (format: 'html' | 'markdown' | 'json' | 'text') => void;
     exportPackage: 'directory' | 'zip' | 'single';
     setExportPackage: (packageType: 'directory' | 'zip' | 'single') => void;
     accentColor?: string; // e.g., 'green' for chats, 'purple' for memories
     exportDestination?: 'local' | 'drive'; // Track where export is going
-    onExportDrive?: (format: 'html' | 'markdown' | 'json', packageType: 'directory' | 'zip' | 'single') => Promise<void>;
+    onExportDrive?: (format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => Promise<void>;
     isExportingToDrive?: boolean;
 }
 
@@ -60,7 +60,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <div>
                         <label className="block text-sm font-semibold text-gray-300 mb-3">Format:</label>
                         <div className="flex gap-3">
-                            {(['html', 'markdown', 'json'] as const).map(fmt => (
+                            {(['text', 'markdown', 'html', 'json'] as const).map(fmt => (
                                 <label key={fmt} className="flex items-center gap-2 flex-1 cursor-pointer">
                                     <input
                                         type="radio"
@@ -70,7 +70,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                                         onChange={(e) => setExportFormat(e.target.value as any)}
                                         className="w-4 h-4"
                                     />
-                                    <span className="text-sm text-gray-200 capitalize">{fmt === 'markdown' ? 'Markdown' : fmt.toUpperCase()}</span>
+                                    <span className="text-sm text-gray-200 capitalize">{fmt === 'text' ? 'Plain Text' : fmt === 'markdown' ? 'Markdown' : fmt.toUpperCase()}</span>
                                 </label>
                             ))}
                         </div>

@@ -15,14 +15,20 @@ interface ArchiveLayoutProps {
     viewMode: 'list' | 'grid';
     onViewModeChange: (mode: 'list' | 'grid') => void;
     
-    // Selection
+    // Selection Mode
+    isSelectionMode: boolean;
+    onToggleSelectionMode: () => void;
     onSelectAll: () => void;
     isAllSelected: boolean;
+    onExportSelected?: () => void;
+    onDeleteSelected?: () => void;
+    onCancelSelection: () => void;
+    selectedCount: number;
+    itemLabel: string;
     totalFilteredItems: number;
     
     // Slots
     itemsComponent: React.ReactNode;
-    batchActionsComponent?: React.ReactNode;
     children?: React.ReactNode;
 }
 
@@ -36,11 +42,17 @@ export const ArchiveLayout: React.FC<ArchiveLayoutProps> = ({
     addLabel,
     viewMode,
     onViewModeChange,
+    isSelectionMode,
+    onToggleSelectionMode,
     onSelectAll,
     isAllSelected,
+    onExportSelected,
+    onDeleteSelected,
+    onCancelSelection,
+    selectedCount,
+    itemLabel,
     totalFilteredItems,
     itemsComponent,
-    batchActionsComponent,
     children
 }) => {
     return (
@@ -126,12 +138,60 @@ export const ArchiveLayout: React.FC<ArchiveLayoutProps> = ({
                 </div>
 
                 <button
-                    onClick={onSelectAll}
-                    className="px-4 py-3 bg-[#122622] hover:bg-[#1a211d] text-xs font-semibold text-green-400 border border-green-500/20 rounded-2xl transition-all whitespace-nowrap"
+                    onClick={onToggleSelectionMode}
+                    className={`px-4 py-3 text-xs font-semibold border rounded-2xl transition-all whitespace-nowrap ${
+                        isSelectionMode 
+                            ? 'bg-green-500/20 text-green-400 border-green-500/50 shadow-inner' 
+                            : 'bg-[#122622] hover:bg-green-500/10 text-green-400 border-green-500/20'
+                    }`}
                 >
-                    {isAllSelected && totalFilteredItems > 0 ? 'Deselect All' : 'Select All'}
+                    Select {itemLabel}
                 </button>
             </div>
+
+            {/* Selection Action Bar (appears under search) */}
+            {isSelectionMode && (
+                <div className="mb-6 flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 shrink-0 animate-fade-in">
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm font-semibold text-green-400">
+                            {selectedCount} {itemLabel} selected
+                        </span>
+                        <div className="h-4 w-px bg-green-500/30"></div>
+                        <button
+                            onClick={onSelectAll}
+                            className="text-xs font-semibold text-gray-300 hover:text-white transition-colors"
+                        >
+                            {isAllSelected && totalFilteredItems > 0 ? 'Deselect All' : 'Select All'}
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {onExportSelected && (
+                            <button
+                                onClick={onExportSelected}
+                                disabled={selectedCount === 0}
+                                className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Export Selected
+                            </button>
+                        )}
+                        {onDeleteSelected && (
+                            <button
+                                onClick={onDeleteSelected}
+                                disabled={selectedCount === 0}
+                                className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Delete
+                            </button>
+                        )}
+                        <button
+                            onClick={onCancelSelection}
+                            className="px-3 py-1.5 bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 border border-gray-500/30 rounded-lg text-xs font-semibold transition-colors ml-2"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Content Area */}
             <div className={`flex-1 overflow-y-auto pr-2 scrollbar-thin ${
@@ -156,7 +216,6 @@ export const ArchiveLayout: React.FC<ArchiveLayoutProps> = ({
                 )}
             </div>
 
-            {batchActionsComponent}
             {children}
         </div>
     );

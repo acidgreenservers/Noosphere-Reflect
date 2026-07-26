@@ -52,6 +52,12 @@ class StorageService {
     }
 
     async saveSession(session: SavedChatSession): Promise<void> {
+        if (session.exportStatus === 'exported') {
+            session.exportStatus = 'modified';
+            if (session.metadata) {
+                session.metadata.exportStatus = 'modified';
+            }
+        }
         return sessionStore.save(session);
     }
 
@@ -204,6 +210,9 @@ class StorageService {
 
     async updateMemory(memory: Memory): Promise<void> {
         memory.updatedAt = new Date().toISOString();
+        if (memory.metadata.exportStatus === 'exported') {
+            memory.metadata.exportStatus = 'modified';
+        }
         return this.saveMemory(memory);
     }
 
@@ -216,21 +225,36 @@ class StorageService {
     }
 
     // Export/Import
-    async updateExportStatus(id: string, status: 'exported' | 'not_exported'): Promise<void> {
+    async updateExportStatus(
+        storeName: string,
+        id: string, 
+        status: 'exported' | 'not_exported' | 'modified',
+        format?: string,
+        newCount?: number
+    ): Promise<void> {
         const db = await this.getDB();
-        const tx = db.transaction(STORES.SESSIONS, 'readwrite');
-        const session = await tx.store.get(id);
+        const tx = db.transaction(storeName, 'readwrite');
+        const item = await tx.store.get(id);
 
-        if (!session) {
-            throw new Error(`Session ${id} not found`);
+        if (!item) {
+            throw new Error(`Item ${id} not found in ${storeName}`);
         }
 
-        session.exportStatus = status;
-        if (session.metadata) {
-            session.metadata.exportStatus = status;
+        item.exportStatus = status;
+        if (item.metadata) {
+            item.metadata.exportStatus = status;
+            if (status === 'exported') {
+                item.metadata.lastExportDate = new Date().toISOString();
+                if (format) {
+                    item.metadata.exportFormats = Array.from(new Set([...(item.metadata.exportFormats || []), format]));
+                }
+                if (newCount !== undefined) {
+                    item.metadata.exportCount = newCount;
+                }
+            }
         }
 
-        await tx.store.put(session);
+        await tx.store.put(item);
         await tx.done;
     }
 
@@ -466,6 +490,9 @@ class StorageService {
 
     async updatePrompt(prompt: Prompt): Promise<void> {
         prompt.updatedAt = new Date().toISOString();
+        if (prompt.metadata.exportStatus === 'exported') {
+            prompt.metadata.exportStatus = 'modified';
+        }
         return this.savePrompt(prompt);
     }
 
@@ -492,6 +519,9 @@ class StorageService {
 
     async updateSkill(skill: Skill): Promise<void> {
         skill.updatedAt = new Date().toISOString();
+        if (skill.metadata.exportStatus === 'exported') {
+            skill.metadata.exportStatus = 'modified';
+        }
         return this.saveSkill(skill);
     }
 
