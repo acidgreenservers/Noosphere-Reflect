@@ -113,6 +113,45 @@
     -webkit-mask-size: contain;
   }
 
+  /* Reader Mode Typography - Optimized for minimal cognitive load */
+  .reader-prose {
+    line-height: 2;
+    color: #e5e7eb;
+    font-size: 1.05rem;
+  }
+
+  .reader-prose p {
+    margin-bottom: 1.5rem;
+  }
+
+  .reader-prose h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    margin-top: 3rem;
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 1rem;
+    letter-spacing: -0.025em;
+  }
+
+  .reader-prose h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    margin-top: 2.5rem;
+    color: #f3f4f6;
+    letter-spacing: -0.015em;
+  }
+
+  .reader-prose h3 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    margin-top: 2rem;
+    color: #e5e7eb;
+  }
+
   /* Manual Prose-like Styles for Markdown Content */
   .markdown-content {
     line-height: 1.75;

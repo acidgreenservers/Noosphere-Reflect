@@ -56,13 +56,43 @@ export const enrichMetadata = (data: ChatData, mode: ParserMode): ChatMetadata =
         }
     }
 
-    // 3. Ensure Tags exist and include model
+    // 3. Generate Minimal, Meaningful Tags
+    const generatedTags: string[] = [];
+
+    // 3a. Service / Model
     if (newMetadata.model) {
-        const modelTag = newMetadata.model.toLowerCase().replace(/\s+/g, '-');
-        if (!newMetadata.tags.includes(modelTag)) {
-            newMetadata.tags.push(modelTag);
-        }
+        generatedTags.push(newMetadata.model.toLowerCase().replace(/\s+/g, '-'));
     }
+
+    // 3b. Import Format
+    const modeStr = mode.toString().toLowerCase();
+    if (modeStr.includes('html')) {
+        generatedTags.push('html');
+    } else if (modeStr.includes('json')) {
+        generatedTags.push('json');
+    } else if (modeStr.includes('md') || modeStr.includes('markdown')) {
+        generatedTags.push('markdown');
+    } else {
+        generatedTags.push('noosphere');
+    }
+
+    // 3c. Title Keywords (First 2 meaningful words)
+    const stopWords = new Set(['the', 'and', 'with', 'for', 'that', 'this', 'how', 'what', 'why', 'when', 'from', 'untitled', 'chat', 'export']);
+    const titleWords = newMetadata.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length >= 3 && !stopWords.has(w));
+
+    titleWords.slice(0, 2).forEach(kw => {
+        if (!generatedTags.includes(kw)) {
+            generatedTags.push(kw);
+        }
+    });
+
+    // 4. Override tags and force date to current import time
+    newMetadata.tags = generatedTags;
+    newMetadata.date = new Date().toISOString();
 
     return newMetadata;
 };

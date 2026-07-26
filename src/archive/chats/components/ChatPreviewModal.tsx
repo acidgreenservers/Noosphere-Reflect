@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedChatSession, ConversationArtifact } from '../../../types';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
-import { ArtifactViewerModal } from '../../../components/ArtifactViewerModal';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReaderLayer';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { useMathJax } from '../../../hooks/useMathJax';
@@ -98,8 +98,16 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
     };
 
     const handleArtifactAction = (artifact: any) => {
-        if (isMarkdownFile(artifact.fileName)) {
-            // View markdown in modal
+        const isTextFile = isMarkdownFile(artifact.fileName) ||
+            artifact.fileName.toLowerCase().endsWith('.txt') ||
+            artifact.fileName.toLowerCase().endsWith('.json') ||
+            artifact.fileName.toLowerCase().endsWith('.csv') ||
+            artifact.fileName.toLowerCase().endsWith('.ts') ||
+            artifact.fileName.toLowerCase().endsWith('.tsx') ||
+            artifact.fileName.toLowerCase().endsWith('.js');
+
+        if (isTextFile) {
+            // View text/markdown in immersive reader
             setViewingArtifact(artifact);
         } else {
             // Download other files
@@ -545,19 +553,19 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                                                     <button
                                                                         onClick={() => handleArtifactAction(art)}
                                                                         className="flex items-center gap-3 bg-gray-900/60 backdrop-blur-sm p-2.5 rounded-xl border border-gray-700/50 hover:border-purple-500/50 hover:bg-purple-900/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] group cursor-pointer text-left flex-1 hover:shadow-lg hover:shadow-purple-500/10"
-                                                                        title={isMarkdown ? `View ${art.fileName}` : `Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
+                                                                        title={isMarkdown ? `Read ${art.fileName}` : `Download ${art.fileName} (${(art.fileSize / 1024).toFixed(1)} KB)`}
                                                                     >
                                                                         <span className="text-lg">{getFileIcon(art.mimeType)}</span>
                                                                         <span className="text-sm text-gray-300 truncate flex-1 group-hover:text-purple-300 transition-colors">{art.fileName}</span>
                                                                         <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            {isMarkdown ? (
+                                                                            {isMarkdown || art.fileName.endsWith('.txt') ? (
                                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                             ) : (
                                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                                                             )}
                                                                         </svg>
                                                                     </button>
-                                                                    {isMarkdown && (
+                                                                    {(isMarkdown || art.fileName.endsWith('.txt') || art.fileName.endsWith('.json') || art.fileName.endsWith('.js') || art.fileName.endsWith('.ts')) && (
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
@@ -623,8 +631,8 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                 </div>
             )}
 
-            {/* Standardized Artifact Viewer Modal */}
-            <ArtifactViewerModal
+            {/* Immersive Artifact Reader */}
+            <ArtifactReaderLayer
                 artifact={viewingArtifact}
                 onClose={() => setViewingArtifact(null)}
             />
