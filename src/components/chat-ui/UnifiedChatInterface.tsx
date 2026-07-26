@@ -26,6 +26,23 @@ const ChatMessageBubble = React.memo(({
     onSaveSkill: (msg: ChatMessage) => void; 
 }) => {
     const isUser = msg.type === ChatMessageType.Prompt;
+    
+    // Detect and extract Exporter Attribution
+    let displayContent = msg.content;
+    let attributionBadge = null;
+    
+    // Matches variations:
+    // Powered by Gemini Exporter (https://www.ai-chat-exporter.com)
+    // Powered by [Gemini Exporter](https://www.ai-chat-exporter.com)
+    const attributionRegex = /Powered by \[?(Gemini|Claude|Grok) Exporter\]?\(?https:\/\/www\.ai-chat-exporter\.com\)?/i;
+    const match = displayContent.match(attributionRegex);
+    
+    if (match) {
+        attributionBadge = match[1];
+        // Remove the attribution and clean up any trailing dashes (e.g. from markdown horizontal rules) or whitespace
+        displayContent = displayContent.replace(attributionRegex, '').replace(/-+\s*$/, '').trim();
+    }
+
     return (
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
             {/* Message Bubble Header (Meta) */}
@@ -57,13 +74,13 @@ const ChatMessageBubble = React.memo(({
                         : 'bg-[#1a211d]/40 border-green-500/10 text-green-100 rounded-tl-sm'
                 }`}
             >
-                <MarkdownRenderer content={msg.content} />
+                <MarkdownRenderer content={displayContent} />
 
                 {/* Interactive Actions Row under the bubble */}
                 <div className="mt-3 pt-3 border-t border-green-500/5 flex justify-between items-center text-[10px] font-mono text-gray-500 select-none">
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={() => onCopyText(msg.content)}
+                            onClick={() => onCopyText(displayContent)}
                             className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
                             title="Copy message contents"
                         >
@@ -107,6 +124,16 @@ const ChatMessageBubble = React.memo(({
                     </div>
                 </div>
             </div>
+
+            {/* Attribution Badge */}
+            {attributionBadge && (
+                <div className={`mt-2 flex items-center gap-1.5 px-3 py-1 bg-[#122622]/40 border border-green-500/20 rounded-full text-[10px] text-green-400 font-mono tracking-wider ${isUser ? 'mr-4' : 'ml-4'}`}>
+                    <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Imported via {attributionBadge} Exporter
+                </div>
+            )}
         </div>
     );
 });
