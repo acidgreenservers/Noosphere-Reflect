@@ -521,7 +521,7 @@ export default function UnifiedChatInterface() {
 
                     <button
                         onClick={() => setShowChatActionsMenu(!showChatActionsMenu)}
-                        className="px-3 py-1.5 bg-[#122622] hover:bg-[#1a211d] text-[10px] font-bold font-mono tracking-wider text-green-400 border border-green-500/20 rounded-full transition-all"
+                        className="px-3 py-1.5 bg-[#122622] hover:bg-green-500/20 text-[10px] font-bold font-mono tracking-wider text-green-400 hover:text-green-300 border border-green-500/20 hover:border-green-500/40 hover:shadow-[0_0_12px_rgba(34,197,94,0.2)] rounded-full transition-all cursor-pointer"
                     >
                         ACTIONS ▾
                     </button>
@@ -559,7 +559,7 @@ export default function UnifiedChatInterface() {
                                             <span>📤 Export</span>
                                             <span className="text-[10px]">◀</span>
                                         </button>
-                                        <div className="absolute right-full top-0 mr-1 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-all py-1 text-xs">
+                                        <div className="absolute right-full top-0 mr-1 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-xs">
                                             
                                             {/* Clipboard Submenu */}
                                             <div className="relative group/clipboard">
@@ -567,7 +567,7 @@ export default function UnifiedChatInterface() {
                                                     <span>📋 Clipboard</span>
                                                     <span className="text-[10px]">◀</span>
                                                 </button>
-                                                <div className="absolute right-full top-0 mr-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-all py-1">
+                                                <div className="absolute right-full top-0 mr-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
                                                     <button onClick={() => handleExport('markdown', true)} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Text (MD)</button>
                                                     <button onClick={() => handleExport('html', true)} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">🌐 HTML</button>
                                                 </div>
@@ -636,7 +636,7 @@ export default function UnifiedChatInterface() {
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={() => handleCopyText(msg.content)}
-                                            className="hover:text-gray-300 transition-colors flex items-center gap-1"
+                                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
                                             title="Copy message contents"
                                         >
                                             📋 Copy Message
@@ -644,7 +644,7 @@ export default function UnifiedChatInterface() {
                                         <span className="text-gray-700">|</span>
                                         <button
                                             onClick={() => handleForkChat(index)}
-                                            className="hover:text-gray-300 transition-colors flex items-center gap-1"
+                                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
                                             title="Fork conversation from this message"
                                         >
                                             🌿 Fork
@@ -655,7 +655,7 @@ export default function UnifiedChatInterface() {
                                     <div className="flex items-center gap-2.5">
                                         <button
                                             onClick={() => handleSaveAsMemory(msg)}
-                                            className="hover:text-purple-400 transition-colors"
+                                            className="px-2 py-1 rounded hover:bg-purple-500/10 hover:text-purple-400 transition-all"
                                             title="Archive as Memory"
                                         >
                                             🧠 Save Memory
@@ -663,7 +663,7 @@ export default function UnifiedChatInterface() {
                                         <span className="text-gray-700">|</span>
                                         <button
                                             onClick={() => handleSaveAsPrompt(msg)}
-                                            className="hover:text-blue-400 transition-colors"
+                                            className="px-2 py-1 rounded hover:bg-blue-500/10 hover:text-blue-400 transition-all"
                                             title="Archive as Prompt template"
                                         >
                                             💡 Save Prompt
@@ -671,7 +671,7 @@ export default function UnifiedChatInterface() {
                                         <span className="text-gray-700">|</span>
                                         <button
                                             onClick={() => handleSaveAsSkill(msg)}
-                                            className="hover:text-amber-400 transition-colors"
+                                            className="px-2 py-1 rounded hover:bg-amber-500/10 hover:text-amber-400 transition-all"
                                             title="Archive as Skill"
                                         >
                                             ⚡ Save Skill
