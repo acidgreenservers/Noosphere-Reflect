@@ -205,6 +205,12 @@ const ArchiveHub: React.FC = () => {
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json', _packageType?: 'directory' | 'zip' | 'single') => {
         const selectedMetas = sessions.filter(s => selectedIds.has(s.id));
         if (selectedMetas.length === 0) return;
+        
+        if (selectedMetas.length > 50) {
+            if (!window.confirm(`You are exporting ${selectedMetas.length} items. Over 50 items exported may result in split zip archives depending on the amount exported. Continue?`)) {
+                return;
+            }
+        }
 
         try {
             // Fetch FULL sessions for export
@@ -216,21 +222,36 @@ const ArchiveHub: React.FC = () => {
 
             // Batch export always uses ZIP
             const zipBlob = await generateBatchZipExport(fullSessions, format);
-            const url = URL.createObjectURL(zipBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            // Generate timestamp-datestamp for filename
-            const now = new Date();
-            const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: 2026-01-11T10-30-45
-            a.download = `Noosphere-Chats-${timestamp}.zip`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Handle split volumes
+            const volumes = Array.isArray(zipBlob) ? zipBlob : [zipBlob];
+            
+            volumes.forEach((blob, index) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Generate timestamp-datestamp for filename
+                const now = new Date();
+                const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: 2026-01-11T10-30-45
+                const suffix = volumes.length > 1 ? `-Part${index + 1}` : '';
+                a.download = `Noosphere-Chats-${timestamp}${suffix}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
 
-            alert(`✅ Exported ${selectedMetas.length} conversation(s) as ZIP archive`);
+            alert(`✅ Exported ${selectedMetas.length} conversation(s) as ZIP archive${volumes.length > 1 ? ` (Split into ${volumes.length} files)` : ''}`);
 
-            // Mark all as exported
+            // Mark all as exported and apply optimistic UI update
+            const updatedIds = new Set(selectedMetas.map(s => s.id));
+            setSessions(prev => prev.map(s => 
+                updatedIds.has(s.id) ? {
+                    ...s,
+                    exportStatus: 'exported',
+                    metadata: { ...(s.metadata || { title: s.chatTitle, model: '', date: s.date, tags: [] }), exportStatus: 'exported' }
+                } : s
+            ));
+
             for (const s of selectedMetas) {
                 await storageService.updateExportStatus(s.id, 'exported');
             }

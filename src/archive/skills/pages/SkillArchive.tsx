@@ -264,6 +264,12 @@ export default function SkillArchive() {
         if (selectedSkills.size === 0) return;
         const selected = skills.filter(p => selectedSkills.has(p.id));
         const caseFormat = appSettings.fileNamingCase;
+        
+        if (selected.length > 50) {
+            if (!window.confirm(`You are exporting ${selected.length} items. Over 50 items exported may result in split zip archives depending on the amount exported. Continue?`)) {
+                return;
+            }
+        }
 
         try {
             const memoryLike = selected.map(p => ({
@@ -283,21 +289,37 @@ export default function SkillArchive() {
 
             if (packageType === 'zip' || selectedSkills.size > 1) {
                 const zipBlob = await generateMemoryBatchZipExport(memoryLike, format, caseFormat);
-                const url = URL.createObjectURL(zipBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                const now = new Date();
-                const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                a.download = `Noosphere-Skills-${timestamp}.zip`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'skill' : 'skills'} as ZIP archive`);
+                
+                const volumes = Array.isArray(zipBlob) ? zipBlob : [zipBlob];
+                
+                volumes.forEach((blob, index) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const now = new Date();
+                    const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    const suffix = volumes.length > 1 ? `-Part${index + 1}` : '';
+                    a.download = `Noosphere-Skills-${timestamp}${suffix}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'skill' : 'skills'} as ZIP archive${volumes.length > 1 ? ` (Split into ${volumes.length} files)` : ''}`);
             } else {
                 await generateMemoryBatchDirectoryExportWithPicker(memoryLike, format, caseFormat);
                 alert(`✅ Exported skill to directory`);
             }
+
+            // Mark all as exported and apply optimistic UI update
+            const updatedIds = new Set(selected.map(p => p.id));
+            setSkills(prev => prev.map(p => 
+                updatedIds.has(p.id) ? {
+                    ...p,
+                    metadata: { ...p.metadata, exportStatus: 'exported' as const }
+                } : p
+            ));
 
             for (const skill of selected) {
                 const updated = { ...skill, metadata: { ...skill.metadata, exportStatus: 'exported' as const } };

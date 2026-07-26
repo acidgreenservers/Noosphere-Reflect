@@ -234,25 +234,47 @@ export default function MemoryArchive() {
         if (selectedMemories.size === 0) return;
         const selected = memories.filter(m => selectedMemories.has(m.id));
         const caseFormat = appSettings.fileNamingCase;
+        
+        if (selected.length > 50) {
+            if (!window.confirm(`You are exporting ${selected.length} items. Over 50 items exported may result in split zip archives depending on the amount exported. Continue?`)) {
+                return;
+            }
+        }
 
         try {
             if (packageType === 'zip' || selectedMemories.size > 1) {
                 const zipBlob = await generateMemoryBatchZipExport(selected, format, caseFormat);
-                const url = URL.createObjectURL(zipBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                const now = new Date();
-                const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                a.download = `Noosphere-Memories-${timestamp}.zip`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'memory' : 'memories'} as ZIP archive`);
+                
+                const volumes = Array.isArray(zipBlob) ? zipBlob : [zipBlob];
+                
+                volumes.forEach((blob, index) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const now = new Date();
+                    const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    const suffix = volumes.length > 1 ? `-Part${index + 1}` : '';
+                    a.download = `Noosphere-Memories-${timestamp}${suffix}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'memory' : 'memories'} as ZIP archive${volumes.length > 1 ? ` (Split into ${volumes.length} files)` : ''}`);
             } else {
                 await generateMemoryBatchDirectoryExportWithPicker(selected, format, caseFormat);
                 alert(`✅ Exported memory to directory`);
             }
+
+            // Mark all as exported and apply optimistic UI update
+            const updatedIds = new Set(selected.map(m => m.id));
+            setMemories(prev => prev.map(m => 
+                updatedIds.has(m.id) ? {
+                    ...m,
+                    metadata: { ...m.metadata, exportStatus: 'exported' as const }
+                } : m
+            ));
 
             for (const memory of selected) {
                 const updated = { ...memory, metadata: { ...memory.metadata, exportStatus: 'exported' as const } };
