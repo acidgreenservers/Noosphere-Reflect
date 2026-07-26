@@ -594,8 +594,9 @@ export default function UnifiedChatInterface() {
             </header>
 
             {/* Conversation Feed */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-                {messages.map((msg, index) => {
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
+                <div className="w-full max-w-3xl mx-auto space-y-6 flex flex-col pb-4">
+                    {messages.map((msg, index) => {
                     const isUser = msg.type === ChatMessageType.Prompt;
                     return (
                         <div key={index} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
@@ -704,7 +705,8 @@ export default function UnifiedChatInterface() {
                     </div>
                 )}
                 
-                <div ref={messagesEndRef} />
+                    <div ref={messagesEndRef} />
+                </div>
             </div>
 
             {/* Turn-Based Interactive Chat Box Workspace */}
