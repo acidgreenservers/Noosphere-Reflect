@@ -2,6 +2,7 @@ import { STORES } from '../db/schema';
 import { SavedChatSession, SavedChatSessionMetadata } from '../../types';
 import { BaseStore } from './BaseStore';
 import { normalizeTitle } from '../../utils/textNormalization';
+import { sanitizeMessageContent } from '../../utils/importValidator';
 import { searchService } from '../searchService';
 
 export class SessionStore extends BaseStore<SavedChatSession, typeof STORES.SESSIONS> {
@@ -61,6 +62,19 @@ export class SessionStore extends BaseStore<SavedChatSession, typeof STORES.SESS
     }
 
     async save(session: SavedChatSession): Promise<void> {
+        // Sanitize content and metadata
+        session.chatTitle = sanitizeMessageContent(session.chatTitle || '');
+        session.name = sanitizeMessageContent(session.name || '');
+        if (session.metadata?.title) {
+            session.metadata.title = sanitizeMessageContent(session.metadata.title);
+        }
+        if (session.chatData?.messages) {
+            session.chatData.messages = session.chatData.messages.map(msg => ({
+                ...msg,
+                content: sanitizeMessageContent(msg.content)
+            }));
+        }
+
         const title = session.metadata?.title || session.chatTitle || session.name;
 
         if (!title) {
@@ -112,9 +126,26 @@ export class SessionStore extends BaseStore<SavedChatSession, typeof STORES.SESS
                 await tx.store.put(existingSession);
                 await tx.store.put(session);
                 await tx.done;
+
+                // Update search index for both
+                try {
+                    await searchService.init();
+                    await searchService.indexSession(existingSession);
+                    await searchService.indexSession(session);
+                } catch (e) {
+                    console.warn('Failed to update search index for renamed sessions:', e);
+                }
             } else {
                 throw error;
             }
+        }
+
+        // Index session if save was successful (and not handled by duplicate logic)
+        try {
+            await searchService.init();
+            await searchService.indexSession(session);
+        } catch (e) {
+            console.warn('Failed to index session for search:', e);
         }
     }
 

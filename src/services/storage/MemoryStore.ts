@@ -2,6 +2,7 @@ import { STORES } from '../db/schema';
 import { Memory } from '../../types';
 import { BaseStore } from './BaseStore';
 import { searchService } from '../searchService';
+import { sanitizeMessageContent } from '../../utils/importValidator';
 
 export class MemoryStore extends BaseStore<Memory, typeof STORES.MEMORIES> {
     constructor() {
@@ -9,6 +10,12 @@ export class MemoryStore extends BaseStore<Memory, typeof STORES.MEMORIES> {
     }
 
     async save(memory: Memory): Promise<void> {
+        // Sanitize memory content and title
+        memory.content = sanitizeMessageContent(memory.content);
+        if (memory.metadata?.title) {
+            memory.metadata.title = sanitizeMessageContent(memory.metadata.title);
+        }
+
         const db = await this.getDB();
         await db.put(this.storeName, memory);
 

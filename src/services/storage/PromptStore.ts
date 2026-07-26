@@ -2,6 +2,7 @@ import { STORES } from '../db/schema';
 import { Prompt } from '../../types';
 import { BaseStore } from './BaseStore';
 import { searchService } from '../searchService';
+import { sanitizeMessageContent } from '../../utils/importValidator';
 
 export class PromptStore extends BaseStore<Prompt, typeof STORES.PROMPTS> {
     constructor() {
@@ -9,6 +10,12 @@ export class PromptStore extends BaseStore<Prompt, typeof STORES.PROMPTS> {
     }
 
     async save(prompt: Prompt): Promise<void> {
+        // Sanitize prompt content and title
+        prompt.content = sanitizeMessageContent(prompt.content);
+        if (prompt.metadata?.title) {
+            prompt.metadata.title = sanitizeMessageContent(prompt.metadata.title);
+        }
+
         const db = await this.getDB();
         await db.put(this.storeName, prompt);
 
