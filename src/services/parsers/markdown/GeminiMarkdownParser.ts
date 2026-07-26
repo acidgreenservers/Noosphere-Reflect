@@ -38,8 +38,8 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
         // Remove header metadata block (lines starting with **)
         result = result.replace(/^\*\*[^*]+\*\*[^\n]*\n/gm, '');
 
-        // Remove Powered by footer
-        result = result.replace(/---\s*\nPowered by \[Gemini Exporter\][^\n]*/g, '');
+        // Remove Powered by/Exported by footer
+        result = result.replace(/---\s*\n(?:Powered|Exported) by (?:\[Gemini Exporter\]|Gemini Exporter)[^\n]*/g, '');
 
         // Clean up extra whitespace
         result = result.replace(/\n{3,}/g, '\n\n').trim();
@@ -185,20 +185,20 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
     /**
      * Gemini-specific turn parser with exchange tracking
      * Handles:
-     * - ## Prompt: (user messages)
-     * - ## Response: (AI responses)
+     * - ## User: (user messages)
+     * - ## Gemini: (AI responses)
      * - Exchange tracking to ensure proper alternation
      */
     private parseGeminiTurns(input: string): ChatMessage[] {
         const messages: ChatMessage[] = [];
 
-        // Strict Gemini header pattern - only ## Prompt: or ## Response:
-        const headerPattern = /^##\s+(Prompt|Response):\s*$/gm;
+        // Strict Gemini header pattern - only ## User: or ## Gemini:
+        const headerPattern = /^##\s+(User|Gemini):\s*$/gm;
         const matches = Array.from(input.matchAll(headerPattern));
 
         if (matches.length === 0) return [];
 
-        let expectedType: 'prompt' | 'response' = 'prompt'; // Gemini always starts with user prompt
+        let expectedType: 'user' | 'gemini' = 'user'; // Gemini always starts with user prompt
 
         for (let i = 0; i < matches.length; i++) {
             const headerType = matches[i][1].toLowerCase();
@@ -208,9 +208,9 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
             const rawContent = input.substring(contentStart, contentEnd).trim();
 
             // Validate exchange alternation
-            const isPrompt = headerType === 'prompt';
-            if (isPrompt !== (expectedType === 'prompt')) {
-                // Skip invalid exchange (e.g., two prompts in a row)
+            const isPrompt = headerType === 'user';
+            if (isPrompt !== (expectedType === 'user')) {
+                // Skip invalid exchange (e.g., two users in a row)
                 continue;
             }
 
@@ -223,7 +223,7 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
             });
 
             // Toggle expected type for next exchange
-            expectedType = isPrompt ? 'response' : 'prompt';
+            expectedType = isPrompt ? 'gemini' : 'user';
         }
 
         return messages;

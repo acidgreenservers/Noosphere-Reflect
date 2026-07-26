@@ -23,7 +23,7 @@ describe('Markdown Parsers Suite', () => {
     });
 
     it('should parse Gemini Markdown', () => {
-        const input = `## Prompt:\nHi Gemini\n## Response:\nHello!`;
+        const input = `## User:\nHi Gemini\n## Gemini:\nHello!`;
         testParser(ParserMode.GeminiMarkdown, input, 2);
     });
 
