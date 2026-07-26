@@ -1,17 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
-import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ChatStyle } from '../../types';
+import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ChatStyle, ParserMode } from '../../types';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 
 export const UnifiedChatInterface: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const [session, setSession] = useState<SavedChatSession | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [currentRole, setCurrentRole] = useState<'prompt' | 'response'>('prompt'); // 'prompt' is User (blue), 'response' is AI (green)
     const [isSaving, setIsSaving] = useState(false);
+    const [chatInterfaceEnabled, setChatInterfaceEnabled] = useState(false);
 
     // Dropdown / Popover States
     const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -46,6 +48,13 @@ export const UnifiedChatInterface: React.FC = () => {
                     }
                 } else {
                     setCurrentRole('prompt');
+                }
+
+                // If justCreated or session has no messages, enable edit interface by default
+                if (location.state?.justCreated || chatMsgs.length <= 1) {
+                    setChatInterfaceEnabled(true);
+                } else {
+                    setChatInterfaceEnabled(false);
                 }
             } else {
                 navigate('/');
@@ -373,6 +382,76 @@ export const UnifiedChatInterface: React.FC = () => {
         setShowChatActionsMenu(false);
     };
 
+    const handleExportSingle = async (format: 'clipboard-text' | 'clipboard-md' | 'text' | 'markdown' | 'json' | 'html') => {
+        if (!session) return;
+        try {
+            const title = session.chatTitle || session.name || 'AI Chat Export';
+            const userName = session.userName || 'User';
+            const aiName = session.aiName || 'AI';
+            const parserMode = session.parserMode || ParserMode.Basic;
+            const metadata = session.metadata || { title, model: aiName, date: session.date, tags: [] };
+
+            const chatData = session.chatData || {
+                messages: [],
+                metadata: {
+                    title: title,
+                    model: aiName,
+                    date: session.date,
+                    tags: [],
+                    updatedAt: session.date
+                }
+            };
+
+            let content = '';
+            let filename = '';
+            let mimeType = '';
+
+            if (format === 'clipboard-text' || format === 'text') {
+                content = chatData.messages.map((msg: any) => {
+                    const role = msg.type === ChatMessageType.Prompt ? userName : aiName;
+                    return `[${role}]:\n${msg.content}\n`;
+                }).join('\n');
+                filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.txt`;
+                mimeType = 'text/plain';
+            } else if (format === 'clipboard-md' || format === 'markdown') {
+                const { exportService } = await import('../exports/services/ExportService');
+                content = await exportService.generate('markdown', chatData, title, session.selectedTheme, userName, aiName, parserMode, metadata);
+                filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`;
+                mimeType = 'text/markdown';
+            } else if (format === 'json') {
+                const { exportService } = await import('../exports/services/ExportService');
+                content = await exportService.generate('json', chatData, title, session.selectedTheme, userName, aiName, parserMode, metadata);
+                filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
+                mimeType = 'application/json';
+            } else if (format === 'html') {
+                const { exportService } = await import('../exports/services/ExportService');
+                content = await exportService.generate('html', chatData, title, session.selectedTheme, userName, aiName, parserMode, metadata);
+                filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.html`;
+                mimeType = 'text/html';
+            }
+
+            if (format.startsWith('clipboard-')) {
+                await navigator.clipboard.writeText(content);
+                showToast('Copied to clipboard!', 'success');
+            } else {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showToast(`Exported as ${filename}`, 'success');
+            }
+        } catch (error) {
+            console.error('Single chat export failed:', error);
+            showToast('Export failed!', 'info');
+        }
+        setShowChatActionsMenu(false);
+    };
+
     const modelsList = [
         'Claude 3.5 Sonnet',
         'GPT-4o',
@@ -451,6 +530,74 @@ export const UnifiedChatInterface: React.FC = () => {
                                 >
                                     {session.metadata?.exportStatus === 'exported' ? '❌ Mark Unexported' : '✅ Mark Exported'}
                                 </button>
+                                <button
+                                    onClick={() => {
+                                        setChatInterfaceEnabled(!chatInterfaceEnabled);
+                                        setShowChatActionsMenu(false);
+                                    }}
+                                    className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                >
+                                    {chatInterfaceEnabled ? '📖 Switch to Reading Mode' : '💬 Enable Chat Interface'}
+                                </button>
+
+                                {/* Hoverable Export Option with Nested Submenus */}
+                                <div className="relative group/export">
+                                    <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center">
+                                        <span>📤 Export Chat</span>
+                                        <span className="text-[9px] text-gray-500">◀</span>
+                                    </button>
+
+                                    {/* Sub-menu pushes left */}
+                                    <div className="absolute right-full top-0 mr-1 hidden group-hover/export:block w-48 bg-[#0e1511] border border-green-500/20 rounded-2xl shadow-2xl py-1.5 z-[100] animate-fade-in text-xs">
+                                        <div className="relative group/clipboard">
+                                            <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center">
+                                                <span>📋 Clipboard</span>
+                                                <span className="text-[9px] text-gray-500">◀</span>
+                                            </button>
+                                            {/* Nested Clipboard Sub-menu pushes left */}
+                                            <div className="absolute right-full top-0 mr-1 hidden group-hover/clipboard:block w-36 bg-[#0e1511] border border-green-500/20 rounded-2xl shadow-2xl py-1.5 z-[110] animate-fade-in text-xs">
+                                                <button
+                                                    onClick={() => handleExportSingle('clipboard-text')}
+                                                    className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                                >
+                                                    Plain Text
+                                                </button>
+                                                <button
+                                                    onClick={() => handleExportSingle('clipboard-md')}
+                                                    className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                                >
+                                                    Markdown
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => handleExportSingle('text')}
+                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                        >
+                                            📄 Plain Text (.txt)
+                                        </button>
+                                        <button
+                                            onClick={() => handleExportSingle('markdown')}
+                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                        >
+                                            📝 Markdown (.md)
+                                        </button>
+                                        <button
+                                            onClick={() => handleExportSingle('json')}
+                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                        >
+                                            📦 JSON (.json)
+                                        </button>
+                                        <button
+                                            onClick={() => handleExportSingle('html')}
+                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                        >
+                                            🌐 HTML (.html)
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="border-t border-green-500/10 my-1"></div>
                                 <button
                                     onClick={handleDeleteChat}
@@ -469,7 +616,7 @@ export const UnifiedChatInterface: React.FC = () => {
                 {messages.map((msg, index) => {
                     const isUser = msg.type === ChatMessageType.Prompt;
                     return (
-                        <div key={index} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                        <div key={index} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-3xl mx-auto w-full`}>
                             {/* Message Bubble Header (Meta) */}
                             <div className="flex items-center gap-2 mb-1.5 px-2 text-[10px] font-mono text-gray-500">
                                 <span>{isUser ? '👤 You' : `🤖 ${session.aiName}`}</span>
@@ -561,7 +708,8 @@ export const UnifiedChatInterface: React.FC = () => {
             </div>
 
             {/* Turn-Based Interactive Chat Box Workspace */}
-            <div className="p-4 bg-[#09100c] border-t border-green-500/10 shrink-0">
+            {chatInterfaceEnabled ? (
+                <div className="p-4 bg-[#09100c] border-t border-green-500/10 shrink-0">
                 <div className="max-w-3xl mx-auto relative">
 
                     {/* Render Attached Files (draft stage) above the box */}
@@ -748,6 +896,18 @@ export const UnifiedChatInterface: React.FC = () => {
                     </form>
                 </div>
             </div>
+            ) : (
+                <div className="p-4 bg-[#09100c]/50 border-t border-green-500/5 shrink-0 text-center text-[11px] text-gray-500">
+                    📖 Reading Mode. To continue this conversation, click{' '}
+                    <button
+                        onClick={() => setChatInterfaceEnabled(true)}
+                        className="text-green-400 hover:underline font-semibold font-mono"
+                    >
+                        Enable Chat Interface
+                    </button>
+                    .
+                </div>
+            )}
 
             {/* Hidden native file input element */}
             <input

@@ -259,8 +259,7 @@ export const PromptArchive: React.FC = () => {
                         return (
                             <div
                                 key={prompt.id}
-                                onClick={(e) => handleEditStart(prompt, e)}
-                                className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                                className={`p-4 rounded-xl border transition-all flex items-center justify-between group ${
                                     isSelected
                                         ? 'bg-green-500/10 border-green-500/30'
                                         : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
@@ -269,7 +268,7 @@ export const PromptArchive: React.FC = () => {
                                 <div className="flex items-center gap-4 min-w-0 flex-1">
                                     <div
                                         onClick={(e) => handleToggleSelect(prompt.id, e)}
-                                        className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
+                                        className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 cursor-pointer transition-all ${
                                             isSelected
                                                 ? 'bg-green-500 border-green-400 text-[#09100c]'
                                                 : 'border-green-500/20 group-hover:border-green-500/40'
@@ -277,8 +276,11 @@ export const PromptArchive: React.FC = () => {
                                     >
                                         {isSelected && <span className="text-[10px] font-bold">✓</span>}
                                     </div>
-                                    <div className="min-w-0">
-                                        <div className="font-semibold text-xs text-gray-200 truncate group-hover:text-green-400 transition-colors">
+                                    <div className="min-w-0 flex-1">
+                                        <div
+                                            onClick={(e) => handleEditStart(prompt, e)}
+                                            className="font-semibold text-xs text-gray-200 truncate cursor-pointer hover:text-green-400 transition-colors"
+                                        >
                                             {prompt.metadata.title}
                                         </div>
                                         <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-500 font-mono">
@@ -291,8 +293,14 @@ export const PromptArchive: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0 ml-4">
-                                    <button onClick={(e) => handleDeletePrompt(prompt.id, e)} className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 text-xs">🗑️</button>
-                                    <span className="text-gray-600 group-hover:text-green-500 transition-all transform translate-x-0 group-hover:translate-x-1">➔</span>
+                                    <button onClick={(e) => handleEditStart(prompt, e)} className="p-1.5 hover:bg-white/5 rounded text-xs" title="Edit Prompt">✏️</button>
+                                    <button onClick={(e) => handleDeletePrompt(prompt.id, e)} className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 text-xs" title="Delete Prompt">🗑️</button>
+                                    <span
+                                        onClick={(e) => handleEditStart(prompt, e)}
+                                        className="text-gray-600 hover:text-green-500 cursor-pointer transition-all transform translate-x-0 hover:translate-x-1"
+                                    >
+                                        ➔
+                                    </span>
                                 </div>
                             </div>
                         );
