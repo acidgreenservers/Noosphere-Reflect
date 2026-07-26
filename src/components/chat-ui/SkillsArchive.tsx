@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Skill, AppSettings, DEFAULT_SETTINGS, Folder } from '../../types';
+import { Skill } from '../../types';
 import logo from '../../assets/logo.png';
 import { storageService } from '../../services/storageService';
-import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../folders/index';
 import { ArchiveBatchActionBar } from '../../archive/chats/components/ArchiveBatchActionBar';
 
 export const SkillsArchive: React.FC = () => {
     const [skills, setSkills] = useState<Skill[]>([]);
     const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
-    const [previewSkill, setPreviewSkill] = useState<Skill | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSkills, setSelectedMemories] = useState<Set<string>>(new Set());
+    const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('grid');
 
     // Modal state for Add/Edit Form
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -25,27 +24,6 @@ export const SkillsArchive: React.FC = () => {
     );
 
     const areAllSelected = filteredSkills.length > 0 && filteredSkills.every(s => selectedSkills.has(s.id));
-
-    // Folder State using common useFolders
-    const {
-        folders,
-        currentFolderId,
-        setCurrentFolderId,
-        breadcrumbs,
-        createFolder,
-        updateFolder,
-        deleteFolder,
-        moveFolder,
-        moveItemsToFolder,
-        currentFolders
-    } = useFolders('skill');
-
-    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-    const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
-    const [moveModalOpen, setMoveModalOpen] = useState(false);
-    const [movingItemIds, setMovingItemIds] = useState<string[]>([]);
-    const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     useEffect(() => {
         loadSkills();
@@ -93,8 +71,7 @@ export const SkillsArchive: React.FC = () => {
                     wordCount: formContent.split(/\s+/).length,
                     characterCount: formContent.length,
                     exportStatus: 'not_exported'
-                },
-                folderId: currentFolderId
+                }
             };
             await storageService.saveSkill(newSkill);
         }
@@ -153,32 +130,6 @@ export const SkillsArchive: React.FC = () => {
         await loadSkills();
     };
 
-    const handleBatchMove = () => {
-        if (selectedSkills.size === 0) return;
-        setMovingItemIds(Array.from(selectedSkills));
-        setMovingFolderId(null);
-        setMoveModalOpen(true);
-    };
-
-    const handleMoveConfirm = async (targetFolderId: string | null) => {
-        if (movingFolderId) {
-            await moveFolder(movingFolderId, targetFolderId);
-        } else if (movingItemIds.length > 0) {
-            await moveItemsToFolder(movingItemIds, targetFolderId);
-            setSelectedMemories(new Set());
-        }
-        await loadSkills();
-    };
-
-    const handleCreateFolder = async (name: string, tags: string[]) => {
-        if (editingFolder) {
-            await updateFolder({ ...editingFolder, name, tags });
-            setEditingFolder(null);
-        } else {
-            await createFolder(name, tags);
-        }
-    };
-
     return (
         <div className="flex-1 flex flex-col h-full bg-[#0e1511] p-8 overflow-y-auto select-none">
             {/* Header Area */}
@@ -205,112 +156,52 @@ export const SkillsArchive: React.FC = () => {
                 </button>
             </div>
 
-            {/* Folder Navigation */}
-            <div className="flex justify-between items-center mb-6">
-                <FolderBreadcrumbs
-                    path={breadcrumbs}
-                    onNavigate={setCurrentFolderId}
-                    accentColor="green"
-                    onDrop={async (folderId: string | null, draggedId: string, type: 'item' | 'folder') => {
-                        if (type === 'folder') {
-                            await moveFolder(draggedId, folderId);
-                        } else {
-                            const itemsToMove = selectedSkills.has(draggedId) ? Array.from(selectedSkills) : [draggedId];
-                            await moveItemsToFolder(itemsToMove, folderId);
-                            if (selectedSkills.has(draggedId)) setSelectedMemories(new Set());
-                        }
-                        await loadSkills();
-                    }}
-                />
-                <div className="flex items-center gap-3">
+            {/* Layout Mode Toggles & Search */}
+            <div className="mb-6 flex flex-col md:flex-row gap-3 shrink-0">
+                <div className="flex-1 relative">
+                    <input
+                        type="text"
+                        placeholder="🔍 Search skills by text or tags..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-5 pr-10 py-3 bg-[#122622]/30 border border-green-500/10 rounded-2xl text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-green-500/30 transition-all font-medium"
+                    />
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setLayoutMode('list')}
+                        className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                            layoutMode === 'list'
+                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                : 'bg-[#122622]/20 border-green-500/5 text-gray-400 hover:text-gray-200'
+                        }`}
+                    >
+                        List View
+                    </button>
+                    <button
+                        onClick={() => setLayoutMode('grid')}
+                        className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                            layoutMode === 'grid'
+                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                : 'bg-[#122622]/20 border-green-500/5 text-gray-400 hover:text-gray-200'
+                        }`}
+                    >
+                        Grid View
+                    </button>
                     <button
                         onClick={handleSelectAll}
                         className="px-4 py-2 bg-[#122622] hover:bg-[#1a211d] text-xs font-semibold text-green-400 border border-green-500/20 rounded-xl transition-all"
                     >
                         {areAllSelected ? 'Deselect All' : `Select All (${filteredSkills.length})`}
                     </button>
-                    <FolderActionsDropdown
-                        accentColor="green"
-                        onAddFolder={() => { setEditingFolder(null); setIsFolderModalOpen(true); }}
-                        onRenameFolder={() => {
-                            if (currentFolderId) {
-                                const folder = folders.find(f => f.id === currentFolderId);
-                                if (folder) {
-                                    setEditingFolder(folder);
-                                    setIsFolderModalOpen(true);
-                                }
-                            } else {
-                                alert('Please navigate into a folder to rename it');
-                            }
-                        }}
-                        onDeleteFolder={() => {
-                            if (currentFolderId) {
-                                const folder = folders.find(f => f.id === currentFolderId);
-                                if (folder) {
-                                    setEditingFolder(folder);
-                                    setShowDeleteModal(true);
-                                }
-                            } else {
-                                alert('Please navigate into a folder to delete it');
-                            }
-                        }}
-                    />
                 </div>
             </div>
 
-            {/* Grid for Folders */}
-            {!searchQuery && currentFolders.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 shrink-0">
-                    {currentFolders.map((folder: Folder) => {
-                        const stats = calculateFolderStats(folder.id, folders, skills);
-                        return (
-                            <FolderCard
-                                key={folder.id}
-                                folder={folder}
-                                accentColor="green"
-                                stats={stats}
-                                onClick={(f: Folder) => setCurrentFolderId(f.id)}
-                                onDelete={(id: string, e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    if (confirm('Delete this folder and all its contents?')) {
-                                        deleteFolder(id);
-                                    }
-                                }}
-                                onRename={(f: Folder, e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setEditingFolder(f);
-                                    setIsFolderModalOpen(true);
-                                }}
-                                onTagClick={(tag: string, e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setSearchQuery(tag);
-                                }}
-                                onDrop={async (folderId: string, draggedId: string, type: 'item' | 'folder') => {
-                                    if (type === 'folder') {
-                                        await moveFolder(draggedId, folderId);
-                                    } else {
-                                        const itemsToMove = selectedSkills.has(draggedId) ? Array.from(selectedSkills) : [draggedId];
-                                        await moveItemsToFolder(itemsToMove, folderId);
-                                        if (selectedSkills.has(draggedId)) setSelectedMemories(new Set());
-                                    }
-                                    await loadSkills();
-                                }}
-                            />
-                        );
-                    })}
-                </div>
-            )}
-
             {/* List of Skills */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 pr-1">
-                {filteredSkills
-                    .filter(s => {
-                        if (searchQuery) return true;
-                        if (currentFolderId === null) return !s.folderId;
-                        return s.folderId === currentFolderId;
-                    })
-                    .map(skill => {
-                        const isSelected = selectedSkills.has(skill.id);
+            <div className={layoutMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 pr-1" : "space-y-3 flex-1 pr-1"}>
+                {filteredSkills.map(skill => {
+                    const isSelected = selectedSkills.has(skill.id);
+                    if (layoutMode === 'grid') {
                         return (
                             <div
                                 key={skill.id}
@@ -375,11 +266,50 @@ export const SkillsArchive: React.FC = () => {
                                 </div>
                             </div>
                         );
-                    })}
+                    } else {
+                        // Unified Row-Style List View
+                        return (
+                            <div
+                                key={skill.id}
+                                onClick={() => handleEditStart(skill)}
+                                className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                                    isSelected
+                                        ? 'bg-green-500/10 border-green-500/30'
+                                        : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
+                                }`}
+                            >
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div
+                                        onClick={(e) => { e.stopPropagation(); handleToggleSelect(skill.id); }}
+                                        className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
+                                            isSelected
+                                                ? 'bg-green-500 border-green-400 text-[#09100c]'
+                                                : 'border-green-500/20 group-hover:border-green-500/40'
+                                        }`}
+                                    >
+                                        {isSelected && <span className="text-[10px] font-bold">✓</span>}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="font-semibold text-xs text-gray-200 truncate group-hover:text-green-400 transition-colors">
+                                            {skill.metadata.title}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-500 font-mono">
+                                            <span>{new Date(skill.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0 ml-4">
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSkill(skill.id); }} className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 text-xs">🗑️</button>
+                                    <span className="text-gray-600 group-hover:text-green-500 transition-all transform translate-x-0 group-hover:translate-x-1">➔</span>
+                                </div>
+                            </div>
+                        );
+                    }
+                })}
 
-                {filteredSkills.filter(s => currentFolderId === null ? !s.folderId : s.folderId === currentFolderId).length === 0 && (
+                {filteredSkills.length === 0 && (
                     <div className="col-span-full py-20 text-center text-gray-500">
-                        No skills in this folder. Click "Add New Skill" to create one.
+                        No skills found. Click "Add New Skill" to create one.
                     </div>
                 )}
             </div>
@@ -389,7 +319,6 @@ export const SkillsArchive: React.FC = () => {
                 selectedCount={selectedSkills.size}
                 onExport={() => alert('Batch export features for skills is in preview.')}
                 onDelete={handleBatchDelete}
-                onMove={handleBatchMove}
                 onClearSelection={() => setSelectedMemories(new Set())}
                 accentColor="green"
                 itemLabel="skills"
@@ -462,39 +391,6 @@ export const SkillsArchive: React.FC = () => {
                     </form>
                 </div>
             )}
-
-            {/* Folder Modals */}
-            <CreateFolderModal
-                isOpen={isFolderModalOpen}
-                onClose={() => setIsFolderModalOpen(false)}
-                onSave={handleCreateFolder}
-                folder={editingFolder}
-                accentColor="green"
-                type="skill"
-            />
-
-            <MoveSelectionModal
-                isOpen={moveModalOpen}
-                onClose={() => setMoveModalOpen(false)}
-                onMove={handleMoveConfirm}
-                folders={folders}
-                currentFolderId={currentFolderId}
-                accentColor="green"
-                movingFolderId={movingFolderId}
-            />
-
-            <DeleteFolderModal
-                isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                onConfirm={() => {
-                    if (editingFolder) {
-                        deleteFolder(editingFolder.id);
-                    }
-                }}
-                folder={editingFolder}
-                accentColor="green"
-                stats={editingFolder ? calculateFolderStats(editingFolder.id, folders, skills) : undefined}
-            />
         </div>
     );
 };

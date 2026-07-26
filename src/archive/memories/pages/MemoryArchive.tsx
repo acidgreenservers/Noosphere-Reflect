@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Memory, Folder } from '../../../types';
+import { Memory } from '../../../types';
 import { storageService } from '../../../services/storageService';
-import { FolderCard, FolderBreadcrumbs, CreateFolderModal, MoveSelectionModal, useFolders, calculateFolderStats, FolderActionsDropdown, DeleteFolderModal } from '../../../components/folders/index';
 import { ArchiveBatchActionBar } from '../../chats/components/ArchiveBatchActionBar';
 
 export const MemoryArchive: React.FC = () => {
@@ -19,27 +18,6 @@ export const MemoryArchive: React.FC = () => {
     const [formContent, setFormContent] = useState('');
     const [formModel, setFormModel] = useState('Claude 3.5 Sonnet');
     const [formTags, setFormTags] = useState('');
-
-    // Folder State
-    const {
-        folders,
-        currentFolderId,
-        setCurrentFolderId,
-        breadcrumbs,
-        createFolder,
-        updateFolder,
-        deleteFolder,
-        moveFolder,
-        moveItemsToFolder,
-        currentFolders
-    } = useFolders('memory');
-
-    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-    const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
-    const [moveModalOpen, setMoveModalOpen] = useState(false);
-    const [movingItemIds, setMovingItemIds] = useState<string[]>([]);
-    const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     useEffect(() => {
         loadMemories();
@@ -119,8 +97,7 @@ export const MemoryArchive: React.FC = () => {
                     wordCount: formContent.split(/\s+/).length,
                     characterCount: formContent.length,
                     exportStatus: 'not_exported'
-                },
-                folderId: currentFolderId
+                }
             };
             await storageService.saveMemory(newMem);
         }
@@ -156,32 +133,6 @@ export const MemoryArchive: React.FC = () => {
         }
         setSelectedMemories(new Set());
         await loadMemories();
-    };
-
-    const handleBatchMove = () => {
-        if (selectedMemories.size === 0) return;
-        setMovingItemIds(Array.from(selectedMemories));
-        setMovingFolderId(null);
-        setMoveModalOpen(true);
-    };
-
-    const handleMoveConfirm = async (targetFolderId: string | null) => {
-        if (movingFolderId) {
-            await moveFolder(movingFolderId, targetFolderId);
-        } else if (movingItemIds.length > 0) {
-            await moveItemsToFolder(movingItemIds, targetFolderId);
-            setSelectedMemories(new Set());
-        }
-        await loadMemories();
-    };
-
-    const handleCreateFolder = async (name: string, tags: string[]) => {
-        if (editingFolder) {
-            await updateFolder({ ...editingFolder, name, tags });
-            setEditingFolder(null);
-        } else {
-            await createFolder(name, tags);
-        }
     };
 
     return (
@@ -252,198 +203,106 @@ export const MemoryArchive: React.FC = () => {
                 </div>
             </div>
 
-            {/* Folder Breadcrumbs */}
-            <div className="flex justify-between items-center mb-6">
-                <FolderBreadcrumbs
-                    path={breadcrumbs}
-                    onNavigate={setCurrentFolderId}
-                    accentColor="green"
-                    onDrop={async (folderId: string | null, draggedId: string, type: 'item' | 'folder') => {
-                        if (type === 'folder') {
-                            await moveFolder(draggedId, folderId);
-                        } else {
-                            const itemsToMove = selectedMemories.has(draggedId) ? Array.from(selectedMemories) : [draggedId];
-                            await moveItemsToFolder(itemsToMove, folderId);
-                            if (selectedMemories.has(draggedId)) setSelectedMemories(new Set());
-                        }
-                        await loadMemories();
-                    }}
-                />
-                <FolderActionsDropdown
-                    accentColor="green"
-                    onAddFolder={() => { setEditingFolder(null); setIsFolderModalOpen(true); }}
-                    onRenameFolder={() => {
-                        if (currentFolderId) {
-                            const folder = folders.find(f => f.id === currentFolderId);
-                            if (folder) {
-                                setEditingFolder(folder);
-                                setIsFolderModalOpen(true);
-                            }
-                        } else {
-                            alert('Please navigate into a folder to rename it');
-                        }
-                    }}
-                    onDeleteFolder={() => {
-                        if (currentFolderId) {
-                            const folder = folders.find(f => f.id === currentFolderId);
-                            if (folder) {
-                                setEditingFolder(folder);
-                                setShowDeleteModal(true);
-                            }
-                        } else {
-                            alert('Please navigate into a folder to delete it');
-                        }
-                    }}
-                />
-            </div>
-
-            {/* Folders List (if not searching) */}
-            {!searchQuery && currentFolders.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 shrink-0">
-                    {currentFolders.map((folder: Folder) => {
-                        const stats = calculateFolderStats(folder.id, folders, memories);
-                        return (
-                            <FolderCard
-                                key={folder.id}
-                                folder={folder}
-                                accentColor="green"
-                                stats={stats}
-                                onClick={(f: Folder) => setCurrentFolderId(f.id)}
-                                onDelete={(id: string, e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    if (confirm('Delete this folder?')) deleteFolder(id);
-                                }}
-                                onRename={(f: Folder, e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setEditingFolder(f);
-                                    setIsFolderModalOpen(true);
-                                }}
-                                onTagClick={(tag: string, e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setSearchQuery(tag);
-                                }}
-                                onDrop={async (folderId: string, draggedId: string, type: 'item' | 'folder') => {
-                                    if (type === 'folder') {
-                                        await moveFolder(draggedId, folderId);
-                                    } else {
-                                        const itemsToMove = selectedMemories.has(draggedId) ? Array.from(selectedMemories) : [draggedId];
-                                        await moveItemsToFolder(itemsToMove, folderId);
-                                        if (selectedMemories.has(draggedId)) setSelectedMemories(new Set());
-                                    }
-                                    await loadMemories();
-                                }}
-                            />
-                        );
-                    })}
-                </div>
-            )}
-
             {/* Memories listing */}
             <div className={layoutMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 pr-1" : "space-y-3 flex-1 pr-1"}>
-                {filteredMemories
-                    .filter(m => {
-                        if (searchQuery) return true;
-                        if (currentFolderId === null) return !m.folderId;
-                        return m.folderId === currentFolderId;
-                    })
-                    .map(memory => {
-                        const isSelected = selectedMemories.has(memory.id);
-                        if (layoutMode === 'grid') {
-                            return (
-                                <div
-                                    key={memory.id}
-                                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
-                                        isSelected
-                                            ? 'bg-green-500/10 border-green-500/30'
-                                            : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
-                                    }`}
-                                >
-                                    <div>
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <div
-                                                    onClick={(e) => handleToggleSelect(memory.id, e)}
-                                                    className={`w-5 h-5 rounded-lg border flex items-center justify-center cursor-pointer transition-all ${
-                                                        isSelected
-                                                            ? 'bg-green-500 border-green-400 text-[#09100c]'
-                                                            : 'border-green-500/20 hover:border-green-500/40'
-                                                    }`}
-                                                >
-                                                    {isSelected && <span className="text-[10px] font-bold">✓</span>}
-                                                </div>
-                                                <h3 className="text-sm font-bold text-gray-200">
-                                                    {memory.metadata.title}
-                                                </h3>
+                {filteredMemories.map(memory => {
+                    const isSelected = selectedMemories.has(memory.id);
+                    if (layoutMode === 'grid') {
+                        return (
+                            <div
+                                key={memory.id}
+                                className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                                    isSelected
+                                        ? 'bg-green-500/10 border-green-500/30'
+                                        : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
+                                }`}
+                            >
+                                <div>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                onClick={(e) => handleToggleSelect(memory.id, e)}
+                                                className={`w-5 h-5 rounded-lg border flex items-center justify-center cursor-pointer transition-all ${
+                                                    isSelected
+                                                        ? 'bg-green-500 border-green-400 text-[#09100c]'
+                                                        : 'border-green-500/20 hover:border-green-500/40'
+                                                }`}
+                                            >
+                                                {isSelected && <span className="text-[10px] font-bold">✓</span>}
                                             </div>
-                                            <div className="flex gap-2 shrink-0">
-                                                <button onClick={(e) => handleEditStart(memory, e)} className="p-1 hover:bg-white/5 rounded text-xs">✏️</button>
-                                                <button onClick={(e) => handleDeleteMemory(memory.id, e)} className="p-1 hover:bg-red-500/10 rounded text-xs text-red-400">🗑️</button>
-                                            </div>
-                                        </div>
-                                        <p className="text-xs text-gray-400 line-clamp-4 leading-relaxed font-mono whitespace-pre-wrap bg-[#09100c]/40 p-3 rounded-xl border border-green-500/5">
-                                            {memory.content}
-                                        </p>
-                                    </div>
-                                    <div className="mt-4 flex flex-wrap gap-1.5 items-center">
-                                        <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-[9px] font-mono">
-                                            {memory.aiModel}
-                                        </span>
-                                        {memory.tags.map(t => (
-                                            <span key={t} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-500/5 border border-green-500/10 text-green-400">
-                                                #{t}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        } else {
-                            // Unified Row-Style List View matching Chats list exactly
-                            return (
-                                <div
-                                    key={memory.id}
-                                    onClick={(e) => handleEditStart(memory, e)}
-                                    className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
-                                        isSelected
-                                            ? 'bg-green-500/10 border-green-500/30'
-                                            : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-4 min-w-0 flex-1">
-                                        <div
-                                            onClick={(e) => handleToggleSelect(memory.id, e)}
-                                            className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
-                                                isSelected
-                                                    ? 'bg-green-500 border-green-400 text-[#09100c]'
-                                                    : 'border-green-500/20 group-hover:border-green-500/40'
-                                            }`}
-                                        >
-                                            {isSelected && <span className="text-[10px] font-bold">✓</span>}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="font-semibold text-xs text-gray-200 truncate group-hover:text-green-400 transition-colors">
+                                            <h3 className="text-sm font-bold text-gray-200">
                                                 {memory.metadata.title}
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-500 font-mono">
-                                                <span className="px-1.5 py-0.5 rounded bg-green-500/5 border border-green-500/10 text-green-400 text-[8px]">
-                                                    {memory.aiModel}
-                                                </span>
-                                                <span>•</span>
-                                                <span>{new Date(memory.createdAt).toLocaleDateString()}</span>
-                                            </div>
+                                            </h3>
+                                        </div>
+                                        <div className="flex gap-2 shrink-0">
+                                            <button onClick={(e) => handleEditStart(memory, e)} className="p-1 hover:bg-white/5 rounded text-xs">✏️</button>
+                                            <button onClick={(e) => handleDeleteMemory(memory.id, e)} className="p-1 hover:bg-red-500/10 rounded text-xs text-red-400">🗑️</button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 shrink-0 ml-4">
-                                        <button onClick={(e) => handleDeleteMemory(memory.id, e)} className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 text-xs">🗑️</button>
-                                        <span className="text-gray-600 group-hover:text-green-500 transition-all transform translate-x-0 group-hover:translate-x-1">➔</span>
+                                    <p className="text-xs text-gray-400 line-clamp-4 leading-relaxed font-mono whitespace-pre-wrap bg-[#09100c]/40 p-3 rounded-xl border border-green-500/5">
+                                        {memory.content}
+                                    </p>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-1.5 items-center">
+                                    <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-[9px] font-mono">
+                                        {memory.aiModel}
+                                    </span>
+                                    {memory.tags.map(t => (
+                                        <span key={t} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-500/5 border border-green-500/10 text-green-400">
+                                            #{t}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    } else {
+                        // Unified Row-Style List View
+                        return (
+                            <div
+                                key={memory.id}
+                                onClick={(e) => handleEditStart(memory, e)}
+                                className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                                    isSelected
+                                        ? 'bg-green-500/10 border-green-500/30'
+                                        : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
+                                }`}
+                            >
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div
+                                        onClick={(e) => handleToggleSelect(memory.id, e)}
+                                        className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
+                                            isSelected
+                                                ? 'bg-green-500 border-green-400 text-[#09100c]'
+                                                : 'border-green-500/20 group-hover:border-green-500/40'
+                                        }`}
+                                    >
+                                        {isSelected && <span className="text-[10px] font-bold">✓</span>}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="font-semibold text-xs text-gray-200 truncate group-hover:text-green-400 transition-colors">
+                                            {memory.metadata.title}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-500 font-mono">
+                                            <span className="px-1.5 py-0.5 rounded bg-green-500/5 border border-green-500/10 text-green-400 text-[8px]">
+                                                {memory.aiModel}
+                                            </span>
+                                            <span>•</span>
+                                            <span>{new Date(memory.createdAt).toLocaleDateString()}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            );
-                        }
-                    })}
+                                <div className="flex items-center gap-3 shrink-0 ml-4">
+                                    <button onClick={(e) => handleDeleteMemory(memory.id, e)} className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 text-xs">🗑️</button>
+                                    <span className="text-gray-600 group-hover:text-green-500 transition-all transform translate-x-0 group-hover:translate-x-1">➔</span>
+                                </div>
+                            </div>
+                        );
+                    }
+                })}
 
-                {filteredMemories.filter(m => currentFolderId === null ? !m.folderId : m.folderId === currentFolderId).length === 0 && (
+                {filteredMemories.length === 0 && (
                     <div className="col-span-full py-20 text-center text-gray-500">
-                        No memories in this folder. Click "Add New Memory" to start archiving.
+                        No memories found. Click "Add New Memory" to start archiving.
                     </div>
                 )}
             </div>
@@ -453,7 +312,6 @@ export const MemoryArchive: React.FC = () => {
                 selectedCount={selectedMemories.size}
                 onExport={() => alert('Exporting batch memories is in preview.')}
                 onDelete={handleBatchDelete}
-                onMove={handleBatchMove}
                 onClearSelection={() => setSelectedMemories(new Set())}
                 accentColor="green"
                 itemLabel="memories"
@@ -537,37 +395,6 @@ export const MemoryArchive: React.FC = () => {
                     </form>
                 </div>
             )}
-
-            {/* Folder Modals */}
-            <CreateFolderModal
-                isOpen={isFolderModalOpen}
-                onClose={() => setIsFolderModalOpen(false)}
-                onSave={handleCreateFolder}
-                folder={editingFolder}
-                accentColor="green"
-                type="memory"
-            />
-
-            <MoveSelectionModal
-                isOpen={moveModalOpen}
-                onClose={() => setMoveModalOpen(false)}
-                onMove={handleMoveConfirm}
-                folders={folders}
-                currentFolderId={currentFolderId}
-                accentColor="green"
-                movingFolderId={movingFolderId}
-            />
-
-            <DeleteFolderModal
-                isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                onConfirm={() => {
-                    if (editingFolder) deleteFolder(editingFolder.id);
-                }}
-                folder={editingFolder}
-                accentColor="green"
-                stats={editingFolder ? calculateFolderStats(editingFolder.id, folders, memories) : undefined}
-            />
         </div>
     );
 };
