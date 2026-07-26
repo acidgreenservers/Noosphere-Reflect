@@ -38,8 +38,8 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
         // Remove header metadata block (lines starting with **)
         result = result.replace(/^\*\*[^*]+\*\*[^\n]*\n/gm, '');
 
-        // Remove Powered by footer
-        result = result.replace(/---\s*\nPowered by \[Claude Exporter\][^\n]*/g, '');
+        // Remove Exported by footer
+        result = result.replace(/---\s*\nExported by \[Claude Exporter\][^\n]*/g, '');
 
         // Clean up extra whitespace
         result = result.replace(/\n{3,}/g, '\n\n').trim();
@@ -138,8 +138,8 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
     /**
      * Claude-specific turn parser with exchange tracking
      * Handles:
-     * - ## Prompt: (user messages)
-     * - ## Response: (AI responses)
+     * - ## User: (user messages)
+     * - ## Assistant: (AI responses)
      * - ````plaintext (4 backticks) for thought blocks
      * - Exchange tracking to ensure proper alternation
      * - Nested ## headers within content (not treated as boundaries)
@@ -147,13 +147,13 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
     private parseClaudeTurns(input: string): ChatMessage[] {
         const messages: ChatMessage[] = [];
         
-        // Strict Claude header pattern - only ## Prompt: or ## Response:
-        const headerPattern = /^##\s+(Prompt|Response):\s*$/gm;
+        // Strict Claude header pattern - only ## User: or ## Assistant:
+        const headerPattern = /^##\s+(User|Assistant):\s*$/gm;
         const matches = Array.from(input.matchAll(headerPattern));
 
         if (matches.length === 0) return [];
 
-        let expectedType: 'prompt' | 'response' = 'prompt'; // Claude always starts with user prompt
+        let expectedType: 'user' | 'assistant' = 'user'; // Claude always starts with user prompt
 
         for (let i = 0; i < matches.length; i++) {
             const headerType = matches[i][1].toLowerCase();
@@ -163,9 +163,9 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
             let rawContent = input.substring(contentStart, contentEnd).trim();
 
             // Validate exchange alternation
-            const isPrompt = headerType === 'prompt';
-            if (isPrompt !== (expectedType === 'prompt')) {
-                // Skip invalid exchange (e.g., two prompts in a row)
+            const isPrompt = headerType === 'user';
+            if (isPrompt !== (expectedType === 'user')) {
+                // Skip invalid exchange (e.g., two users in a row)
                 continue;
             }
 
@@ -189,7 +189,7 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
             });
 
             // Toggle expected type for next exchange
-            expectedType = isPrompt ? 'response' : 'prompt';
+            expectedType = isPrompt ? 'assistant' : 'user';
         }
 
         return messages;

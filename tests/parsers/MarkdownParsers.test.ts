@@ -12,7 +12,7 @@ describe('Markdown Parsers Suite', () => {
     };
 
     it('should parse Claude Markdown', () => {
-        const input = `## Prompt:\nHello Claude\n## Response:\nHello User\n---\nPowered by [Claude Exporter]`;
+        const input = `## User:\nHello Claude\n## Assistant:\nHello User\n---\nExported by [Claude Exporter]`;
         const result = testParser(ParserMode.ClaudeMarkdown, input, 2);
         expect(result.metadata?.model).toBe('Claude');
     });
