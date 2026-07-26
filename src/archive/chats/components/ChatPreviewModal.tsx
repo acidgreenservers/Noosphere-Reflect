@@ -7,6 +7,7 @@ import { getFileIcon } from '../../../components/artifacts/utils';
 import { useMathJax } from '../../../hooks/useMathJax';
 import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
 import { exportService } from '../../../components/exports/services';
+import { ExpandableMessage } from './ExpandableMessage';
 
 interface ChatPreviewModalProps {
     session: SavedChatSession;
@@ -595,11 +596,13 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
                                         </div>
 
                                         {/* Content Bubble */}
-                                        <div className={`max-w-none rounded-3xl p-6 border shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.005] hover:shadow-xl ${isUser
+                                        <div className={`max-w-none rounded-3xl p-6 border shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.005] hover:shadow-xl relative ${isUser
                                             ? 'bg-gradient-to-br from-blue-900/40 to-blue-800/30 border-blue-700/30 hover:border-blue-600/50 shadow-blue-500/10 hover:shadow-blue-500/20'
                                             : 'bg-gradient-to-br from-gray-900/60 to-gray-950/50 border-gray-700/30 hover:border-gray-600/50 shadow-gray-500/10 hover:shadow-gray-500/20'
                                             }`}>
-                                            <MarkdownRenderer content={msg.content} />
+                                            <ExpandableMessage maxHeight={400} isUser={isUser}>
+                                                <MarkdownRenderer content={msg.content} />
+                                            </ExpandableMessage>
 
                                             {/* Artifacts Display */}
                                             {msg.artifacts && msg.artifacts.length > 0 && (
