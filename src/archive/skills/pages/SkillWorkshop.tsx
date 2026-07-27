@@ -555,6 +555,61 @@ export default function SkillWorkshop() {
                                     className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#82f94b] text-gray-100"
                                 />
                             </div>
+
+                            {/* Custom Frontmatter */}
+                            <div className="pt-2">
+                                <label className="flex items-center justify-between text-xs font-medium text-gray-400 mb-2">
+                                    <span>CUSTOM FRONTMATTER</span>
+                                    <button 
+                                        onClick={() => setWs({...ws, customFrontmatter: [...ws.customFrontmatter, {key: '', value: ''}]})}
+                                        className="text-[#82f94b] hover:text-[#9dfa73] p-1 bg-[#1a1a1a] rounded flex items-center justify-center transition-colors"
+                                        title="Add Custom Field"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </label>
+                                {ws.customFrontmatter.length === 0 ? (
+                                    <div className="text-xs text-gray-500 italic py-2">No custom fields added.</div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {ws.customFrontmatter.map((field, idx) => (
+                                            <div key={idx} className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={field.key}
+                                                    onChange={e => {
+                                                        const newFields = [...ws.customFrontmatter];
+                                                        newFields[idx].key = e.target.value;
+                                                        setWs({...ws, customFrontmatter: newFields});
+                                                    }}
+                                                    placeholder="Key"
+                                                    className="w-1/3 bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#82f94b] text-gray-100"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={field.value}
+                                                    onChange={e => {
+                                                        const newFields = [...ws.customFrontmatter];
+                                                        newFields[idx].value = e.target.value;
+                                                        setWs({...ws, customFrontmatter: newFields});
+                                                    }}
+                                                    placeholder="Value"
+                                                    className="flex-1 bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#82f94b] text-gray-100"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const newFields = ws.customFrontmatter.filter((_, i) => i !== idx);
+                                                        setWs({...ws, customFrontmatter: newFields});
+                                                    }}
+                                                    className="p-2 text-red-500 hover:text-red-400 bg-[#1a1a1a] hover:bg-[#2a1a1a] rounded-md transition-colors"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -724,62 +779,7 @@ export default function SkillWorkshop() {
                                     </div>
                                 </div>
                             </div>
-                            
-                            {/* Custom Frontmatter */}
-                            <div>
-                                <label className="flex items-center justify-between text-xs font-medium text-gray-400 mb-2">
-                                    <span>CUSTOM FRONTMATTER</span>
-                                    <button 
-                                        onClick={() => setWs({...ws, customFrontmatter: [...ws.customFrontmatter, {key: '', value: ''}]})}
-                                        className="text-[#82f94b] hover:text-[#9dfa73] p-1 bg-[#1a1a1a] rounded flex items-center justify-center transition-colors"
-                                        title="Add Custom Field"
-                                    >
-                                        <Plus size={14} />
-                                    </button>
-                                </label>
-                                {ws.customFrontmatter.length === 0 ? (
-                                    <div className="text-xs text-gray-500 italic py-2">No custom fields added.</div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {ws.customFrontmatter.map((field, idx) => (
-                                            <div key={idx} className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={field.key}
-                                                    onChange={e => {
-                                                        const newFields = [...ws.customFrontmatter];
-                                                        newFields[idx].key = e.target.value;
-                                                        setWs({...ws, customFrontmatter: newFields});
-                                                    }}
-                                                    placeholder="Key"
-                                                    className="w-1/3 bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#82f94b] text-gray-100"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={field.value}
-                                                    onChange={e => {
-                                                        const newFields = [...ws.customFrontmatter];
-                                                        newFields[idx].value = e.target.value;
-                                                        setWs({...ws, customFrontmatter: newFields});
-                                                    }}
-                                                    placeholder="Value"
-                                                    className="flex-1 bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#82f94b] text-gray-100"
-                                                />
-                                                <button
-                                                    onClick={() => {
-                                                        const newFields = ws.customFrontmatter.filter((_, i) => i !== idx);
-                                                        setWs({...ws, customFrontmatter: newFields});
-                                                    }}
-                                                    className="p-2 text-red-500 hover:text-red-400 bg-[#1a1a1a] hover:bg-[#2a1a1a] rounded-md transition-colors"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Main Instructions Section */}
