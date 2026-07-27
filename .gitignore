@@ -22,16 +22,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.claude
-.blackboxcli
-.clinerules
-agents/implementation-plans
-.env
+.env*
 
 reference-html-dom
 
 .shellcheck/
 
 .agents/
+
+.opencode/
+
+.claude/
 
 .clinerules/
