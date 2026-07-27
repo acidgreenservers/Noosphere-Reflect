@@ -179,5 +179,20 @@ export const migrations: Migration[] = [
                 skillStore.deleteIndex('folderId');
             }
         }
+    },
+    {
+        version: 11,
+        description: 'Create projects store and add projectId indexes',
+        migrate: (db, transaction) => {
+            if (!db.objectStoreNames.contains(STORES.PROJECTS)) {
+                const projectStore = db.createObjectStore(STORES.PROJECTS, { keyPath: 'id' });
+                projectStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+            }
+
+            const sessionStore = transaction.objectStore(STORES.SESSIONS);
+            if (!sessionStore.indexNames.contains('projectId')) {
+                sessionStore.createIndex('projectId', 'projectId', { unique: false });
+            }
+        }
     }
 ];

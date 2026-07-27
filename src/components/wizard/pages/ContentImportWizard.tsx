@@ -43,7 +43,7 @@ export const ContentImportWizard: React.FC<ContentImportWizardProps> = (props) =
     if (!props.isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 sm:p-6 lg:p-10 transition-all duration-500">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-sm p-4 sm:p-6 lg:p-10 transition-all duration-500">
             <div className="bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl border border-white/10 flex flex-col h-full max-h-[850px] overflow-hidden animate-in zoom-in-95 duration-300">
                 <WizardHeader step={step} onClose={props.onClose} />
 

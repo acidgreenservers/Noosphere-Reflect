@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
 import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ParserMode } from '../../types';
 import logo from '../../assets/logo.png';
@@ -143,6 +143,7 @@ export default function UnifiedChatInterface() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
     
     // Default to read-only if passed in router state
     const [isReadOnly, setIsReadOnly] = useState<boolean>(location.state?.readOnly || false);
@@ -200,8 +201,29 @@ export default function UnifiedChatInterface() {
     }, [id]);
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages, currentRole]);
+        const indexStr = searchParams.get('messageIndex');
+        if (indexStr && messages.length > 0) {
+            const idx = parseInt(indexStr, 10);
+            if (!isNaN(idx) && idx >= 0 && idx < messages.length) {
+                setTimeout(() => {
+                    const el = document.getElementById(`message-${idx}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('bg-white/10', 'rounded-xl', 'transition-colors', 'duration-1000');
+                        setTimeout(() => {
+                            el.classList.remove('bg-white/10');
+                        }, 2000);
+                    }
+                }, 100);
+            }
+        }
+    }, [messages.length, searchParams]);
+
+    useEffect(() => {
+        if (!searchParams.get('messageIndex')) {
+            scrollToBottom();
+        }
+    }, [messages, currentRole, searchParams]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -729,9 +751,9 @@ export default function UnifiedChatInterface() {
             <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
                 <div className="w-full max-w-3xl mx-auto space-y-6 flex flex-col pb-4">
                     {messages.map((msg, index) => (
-                        <ChatMessageBubble 
-                            key={`${session?.id || 'new'}-${index}`}
-                            msg={msg}
+                        <div key={`${session?.id || 'new'}-${index}`} id={`message-${index}`}>
+                            <ChatMessageBubble 
+                                msg={msg}
                             index={index}
                             aiName={session?.aiName || 'AI'}
                             onCopyText={handleCopyText}
@@ -739,7 +761,8 @@ export default function UnifiedChatInterface() {
                             onSaveMemory={handleSaveAsMemory}
                             onSavePrompt={handleSaveAsPrompt}
                             onSaveSkill={handleSaveAsSkill}
-                        />
+                            />
+                        </div>
                     ))}
                 {messages.length === 0 && (
                     <div className="flex-1 flex flex-col justify-center items-center px-4 mt-10">

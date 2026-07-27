@@ -13,6 +13,9 @@ import {
     FileNamingFormat,
     ExportPreferences,
 } from '../components';
+import { ContentImportWizard } from '../../wizard';
+import { parseChat } from '../../../services/converterService';
+import { ParserMode } from '../../../types';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -37,6 +40,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
     // Google Auth
     const { login, logout, isLoggedIn, user, accessToken, driveFolderId, error: loginError } = useGoogleAuth();
     const [isBackingUp, setIsBackingUp] = useState(false);
+
+    // Wizard
+    const [isWizardOpen, setIsWizardOpen] = useState(false);
 
     const handleDriveBackup = async () => {
         if (!accessToken) return;
@@ -70,6 +76,66 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         setLocalSettings(settings); // Reset to original
         setError(null);
         onClose();
+    };
+
+    const handleWizardImport = async (content: string, type: 'html' | 'json' | 'markdown', mode: ParserMode, attachments?: File[]) => {
+        try {
+            const metadata = {
+                title: 'Imported Chat',
+                model: 'Unknown Model',
+                date: new Date().toISOString(),
+                tags: ['imported'],
+                updatedAt: new Date().toISOString()
+            };
+            const parsed = await parseChat(content, type === 'auto' ? 'html' : type as any, mode, undefined);
+            
+            // Note: Currently parseChat doesn't take attachments directly.
+            // If they need to be attached, we can do it after parsing.
+            if (attachments && attachments.length > 0) {
+                const parsedArtifacts = await Promise.all(attachments.map(async (file) => {
+                    return new Promise<any>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const result = e.target?.result as string;
+                            const isText = file.name.endsWith('.md') || file.name.endsWith('.txt') || file.name.endsWith('.json') || file.type.startsWith('text/');
+                            let fileData = result;
+                            if (!isText && result.startsWith('data:')) {
+                                fileData = result.split(',')[1];
+                            }
+                            resolve({
+                                id: `artifact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                fileName: file.name,
+                                fileSize: file.size,
+                                mimeType: file.type || (isText ? 'text/plain' : 'application/octet-stream'),
+                                fileData,
+                                uploadedAt: new Date().toISOString()
+                            });
+                        };
+                        if (file.name.endsWith('.md') || file.name.endsWith('.txt') || file.type.startsWith('text/')) {
+                            reader.readAsText(file);
+                        } else {
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                }));
+
+                // Attach to first message or session metadata
+                if (parsed.chatData && parsed.chatData.messages.length > 0) {
+                    parsed.chatData.messages[0].artifacts = [
+                        ...(parsed.chatData.messages[0].artifacts || []),
+                        ...parsedArtifacts
+                    ];
+                }
+            }
+
+            await storageService.saveSession(parsed);
+            window.dispatchEvent(new CustomEvent('sessionImported', { detail: { sessionId: parsed.id } }));
+            alert('✅ Chat imported successfully!');
+            setIsWizardOpen(false);
+        } catch (e: any) {
+            console.error('Failed to import chat via wizard:', e);
+            alert('Failed to import chat: ' + e.message);
+        }
     };
 
     // Keyboard handler for ESC
@@ -112,6 +178,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             onExportDatabase={handleExportDatabase}
                             onImportDatabase={handleImportDatabase}
                             onImportFolder={handleImportFolder}
+                            onOpenWizard={() => setIsWizardOpen(true)}
                         />
 
                         {/* Divider */}
@@ -171,6 +238,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                     <SettingsFooter onCancel={handleCancel} onSave={handleSave} isSaving={isSaving} />
                 </div>
             </div>
+
+            <ContentImportWizard
+                isOpen={isWizardOpen}
+                onClose={() => setIsWizardOpen(false)}
+                onImport={handleWizardImport}
+            />
         </>
     );
 };

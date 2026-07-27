@@ -4,12 +4,14 @@ interface DataManagementProps {
     onExportDatabase: () => void;
     onImportDatabase: () => void;
     onImportFolder: () => void;
+    onOpenWizard: () => void;
 }
 
 export const DataManagement: React.FC<DataManagementProps> = ({
     onExportDatabase,
     onImportDatabase,
     onImportFolder,
+    onOpenWizard,
 }) => {
     return (
         <div>
@@ -19,7 +21,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
                 </svg>
                 Data Management
             </h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {/* Export Database */}
                 <button
                     onClick={onExportDatabase}
@@ -65,6 +67,22 @@ export const DataManagement: React.FC<DataManagementProps> = ({
                     <div className="text-center">
                         <div className="text-sm font-semibold text-white">Import Folder</div>
                         <div className="text-xs text-gray-400">Reflect exports</div>
+                    </div>
+                </button>
+
+                {/* Import Wizard */}
+                <button
+                    onClick={onOpenWizard}
+                    className="flex flex-col items-center gap-2 p-4 bg-gray-700/50 hover:bg-gray-700 rounded-xl transition-all border border-gray-600 hover:border-pink-400"
+                >
+                    <div className="w-10 h-10 rounded-lg bg-pink-600 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-sm font-semibold text-white">Import Wizard</div>
+                        <div className="text-xs text-gray-400">Paste/Upload/Ext</div>
                     </div>
                 </button>
             </div>

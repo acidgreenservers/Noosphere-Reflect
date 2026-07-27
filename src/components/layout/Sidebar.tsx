@@ -199,6 +199,36 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                         {!isCollapsed && <span className="animate-fade-in">All Chats</span>}
                     </Link>
                     <Link
+                        to="/projects"
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            location.pathname.startsWith('/projects')
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                        } ${isCollapsed ? 'justify-center' : ''}`}
+                        title="Projects Hub"
+                    >
+                        <span className="text-base">📁</span>
+                        {!isCollapsed && <span className="animate-fade-in">Projects</span>}
+                    </Link>
+                    
+                    <div className="border-t border-green-500/10 my-1 mx-2"></div>
+                    
+                    <Link
+                        to="/artifacts"
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            location.pathname === '/artifacts'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                        } ${isCollapsed ? 'justify-center' : ''}`}
+                        title="Artifacts Archive"
+                    >
+                        <span className="text-base">📎</span>
+                        {!isCollapsed && <span className="animate-fade-in">Artifacts</span>}
+                    </Link>
+
+                    <div className="border-t border-green-500/10 my-1 mx-2"></div>
+
+                    <Link
                         to="/memories"
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                             location.pathname === '/memories'
@@ -297,6 +327,17 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                                             className="w-full text-left px-3 py-2 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
                                                         >
                                                             ✏️ Rename Chat
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                window.dispatchEvent(new CustomEvent('openMoveToProjectModal', { detail: { chatId: chat.id } }));
+                                                                setActiveActionMenuId(null);
+                                                            }}
+                                                            className="w-full text-left px-3 py-2 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
+                                                        >
+                                                            📁 Move to Project
                                                         </button>
                                                         <button
                                                             onClick={(e) => handleToggleExported(chat.id, chat.exportStatus, e)}

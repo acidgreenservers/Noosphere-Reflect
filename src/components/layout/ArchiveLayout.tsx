@@ -26,6 +26,7 @@ interface ArchiveLayoutProps {
     selectedCount: number;
     itemLabel: string;
     totalFilteredItems: number;
+    selectionActions?: React.ReactNode;
     
     // Slots
     itemsComponent: React.ReactNode;
@@ -52,6 +53,7 @@ export const ArchiveLayout: React.FC<ArchiveLayoutProps> = ({
     selectedCount,
     itemLabel,
     totalFilteredItems,
+    selectionActions,
     itemsComponent,
     children
 }) => {
@@ -165,6 +167,7 @@ export const ArchiveLayout: React.FC<ArchiveLayoutProps> = ({
                         </button>
                     </div>
                     <div className="flex items-center gap-3">
+                        {selectionActions}
                         {onExportSelected && (
                             <button
                                 onClick={onExportSelected}

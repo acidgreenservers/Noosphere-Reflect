@@ -12,6 +12,9 @@ import SkillWorkshop from './archive/skills/pages/SkillWorkshop';
 import Changelog from './pages/Changelog';
 import Features from './pages/Features';
 import AppShell from './components/layout/AppShell';
+import ProjectArchive from './archive/projects/pages/ProjectArchive';
+import ProjectDetail from './archive/projects/pages/ProjectDetail';
+import ArtifactArchive from './archive/artifacts/pages/ArtifactArchive';
 
 function App() {
   return (
@@ -20,6 +23,9 @@ function App() {
         <Route path="/" element={<AppShell><NewChatView /></AppShell>} />
         <Route path="/chat/:id" element={<AppShell><UnifiedChatInterface /></AppShell>} />
         <Route path="/chats" element={<AppShell><ArchiveHub /></AppShell>} />
+        <Route path="/projects" element={<AppShell><ProjectArchive /></AppShell>} />
+        <Route path="/projects/:id" element={<AppShell><ProjectDetail /></AppShell>} />
+        <Route path="/artifacts" element={<AppShell><ArtifactArchive /></AppShell>} />
         <Route path="/memories" element={<AppShell><MemoryArchive /></AppShell>} />
         <Route path="/prompts" element={<AppShell><PromptArchive /></AppShell>} />
         <Route path="/skills" element={<AppShell><SkillArchive /></AppShell>} />

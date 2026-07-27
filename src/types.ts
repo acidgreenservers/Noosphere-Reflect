@@ -139,6 +139,7 @@ export interface SavedChatSession {
   normalizedTitle?: string; // Normalized title for duplicate detection indexing
   exportStatus?: 'exported' | 'not_exported' | 'modified'; // Mirror of metadata.exportStatus
   date: string; // fallback
+  projectId?: string; // Links this session to a Project
 }
 
 export type SavedChatSessionMetadata = Omit<SavedChatSession, 'inputContent' | 'chatData'>;
@@ -242,3 +243,23 @@ export interface SearchFilters {
 
 // Archive Types for Foldering System
 export type ArchiveType = 'chat' | 'memory' | 'prompt' | 'skill';
+
+// Project Types
+export interface ProjectMetadata {
+  title: string;
+  description?: string;
+  memory?: string;
+  instructions?: string;
+  exportStatus?: 'exported' | 'not_exported' | 'modified';
+  lastExportDate?: string;
+  exportFormats?: string[];
+  exportCount?: number;
+}
+
+export interface Project {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata: ProjectMetadata;
+  artifacts: ConversationArtifact[]; // Shared project attachments pool
+}

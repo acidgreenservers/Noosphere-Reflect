@@ -15,6 +15,7 @@ interface ChatSessionCardProps {
     getModelBadgeColor: (model: string | undefined) => string;
     viewMode?: 'grid' | 'list';
     onExport: (session: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
+    onMoveToProject?: () => void;
 }
 
 export function ChatSessionCard({
@@ -27,7 +28,8 @@ export function ChatSessionCard({
     onManageArtifacts,
     getModelBadgeColor,
     viewMode = 'grid',
-    onExport
+    onExport,
+    onMoveToProject
 }: ChatSessionCardProps) {
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -100,6 +102,19 @@ export function ChatSessionCard({
                     className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2 border-t border-gray-800"
                 >
                     <span>📎</span> Manage Artifacts ({artifactCount})
+                </button>
+            )}
+            
+            {onMoveToProject && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsMenuOpen(false);
+                        onMoveToProject();
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2 border-t border-gray-800"
+                >
+                    <span>📁</span> Move to Project
                 </button>
             )}
                         {/* Export Menu */}

@@ -5,6 +5,7 @@ import { memoryStore } from './storage/MemoryStore';
 import { promptStore } from './storage/PromptStore';
 import { skillStore } from './storage/SkillStore';
 import { settingsStore } from './storage/SettingsStore';
+import { projectStore } from './storage/ProjectStore';
 import { STORES, DB_VERSION } from './db/schema';
 import {
     SavedChatSession,
@@ -17,7 +18,8 @@ import {
     Skill,
     ParserMode,
     ChatTheme,
-    ArchiveType
+    ArchiveType,
+    Project
 } from '../types';
 import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema, sanitizeMessageContent } from '../utils/importValidator';
 import { detectImportSource, detectPlatformFromHTML } from '../utils/importDetector';
@@ -527,6 +529,59 @@ class StorageService {
 
     async deleteSkill(id: string): Promise<void> {
         return skillStore.deleteWithSearch(id);
+    }
+
+    // Projects
+    async saveProject(project: Project): Promise<void> {
+        return projectStore.save(project);
+    }
+
+    async getAllProjects(): Promise<Project[]> {
+        return projectStore.getAllSorted();
+    }
+
+    async getProjectById(id: string): Promise<Project | undefined> {
+        return projectStore.getById(id);
+    }
+
+    async updateProject(project: Project): Promise<void> {
+        project.updatedAt = new Date().toISOString();
+        if (project.metadata.exportStatus === 'exported') {
+            project.metadata.exportStatus = 'modified';
+        }
+        return this.saveProject(project);
+    }
+
+    async deleteProject(id: string): Promise<void> {
+        // Also remove projectId from associated sessions
+        const sessions = await this.getSessionsByProjectId(id);
+        for (const session of sessions) {
+            session.projectId = undefined;
+            await this.saveSession(session);
+        }
+        return projectStore.delete(id);
+    }
+
+    async getSessionsByProjectId(projectId: string): Promise<SavedChatSession[]> {
+        const db = await this.getDB();
+        const sessions = await db.getAllFromIndex(STORES.SESSIONS, 'projectId', projectId);
+        return sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+
+    async addSessionToProject(sessionId: string, projectId: string): Promise<void> {
+        const session = await this.getSessionById(sessionId);
+        if (session) {
+            session.projectId = projectId;
+            await this.saveSession(session);
+        }
+    }
+
+    async removeSessionFromProject(sessionId: string): Promise<void> {
+        const session = await this.getSessionById(sessionId);
+        if (session) {
+            session.projectId = undefined;
+            await this.saveSession(session);
+        }
     }
 }
 
