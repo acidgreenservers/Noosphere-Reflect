@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
-import { SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS } from '../../types';
+import { SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS, SavedChatSession, ChatTheme, ChatStyle } from '../../types';
 import logo from '../../assets/logo.png';
 import { SettingsMenu } from './SettingsMenu';
+import { ContentImportWizard } from '../wizard';
 
 interface SidebarProps {
     isCollapsed?: boolean;
@@ -19,6 +20,43 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [showImportWizard, setShowImportWizard] = useState(false);
+
+    const handleWizardImport = async (content: string, type: 'html' | 'json' | 'markdown', mode: any, attachments?: File[]) => {
+        try {
+            const { parseChat } = await import('../../services/converterService');
+            const { enrichMetadata } = await import('../../utils/metadataEnricher');
+            const chatData = await parseChat(content, type === 'json' ? 'json' : 'markdown', mode);
+            const enrichedMetadata = enrichMetadata(chatData, mode);
+
+            const newSessionId = crypto.randomUUID();
+            const newSession: SavedChatSession = {
+                id: newSessionId,
+                name: enrichedMetadata.title || 'Imported Chat',
+                date: enrichedMetadata.date || new Date().toISOString(),
+                inputContent: content,
+                chatTitle: enrichedMetadata.title || 'Imported Chat',
+                userName: 'User',
+                aiName: enrichedMetadata.model || 'AI',
+                selectedTheme: ChatTheme.DarkDefault,
+                selectedStyle: ChatStyle.Default,
+                parserMode: mode,
+                chatData,
+                metadata: enrichedMetadata
+            };
+
+            await storageService.saveSession(newSession);
+
+            // Dispatch event for sidebar
+            window.dispatchEvent(new Event('chatSaved'));
+            setShowImportWizard(false);
+            loadRecentChats();
+            alert('✅ Chat imported successfully!');
+            navigate(`/chat/${newSessionId}`);
+        } catch (e: any) {
+            alert(`Import validation failed: ${e.message}`);
+        }
+    };
 
     const loadRecentChats = async () => {
         try {
@@ -182,6 +220,21 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                         <span className="text-base">📁</span>
                         {!isCollapsed && <span className="animate-fade-in">Projects</span>}
                     </Link>
+                    <Link
+                        to="/artifacts"
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            location.pathname === '/artifacts'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                        } ${isCollapsed ? 'justify-center' : ''}`}
+                        title="Artifacts Library"
+                    >
+                        <span className="text-base">📦</span>
+                        {!isCollapsed && <span className="animate-fade-in">Artifacts</span>}
+                    </Link>
+
+                    <div className="border-t border-green-500/10 my-2"></div>
+
                     <Link
                         to="/memories"
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
@@ -351,12 +404,12 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                             <button
                                 onClick={() => {
                                     setProfileMenuOpen(false);
-                                    navigate('/');
+                                    setShowImportWizard(true);
                                 }}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
                             >
-                                <span>✨</span>
-                                <span>Start New Chat</span>
+                                <span>📥</span>
+                                <span>Import Chat</span>
                             </button>
                         </div>
                     </>
@@ -369,6 +422,12 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 onClose={() => setSettingsOpen(false)}
                 settings={appSettings}
                 onSave={handleSaveSettings}
+            />
+
+            <ContentImportWizard
+                isOpen={showImportWizard}
+                onClose={() => setShowImportWizard(false)}
+                onImport={handleWizardImport}
             />
         </aside>
     );

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { AppSettings } from '../../types';
+import { AppSettings, ChatTheme, ChatStyle, SavedChatSession } from '../../types';
 import { useGoogleAuth } from '../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../services/googleDriveService';
 import { storageService } from '../../services/storageService';
+import { ContentImportWizard } from '../wizard';
 import {
     DataManagement,
     CloudSync,
@@ -27,6 +28,41 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
     // Google Auth
     const { login, logout, isLoggedIn, user, accessToken, driveFolderId } = useGoogleAuth();
     const [isBackingUp, setIsBackingUp] = useState(false);
+    const [showImportWizard, setShowImportWizard] = useState(false);
+
+    const handleWizardImport = async (content: string, type: 'html' | 'json' | 'markdown', mode: any, _attachments?: File[]) => {
+        try {
+            const { parseChat } = await import('../../services/converterService');
+            const { enrichMetadata } = await import('../../utils/metadataEnricher');
+            const chatData = await parseChat(content, type === 'json' ? 'json' : 'markdown', mode);
+            const enrichedMetadata = enrichMetadata(chatData, mode);
+
+            const newSessionId = crypto.randomUUID();
+            const newSession: SavedChatSession = {
+                id: newSessionId,
+                name: enrichedMetadata.title || 'Imported Chat',
+                date: enrichedMetadata.date || new Date().toISOString(),
+                inputContent: content,
+                chatTitle: enrichedMetadata.title || 'Imported Chat',
+                userName: 'User',
+                aiName: enrichedMetadata.model || 'AI',
+                selectedTheme: ChatTheme.DarkDefault,
+                selectedStyle: ChatStyle.Default,
+                parserMode: mode,
+                chatData,
+                metadata: enrichedMetadata
+            };
+
+            await storageService.saveSession(newSession);
+
+            // Dispatch event for sidebar
+            window.dispatchEvent(new Event('chatSaved'));
+            setShowImportWizard(false);
+            alert('✅ Chat imported successfully!');
+        } catch (e: any) {
+            alert(`Import validation failed: ${e.message}`);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -78,7 +114,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
             a.download = `noosphere-reflect-export-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
-        } catch (err) {
+        } catch {
             setError('Export failed');
         }
     };
@@ -99,15 +135,15 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                         await storageService.importDatabase(jsonData);
                         alert('✅ Database imported successfully! Refreshing page...');
                         window.location.reload();
-                    } catch (err) {
-                        console.error('Failed to import database:', err);
-                        setError(err instanceof Error ? err.message : 'Import failed');
+                    } catch (error) {
+                        console.error('Failed to import database:', error);
+                        setError(error instanceof Error ? error.message : 'Import failed');
                     }
                 };
                 reader.readAsText(file);
             };
             input.click();
-        } catch (err) {
+        } catch {
             setError('Import failed');
         }
     };
@@ -130,17 +166,18 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                     const results = await storageService.importFromDirectory(files);
                     alert(`✅ Folder import complete:\n- ${results.successful} successful\n- ${results.failed} failed\n- ${results.skipped} skipped`);
                     window.location.reload();
-                } catch (err) {
+                } catch {
                     setError('Folder import failed');
                 }
             };
             input.click();
-        } catch (err) {
+        } catch {
             setError('Folder import failed');
         }
     };
 
     return (
+        <>
         <div className="fixed inset-0 bg-black/75 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
             <div
                 className="bg-[#0e1511]/90 border border-green-500/20 rounded-3xl w-full max-w-4xl h-[80vh] flex overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-fade-in"
@@ -268,6 +305,20 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                     onImportDatabase={handleImportDatabase}
                                     onImportFolder={handleImportFolder}
                                 />
+
+                                <div className="border-t border-green-500/10 pt-4">
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Platform Content Importer</h4>
+                                    <p className="text-[11px] text-gray-500 mb-3">
+                                        Import HTML or Markdown exports from Claude, ChatGPT, Gemini, Grok, Leo AI, Kimi, and other platforms directly.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowImportWizard(true)}
+                                        className="w-full py-2.5 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 hover:from-blue-500/20 hover:to-indigo-500/20 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-xl text-xs font-bold transition-all"
+                                    >
+                                        📥 Run Content Import Wizard
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -291,5 +342,12 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                 </div>
             </div>
         </div>
+
+        <ContentImportWizard
+            isOpen={showImportWizard}
+            onClose={() => setShowImportWizard(false)}
+            onImport={handleWizardImport}
+        />
+        </>
     );
 };
