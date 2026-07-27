@@ -613,6 +613,86 @@ class StorageService {
             await this.saveSession(session);
         }
     }
+
+    // Memories
+    async getMemoriesByProjectId(projectId: string) {
+        const db = await this.getDB();
+        return db.getAllFromIndex(STORES.MEMORIES, 'projectId', projectId);
+    }
+    async addMemoryToProject(id: string, projectId: string): Promise<void> {
+        const item = await this.getMemoryById(id);
+        if (item) {
+            item.projectId = projectId;
+            await this.saveMemory(item);
+        }
+    }
+    async removeMemoryFromProject(id: string): Promise<void> {
+        const item = await this.getMemoryById(id);
+        if (item) {
+            item.projectId = undefined;
+            await this.saveMemory(item);
+        }
+    }
+
+    // Prompts
+    async getPromptsByProjectId(projectId: string) {
+        const db = await this.getDB();
+        return db.getAllFromIndex(STORES.PROMPTS, 'projectId', projectId);
+    }
+    async addPromptToProject(id: string, projectId: string): Promise<void> {
+        const item = await this.getPromptById(id);
+        if (item) {
+            item.projectId = projectId;
+            await this.savePrompt(item);
+        }
+    }
+    async removePromptFromProject(id: string): Promise<void> {
+        const item = await this.getPromptById(id);
+        if (item) {
+            item.projectId = undefined;
+            await this.savePrompt(item);
+        }
+    }
+
+    // Skills
+    async getSkillsByProjectId(projectId: string) {
+        const db = await this.getDB();
+        return db.getAllFromIndex(STORES.SKILLS, 'projectId', projectId);
+    }
+    async addSkillToProject(id: string, projectId: string): Promise<void> {
+        const item = await this.getSkillById(id);
+        if (item) {
+            item.projectId = projectId;
+            await this.saveSkill(item);
+        }
+    }
+    async removeSkillFromProject(id: string): Promise<void> {
+        const item = await this.getSkillById(id);
+        if (item) {
+            item.projectId = undefined;
+            await this.saveSkill(item);
+        }
+    }
+
+    // Workflows
+    async getWorkflowsByProjectId(projectId: string) {
+        const db = await this.getDB();
+        return db.getAllFromIndex(STORES.WORKFLOWS, 'projectId', projectId);
+    }
+    async addWorkflowToProject(id: string, projectId: string): Promise<void> {
+        const item = await this.getWorkflowById(id);
+        if (item) {
+            item.projectId = projectId;
+            await this.saveWorkflow(item);
+        }
+    }
+    async removeWorkflowFromProject(id: string): Promise<void> {
+        const item = await this.getWorkflowById(id);
+        if (item) {
+            item.projectId = undefined;
+            await this.saveWorkflow(item);
+        }
+    }
 }
 
 export const storageService = new StorageService();

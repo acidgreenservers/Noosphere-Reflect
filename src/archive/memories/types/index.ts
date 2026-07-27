@@ -18,4 +18,5 @@ export interface Memory {
     createdAt: string; // ISO timestamp
     updatedAt: string; // ISO timestamp
     metadata: MemoryMetadata;
+    projectId?: string;
 }

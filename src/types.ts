@@ -189,6 +189,7 @@ export interface Memory {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: MemoryMetadata;
+  projectId?: string;
 }
 
 // Prompt Archive Types
@@ -210,6 +211,7 @@ export interface Prompt {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: PromptMetadata;
+  projectId?: string;
 }
 
 // Skill Archive Types
@@ -231,6 +233,7 @@ export interface Skill {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: SkillMetadata;
+  projectId?: string;
 }
 
 // Workflow Archive Types
@@ -252,6 +255,7 @@ export interface Workflow {
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)
   metadata: WorkflowMetadata;
+  projectId?: string;
 }
 
 // Search Filters

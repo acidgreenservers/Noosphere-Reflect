@@ -19,4 +19,5 @@ export interface Prompt {
     createdAt: string; // ISO timestamp
     updatedAt: string; // ISO timestamp
     metadata: PromptMetadata;
+    projectId?: string;
 }

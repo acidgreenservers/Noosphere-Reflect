@@ -16,4 +16,5 @@ export interface Skill {
     createdAt: string; // ISO timestamp
     updatedAt: string; // ISO timestamp
     metadata: SkillMetadata;
+    projectId?: string;
 }

@@ -5,6 +5,7 @@ import { SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS } from '../../t
 import logo from '../../assets/logo.png';
 import { SettingsMenu } from './SettingsMenu';
 import { RenameChatModal } from '../RenameChatModal';
+import { ProjectSelectionModal } from '../ProjectSelectionModal';
 import { ContentImportWizard } from '../wizard/pages/ContentImportWizard';
 import { ParsedContent } from '../../services/converterService';
 
@@ -33,6 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const [wizardOpen, setWizardOpen] = useState(false);
     const [renameModalOpen, setRenameModalOpen] = useState(false);
     const [chatToRename, setChatToRename] = useState<{id: string, title: string} | null>(null);
+    const [projectModalOpen, setProjectModalOpen] = useState(false);
+    const [chatToProjectMove, setChatToProjectMove] = useState<string | null>(null);
 
     const loadRecentChats = async () => {
         try {
@@ -59,6 +62,13 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         // Listen for new chat creation or state updates to refresh recent list
         window.addEventListener('sessionImported', loadRecentChats);
         window.addEventListener('chatSaved', loadRecentChats);
+        
+        const handleOpenProjectModal = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            setChatToProjectMove(customEvent.detail.chatId);
+            setProjectModalOpen(true);
+        };
+        window.addEventListener('openMoveToProjectModal', handleOpenProjectModal);
 
         const handleGlobalClick = () => {
             setActiveActionMenuId(null);
@@ -69,6 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         return () => {
             window.removeEventListener('sessionImported', loadRecentChats);
             window.removeEventListener('chatSaved', loadRecentChats);
+            window.removeEventListener('openMoveToProjectModal', handleOpenProjectModal);
             document.removeEventListener('click', handleGlobalClick);
         };
     }, [location.pathname]);
@@ -348,11 +359,16 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                 >
                                     <Link
                                         to={`/chat/${chat.id}`}
-                                        className={`flex-1 py-2.5 text-xs truncate font-medium ${isCollapsed ? 'px-0 flex justify-center' : 'px-3 pr-10'}`}
+                                        className={`flex-1 py-2.5 text-xs truncate font-medium flex items-center gap-2 ${isCollapsed ? 'px-0 justify-center' : 'px-3 pr-10'}`}
                                         title={chat.chatTitle || 'Untitled Session'}
                                     >
-                                        <span className={isCollapsed ? '' : 'mr-2'}>💬</span>
-                                        {!isCollapsed && (chat.chatTitle || 'Untitled Session')}
+                                        <span className={isCollapsed ? '' : ''}>💬</span>
+                                        {!isCollapsed && <span className="truncate">{chat.chatTitle || 'Untitled Session'}</span>}
+                                        {!isCollapsed && chat.projectId && (
+                                            <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
+                                                Project
+                                            </span>
+                                        )}
                                     </Link>
 
                                     {/* Action trigger button */}
@@ -489,6 +505,22 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 isOpen={wizardOpen}
                 onClose={() => setWizardOpen(false)}
                 onImport={handleWizardImport}
+            />
+
+            <ProjectSelectionModal
+                isOpen={projectModalOpen}
+                onClose={() => {
+                    setProjectModalOpen(false);
+                    setChatToProjectMove(null);
+                }}
+                onSelectProject={async (projectId) => {
+                    if (chatToProjectMove) {
+                        await storageService.addSessionToProject(chatToProjectMove, projectId);
+                        loadRecentChats(); // Reload to show the badge
+                    }
+                    setProjectModalOpen(false);
+                    setChatToProjectMove(null);
+                }}
             />
 
             <RenameChatModal

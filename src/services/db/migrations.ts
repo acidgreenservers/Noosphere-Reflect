@@ -205,5 +205,20 @@ export const migrations: Migration[] = [
                 workflowStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
             }
         }
+    },
+    {
+        version: 13,
+        description: 'Add projectId index to memories, prompts, skills, and workflows',
+        migrate: (db, transaction) => {
+            const storesToUpdate = [STORES.MEMORIES, STORES.PROMPTS, STORES.SKILLS, STORES.WORKFLOWS];
+            storesToUpdate.forEach(storeName => {
+                if (db.objectStoreNames.contains(storeName)) {
+                    const store = transaction.objectStore(storeName);
+                    if (!store.indexNames.contains('projectId')) {
+                        store.createIndex('projectId', 'projectId', { unique: false });
+                    }
+                }
+            });
+        }
     }
 ];
