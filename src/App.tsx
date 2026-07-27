@@ -19,9 +19,9 @@ function App() {
         <Route path="/" element={<AppShell><NewChatView /></AppShell>} />
         <Route path="/chat/:id" element={<AppShell><UnifiedChatInterface /></AppShell>} />
         <Route path="/chats" element={<AppShell><ArchiveHub /></AppShell>} />
-        <Route path="/memory-archive" element={<AppShell><MemoryArchive /></AppShell>} />
-        <Route path="/prompt-archive" element={<AppShell><PromptArchive /></AppShell>} />
-        <Route path="/skill-archive" element={<AppShell><SkillArchive /></AppShell>} />
+        <Route path="/memories" element={<AppShell><MemoryArchive /></AppShell>} />
+        <Route path="/prompts" element={<AppShell><PromptArchive /></AppShell>} />
+        <Route path="/skills" element={<AppShell><SkillArchive /></AppShell>} />
         <Route path="/changelog" element={<AppShell><Changelog /></AppShell>} />
         <Route path="/features" element={<AppShell><Features /></AppShell>} />
       </Routes>
