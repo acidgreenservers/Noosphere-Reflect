@@ -21,6 +21,29 @@ const workOptions = [
 
 export const UserPreferences: React.FC<UserPreferencesProps> = ({ settings, onSettingsChange }) => {
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+    const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
+
+    const handleCopy = async (format: 'md' | 'txt') => {
+        const dataStr = JSON.stringify(settings, null, 2);
+        let content = dataStr;
+        
+        if (format === 'md') {
+            content = `# User Profile Settings\n\n\`\`\`json\n${dataStr}\n\`\`\``;
+        } else if (format === 'txt') {
+            content = `User Profile Settings\n\n${dataStr}`;
+        }
+
+        try {
+            await navigator.clipboard.writeText(content);
+            setCopiedFormat(format);
+            setTimeout(() => {
+                setCopiedFormat(null);
+                setIsExportMenuOpen(false);
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard', err);
+        }
+    };
 
     const handleExport = (format: 'json' | 'md' | 'txt') => {
         const dataStr = JSON.stringify(settings, null, 2);
@@ -97,6 +120,21 @@ export const UserPreferences: React.FC<UserPreferencesProps> = ({ settings, onSe
                                     className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors flex items-center gap-2"
                                 >
                                     <span>📄</span> Export as Text
+                                </button>
+
+                                <div className="border-t border-green-500/20 my-1 mx-2"></div>
+
+                                <button
+                                    onClick={() => handleCopy('md')}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors flex items-center gap-2"
+                                >
+                                    <span>📋</span> {copiedFormat === 'md' ? 'Copied!' : 'Copy Markdown'}
+                                </button>
+                                <button
+                                    onClick={() => handleCopy('txt')}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors flex items-center gap-2"
+                                >
+                                    <span>📋</span> {copiedFormat === 'txt' ? 'Copied!' : 'Copy Plaintext'}
                                 </button>
                             </div>
                         </>
