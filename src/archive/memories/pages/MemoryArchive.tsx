@@ -66,9 +66,35 @@ export default function MemoryArchive() {
 
     const filteredMemories = useMemo(() => {
         if (!searchQuery.trim()) return memories;
-        if (searchResults === null) return [];
+        const query = searchQuery.toLowerCase();
+
+        // 1. Synchronous instant filtering by title/tags for real-time typing updates
+        const instantMatches = memories.filter(m => 
+            m.metadata.title.toLowerCase().includes(query) || 
+            (m.tags && m.tags.some(t => t.toLowerCase().includes(query)))
+        );
+
+        // 2. If no search results yet (or still loading), just return instant matches
+        if (searchResults === null) return instantMatches;
+        
+        // 3. Merge with asynchronous full-text search results
         const resultIds = new Set(searchResults.map(r => r.id));
-        return memories.filter(m => resultIds.has(m.id));
+        const combined = new Map(instantMatches.map(m => [m.id, m]));
+        
+        memories.forEach(m => {
+            if (resultIds.has(m.id) && !combined.has(m.id)) {
+                combined.set(m.id, m);
+            }
+        });
+        
+        // Optional: filter out results that no longer match the current query
+        // but since searchService might lag, relying on instantMatches + recent results is better.
+        // We'll intersect with the actual query to prevent old results from lingering
+        // if they don't match the current query in content either (hard to do without content).
+        // For best UX, if searchResults exist, they are for a query. If the query changed, 
+        // the results might be slightly stale, but the instant matches update immediately.
+
+        return Array.from(combined.values());
     }, [memories, searchQuery, searchResults]);
 
     const areAllSelected = filteredMemories.length > 0 && filteredMemories.every(m => selectedMemories.has(m.id));

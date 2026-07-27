@@ -33,6 +33,12 @@ const ChevronDown = ({ size = 16, className = "" }) => (
 const ChevronUp = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 15-6-6-6 6"/></svg>
 );
+const ClipboardPaste = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/><path d="m9 14 2 2 4-4"/></svg>
+);
+const RotateCcw = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+);
 
 // Interfaces for our Workshop State
 interface SkillSection {
@@ -147,21 +153,41 @@ function parseSkillContent(content: string, defaultName: string = '', defaultCat
     }
 
     let metadataStr = '';
-    let parsingMetadata = false;
+    let currentKey: string | null = null;
+    let customKeyIndex: number = -1;
 
     frontmatterLines.forEach(line => {
-        if (parsingMetadata && line.startsWith('  ')) {
-            metadataStr += line.trim();
+        // Handle multiline indented values
+        if ((line.startsWith('  ') || line.startsWith('\t')) && currentKey) {
+            const trimmed = line.trim();
+            if (trimmed) {
+                if (currentKey === 'description') {
+                    state.description = state.description ? state.description + ' ' + trimmed : trimmed;
+                } else if (currentKey === 'metadata') {
+                    metadataStr += trimmed;
+                } else if (currentKey === 'custom' && customKeyIndex !== -1) {
+                    const existing = state.customFrontmatter[customKeyIndex].value;
+                    state.customFrontmatter[customKeyIndex].value = existing ? existing + ' ' + trimmed : trimmed;
+                }
+            }
             return;
-        } else if (parsingMetadata) {
-            parsingMetadata = false;
         }
+
+        // New key
+        currentKey = null;
+        customKeyIndex = -1;
 
         const match = line.match(/^([a-zA-Z0-9_-]+):\s*(.*)$/);
         if (match) {
-            const key = match[1].toLowerCase();
-            const val = match[2].trim();
-            
+            const rawKey = match[1];
+            const key = rawKey.toLowerCase();
+            let val = match[2].trim();
+
+            // Clean up YAML multiline indicators if they are the only thing on the line
+            if (val === '>' || val === '|' || val === '>-' || val === '|-') {
+                val = '';
+            }
+
             const KNOWN_KEYS = new Set([
                 'name', 'category', 'description', 'tags', 
                 'user-invocable', 'disable-model-invocation', 
@@ -170,8 +196,11 @@ function parseSkillContent(content: string, defaultName: string = '', defaultCat
             ]);
 
             if (!KNOWN_KEYS.has(key)) {
-                state.customFrontmatter.push({ key: match[1], value: match[2].trim() });
+                state.customFrontmatter.push({ key: rawKey, value: val });
+                currentKey = 'custom';
+                customKeyIndex = state.customFrontmatter.length - 1;
             } else {
+                currentKey = key;
                 if (key === 'name') state.name = val;
                 if (key === 'category') state.category = val;
                 if (key === 'description') state.description = val;
@@ -195,7 +224,6 @@ function parseSkillContent(content: string, defaultName: string = '', defaultCat
                 if (key === 'command-arg-mode') state.openclaw.commandArgMode = val;
                 if (key === 'homepage') state.openclaw.homepage = val;
                 if (key === 'metadata') {
-                    parsingMetadata = true;
                     metadataStr = val;
                 }
             }
@@ -343,6 +371,13 @@ export default function SkillWorkshop() {
     const [existingSkill, setExistingSkill] = useState<Skill | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showClearModal, setShowClearModal] = useState(false);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     const [ws, setWs] = useState<WorkshopState>({
         name: '',
@@ -431,12 +466,61 @@ export default function SkillWorkshop() {
                 };
                 await storageService.saveSkill(skill);
             }
-            alert('Skill saved successfully!');
-            navigate('/skills');
+            showToast('Skill saved successfully!', 'success');
+            setTimeout(() => navigate('/skills'), 1000); // Give user time to see the toast before navigating
         } catch (error) {
             console.error('Save failed', error);
-            alert('Failed to save skill.');
+            showToast('Failed to save skill.', 'error');
         }
+    };
+
+    const handlePaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                const parsed = parseSkillContent(text, 'Imported Skill');
+                setWs(parsed);
+                showToast('Skill successfully imported from clipboard!', 'success');
+            } else {
+                showToast('Clipboard is empty or contains no text.', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to read clipboard', error);
+            showToast('Failed to read clipboard. Please ensure you have granted clipboard permissions to the site.', 'error');
+        }
+    };
+
+    const handleClear = () => {
+        setShowClearModal(true);
+    };
+
+    const confirmClear = () => {
+        setWs({
+            name: '',
+            category: '',
+            tags: '',
+            description: '',
+            mainInstructions: '',
+            sections: [],
+            customFrontmatter: [],
+            openclaw: {
+                includeUserInvocable: false,
+                userInvocable: true,
+                includeDisableModelInvocation: false,
+                disableModelInvocation: false,
+                commandDispatch: '',
+                commandTool: '',
+                commandArgMode: 'raw',
+                homepage: '',
+                requiresBins: [],
+                requiresAnyBins: [],
+                requiresEnv: [],
+                requiresConfig: [],
+                os: [],
+                always: false
+            }
+        });
+        setShowClearModal(false);
     };
 
     const addSection = () => {
@@ -462,7 +546,7 @@ export default function SkillWorkshop() {
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(compiledOutput);
-        alert('Copied to clipboard!');
+        showToast('Copied to clipboard!', 'success');
     };
 
     if (isLoading) return null;
@@ -480,6 +564,22 @@ export default function SkillWorkshop() {
                 </button>
                 
                 <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handleClear}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-900/40 text-red-400 font-medium rounded-md hover:bg-red-900/60 transition-colors"
+                        title="Clear all fields"
+                    >
+                        <RotateCcw size={16} />
+                        Clear
+                    </button>
+                    <button 
+                        onClick={handlePaste}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-200 font-medium rounded-md hover:bg-gray-700 transition-colors"
+                        title="Paste SKILL file from clipboard"
+                    >
+                        <ClipboardPaste size={16} />
+                        Paste
+                    </button>
                     <button 
                         onClick={handleSave}
                         className="flex items-center gap-2 px-4 py-2 bg-[#82f94b] text-[#0a0a0a] font-medium rounded-md hover:bg-[#93ff5f] transition-colors"
@@ -871,6 +971,67 @@ export default function SkillWorkshop() {
                     </div>
                 </div>
             </div>
+
+            {/* Custom Clear Confirmation Modal */}
+            {showClearModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+                    <div className="bg-gray-900 border border-red-500/30 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                        <div className="flex items-start gap-4 mb-4">
+                            <div className="p-3 bg-red-500/20 rounded-xl text-red-400">
+                                <RotateCcw size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-1">Clear Skill Workshop?</h3>
+                                <p className="text-sm text-gray-400 leading-relaxed">
+                                    Are you sure you want to clear all fields? This action cannot be undone and you will lose any unsaved work.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={() => setShowClearModal(false)}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmClear}
+                                className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-400 text-white transition-colors shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                            >
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[150] animate-fade-in-up">
+                    <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border ${
+                        toast.type === 'success' ? 'bg-[#0e1511] border-green-500/30' : 
+                        toast.type === 'error' ? 'bg-red-950/80 border-red-500/30' : 
+                        'bg-gray-900 border-gray-600/30'
+                    }`}>
+                        <div className={
+                            toast.type === 'success' ? 'text-green-400' : 
+                            toast.type === 'error' ? 'text-red-400' : 
+                            'text-blue-400'
+                        }>
+                            {toast.type === 'success' && <Save size={18} />}
+                            {toast.type === 'error' && <RotateCcw size={18} />}
+                            {toast.type === 'info' && <Settings size={18} />}
+                        </div>
+                        <span className={`text-sm font-medium ${
+                            toast.type === 'success' ? 'text-green-100' : 
+                            toast.type === 'error' ? 'text-red-100' : 
+                            'text-gray-200'
+                        }`}>
+                            {toast.message}
+                        </span>
+                    </div>
+                </div>
+            )}
         </div>
     );
-}
+};

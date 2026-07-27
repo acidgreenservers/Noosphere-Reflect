@@ -66,9 +66,28 @@ export default function PromptArchive() {
 
     const filteredPrompts = useMemo(() => {
         if (!searchQuery.trim()) return prompts;
-        if (searchResults === null) return [];
+        const query = searchQuery.toLowerCase();
+
+        // 1. Synchronous instant filtering by title/tags for real-time typing updates
+        const instantMatches = prompts.filter(p => 
+            p.metadata.title.toLowerCase().includes(query) || 
+            (p.tags && p.tags.some(t => t.toLowerCase().includes(query)))
+        );
+
+        // 2. If no search results yet (or still loading), return instant matches
+        if (searchResults === null) return instantMatches;
+        
+        // 3. Merge with asynchronous full-text search results
         const resultIds = new Set(searchResults.map(r => r.id));
-        return prompts.filter(p => resultIds.has(p.id));
+        const combined = new Map(instantMatches.map(p => [p.id, p]));
+        
+        prompts.forEach(p => {
+            if (resultIds.has(p.id) && !combined.has(p.id)) {
+                combined.set(p.id, p);
+            }
+        });
+
+        return Array.from(combined.values());
     }, [prompts, searchQuery, searchResults]);
 
     const areAllSelected = filteredPrompts.length > 0 && filteredPrompts.every(p => selectedPrompts.has(p.id));

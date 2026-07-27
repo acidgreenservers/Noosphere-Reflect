@@ -66,9 +66,28 @@ export default function SkillArchive() {
 
     const filteredSkills = useMemo(() => {
         if (!searchQuery.trim()) return skills;
-        if (searchResults === null) return [];
+        const query = searchQuery.toLowerCase();
+
+        // 1. Synchronous instant filtering by title/tags for real-time typing updates
+        const instantMatches = skills.filter(s => 
+            s.metadata.title.toLowerCase().includes(query) || 
+            (s.tags && s.tags.some(t => t.toLowerCase().includes(query)))
+        );
+
+        // 2. If no search results yet (or still loading), return instant matches
+        if (searchResults === null) return instantMatches;
+        
+        // 3. Merge with asynchronous full-text search results
         const resultIds = new Set(searchResults.map(r => r.id));
-        return skills.filter(p => resultIds.has(p.id));
+        const combined = new Map(instantMatches.map(s => [s.id, s]));
+        
+        skills.forEach(s => {
+            if (resultIds.has(s.id) && !combined.has(s.id)) {
+                combined.set(s.id, s);
+            }
+        });
+
+        return Array.from(combined.values());
     }, [skills, searchQuery, searchResults]);
 
     const areAllSelected = filteredSkills.length > 0 && filteredSkills.every(p => selectedSkills.has(p.id));
@@ -423,7 +442,7 @@ export default function SkillArchive() {
                 onDelete={handleDeleteSkill}
                 onExport={handleExport}
                 onStatusToggle={handleStatusToggle}
-                onPreview={setPreviewSkill}
+                onPreview={handleEditStart}
                 isSelectionMode={isSelectionMode}
                 selectedSkills={selectedSkills}
                 onToggleSelect={handleToggleSelect}
