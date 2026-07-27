@@ -25,8 +25,13 @@ const ChatMessageBubble = React.memo(({
     onSaveMemory: (msg: ChatMessage) => void; 
     onSavePrompt: (msg: ChatMessage) => void; 
     onSaveSkill: (msg: ChatMessage) => void; 
+    onSaveWorkflow: (msg: ChatMessage) => void;
+    onEditMessage: (index: number, newContent: string) => void;
 }) => {
     const isUser = msg.type === ChatMessageType.Prompt;
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(msg.content);
+    const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
     
     // Detect and extract Exporter Attribution
     let displayContent = msg.content;
@@ -43,6 +48,11 @@ const ChatMessageBubble = React.memo(({
         // Remove the attribution and clean up any trailing dashes (e.g. from markdown horizontal rules) or whitespace
         displayContent = displayContent.replace(attributionRegex, '').replace(/-+\s*$/, '').trim();
     }
+
+    // Sync edit content when message content changes externally
+    useEffect(() => {
+        setEditContent(displayContent);
+    }, [displayContent]);
 
     return (
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
@@ -69,62 +79,116 @@ const ChatMessageBubble = React.memo(({
 
             {/* Message Turn Bubble */}
             <div
-                className={`w-full max-w-2xl px-5 py-4 rounded-3xl text-sm leading-relaxed border shadow-sm ${
+                className={`w-full max-w-2xl px-5 py-4 rounded-3xl text-sm leading-relaxed border shadow-sm transition-all ${
                     isUser
                         ? 'bg-[#122622]/60 border-blue-500/15 text-blue-100 rounded-tr-sm'
                         : 'bg-[#1a211d]/40 border-green-500/10 text-green-100 rounded-tl-sm'
                 }`}
             >
-                <MarkdownRenderer content={displayContent} />
-
-                {/* Interactive Actions Row under the bubble */}
-                <div className="mt-3 pt-3 border-t border-green-500/5 flex justify-between items-center text-[10px] font-mono text-gray-500 select-none">
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => onCopyText(displayContent)}
-                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
-                            title="Copy message contents"
-                        >
-                            📋 Copy Message
-                        </button>
-                        <span className="text-gray-700">|</span>
-                        <button
-                            onClick={() => onForkChat(index)}
-                            className="px-2 py-1 hover:bg-white/5 hover:text-gray-200 rounded transition-all flex items-center gap-1"
-                            title="Fork conversation from this message"
-                        >
-                            🌿 Fork
-                        </button>
+                {isEditing ? (
+                    <div className="flex flex-col gap-3">
+                        <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="w-full bg-[#09100c]/50 border border-green-500/20 rounded-xl p-3 text-sm text-gray-200 focus:outline-none focus:border-green-500/50 min-h-[150px] font-mono resize-y"
+                            placeholder="Edit message..."
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button 
+                                onClick={() => {
+                                    setIsEditing(false);
+                                    setEditContent(displayContent);
+                                }}
+                                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    onEditMessage(index, editContent);
+                                    setIsEditing(false);
+                                }}
+                                className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors font-medium"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
                     </div>
+                ) : (
+                    <MarkdownRenderer content={displayContent} />
+                )}
+            </div>
+
+            {/* Interactive Actions Row under the bubble */}
+            {!isEditing && (
+                <div className={`mt-2 w-full max-w-2xl flex flex-wrap items-center gap-2 text-[10px] font-mono select-none ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    <button
+                        onClick={() => onCopyText(displayContent)}
+                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 border border-white/10 rounded-full transition-all flex items-center gap-1 shadow-sm"
+                        title="Copy message contents"
+                    >
+                        📋 Copy
+                    </button>
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20 rounded-full transition-all flex items-center gap-1 shadow-sm"
+                        title="Edit message contents"
+                    >
+                        ✏️ Edit
+                    </button>
+                    <button
+                        onClick={() => onForkChat(index)}
+                        className="px-2.5 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 border border-green-500/20 rounded-full transition-all flex items-center gap-1 shadow-sm"
+                        title="Fork conversation from this message"
+                    >
+                        🌿 Fork
+                    </button>
 
                     {/* Extraction / Saving Options */}
-                    <div className="flex items-center gap-2.5">
+                    <div className="relative group flex items-center">
+                        <span className="text-gray-700 mx-1">|</span>
                         <button
-                            onClick={() => onSaveMemory(msg)}
-                            className="px-2 py-1 rounded hover:bg-purple-500/10 hover:text-purple-400 transition-all"
-                            title="Archive as Memory"
+                            onClick={() => setIsSaveMenuOpen(!isSaveMenuOpen)}
+                            className="px-2.5 py-1 bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 hover:text-gray-300 border border-gray-500/20 rounded-full transition-all flex items-center gap-1 shadow-sm"
+                            title="Save this message as an artifact"
                         >
-                            🧠 Save Memory
+                            📥 Save As...
                         </button>
-                        <span className="text-gray-700">|</span>
-                        <button
-                            onClick={() => onSavePrompt(msg)}
-                            className="px-2 py-1 rounded hover:bg-blue-500/10 hover:text-blue-400 transition-all"
-                            title="Archive as Prompt template"
-                        >
-                            💡 Save Prompt
-                        </button>
-                        <span className="text-gray-700">|</span>
-                        <button
-                            onClick={() => onSaveSkill(msg)}
-                            className="px-2 py-1 rounded hover:bg-amber-500/10 hover:text-amber-400 transition-all"
-                            title="Archive as Skill"
-                        >
-                            ⚡ Save Skill
-                        </button>
+                        
+                        {isSaveMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-[90]" onClick={() => setIsSaveMenuOpen(false)} />
+                                <div className={`absolute bottom-full mb-2 w-36 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5 ${isUser ? 'right-0' : 'left-8'}`}>
+                                    <button
+                                        onClick={() => { onSaveMemory(msg); setIsSaveMenuOpen(false); }}
+                                        className="w-full text-left px-3 py-1.5 text-[11px] text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 transition-colors flex items-center gap-2"
+                                    >
+                                        🧠 Memory
+                                    </button>
+                                    <button
+                                        onClick={() => { onSavePrompt(msg); setIsSaveMenuOpen(false); }}
+                                        className="w-full text-left px-3 py-1.5 text-[11px] text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition-colors flex items-center gap-2"
+                                    >
+                                        💡 Prompt
+                                    </button>
+                                    <button
+                                        onClick={() => { onSaveSkill(msg); setIsSaveMenuOpen(false); }}
+                                        className="w-full text-left px-3 py-1.5 text-[11px] text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center gap-2"
+                                    >
+                                        ⚡ Skill
+                                    </button>
+                                    <button
+                                        onClick={() => { onSaveWorkflow(msg); setIsSaveMenuOpen(false); }}
+                                        className="w-full text-left px-3 py-1.5 text-[11px] text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 transition-colors flex items-center gap-2"
+                                    >
+                                        🔄 Workflow
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Attribution Badge */}
             {attributionBadge && (
@@ -285,6 +349,24 @@ export default function UnifiedChatInterface() {
         showToast('✓ Message copied to clipboard', 'success');
     }, []);
 
+    const handleEditMessage = useCallback(async (index: number, newContent: string) => {
+        if (!session) return;
+        const updatedMessages = [...messages];
+        updatedMessages[index] = {
+            ...updatedMessages[index],
+            content: newContent,
+            isEdited: true
+        };
+        const updatedSession = { 
+            ...session, 
+            chatData: { ...session.chatData, messages: updatedMessages } 
+        };
+        setSession(updatedSession);
+        await storageService.saveSession(updatedSession);
+        setMessages(updatedMessages);
+        showToast('✓ Message updated', 'success');
+    }, [session, messages]);
+
     const showToast = (msg: string, type: 'success' | 'info' = 'success') => {
         setNotification({ message: msg, type });
         setTimeout(() => setNotification(null), 3000);
@@ -373,6 +455,35 @@ export default function UnifiedChatInterface() {
         } catch (error) {
             console.error('Failed to save skill', error);
             showToast('Failed to save skill', 'info');
+        }
+    }, [session]);
+
+    // Save Message turn to Workflow
+    const handleSaveAsWorkflow = useCallback(async (msg: ChatMessage) => {
+        const title = prompt('Enter a Title for this Workflow:', 'New Workflow');
+        if (title === null) return;
+
+        const workflow = {
+            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
+            content: msg.content,
+            tags: session?.metadata?.tags || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            metadata: {
+                title: title,
+                category: session?.aiName || 'General',
+                wordCount: msg.content.split(/\s+/).length,
+                characterCount: msg.content.length,
+                exportStatus: 'not_exported' as const,
+            }
+        };
+
+        try {
+            await storageService.saveWorkflow(workflow);
+            showToast('🔄 Saved as Workflow');
+        } catch (error) {
+            console.error('Failed to save workflow', error);
+            showToast('Failed to save workflow', 'info');
         }
     }, [session]);
 
@@ -754,13 +865,15 @@ export default function UnifiedChatInterface() {
                         <div key={`${session?.id || 'new'}-${index}`} id={`message-${index}`}>
                             <ChatMessageBubble 
                                 msg={msg}
-                            index={index}
-                            aiName={session?.aiName || 'AI'}
-                            onCopyText={handleCopyText}
-                            onForkChat={handleForkChat}
-                            onSaveMemory={handleSaveAsMemory}
-                            onSavePrompt={handleSaveAsPrompt}
-                            onSaveSkill={handleSaveAsSkill}
+                                index={index}
+                                aiName={session?.aiName || 'AI'}
+                                onCopyText={handleCopyText}
+                                onForkChat={handleForkChat}
+                                onSaveMemory={handleSaveAsMemory}
+                                onSavePrompt={handleSaveAsPrompt}
+                                onSaveSkill={handleSaveAsSkill}
+                                onSaveWorkflow={handleSaveAsWorkflow}
+                                onEditMessage={handleEditMessage}
                             />
                         </div>
                     ))}
