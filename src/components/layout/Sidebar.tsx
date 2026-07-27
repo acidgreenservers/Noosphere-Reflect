@@ -4,8 +4,17 @@ import { storageService } from '../../services/storageService';
 import { SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS } from '../../types';
 import logo from '../../assets/logo.png';
 import { SettingsMenu } from './SettingsMenu';
+import { RenameChatModal } from '../RenameChatModal';
 import { ContentImportWizard } from '../wizard/pages/ContentImportWizard';
 import { ParsedContent } from '../../services/converterService';
+
+const MoreHorizontal = ({ size = 14, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="1"/>
+        <circle cx="19" cy="12" r="1"/>
+        <circle cx="5" cy="12" r="1"/>
+    </svg>
+);
 
 interface SidebarProps {
     isCollapsed?: boolean;
@@ -22,6 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [wizardOpen, setWizardOpen] = useState(false);
+    const [renameModalOpen, setRenameModalOpen] = useState(false);
+    const [chatToRename, setChatToRename] = useState<{id: string, title: string} | null>(null);
 
     const loadRecentChats = async () => {
         try {
@@ -49,9 +60,16 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         window.addEventListener('sessionImported', loadRecentChats);
         window.addEventListener('chatSaved', loadRecentChats);
 
+        const handleGlobalClick = () => {
+            setActiveActionMenuId(null);
+            setProfileMenuOpen(false);
+        };
+        document.addEventListener('click', handleGlobalClick);
+
         return () => {
             window.removeEventListener('sessionImported', loadRecentChats);
             window.removeEventListener('chatSaved', loadRecentChats);
+            document.removeEventListener('click', handleGlobalClick);
         };
     }, [location.pathname]);
 
@@ -95,24 +113,37 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         e.stopPropagation();
         const session = await storageService.getSessionById(id);
         if (!session) return;
-        const newTitle = prompt('Rename Chat:', session.metadata?.title || session.chatTitle);
-        if (newTitle && newTitle.trim()) {
-            const updated = {
-                ...session,
-                chatTitle: newTitle,
-                name: newTitle,
-                metadata: {
-                    ...(session.metadata || { title: newTitle, model: '', date: session.date, tags: [] }),
-                    title: newTitle,
-                    updatedAt: new Date().toISOString()
-                }
-            };
-            await storageService.saveSession(updated);
-            await loadRecentChats();
-            // Trigger chat title updated event
-            window.dispatchEvent(new CustomEvent('chatTitleUpdated', { detail: { id, title: newTitle } }));
-        }
+        
+        setChatToRename({
+            id,
+            title: session.metadata?.title || session.chatTitle || 'Untitled Session'
+        });
+        setRenameModalOpen(true);
         setActiveActionMenuId(null);
+    };
+
+    const submitRename = async (newTitle: string) => {
+        if (!chatToRename) return;
+        
+        const session = await storageService.getSessionById(chatToRename.id);
+        if (!session) return;
+
+        const updated = {
+            ...session,
+            chatTitle: newTitle,
+            name: newTitle,
+            metadata: {
+                ...(session.metadata || { title: newTitle, model: '', date: session.date, tags: [] }),
+                title: newTitle,
+                updatedAt: new Date().toISOString()
+            }
+        };
+        await storageService.saveSession(updated);
+        await loadRecentChats();
+        window.dispatchEvent(new CustomEvent('chatTitleUpdated', { detail: { id: chatToRename.id, title: newTitle } }));
+        
+        setRenameModalOpen(false);
+        setChatToRename(null);
     };
 
     const handleToggleExported = async (id: string, currentStatus: string | undefined, e: React.MouseEvent) => {
@@ -308,6 +339,8 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                 <div
                                     key={chat.id}
                                     className={`group relative flex items-center rounded-xl transition-all duration-150 ${
+                                        activeActionMenuId === chat.id ? 'z-50' : 'z-0'
+                                    } ${
                                         isActive
                                             ? 'bg-green-500/10 text-green-400'
                                             : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
@@ -324,7 +357,11 @@ export const Sidebar: React.FC<SidebarProps> = () => {
 
                                     {/* Action trigger button */}
                                     {!isCollapsed && (
-                                        <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                        <div className={`absolute right-1 top-1/2 -translate-y-1/2 transition-opacity ${
+                                            activeActionMenuId === chat.id 
+                                                ? 'opacity-100 z-50' 
+                                                : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                                        }`}>
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault();
@@ -333,23 +370,14 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                                 }}
                                                 className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white"
                                             >
-                                                •••
+                                                <MoreHorizontal size={14} />
                                             </button>
 
                                             {/* Action Popover Menu */}
                                             {activeActionMenuId === chat.id && (
-                                                <>
-                                                    <div
-                                                        className="fixed inset-0 z-40"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            e.preventDefault();
-                                                            setActiveActionMenuId(null);
-                                                        }}
-                                                    />
-                                                    <div className="absolute right-0 mt-1 w-44 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-xl py-1 z-50 animate-fade-in text-xs">
-                                                        <button
-                                                            onClick={(e) => handleRenameChat(chat.id, e)}
+                                                <div className="absolute right-0 mt-1 w-44 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1 z-[9999] animate-fade-in text-xs">
+                                                    <button
+                                                        onClick={(e) => handleRenameChat(chat.id, e)}
                                                             className="w-full text-left px-3 py-2 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
                                                         >
                                                             ✏️ Rename Chat
@@ -372,14 +400,13 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                                             {chat.exportStatus === 'exported' ? '❌ Mark Unexported' : '✅ Mark Exported'}
                                                         </button>
                                                         <div className="border-t border-green-500/10 my-1"></div>
-                                                        <button
-                                                            onClick={(e) => handleDeleteChat(chat.id, e)}
-                                                            className="w-full text-left px-3 py-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-                                                        >
-                                                            🗑️ Delete Chat
-                                                        </button>
-                                                    </div>
-                                                </>
+                                                    <button
+                                                        onClick={(e) => handleDeleteChat(chat.id, e)}
+                                                        className="w-full text-left px-3 py-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                                                    >
+                                                        🗑️ Delete Chat
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     )}
@@ -398,7 +425,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
             {/* Bottom Profile and Settings Block */}
             <div className="p-3 border-t border-green-500/10 relative">
                 <button
-                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setProfileMenuOpen(!profileMenuOpen);
+                    }}
                     className={`w-full flex items-center hover:bg-green-500/5 rounded-2xl transition-all text-left ${isCollapsed ? 'justify-center p-1' : 'gap-3 p-2'}`}
                     title="Profile & Settings"
                 >
@@ -420,31 +450,30 @@ export const Sidebar: React.FC<SidebarProps> = () => {
 
                 {/* Profile Floating Actions Menu */}
                 {profileMenuOpen && (
-                    <>
-                        <div className="fixed inset-0 z-40" onClick={() => setProfileMenuOpen(false)} />
-                        <div className={`absolute bottom-16 bg-[#0e1511] border border-green-500/20 rounded-2xl shadow-xl py-2 z-50 animate-fade-in ${isCollapsed ? 'left-1 w-44' : 'left-3 right-3'}`}>
-                            <button
-                                onClick={() => {
-                                    setProfileMenuOpen(false);
-                                    setSettingsOpen(true);
-                                }}
+                    <div className={`absolute bottom-16 bg-black border border-green-500/30 rounded-2xl shadow-2xl py-2 z-[9999] animate-fade-in ${isCollapsed ? 'left-1 w-44' : 'left-3 right-3'}`}>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setProfileMenuOpen(false);
+                                setSettingsOpen(true);
+                            }}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
                             >
                                 <span>⚙️</span>
                                 <span>Settings</span>
                             </button>
-                            <button
-                                onClick={() => {
-                                    setProfileMenuOpen(false);
-                                    setWizardOpen(true);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-300 hover:bg-pink-500/10 hover:text-pink-400 transition-colors"
-                            >
-                                <span>📥</span>
-                                <span>Import Chat</span>
-                            </button>
-                        </div>
-                    </>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setProfileMenuOpen(false);
+                                setWizardOpen(true);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-300 hover:bg-pink-500/10 hover:text-pink-400 transition-colors"
+                        >
+                            <span>📥</span>
+                            <span>Import Chat</span>
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -460,6 +489,16 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 isOpen={wizardOpen}
                 onClose={() => setWizardOpen(false)}
                 onImport={handleWizardImport}
+            />
+
+            <RenameChatModal
+                isOpen={renameModalOpen}
+                onClose={() => {
+                    setRenameModalOpen(false);
+                    setChatToRename(null);
+                }}
+                onRename={submitRename}
+                initialTitle={chatToRename?.title || ''}
             />
         </aside>
     );
