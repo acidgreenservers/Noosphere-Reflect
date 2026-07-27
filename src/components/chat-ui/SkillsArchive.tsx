@@ -10,6 +10,8 @@ export const SkillsArchive: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSkills, setSelectedMemories] = useState<Set<string>>(new Set());
     const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('grid');
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
     // Modal state for Add/Edit Form
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -127,7 +129,48 @@ export const SkillsArchive: React.FC = () => {
             await storageService.deleteSkill(id);
         }
         setSelectedMemories(new Set());
+        setSelectionMode(false);
         await loadSkills();
+    };
+
+    const handleBatchExportSkills = async (format: 'json' | 'markdown' | 'text') => {
+        if (selectedSkills.size === 0) return;
+        try {
+            const selectedList = skills.filter(s => selectedSkills.has(s.id));
+            let content = '';
+            let filename = `Noosphere-Skills-${new Date().toISOString().slice(0, 10)}`;
+            let mimeType = '';
+
+            if (format === 'json') {
+                content = JSON.stringify(selectedList, null, 2);
+                filename += '.json';
+                mimeType = 'application/json';
+            } else if (format === 'markdown') {
+                content = selectedList.map(s => `# ${s.metadata.title}\n**Date**: ${new Date(s.createdAt).toLocaleDateString()}\n**Tags**: ${s.tags.join(', ')}\n\n${s.content}\n\n---\n`).join('\n');
+                filename += '.md';
+                mimeType = 'text/markdown';
+            } else {
+                content = selectedList.map(s => `Title: ${s.metadata.title}\nDate: ${new Date(s.createdAt).toLocaleDateString()}\nTags: ${s.tags.join(', ')}\n\n${s.content}\n\n========================\n`).join('\n');
+                filename += '.txt';
+                mimeType = 'text/plain';
+            }
+
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            setSelectedMemories(new Set());
+            setSelectionMode(false);
+        } catch (err) {
+            console.error('Batch export failed:', err);
+            alert('Export failed.');
+        }
     };
 
     return (
@@ -157,44 +200,110 @@ export const SkillsArchive: React.FC = () => {
             </div>
 
             {/* Layout Mode Toggles & Search */}
-            <div className="mb-6 flex flex-col md:flex-row gap-3 shrink-0">
-                <div className="flex-1 relative">
-                    <input
-                        type="text"
-                        placeholder="🔍 Search skills by text or tags..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-5 pr-10 py-3 bg-[#122622]/30 border border-green-500/10 rounded-2xl text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-green-500/30 transition-all font-medium"
-                    />
+            <div className="mb-6 flex flex-col gap-3 shrink-0">
+                <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex-1 relative">
+                        <input
+                            type="text"
+                            placeholder="🔍 Search skills by text or tags..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-5 pr-10 py-3 bg-[#122622]/30 border border-green-500/10 rounded-2xl text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-green-500/30 transition-all font-medium"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setLayoutMode('list')}
+                            className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                                layoutMode === 'list'
+                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                    : 'bg-[#122622]/20 border-green-500/5 text-gray-400 hover:text-gray-200'
+                            }`}
+                        >
+                            List View
+                        </button>
+                        <button
+                            onClick={() => setLayoutMode('grid')}
+                            className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                                layoutMode === 'grid'
+                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                    : 'bg-[#122622]/20 border-green-500/5 text-gray-400 hover:text-gray-200'
+                            }`}
+                        >
+                            Grid View
+                        </button>
+
+                        {!selectionMode && (
+                            <button
+                                onClick={() => setSelectionMode(true)}
+                                className="px-4 py-2 bg-[#122622] hover:bg-[#1a211d] text-xs font-semibold text-green-400 border border-green-500/20 rounded-xl transition-all flex items-center gap-1"
+                            >
+                                🔍 Select Skills
+                            </button>
+                        )}
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setLayoutMode('list')}
-                        className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
-                            layoutMode === 'list'
-                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                                : 'bg-[#122622]/20 border-green-500/5 text-gray-400 hover:text-gray-200'
-                        }`}
-                    >
-                        List View
-                    </button>
-                    <button
-                        onClick={() => setLayoutMode('grid')}
-                        className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
-                            layoutMode === 'grid'
-                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                                : 'bg-[#122622]/20 border-green-500/5 text-gray-400 hover:text-gray-200'
-                        }`}
-                    >
-                        Grid View
-                    </button>
-                    <button
-                        onClick={handleSelectAll}
-                        className="px-4 py-2 bg-[#122622] hover:bg-[#1a211d] text-xs font-semibold text-green-400 border border-green-500/20 rounded-xl transition-all"
-                    >
-                        {areAllSelected ? 'Deselect All' : `Select All (${filteredSkills.length})`}
-                    </button>
-                </div>
+
+                {/* Selection Mode Controls Row */}
+                {selectionMode && (
+                    <div className="flex gap-2 items-center shrink-0">
+                        <button
+                            onClick={handleSelectAll}
+                            className="px-4 py-2 bg-[#122622] hover:bg-[#1a211d] text-xs font-semibold text-green-400 border border-green-500/20 rounded-xl transition-all"
+                        >
+                            {areAllSelected ? 'Deselect All' : 'Select All'}
+                        </button>
+                        <div className="relative group/batch-export">
+                            <button
+                                type="button"
+                                className="px-4 py-2 bg-[#122622] hover:bg-[#1a211d] text-xs font-semibold text-green-400 border border-green-500/20 rounded-xl transition-all flex items-center gap-1"
+                                disabled={selectedSkills.size === 0}
+                            >
+                                <span>📦 Export Selected ({selectedSkills.size}) ▾</span>
+                            </button>
+                            {/* Dropdown choices */}
+                            <div className="absolute left-0 mt-1 hidden group-hover/batch-export:block w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl py-1 z-50 text-xs">
+                                <button
+                                    type="button"
+                                    onClick={() => handleBatchExportSkills('markdown')}
+                                    className="w-full text-left px-3 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                >
+                                    📝 Markdown (.md)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleBatchExportSkills('json')}
+                                    className="w-full text-left px-3 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                >
+                                    📦 JSON (.json)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleBatchExportSkills('text')}
+                                    className="w-full text-left px-3 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors"
+                                >
+                                    📄 Plain Text (.txt)
+                                </button>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleBatchDelete}
+                            disabled={selectedSkills.size === 0}
+                            className="px-4 py-2 bg-red-950/20 border border-red-500/20 hover:border-red-500/40 text-red-400 rounded-xl text-xs font-semibold transition-all disabled:opacity-40"
+                        >
+                            🗑️ Delete ({selectedSkills.size})
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSelectionMode(false);
+                                setSelectedMemories(new Set());
+                            }}
+                            className="px-4 py-2 bg-gray-900 border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-gray-200 rounded-xl text-xs font-semibold transition-all"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* List of Skills */}
@@ -205,7 +314,15 @@ export const SkillsArchive: React.FC = () => {
                         return (
                             <div
                                 key={skill.id}
+                                onClick={(e) => {
+                                    if (selectionMode) {
+                                        e.stopPropagation();
+                                        handleToggleSelect(skill.id);
+                                    }
+                                }}
                                 className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                                    selectionMode ? 'cursor-pointer' : ''
+                                } ${
                                     isSelected
                                         ? 'bg-green-500/10 border-green-500/30'
                                         : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
@@ -214,38 +331,42 @@ export const SkillsArchive: React.FC = () => {
                                 <div>
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="flex items-center gap-3">
-                                            <div
-                                                onClick={() => handleToggleSelect(skill.id)}
-                                                className={`w-5 h-5 rounded-lg border flex items-center justify-center cursor-pointer transition-all ${
-                                                    isSelected
-                                                        ? 'bg-green-500 border-green-400 text-[#09100c]'
-                                                        : 'border-green-500/20 hover:border-green-500/40'
-                                                }`}
-                                            >
-                                                {isSelected && <span className="text-[10px] font-bold">✓</span>}
-                                            </div>
+                                            {selectionMode && (
+                                                <div
+                                                    onClick={(e) => { e.stopPropagation(); handleToggleSelect(skill.id); }}
+                                                    className={`w-5 h-5 rounded-lg border flex items-center justify-center cursor-pointer transition-all ${
+                                                        isSelected
+                                                            ? 'bg-green-500 border-green-400 text-[#09100c]'
+                                                            : 'border-green-500/20 hover:border-green-500/40'
+                                                    }`}
+                                                >
+                                                    {isSelected && <span className="text-[10px] font-bold">✓</span>}
+                                                </div>
+                                            )}
                                             <h3 className="text-sm font-bold text-gray-200">
                                                 {skill.metadata.title}
                                             </h3>
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleEditStart(skill)}
-                                                className="p-1.5 hover:bg-white/5 rounded text-gray-400 hover:text-white transition-colors"
-                                                title="Edit Skill"
-                                            >
-                                                ✏️
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteSkill(skill.id)}
-                                                className="p-1.5 hover:bg-red-500/10 rounded text-gray-400 hover:text-red-400 transition-colors"
-                                                title="Delete Skill"
-                                            >
-                                                🗑️
-                                            </button>
-                                        </div>
+                                        {!selectionMode && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditStart(skill)}
+                                                    className="p-1.5 hover:bg-white/5 rounded text-gray-400 hover:text-white transition-colors"
+                                                    title="Edit Skill"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteSkill(skill.id)}
+                                                    className="p-1.5 hover:bg-red-500/10 rounded text-gray-400 hover:text-red-400 transition-colors"
+                                                    title="Delete Skill"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Content preview */}
@@ -271,40 +392,137 @@ export const SkillsArchive: React.FC = () => {
                         return (
                             <div
                                 key={skill.id}
-                                className={`p-4 rounded-xl border transition-all flex items-center justify-between group ${
+                                onClick={(e) => {
+                                    if (selectionMode) {
+                                        handleToggleSelect(skill.id);
+                                    } else {
+                                        handleEditStart(skill);
+                                    }
+                                }}
+                                className={`p-4 rounded-xl border transition-all flex items-center justify-between group cursor-pointer ${
                                     isSelected
                                         ? 'bg-green-500/10 border-green-500/30'
                                         : 'bg-[#122622]/20 border-green-500/10 hover:border-green-500/20'
                                 }`}
                             >
                                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                                    <div
-                                        onClick={(e) => { e.stopPropagation(); handleToggleSelect(skill.id); }}
-                                        className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 cursor-pointer transition-all ${
-                                            isSelected
-                                                ? 'bg-green-500 border-green-400 text-[#09100c]'
-                                                : 'border-green-500/20 group-hover:border-green-500/40'
-                                        }`}
-                                    >
-                                        {isSelected && <span className="text-[10px] font-bold">✓</span>}
-                                    </div>
+                                    {selectionMode && (
+                                        <div
+                                            onClick={(e) => { e.stopPropagation(); handleToggleSelect(skill.id); }}
+                                            className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 cursor-pointer transition-all ${
+                                                isSelected
+                                                    ? 'bg-green-500 border-green-400 text-[#09100c]'
+                                                    : 'border-green-500/20 group-hover:border-green-500/40'
+                                            }`}
+                                        >
+                                            {isSelected && <span className="text-[10px] font-bold">✓</span>}
+                                        </div>
+                                    )}
                                     <div className="min-w-0 flex-1">
                                         <div
-                                            onClick={() => handleEditStart(skill)}
+                                            onClick={() => {
+                                                if (!selectionMode) {
+                                                    handleEditStart(skill);
+                                                } else {
+                                                    handleToggleSelect(skill.id);
+                                                }
+                                            }}
                                             className="font-semibold text-xs text-gray-200 truncate cursor-pointer hover:text-green-400 transition-colors"
                                         >
                                             {skill.metadata.title}
                                         </div>
-                                        <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-500 font-mono">
-                                            <span>{new Date(skill.createdAt).toLocaleDateString()}</span>
+                                        <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-500 font-mono relative min-h-[16px]">
+                                            {/* Date displays by default, hidden on hover if selectionMode is disabled */}
+                                            <div className={`flex items-center gap-2 ${!selectionMode ? 'group-hover:hidden' : ''}`}>
+                                                <span>{new Date(skill.createdAt).toLocaleDateString()}</span>
+                                            </div>
+
+                                            {/* 3-Dot actions trigger on hover */}
+                                            {!selectionMode && (
+                                                <div className="hidden group-hover:flex items-center relative" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setActiveMenuId(activeMenuId === skill.id ? null : skill.id);
+                                                        }}
+                                                        className="px-1 py-0.5 hover:bg-white/10 rounded text-green-400 font-bold transition-all text-[10px]"
+                                                        title="Skill Actions"
+                                                    >
+                                                        ⋮ Menu
+                                                    </button>
+
+                                                    {activeMenuId === skill.id && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
+                                                            <div className="absolute left-0 top-5 w-24 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl py-1 z-50 text-[10px] font-sans">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleEditStart(skill);
+                                                                        setActiveMenuId(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-1.5 hover:bg-green-500/10 text-gray-300 hover:text-green-400 font-sans"
+                                                                >
+                                                                    ✏️ Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteSkill(skill.id);
+                                                                        setActiveMenuId(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-1.5 hover:bg-red-500/10 text-red-400 hover:text-red-300 font-sans"
+                                                                >
+                                                                    🗑️ Delete
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0 ml-4">
-                                    <button onClick={() => handleEditStart(skill)} className="p-1.5 hover:bg-white/5 rounded text-xs" title="Edit Skill">✏️</button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSkill(skill.id); }} className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 text-xs" title="Delete Skill">🗑️</button>
+                                    <button
+                                        onClick={(e) => {
+                                            if (!selectionMode) {
+                                                handleEditStart(skill);
+                                            } else {
+                                                e.stopPropagation();
+                                                handleToggleSelect(skill.id);
+                                            }
+                                        }}
+                                        className="p-1.5 hover:bg-white/5 rounded text-xs"
+                                        title="Edit Skill"
+                                    >
+                                        ✏️
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            if (!selectionMode) {
+                                                e.stopPropagation();
+                                                handleDeleteSkill(skill.id);
+                                            } else {
+                                                e.stopPropagation();
+                                                handleToggleSelect(skill.id);
+                                            }
+                                        }}
+                                        className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 text-xs"
+                                        title="Delete Skill"
+                                    >
+                                        🗑️
+                                    </button>
                                     <span
-                                        onClick={() => handleEditStart(skill)}
+                                        onClick={(e) => {
+                                            if (!selectionMode) {
+                                                handleEditStart(skill);
+                                            } else {
+                                                e.stopPropagation();
+                                                handleToggleSelect(skill.id);
+                                            }
+                                        }}
                                         className="text-gray-600 hover:text-green-500 cursor-pointer transition-all transform translate-x-0 hover:translate-x-1"
                                     >
                                         ➔
@@ -321,16 +539,6 @@ export const SkillsArchive: React.FC = () => {
                     </div>
                 )}
             </div>
-
-            {/* Batch Action Bar */}
-            <ArchiveBatchActionBar
-                selectedCount={selectedSkills.size}
-                onExport={() => alert('Batch export features for skills is in preview.')}
-                onDelete={handleBatchDelete}
-                onClearSelection={() => setSelectedMemories(new Set())}
-                accentColor="green"
-                itemLabel="skills"
-            />
 
             {/* Add/Edit Modal */}
             {isAddModalOpen && (

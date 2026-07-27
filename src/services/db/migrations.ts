@@ -148,5 +148,12 @@ export const migrations: Migration[] = [
                 skillStore.createIndex('folderId', 'folderId', { unique: false });
             }
         }
+    },
+    {
+        version: 10,
+        description: 'No-op database version upgrade alignment',
+        migrate: () => {
+            // No-op — aligns declared DB_VERSION with existing on-disk version.
+        }
     }
 ];

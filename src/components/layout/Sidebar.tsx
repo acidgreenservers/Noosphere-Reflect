@@ -171,6 +171,18 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                         {!isCollapsed && <span className="animate-fade-in">All Chats</span>}
                     </Link>
                     <Link
+                        to="/projects"
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            location.pathname === '/projects'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                        } ${isCollapsed ? 'justify-center' : ''}`}
+                        title="Projects & Folders"
+                    >
+                        <span className="text-base">📁</span>
+                        {!isCollapsed && <span className="animate-fade-in">Projects</span>}
+                    </Link>
+                    <Link
                         to="/memories"
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                             location.pathname === '/memories'

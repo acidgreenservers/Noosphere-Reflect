@@ -9,6 +9,7 @@ import NewChatView from './components/chat-ui/NewChatView';
 import UnifiedChatInterface from './components/chat-ui/UnifiedChatInterface';
 import ChatsListView from './components/chat-ui/ChatsListView';
 import SkillsArchive from './components/chat-ui/SkillsArchive';
+import ProjectsView from './components/chat-ui/ProjectsView';
 
 // Hub Pages
 import MemoryArchive from './archive/memories/pages/MemoryArchive';
@@ -25,6 +26,7 @@ function App() {
           <Route path="/" element={<NewChatView />} />
           <Route path="/chat/:id" element={<UnifiedChatInterface />} />
           <Route path="/chats" element={<ChatsListView />} />
+          <Route path="/projects" element={<ProjectsView />} />
 
           {/* Backwards compatible / hub routes */}
           <Route path="/hub" element={<ChatsListView />} />
