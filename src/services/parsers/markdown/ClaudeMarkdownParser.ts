@@ -64,7 +64,7 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
 
             if (isPlaintext) {
                 // Wrap in collapsible tags with 3 backticks
-                return `<collapsible>\n\`\`\`plaintext\n${content}\`\`\`\n</collapsible>\n`;
+                return `<collapsible title="Thought Process">\n\`\`\`plaintext\n${content}\`\`\`\n</collapsible>\n`;
             } else {
                 // Just convert to 3 backticks
                 return `\`\`\`${language}\n${content}\`\`\`\n`;

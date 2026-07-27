@@ -96,7 +96,7 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
                 } else {
                     // End of thinking block (line doesn't start with >)
                     if (thinkingContent.length > 0) {
-                        result.push('<collapsible>');
+                        result.push('<collapsible title="Thought Process">');
                         result.push(...thinkingContent);
                         result.push('</collapsible>');
                     }
@@ -111,7 +111,7 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
 
         // Handle thinking block at end of input
         if (inThinkingBlock && thinkingContent.length > 0) {
-            result.push('<collapsible>');
+            result.push('<collapsible title="Thought Process">');
             result.push(...thinkingContent);
             result.push('</collapsible>');
         }

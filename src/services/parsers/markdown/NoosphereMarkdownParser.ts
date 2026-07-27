@@ -31,7 +31,7 @@ export class NoosphereMarkdownParser extends BaseMarkdownParser {
         };
 
         // 1. Extract Title from the dedicated "## Title:" section
-        const titleMatch = input.match(/## Title:\s*\n\n>\s*(.+)/i);
+        const titleMatch = input.match(/## Title:\s*\n+>\s*(.+)/i);
         if (titleMatch) {
             metadata.title = titleMatch[1].trim();
         } else {
