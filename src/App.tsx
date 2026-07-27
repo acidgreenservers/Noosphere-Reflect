@@ -7,6 +7,7 @@ import UnifiedChatInterface from './components/chat-ui/UnifiedChatInterface';
 import ArchiveHub from './archive/chats/pages/ArchiveHub';
 import MemoryArchive from './archive/memories/pages/MemoryArchive';
 import PromptArchive from './archive/prompts/pages/PromptArchive';
+import PromptBuilder from './archive/prompts/pages/PromptBuilder';
 import SkillArchive from './archive/skills/pages/SkillArchive';
 import SkillWorkshop from './archive/skills/pages/SkillWorkshop';
 import WorkflowArchive from './archive/workflows/pages/WorkflowArchive';
@@ -30,6 +31,7 @@ function App() {
         <Route path="/artifacts" element={<AppShell><ArtifactArchive /></AppShell>} />
         <Route path="/memories" element={<AppShell><MemoryArchive /></AppShell>} />
         <Route path="/prompts" element={<AppShell><PromptArchive /></AppShell>} />
+        <Route path="/prompts/builder" element={<AppShell><PromptBuilder /></AppShell>} />
         <Route path="/skills" element={<AppShell><SkillArchive /></AppShell>} />
         <Route path="/skills/workshop" element={<AppShell><SkillWorkshop /></AppShell>} />
         <Route path="/workflows" element={<AppShell><WorkflowArchive /></AppShell>} />

@@ -165,8 +165,7 @@ export default function PromptArchive() {
     };
 
     const handleEditStart = (prompt: Prompt) => {
-        setEditingPrompt(prompt);
-        setIsAddModalOpen(true);
+        navigate('/prompts/builder', { state: { editingPrompt: prompt } });
     };
 
     const handleDeletePrompt = async (id: string) => {
@@ -452,8 +451,7 @@ export default function PromptArchive() {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onAddClick={() => {
-                setEditingPrompt(null);
-                setIsAddModalOpen(true);
+                navigate('/prompts/builder');
             }}
             addLabel="Add New Prompt"
             viewMode={viewMode}
@@ -476,28 +474,7 @@ export default function PromptArchive() {
             totalFilteredItems={filteredPrompts.length}
             itemsComponent={itemsComponent}
         >
-            <ArchiveItemModal
-                isOpen={isAddModalOpen}
-                onClose={() => {
-                    setIsAddModalOpen(false);
-                    setEditingPrompt(null);
-                }}
-                title={editingPrompt ? 'Edit Prompt' : 'New Prompt'}
-                icon="💡"
-                fields={promptFields}
-                initialValues={editingPrompt ? {
-                    title: editingPrompt.metadata.title,
-                    category: editingPrompt.metadata.category || 'General',
-                    tags: editingPrompt.tags.join(', '),
-                    content: editingPrompt.content
-                } : { category: 'Coding' }}
-                onSave={async (values) => {
-                    const tagsArray = values.tags ? values.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-                    await handleSavePrompt(values.content, values.category, tagsArray, values.title);
-                    setIsAddModalOpen(false);
-                }}
-                saveLabel={editingPrompt ? 'Save Changes' : 'Create Prompt'}
-            />
+
 
             {previewPrompt && (
                 <PromptPreviewModal prompt={previewPrompt} onClose={() => setPreviewPrompt(null)} onSave={async (updated) => { await storageService.updatePrompt(updated); await loadPrompts(); setPreviewPrompt(updated); }} />
