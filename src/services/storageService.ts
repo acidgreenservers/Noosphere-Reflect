@@ -368,7 +368,7 @@ class StorageService {
                             session = SavedChatSessionSchema.parse(parsed) as SavedChatSession;
                         } else {
                             const sessionData = {
-                                id: crypto.randomUUID(),
+                                id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                                 name: parsed.metadata?.title || file.name.replace('.json', ''),
                                 date: new Date().toISOString(),
                                 inputContent: content,
@@ -405,7 +405,7 @@ class StorageService {
                     const chatData = await parseChat(content, 'markdown', ParserMode.Basic);
 
                     const sessionData = {
-                        id: crypto.randomUUID(),
+                        id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                         name: file.name.replace('.md', '').replace('.txt', ''),
                         date: new Date().toISOString(),
                         inputContent: content,
@@ -429,7 +429,7 @@ class StorageService {
                         if (platformMode) {
                             const chatData = await parseChat(content, 'auto', platformMode);
                             const sessionData = {
-                                id: crypto.randomUUID(),
+                                id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                                 name: file.name.replace('.html', '').replace('.htm', ''),
                                 date: new Date().toISOString(),
                                 inputContent: content,

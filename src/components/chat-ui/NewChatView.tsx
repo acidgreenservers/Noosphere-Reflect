@@ -40,7 +40,7 @@ export const NewChatView: React.FC = () => {
         const text = inputValue.trim();
         const autoTitle = text.substring(0, 45) + (text.length > 45 ? '...' : '');
 
-        const newSessionId = crypto.randomUUID();
+        const newSessionId = (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
 
         // Create new SavedChatSession matching types.ts exactly
         const newSession: SavedChatSession = {

@@ -141,7 +141,7 @@ export default function MemoryArchive() {
             const finalTitle = userTitle || autoTitle || 'Untitled Memory';
 
             const memory: Memory = {
-                id: crypto.randomUUID(),
+                id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                 content,
                 aiModel,
                 tags,

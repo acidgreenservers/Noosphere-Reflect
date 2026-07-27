@@ -243,7 +243,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                         merged++;
                     } else {
                         const newSession: SavedChatSession = {
-                            id: crypto.randomUUID(),
+                            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                             name: enrichedMetadata.title,
                             date: enrichedMetadata.date,
                             chatTitle: enrichedMetadata.title,

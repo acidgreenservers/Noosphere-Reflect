@@ -142,7 +142,7 @@ export default function WorkflowArchive() {
                 const finalTitle = userTitle || autoTitle || 'Untitled Workflow';
 
                 const workflow: Workflow = {
-                    id: crypto.randomUUID(),
+                    id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                     content,
                     tags,
                     createdAt: new Date().toISOString(),

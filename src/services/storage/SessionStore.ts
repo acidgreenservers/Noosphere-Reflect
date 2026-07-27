@@ -78,7 +78,7 @@ export class SessionStore extends BaseStore<SavedChatSession, typeof STORES.SESS
 
         if (!title) {
             if (!session.id) {
-                session.id = crypto.randomUUID();
+                session.id = (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
             }
         } else {
             try {

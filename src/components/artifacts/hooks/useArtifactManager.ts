@@ -76,7 +76,7 @@ export const useArtifactManager = ({
 
                 // Create artifact object
                 const artifact: ConversationArtifact = {
-                    id: crypto.randomUUID(),
+                    id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                     fileName: safeName,
                     fileSize: file.size,
                     mimeType: file.type || 'application/octet-stream',

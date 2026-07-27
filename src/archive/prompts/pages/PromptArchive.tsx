@@ -142,7 +142,7 @@ export default function PromptArchive() {
                 const finalTitle = userTitle || autoTitle || 'Untitled Prompt';
 
                 const prompt: Prompt = {
-                    id: crypto.randomUUID(),
+                    id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                     content,
                     tags,
                     createdAt: new Date().toISOString(),

@@ -295,7 +295,7 @@ export default function UnifiedChatInterface() {
         if (title === null) return; // cancelled
 
         const memory: Memory = {
-            id: crypto.randomUUID(),
+            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
             content: msg.content,
             aiModel: session?.aiName || 'Unknown AI',
             tags: session?.metadata?.tags || [],
@@ -324,7 +324,7 @@ export default function UnifiedChatInterface() {
         if (title === null) return;
 
         const promptTemplate: Prompt = {
-            id: crypto.randomUUID(),
+            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
             content: msg.content,
             tags: session?.metadata?.tags || [],
             createdAt: new Date().toISOString(),
@@ -353,7 +353,7 @@ export default function UnifiedChatInterface() {
         if (title === null) return;
 
         const skill: Skill = {
-            id: crypto.randomUUID(),
+            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
             content: msg.content,
             tags: session?.metadata?.tags || [],
             createdAt: new Date().toISOString(),
@@ -380,7 +380,7 @@ export default function UnifiedChatInterface() {
         if (!session) return;
         
         const forkedMessages = messages.slice(0, messageIndex + 1);
-        const newSessionId = crypto.randomUUID();
+        const newSessionId = (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
         const forkedTitle = `${session.chatTitle} - Fork`;
         
         const forkedSession: SavedChatSession = {
@@ -548,7 +548,7 @@ export default function UnifiedChatInterface() {
         reader.onload = async () => {
             const base64Data = (reader.result as string).split(',')[1];
             const newArtifact: ConversationArtifact = {
-                id: crypto.randomUUID(),
+                id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                 fileName: file.name,
                 fileSize: file.size,
                 mimeType: file.type || 'application/octet-stream',

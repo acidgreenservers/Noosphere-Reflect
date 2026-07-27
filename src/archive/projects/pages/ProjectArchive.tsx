@@ -42,7 +42,7 @@ const ProjectArchive: React.FC = () => {
         if (!title.trim()) return;
 
         const newProject: Project = {
-            id: crypto.randomUUID(),
+            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             metadata: {
