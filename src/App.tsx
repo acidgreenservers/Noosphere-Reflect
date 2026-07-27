@@ -8,6 +8,7 @@ import ArchiveHub from './archive/chats/pages/ArchiveHub';
 import MemoryArchive from './archive/memories/pages/MemoryArchive';
 import PromptArchive from './archive/prompts/pages/PromptArchive';
 import SkillArchive from './archive/skills/pages/SkillArchive';
+import SkillWorkshop from './archive/skills/pages/SkillWorkshop';
 import Changelog from './pages/Changelog';
 import Features from './pages/Features';
 import AppShell from './components/layout/AppShell';
@@ -22,6 +23,7 @@ function App() {
         <Route path="/memories" element={<AppShell><MemoryArchive /></AppShell>} />
         <Route path="/prompts" element={<AppShell><PromptArchive /></AppShell>} />
         <Route path="/skills" element={<AppShell><SkillArchive /></AppShell>} />
+        <Route path="/skills/workshop" element={<AppShell><SkillWorkshop /></AppShell>} />
         <Route path="/changelog" element={<AppShell><Changelog /></AppShell>} />
         <Route path="/features" element={<AppShell><Features /></AppShell>} />
       </Routes>

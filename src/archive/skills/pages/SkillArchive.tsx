@@ -146,8 +146,7 @@ export default function SkillArchive() {
     };
 
     const handleEditStart = (skill: Skill) => {
-        setEditingSkill(skill);
-        setIsAddModalOpen(true);
+        navigate('/skills/workshop', { state: { skillId: skill.id } });
     };
 
     const handleDeleteSkill = async (id: string) => {
@@ -396,29 +395,40 @@ export default function SkillArchive() {
         }
     };
 
-
-    const skillFields: ArchiveItemField[] = [
-        { id: 'title', label: 'Skill Title', type: 'text', placeholder: 'Give this skill a clear title...', required: true },
-        { id: 'category', label: 'Category', type: 'text', placeholder: 'e.g., Coding, Writing, Analysis...', required: true },
-        { id: 'tags', label: 'Tags', type: 'tags', placeholder: 'Comma separated tags' },
-        { id: 'content', label: 'Skill Content', type: 'textarea', placeholder: 'Paste the actual skill content here...', required: true, rows: 8 }
-    ];
-
-
-
     const itemsComponent = (
-        <SkillList
-            skills={filteredSkills}
-            viewMode={viewMode}
-            onEdit={handleEditStart}
-            onDelete={handleDeleteSkill}
-            onExport={handleExport}
-            onStatusToggle={handleStatusToggle}
-            onPreview={setPreviewSkill}
-            isSelectionMode={isSelectionMode}
-            selectedSkills={selectedSkills}
-            onToggleSelect={handleToggleSelect}
-        />
+        <div className="flex flex-col h-full">
+            {/* Explanation Bubble matching the workflow screenshot aesthetic */}
+            <div className="mb-6 border border-gray-800 rounded-xl bg-[#111] p-5 shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-[#82f94b]"></div>
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="text-[#82f94b]">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                    </div>
+                    <span className="text-xs font-bold tracking-wider text-[#82f94b] uppercase">Standardized Format, Drawn by Hand</span>
+                </div>
+                <p className="text-sm text-gray-400 leading-relaxed mb-4">
+                    A skill is the codified half of the agentic system. You compose the instructions in a modular node builder, and it compiles down to the universally standardized <code className="text-gray-300 bg-black px-1 py-0.5 rounded text-xs">SKILL.md</code> format.
+                </p>
+                <div className="flex gap-4">
+                    <span className="flex items-center gap-2 text-xs text-gray-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Compose nodes</span>
+                    <span className="flex items-center gap-2 text-xs text-gray-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Compile to Markdown</span>
+                    <span className="flex items-center gap-2 text-xs text-gray-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Share seamlessly</span>
+                </div>
+            </div>
+
+            <SkillList
+                skills={filteredSkills}
+                viewMode={viewMode}
+                onEdit={handleEditStart}
+                onDelete={handleDeleteSkill}
+                onExport={handleExport}
+                onStatusToggle={handleStatusToggle}
+                onPreview={setPreviewSkill}
+                isSelectionMode={isSelectionMode}
+                selectedSkills={selectedSkills}
+                onToggleSelect={handleToggleSelect}
+            />
+        </div>
     );
 
     return (
@@ -429,10 +439,9 @@ export default function SkillArchive() {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onAddClick={() => {
-                setEditingSkill(null);
-                setIsAddModalOpen(true);
+                navigate('/skills/workshop');
             }}
-            addLabel="Add New Skill"
+            addLabel="New Workflow"
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             isSelectionMode={isSelectionMode}
@@ -453,29 +462,6 @@ export default function SkillArchive() {
             totalFilteredItems={filteredSkills.length}
             itemsComponent={itemsComponent}
         >
-            <ArchiveItemModal
-                isOpen={isAddModalOpen}
-                onClose={() => {
-                    setIsAddModalOpen(false);
-                    setEditingSkill(null);
-                }}
-                title={editingSkill ? 'Edit Skill' : 'New Skill'}
-                icon="💡"
-                fields={skillFields}
-                initialValues={editingSkill ? {
-                    title: editingSkill.metadata.title,
-                    category: editingSkill.metadata.category || 'General',
-                    tags: editingSkill.tags.join(', '),
-                    content: editingSkill.content
-                } : { category: 'Coding' }}
-                onSave={async (values) => {
-                    const tagsArray = values.tags ? values.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-                    await handleSaveSkill(values.content, values.category, tagsArray, values.title);
-                    setIsAddModalOpen(false);
-                }}
-                saveLabel={editingSkill ? 'Save Changes' : 'Create Skill'}
-            />
-
             {previewSkill && (
                 <SkillPreviewModal skill={previewSkill} onClose={() => setPreviewSkill(null)} onSave={async (updated) => { await storageService.updateSkill(updated); await loadSkills(); setPreviewSkill(updated); }} />
             )}
