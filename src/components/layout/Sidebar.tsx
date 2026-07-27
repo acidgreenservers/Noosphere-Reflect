@@ -4,6 +4,8 @@ import { storageService } from '../../services/storageService';
 import { SavedChatSessionMetadata, AppSettings, DEFAULT_SETTINGS } from '../../types';
 import logo from '../../assets/logo.png';
 import { SettingsMenu } from './SettingsMenu';
+import { ContentImportWizard } from '../wizard/pages/ContentImportWizard';
+import { ParsedContent } from '../../services/converterService';
 
 interface SidebarProps {
     isCollapsed?: boolean;
@@ -19,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [wizardOpen, setWizardOpen] = useState(false);
 
     const loadRecentChats = async () => {
         try {
@@ -61,6 +64,17 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         setAppSettings(newSettings);
         // Dispatch event for settings updated
         window.dispatchEvent(new Event('settingsUpdated'));
+    };
+
+    const handleWizardImport = async (parsedData: ParsedContent) => {
+        try {
+            await storageService.saveSession(parsedData.session);
+            alert(`✅ Successfully imported "${parsedData.session.chatTitle}"!`);
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to save imported chat:', error);
+            alert('Failed to save imported chat.');
+        }
     };
 
     const handleDeleteChat = async (id: string, e: React.MouseEvent) => {
@@ -410,12 +424,12 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                             <button
                                 onClick={() => {
                                     setProfileMenuOpen(false);
-                                    navigate('/');
+                                    setWizardOpen(true);
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-300 hover:bg-pink-500/10 hover:text-pink-400 transition-colors"
                             >
-                                <span>✨</span>
-                                <span>Start New Chat</span>
+                                <span>📥</span>
+                                <span>Import Chat</span>
                             </button>
                         </div>
                     </>
@@ -428,6 +442,12 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 onClose={() => setSettingsOpen(false)}
                 settings={appSettings}
                 onSave={handleSaveSettings}
+            />
+
+            <ContentImportWizard
+                isOpen={wizardOpen}
+                onClose={() => setWizardOpen(false)}
+                onImport={handleWizardImport}
             />
         </aside>
     );

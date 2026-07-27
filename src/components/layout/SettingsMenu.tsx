@@ -3,6 +3,7 @@ import { AppSettings } from '../../types';
 import { useGoogleAuth } from '../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../services/googleDriveService';
 import { storageService } from '../../services/storageService';
+import { ParsedContent } from '../../services/converterService';
 import {
     DataManagement,
     CloudSync,
@@ -10,6 +11,7 @@ import {
     FileNamingFormat,
     ExportPreferences,
 } from '../settings/components';
+import { ContentImportWizard } from '../wizard/pages/ContentImportWizard';
 
 interface SettingsMenuProps {
     isOpen: boolean;
@@ -27,6 +29,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
     // Google Auth
     const { login, logout, isLoggedIn, user, accessToken, driveFolderId } = useGoogleAuth();
     const [isBackingUp, setIsBackingUp] = useState(false);
+    const [isWizardOpen, setIsWizardOpen] = useState(false);
 
     if (!isOpen) return null;
 
@@ -137,6 +140,17 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
             input.click();
         } catch (err) {
             setError('Folder import failed');
+        }
+    };
+
+    const handleWizardImport = async (parsedData: ParsedContent) => {
+        try {
+            await storageService.saveSession(parsedData.session);
+            alert(`✅ Successfully imported "${parsedData.session.chatTitle}"!`);
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to save imported chat:', error);
+            setError('Failed to save imported chat.');
         }
     };
 
@@ -267,6 +281,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                     onExportDatabase={handleExportDatabase}
                                     onImportDatabase={handleImportDatabase}
                                     onImportFolder={handleImportFolder}
+                                    onOpenWizard={() => setIsWizardOpen(true)}
                                 />
                             </div>
                         )}
@@ -290,6 +305,12 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                     </div>
                 </div>
             </div>
+
+            <ContentImportWizard
+                isOpen={isWizardOpen}
+                onClose={() => setIsWizardOpen(false)}
+                onImport={handleWizardImport}
+            />
         </div>
     );
 };
