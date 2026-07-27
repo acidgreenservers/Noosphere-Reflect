@@ -4,6 +4,7 @@ import { sessionStore } from './storage/SessionStore';
 import { memoryStore } from './storage/MemoryStore';
 import { promptStore } from './storage/PromptStore';
 import { skillStore } from './storage/SkillStore';
+import { workflowStore } from './storage/WorkflowStore';
 import { settingsStore } from './storage/SettingsStore';
 import { projectStore } from './storage/ProjectStore';
 import { STORES, DB_VERSION } from './db/schema';
@@ -16,6 +17,7 @@ import {
     Memory,
     Prompt,
     Skill,
+    Workflow,
     ParserMode,
     ChatTheme,
     ArchiveType,
@@ -266,15 +268,17 @@ class StorageService {
         memories: Memory[];
         prompts: Prompt[];
         skills: Skill[];
+        workflows: Workflow[];
         version: number;
         exportedAt: string;
     }> {
-        const [sessions, settings, memories, prompts, skills] = await Promise.all([
+        const [sessions, settings, memories, prompts, skills, workflows] = await Promise.all([
             this.getAllSessions(),
             this.getSettings(),
             this.getAllMemories(),
             this.getAllPrompts(),
-            this.getAllSkills()
+            this.getAllSkills(),
+            this.getAllWorkflows()
         ]);
 
         return {
@@ -283,6 +287,7 @@ class StorageService {
             memories,
             prompts,
             skills,
+            workflows,
             version: DB_VERSION,
             exportedAt: new Date().toISOString()
         };
@@ -529,6 +534,31 @@ class StorageService {
 
     async deleteSkill(id: string): Promise<void> {
         return skillStore.deleteWithSearch(id);
+    }
+
+    // Workflows
+    async saveWorkflow(workflow: Workflow): Promise<void> {
+        return workflowStore.save(workflow);
+    }
+
+    async getAllWorkflows(): Promise<Workflow[]> {
+        return workflowStore.getAllSorted();
+    }
+
+    async getPaginatedWorkflows(pageSize: number = 25, offsetKey?: any) {
+        return workflowStore.getPaginatedSorted(pageSize, offsetKey);
+    }
+
+    async getWorkflowById(id: string): Promise<Workflow | undefined> {
+        return workflowStore.get(id);
+    }
+
+    async updateWorkflow(workflow: Workflow): Promise<void> {
+        return this.saveWorkflow(workflow);
+    }
+
+    async deleteWorkflow(id: string): Promise<void> {
+        return workflowStore.deleteWithSearch(id);
     }
 
     // Projects

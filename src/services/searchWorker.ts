@@ -1,6 +1,6 @@
 import MiniSearch from 'minisearch';
 import { openDB, type IDBPDatabase } from 'idb';
-import type { SavedChatSession, ChatMessage, SearchFilters, Memory, Prompt, Skill, ArchiveType } from '../types';
+import type { SavedChatSession, ChatMessage, SearchFilters, Memory, Prompt, Skill, Workflow, ArchiveType } from '../types';
 
 interface SearchDocument {
     id: string;
@@ -167,6 +167,23 @@ function indexSkill(skill: Skill) {
     miniSearch.add(doc);
 }
 
+// Index a Workflow
+function indexWorkflow(workflow: Workflow) {
+    const doc: SearchDocument = {
+        id: workflow.id,
+        archiveType: 'workflow',
+        content: workflow.content,
+        timestamp: new Date(workflow.createdAt).getTime(),
+        title: workflow.metadata.title || 'Untitled Workflow',
+        tags: workflow.tags
+    };
+
+    if (miniSearch.has(doc.id)) {
+        miniSearch.discard(doc.id);
+    }
+    miniSearch.add(doc);
+}
+
 // Search
 function search(query: string, filters?: SearchFilters): any[] {
     if (!query || query.length < 1) return [];
@@ -312,8 +329,13 @@ self.onmessage = async (e: MessageEvent) => {
 
             case 'INDEX_SKILL':
                 indexSkill(payload.skill);
-                await saveIndex();
+                saveIndexDebounced();
                 self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.skill.id }, messageId });
+                break;
+            case 'INDEX_WORKFLOW':
+                indexWorkflow(payload.workflow);
+                saveIndexDebounced();
+                self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.workflow.id }, messageId });
                 break;
 
             case 'INDEX_WITH_CHECK': {
@@ -379,12 +401,20 @@ self.onmessage = async (e: MessageEvent) => {
                     indexedCount++;
                 }
 
-                // Index Skills
-                for (const skill of skills) {
-                    indexSkill(skill);
-                    indexedCount++;
+                if (payload.skills && Array.isArray(payload.skills)) {
+                    for (const skill of payload.skills) {
+                        indexSkill(skill);
+                        indexedCount++;
+                    }
                 }
-
+                
+                if (payload.workflows && Array.isArray(payload.workflows)) {
+                    for (const workflow of payload.workflows) {
+                        indexWorkflow(workflow);
+                        indexedCount++;
+                    }
+                }
+                
                 if (indexedCount > 0) {
                     await saveIndex();
                 }

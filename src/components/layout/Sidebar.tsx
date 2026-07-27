@@ -278,6 +278,18 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                         <span className="text-base">⚡</span>
                         {!isCollapsed && <span className="animate-fade-in">Skills</span>}
                     </Link>
+                    <Link
+                        to="/workflows"
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            location.pathname === '/workflows'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                        } ${isCollapsed ? 'justify-center' : ''}`}
+                        title="Workflow Builder"
+                    >
+                        <span className="text-base">⚙️</span>
+                        {!isCollapsed && <span className="animate-fade-in">Workflows</span>}
+                    </Link>
                 </nav>
 
                 <div className="border-t border-green-500/10 my-2 mx-3"></div>

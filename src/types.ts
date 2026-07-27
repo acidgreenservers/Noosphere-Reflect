@@ -233,6 +233,27 @@ export interface Skill {
   metadata: SkillMetadata;
 }
 
+// Workflow Archive Types
+export interface WorkflowMetadata {
+  title: string;                 // User-defined workflow title
+  triggerWord?: string;          // The /goal- trigger
+  wordCount: number;             // Calculated from content
+  characterCount: number;
+  exportStatus?: 'exported' | 'not_exported' | 'modified'; // Enhanced status tracking
+  lastExportDate?: string;
+  exportFormats?: string[];
+  exportCount?: number;
+}
+
+export interface Workflow {
+  id: string;                    // UUID
+  content: string;               // Raw workflow text (Markdown + Frontmatter)
+  tags: string[];                // User-defined tags
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp (for edits)
+  metadata: WorkflowMetadata;
+}
+
 // Search Filters
 export interface SearchFilters {
   archiveTypes?: ArchiveType[];
@@ -242,7 +263,7 @@ export interface SearchFilters {
 }
 
 // Archive Types for Foldering System
-export type ArchiveType = 'chat' | 'memory' | 'prompt' | 'skill';
+export type ArchiveType = 'chat' | 'memory' | 'prompt' | 'skill' | 'workflow';
 
 // Project Types
 export interface ProjectMetadata {

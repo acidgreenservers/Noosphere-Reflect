@@ -271,7 +271,7 @@ function parseSkillContent(content: string, defaultName: string = '', defaultCat
                 state.sections.push(currentSection);
             }
             currentSection = {
-                id: crypto.randomUUID(),
+                id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                 title: line.replace('## ', '').trim(),
                 content: ''
             };
@@ -451,7 +451,7 @@ export default function SkillWorkshop() {
                 await storageService.updateSkill(updated);
             } else {
                 const skill: Skill = {
-                    id: crypto.randomUUID(),
+                    id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                     content,
                     tags: tagsArray,
                     createdAt: new Date().toISOString(),
@@ -526,7 +526,7 @@ export default function SkillWorkshop() {
     const addSection = () => {
         setWs(prev => ({
             ...prev,
-            sections: [...prev.sections, { id: crypto.randomUUID(), title: '', content: '' }]
+            sections: [...prev.sections, { id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)), title: '', content: '' }]
         }));
     };
 
@@ -596,10 +596,11 @@ export default function SkillWorkshop() {
                 <div className="w-1/2 flex flex-col overflow-y-auto border-r border-gray-800 p-6 custom-scrollbar">
                     
                     {/* Metadata Section */}
-                    <div className="mb-8 border border-gray-800 rounded-lg p-4 bg-[#111] flex-shrink-0">
-                        <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-gray-500 mb-4 uppercase">
-                            <Settings size={14} />
-                            Source Metadata
+                    <div className="mb-8 flex-shrink-0">
+                        <div className="flex items-center mb-5">
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-full px-3 py-1.5">
+                                <Settings size={14} /> Metadata
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -719,11 +720,10 @@ export default function SkillWorkshop() {
                             onClick={() => setShowAdvanced(!showAdvanced)}
                             className="w-full flex items-center justify-between p-4 bg-[#141414] hover:bg-[#1a1a1a] transition-colors"
                         >
-                            <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
-                                <Settings size={14} />
-                                Advanced Settings (OpenClaw)
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-red-500/10 text-red-400 border border-red-500/20 rounded-full px-3 py-1.5">
+                                <Settings size={14} /> OpenClaw Integration
                             </div>
-                            {showAdvanced ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+                            <div className="flex items-center gap-4">{showAdvanced ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}</div>
                         </button>
 
                         {showAdvanced && (
@@ -884,10 +884,11 @@ export default function SkillWorkshop() {
 
                     {/* Main Instructions Section */}
                     <div className="mb-8 flex-shrink-0">
-                        <label className="flex items-center gap-2 text-xs font-bold tracking-wider text-gray-400 mb-2 uppercase">
-                            <Code size={14} className="text-[#82f94b]" />
-                            Main Instructions
-                        </label>
+                        <div className="flex items-center mb-5">
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-[#82f94b]/10 text-[#82f94b] border border-[#82f94b]/20 rounded-full px-3 py-1.5">
+                                <Code size={14} /> Main Instructions
+                            </div>
+                        </div>
                         <textarea 
                             value={ws.mainInstructions}
                             onChange={e => setWs({...ws, mainInstructions: e.target.value})}
@@ -897,49 +898,59 @@ export default function SkillWorkshop() {
                     </div>
 
                     {/* Dynamic Nodes (Sections) */}
-                    <div className="mb-8">
-                        <label className="flex items-center gap-2 text-xs font-bold tracking-wider text-gray-400 mb-4 uppercase">
-                            <ListPlus size={14} className="text-[#82f94b]" />
-                            Sections (Nodes)
-                        </label>
+                    <div className="mb-8 flex-shrink-0 bg-[#0a0a0a] border border-[#1a1a1a] p-5 rounded-2xl shadow-xl">
+                        <div className="flex items-center mb-5">
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full px-3 py-1.5 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+                                <ListPlus size={14} /> Sections (Nodes)
+                            </div>
+                        </div>
                         
-                        <div className="space-y-4">
+                        <div className="relative pl-7 space-y-4">
+                            {/* Vertical Line */}
+                            <div className="absolute left-[13px] top-4 bottom-4 w-[2px] bg-amber-500/20 rounded-full"></div>
+
                             {ws.sections.map((section, index) => (
-                                <div key={section.id} className="border border-gray-800 bg-[#111] rounded-lg overflow-hidden">
-                                    <div className="flex items-center bg-[#1a1a1a] px-3 py-2 border-b border-gray-800">
-                                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#82f94b] text-[#0a0a0a] text-xs font-bold mr-3 shrink-0">
-                                            {index + 1}
-                                        </div>
-                                        <input 
-                                            type="text"
-                                            value={section.title}
-                                            onChange={e => updateSection(section.id, 'title', e.target.value)}
-                                            placeholder="Section Title (e.g. Guidelines, Examples)"
-                                            className="flex-1 bg-transparent text-sm font-medium focus:outline-none text-white placeholder-gray-600"
-                                        />
-                                        <button 
-                                            onClick={() => removeSection(section.id)}
-                                            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-800 rounded transition-colors"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                <div key={section.id} className="relative flex gap-4 items-start">
+                                    <div className="absolute -left-[30px] flex items-center justify-center w-7 h-7 rounded-full bg-amber-500 text-[#0a0a0a] text-xs font-bold shrink-0 mt-2 shadow-[0_0_15px_rgba(245,158,11,0.5)] z-10 ring-4 ring-[#0a0a0a]">
+                                        {index + 1}
                                     </div>
-                                    <textarea 
-                                        value={section.content}
-                                        onChange={e => updateSection(section.id, 'content', e.target.value)}
-                                        placeholder={`Content for ${section.title || `Section ${index + 1}`}...`}
-                                        className="w-full h-32 bg-transparent p-4 text-sm focus:outline-none text-gray-300 custom-scrollbar resize-none"
-                                    />
+                                    <div className="flex-1 bg-[#161616] rounded-2xl border border-[#222] p-2 flex gap-3 shadow-md hover:border-[#333] transition-colors">
+                                        <div className="flex-1 flex flex-col gap-1 px-1">
+                                            <input 
+                                                type="text"
+                                                value={section.title}
+                                                onChange={e => updateSection(section.id, 'title', e.target.value)}
+                                                placeholder="Section Title (e.g. Guidelines, Examples)"
+                                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold placeholder-gray-600 focus:outline-none text-white py-1"
+                                            />
+                                            <textarea 
+                                                value={section.content}
+                                                onChange={e => updateSection(section.id, 'content', e.target.value)}
+                                                placeholder={`Content for ${section.title || `Section ${index + 1}`}...`}
+                                                className="w-full bg-transparent border-none focus:ring-0 text-sm placeholder-gray-600 focus:outline-none text-gray-400 resize-y min-h-[60px] custom-scrollbar"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 shrink-0 px-1 py-1">
+                                            <button 
+                                                onClick={() => removeSection(section.id)}
+                                                className="p-2 bg-[#0a0a0a] hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-xl transition-all border border-[#222] hover:border-red-500/20 shadow-sm shrink-0 mt-auto"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
+                            {ws.sections.length === 0 && (
+                                <div className="text-sm text-gray-500 italic py-4 pl-4">No sections added yet.</div>
+                            )}
                         </div>
 
                         <button 
                             onClick={addSection}
-                            className="mt-4 flex items-center gap-2 px-4 py-2 border border-[#82f94b] text-[#82f94b] text-sm font-medium rounded hover:bg-[#82f94b]/10 transition-colors w-full justify-center"
+                            className="mt-6 w-full py-3.5 flex items-center justify-center gap-2 border-2 border-dashed border-amber-500/30 text-amber-500 hover:bg-amber-500/5 hover:border-amber-500/50 bg-transparent rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-sm"
                         >
-                            <Plus size={16} />
-                            Add Section
+                            <Plus size={14} /> Add Section
                         </button>
                     </div>
 

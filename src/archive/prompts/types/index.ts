@@ -7,6 +7,9 @@ export interface PromptMetadata {
     wordCount: number;
     characterCount: number;
     exportStatus?: 'exported' | 'not_exported';
+    exportCount?: number;
+    sections?: { id: string; title: string; content: string }[];
+    constraints?: { id: string; text: string }[];
 }
 
 export interface Prompt {

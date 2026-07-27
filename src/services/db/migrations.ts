@@ -194,5 +194,16 @@ export const migrations: Migration[] = [
                 sessionStore.createIndex('projectId', 'projectId', { unique: false });
             }
         }
+    },
+    {
+        version: 12,
+        description: 'Create workflows store',
+        migrate: (db) => {
+            if (!db.objectStoreNames.contains(STORES.WORKFLOWS)) {
+                const workflowStore = db.createObjectStore(STORES.WORKFLOWS, { keyPath: 'id' });
+                workflowStore.createIndex('createdAt', 'createdAt', { unique: false });
+                workflowStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+            }
+        }
     }
 ];
