@@ -698,6 +698,10 @@ export default function WorkflowBuilder() {
                                 </button>
                             </div>
                             <div className="p-4 border-b border-gray-800 bg-[#111] flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-[#82f94b]"></div>
+                                    <span className="text-xs font-bold tracking-widest text-[#82f94b] uppercase">Compiled Preview</span>
+                                </div>
                                 <span className="text-xs font-mono text-gray-500">WORKFLOW.md</span>
                             </div>
                             <pre className="m-0 p-6 text-[13px] text-gray-300 font-mono whitespace-pre-wrap overflow-x-auto">

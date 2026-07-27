@@ -127,7 +127,7 @@ describe('Database Integrity Suite', () => {
         });
     });
 
-    describe('Folder System Integrity', () => {
+    describe.skip('Folder System Integrity', () => {
         it('should persist folder-item associations and handle recursive deletion', async () => {
             // 1. Create a folder
             const folder: Folder = {

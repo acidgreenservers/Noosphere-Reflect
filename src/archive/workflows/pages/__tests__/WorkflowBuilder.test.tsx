@@ -27,8 +27,8 @@ describe('WorkflowBuilder', () => {
     it('renders the core builder layout', () => {
         renderWithRouter();
         expect(screen.getByText('Metadata')).toBeInTheDocument();
-        expect(screen.getByText('Global Context')).toBeInTheDocument();
-        expect(screen.getByText('Sequential Steps')).toBeInTheDocument();
+        expect(screen.getByText('Objective')).toBeInTheDocument();
+        expect(screen.getByText('Steps')).toBeInTheDocument();
         expect(screen.getByText('Acceptance Criteria')).toBeInTheDocument();
         expect(screen.getByText('Compiled Preview')).toBeInTheDocument();
     });
@@ -39,11 +39,11 @@ describe('WorkflowBuilder', () => {
         const addStepBtn = screen.getByText('Add Step');
         fireEvent.click(addStepBtn);
 
-        const addCritBtn = screen.getByText('Add Acceptance Criteria');
+        const addCritBtn = screen.getByText('Add Criteria');
         fireEvent.click(addCritBtn);
 
         // We expect placeholder text for steps and criteria
-        const inputs = screen.getAllByPlaceholderText(/Enter criteria/i);
+        const inputs = screen.getAllByPlaceholderText(/Criteria.../i);
         expect(inputs.length).toBeGreaterThan(0);
         
         fireEvent.change(inputs[0], { target: { value: 'New Test Criteria' } });
