@@ -82,11 +82,7 @@ export default function PromptCard({ prompt, viewMode = 'grid', isSelectionMode 
                     <button onClick={(e) => { e.stopPropagation(); onExport(prompt, 'json'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
                 </div>
             </div>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(prompt, 'markdown'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(prompt, 'html'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">🌐 HTML</button>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(prompt, 'json'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
-                </div>
-            </div>
+
             <button
                 onClick={(e) => {
                     setIsMenuOpen(false);

@@ -149,6 +149,10 @@ export interface AppSettings {
   markdownLayout: 'universal' | 'fancy';
   exportRootMetadata: boolean;
   exportChatMetadata: boolean;
+  modelCallName?: string;
+  workDescription?: string;
+  customInstructions?: string;
+  theme?: 'system' | 'light' | 'dark';
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -156,7 +160,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fileNamingCase: 'kebab-case',
   markdownLayout: 'universal',
   exportRootMetadata: true,
-  exportChatMetadata: true
+  exportChatMetadata: true,
+  modelCallName: '',
+  workDescription: '',
+  customInstructions: '',
+  theme: 'system'
 };
 
 // Memory Archive Types

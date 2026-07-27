@@ -126,11 +126,7 @@ export function ChatSessionCard({
                     <button onClick={(e) => { e.stopPropagation(); onExport(session, 'json'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
                 </div>
             </div>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'markdown'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'html'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">🌐 HTML</button>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'json'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
-                </div>
-            </div>
+
             <button
                 onClick={(e) => {
                     setIsMenuOpen(false);

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
 import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ParserMode } from '../../types';
+import logo from '../../assets/logo.png';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
 import { sanitizeFilename } from '../../utils/securityUtils';
@@ -590,12 +591,15 @@ export default function UnifiedChatInterface() {
 
 
     const modelsList = [
-        'Claude 3.5 Sonnet',
-        'GPT-4o',
-        'Gemini 1.5 Pro',
-        'Grok 2',
-        'Mistral Large (LeChat)',
-        'Brave Leo AI'
+        'Claude',
+        'ChatGPT',
+        'Gemini',
+        'Grok',
+        'LeChat',
+        'Leo AI',
+        'Kimi',
+        'AI Studio',
+        'Llamacoder'
     ];
 
     if (!session) {
@@ -738,8 +742,36 @@ export default function UnifiedChatInterface() {
                         />
                     ))}
                 {messages.length === 0 && (
-                    <div className="text-center py-20 text-gray-500">
-                        No messages in this chat. Start typing below!
+                    <div className="flex-1 flex flex-col justify-center items-center px-4 mt-10">
+                        {/* Center Header */}
+                        <div className="text-center mb-8 flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-green-500/20 to-emerald-500/20 border border-green-500/30 flex items-center justify-center p-3 mb-4 shadow-[0_0_30px_rgba(16,185,129,0.15)] select-none">
+                                <img
+                                    src={logo}
+                                    alt="Noosphere Logo"
+                                    className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                                />
+                            </div>
+                            <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
+                                How can Noosphere Reflect help you today?
+                            </h1>
+                            <p className="text-sm text-gray-500 max-w-md mb-8">
+                                Start a turn-based real-time "Proxy" chat workspace. Everything you input and paste is saved immediately into your Digital Sanctuary.
+                            </p>
+                            
+                            {/* Quick Tips Column */}
+                            <div className="flex gap-6 text-xs text-gray-500 font-mono">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-blue-500">■</span> Blue for user turns
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-green-500">■</span> Green for AI turns
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-yellow-500">⚡</span> Saved in Real-Time
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
                 
@@ -791,34 +823,7 @@ export default function UnifiedChatInterface() {
                         </div>
                     )}
 
-                    {/* Model Selector Floating Menu Trigger inside input area */}
-                    <div className="absolute -top-10 left-0 z-30">
-                        <button
-                            onClick={() => setShowModelMenu(!showModelMenu)}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#122622] hover:bg-[#1a211d] text-[10px] font-bold text-green-400 border border-green-500/15 transition-all select-none"
-                        >
-                            <span>🤖</span>
-                            <span>{session.aiName}</span>
-                            <span>▾</span>
-                        </button>
 
-                        {showModelMenu && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setShowModelMenu(false)} />
-                                <div className="absolute left-0 mt-2 w-48 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs">
-                                    {modelsList.map((m) => (
-                                        <button
-                                            key={m}
-                                            onClick={() => handleModelChange(m)}
-                                            className="w-full text-left px-3 py-1.5 hover:bg-green-500/10 text-gray-300"
-                                        >
-                                            {m}
-                                        </button>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
 
                     {/* Guided Turn instructions helper */}
                     <div className="absolute -top-8 right-2 text-[10px] font-mono text-gray-500 select-none">
@@ -936,6 +941,42 @@ export default function UnifiedChatInterface() {
                                 </button>
                             </div>
 
+                            {/* Right side actions */}
+                            <div className="flex items-center gap-2">
+                                {/* Model Selector Floating Menu Trigger */}
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowModelMenu(!showModelMenu)}
+                                        className="h-7 flex items-center gap-1.5 px-2.5 rounded-xl bg-[#122622] hover:bg-[#1a211d] text-[10px] font-bold text-green-400 border border-green-500/10 transition-all select-none"
+                                    >
+                                        <span>🤖</span>
+                                        <span>{session.aiName}</span>
+                                        <span>▾</span>
+                                    </button>
+
+                                    {showModelMenu && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowModelMenu(false)} />
+                                            <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs">
+                                                {modelsList.map((m) => (
+                                                    <button
+                                                        key={m}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleModelChange(m);
+                                                            setShowModelMenu(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-1.5 hover:bg-green-500/10 text-gray-300"
+                                                    >
+                                                        {m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
                             {/* Submit Button */}
                             <button
                                 type="submit"
@@ -949,6 +990,7 @@ export default function UnifiedChatInterface() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19V5m0 0l-7 7m7-7l7 7" />
                                 </svg>
                             </button>
+                            </div>
                         </div>
                     </form>
                 </div>

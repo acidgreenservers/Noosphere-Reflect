@@ -94,11 +94,7 @@ export default function MemoryCard({ memory, viewMode = 'grid', isSelectionMode 
                     <button onClick={(e) => { e.stopPropagation(); onExport(memory, 'json'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
                 </div>
             </div>
-                    <button onClick={() => { onExport(memory, 'markdown'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
-                    <button onClick={() => { onExport(memory, 'html'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">🌐 HTML</button>
-                    <button onClick={() => { onExport(memory, 'json'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
-                </div>
-            </div>
+
 
             <button
                 onClick={(e) => {
