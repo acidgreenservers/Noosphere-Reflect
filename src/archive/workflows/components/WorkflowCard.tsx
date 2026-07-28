@@ -210,10 +210,10 @@ export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionM
             onClick={() => onPreview(workflow)}
             draggable
             onDragStart={handleDragStart}
-            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer flex flex-col h-[280px]
+            className={`group relative border rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer flex flex-col h-[240px]
             ${isSelected
-                    ? 'bg-cyan-900/20 border-cyan-500/50 shadow-lg shadow-cyan-900/10 shadow-cyan-500/20 ring-2 ring-cyan-500/50 scale-[1.03]'
-                    : 'bg-[#122622]/40 hover:bg-[#122622]/60 border-green-500/10 hover:border-cyan-500/30 hover:shadow-cyan-900/10 hover:shadow-cyan-500/20 hover:shadow-lg'
+                    ? 'bg-orange-900/10 border-orange-500/50 shadow-lg shadow-orange-900/10 shadow-orange-500/20 ring-1 ring-orange-500/50 scale-[1.03]'
+                    : 'bg-[#122622]/20 hover:bg-[#122622]/40 border-gray-600/10 hover:border-orange-500/30 hover:shadow-orange-900/5 hover:shadow-orange-500/10 hover:shadow-lg'
                 }`}>
             
             {/* Header */}
@@ -243,8 +243,8 @@ export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionM
                         }}
                         className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110 active:scale-95
                             ${isSelected
-                                ? 'bg-cyan-500 border-cyan-500 text-white opacity-100'
-                                : 'bg-[#09100c]/50 border-gray-600 hover:border-cyan-400 text-transparent opacity-100'
+                                ? 'bg-orange-500 border-orange-500 text-white opacity-100'
+                                : 'bg-[#09100c]/50 border-gray-600 hover:border-orange-400 text-transparent opacity-100'
                             }`}
                         title={isSelected ? "Deselect this workflow" : "Select this workflow"}
                         aria-label={isSelected ? "Deselect this workflow" : "Select this workflow"}
@@ -256,17 +256,17 @@ export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionM
                 )}
             </div>
 
-            <div className="text-sm text-gray-300 font-mono whitespace-pre-wrap mb-4 bg-[#09100c]/30 border border-green-500/5 rounded p-3 flex-1 overflow-hidden relative">
+            <div className="text-sm text-gray-400 font-mono whitespace-pre-wrap mb-4 flex-1 overflow-hidden relative">
                 {previewContent}
                 {workflow.content.length > 300 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#122622]/80 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0e1511] to-transparent pointer-events-none" />
                 )}
             </div>
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-2 overflow-hidden h-[24px]">
                 {workflow.tags.length > 0 ? workflow.tags.map((tag, i) => (
-                    <span key={i} className="px-2 py-1 bg-[#09100c]/50 rounded text-xs text-gray-400 border border-green-500/10 whitespace-nowrap">
+                    <span key={i} className="px-1.5 py-0.5 bg-gray-500/5 rounded text-[10px] text-gray-500 border border-gray-500/10 whitespace-nowrap">
                         #{tag}
                     </span>
                 )) : (

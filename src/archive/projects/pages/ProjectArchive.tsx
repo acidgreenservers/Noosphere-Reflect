@@ -121,8 +121,8 @@ const ProjectArchive: React.FC = () => {
                                     viewMode === 'list' ? 'flex items-center gap-4' : 'flex flex-col h-40'
                                 } ${
                                     isSelected 
-                                        ? 'bg-green-500/20 border-green-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                                        : 'bg-[#122622]/40 border-green-500/10 hover:border-green-500/30 hover:bg-[#122622]/60 hover:shadow-lg'
+                                        ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-900/10 shadow-green-500/20 ring-1 ring-green-500/50 scale-[1.03]'
+                                        : 'bg-[#122622]/20 hover:bg-[#122622]/40 border-gray-600/10 hover:border-green-500/30 hover:shadow-green-900/5 hover:shadow-green-500/10 hover:shadow-lg'
                                 }`}
                             >
                                 {/* Selection Checkbox */}
@@ -139,7 +139,7 @@ const ProjectArchive: React.FC = () => {
                                 )}
 
                                 <div className={`flex items-start gap-3 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                                    <div className="w-10 h-10 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-xl shrink-0">
+                                    <div className="w-10 h-10 rounded-lg bg-green-500/5 border border-green-500/10 flex items-center justify-center text-xl shrink-0">
                                         📁
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -153,7 +153,7 @@ const ProjectArchive: React.FC = () => {
                                 </div>
 
                                 <div className={`mt-auto pt-3 flex items-center justify-between text-[10px] text-gray-500 font-medium ${
-                                    viewMode === 'list' ? 'mt-0 pt-0 w-48 shrink-0 border-l border-green-500/10 pl-4 ml-4' : 'border-t border-green-500/10'
+                                    viewMode === 'list' ? 'mt-0 pt-0 w-48 shrink-0 border-l border-gray-600/10 pl-4 ml-4' : 'border-t border-gray-600/10'
                                 }`}>
                                     <span>
                                         {new Date(project.updatedAt).toLocaleDateString()}

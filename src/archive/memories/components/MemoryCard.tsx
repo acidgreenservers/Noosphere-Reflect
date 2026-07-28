@@ -211,10 +211,10 @@ export default function MemoryCard({ memory, viewMode = 'grid', isSelectionMode 
             onClick={() => onEdit(memory)}
             draggable
             onDragStart={handleDragStart}
-            className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer flex flex-col h-[280px]
+            className={`group relative border rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer flex flex-col h-[240px]
             ${isSelected
-                    ? 'bg-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20 ring-2 ring-purple-500/50 scale-[1.03]'
-                    : 'bg-[#122622]/40 hover:bg-[#122622]/60 border-green-500/10 hover:border-purple-500/30 hover:shadow-purple-900/10 hover:shadow-purple-500/20 hover:shadow-lg'
+                    ? 'bg-purple-900/10 border-purple-500/50 shadow-lg shadow-purple-900/10 shadow-purple-500/20 ring-1 ring-purple-500/50 scale-[1.03]'
+                    : 'bg-[#122622]/20 hover:bg-[#122622]/40 border-gray-600/10 hover:border-purple-500/30 hover:shadow-purple-900/5 hover:shadow-purple-500/10 hover:shadow-lg'
                 }`}>
             
             {/* Header */}
@@ -257,17 +257,17 @@ export default function MemoryCard({ memory, viewMode = 'grid', isSelectionMode 
                 )}
             </div>
 
-            <div className="text-sm text-gray-300 font-mono whitespace-pre-wrap mb-4 bg-[#09100c]/30 border border-green-500/5 rounded p-3 flex-1 overflow-hidden relative">
+            <div className="text-sm text-gray-400 font-mono whitespace-pre-wrap mb-4 flex-1 overflow-hidden relative">
                 {previewContent}
                 {memory.content.length > 300 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#122622]/80 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0e1511] to-transparent pointer-events-none" />
                 )}
             </div>
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-2 overflow-hidden h-[24px]">
                 {memory.tags.length > 0 ? memory.tags.map((tag, i) => (
-                    <span key={i} className="px-2 py-1 bg-[#09100c]/50 rounded text-xs text-gray-400 border border-green-500/10 whitespace-nowrap">
+                    <span key={i} className="px-1.5 py-0.5 bg-gray-500/5 rounded text-[10px] text-gray-500 border border-gray-500/10 whitespace-nowrap">
                         #{tag}
                     </span>
                 )) : (
