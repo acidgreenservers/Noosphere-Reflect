@@ -47,7 +47,7 @@ const ArchiveHub: React.FC = () => {
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [showGoogleImportModal, setShowGoogleImportModal] = useState(false);
     const [isImportingFromDrive, setIsImportingFromDrive] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     
     // Project assignment
     const [isMoveToProjectModalOpen, setIsMoveToProjectModalOpen] = useState(false);

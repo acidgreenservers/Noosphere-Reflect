@@ -8,7 +8,7 @@ import { ConfirmationModal } from '../../../components/ConfirmationModal';
 
 const ProjectArchive: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchQuery, setSearchQuery] = useState('');
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
