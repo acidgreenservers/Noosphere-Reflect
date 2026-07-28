@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
-import { SavedChatSession, ChatTheme, ChatStyle, ParserMode, ChatMessageType } from '../../types';
+import { SavedChatSession, ChatTheme, ChatStyle, ParserMode, ChatMessageType, AppSettings, DEFAULT_SETTINGS } from '../../types';
 import logo from '../../assets/logo.png';
 
 export const NewChatView: React.FC = () => {
     const navigate = useNavigate();
     const [inputValue, setInputValue] = useState('');
-    const [selectedModel, setSelectedModel] = useState('Claude 3.5 Sonnet');
+    const [selectedModel, setSelectedModel] = useState('Claude');
     const [showModelMenu, setShowModelMenu] = useState(false);
     const [userName, setUserName] = useState('User');
+    const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {
         const loadSettings = async () => {
             const settings = await storageService.getSettings();
+            setAppSettings(settings);
             if (settings.defaultUserName) {
                 setUserName(settings.defaultUserName);
             }
@@ -91,9 +94,16 @@ export const NewChatView: React.FC = () => {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSubmit();
+        if (appSettings.chatSendShortcut === 'ctrl-enter') {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                handleSubmit();
+            }
+        } else {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+            }
         }
     };
 
@@ -123,14 +133,33 @@ export const NewChatView: React.FC = () => {
                 {/* Main Prominent Chatbox */}
                 <form
                     onSubmit={handleSubmit}
-                    className="w-full bg-[#122622]/40 border border-blue-500/30 rounded-3xl p-4 flex flex-col gap-3 focus-within:border-blue-500 focus-within:shadow-[0_0_25px_rgba(59,130,246,0.15)] transition-all"
+                    className="w-full bg-[#122622]/40 border border-blue-500/30 rounded-3xl p-4 flex flex-col gap-3 focus-within:border-blue-500 focus-within:shadow-[0_0_25px_rgba(59,130,246,0.15)] transition-all relative"
                 >
+                    {/* Expand/Collapse Button */}
+                    <button
+                        type="button"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="absolute top-4 right-4 text-gray-500 hover:text-blue-400 transition-colors p-1"
+                        title={isExpanded ? "Collapse" : "Full Screen"}
+                    >
+                        {isExpanded ? (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 14h6m0 0v6m0-6l-7 7m17-11h-6m0 0V4m0 6l7-7" />
+                            </svg>
+                        ) : (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                        )}
+                    </button>
                     <textarea
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={`Type user message and start real-time proxy turn...`}
-                        className="w-full bg-transparent resize-none outline-none border-none text-sm text-gray-100 placeholder-gray-500 min-h-[80px]"
+                        className={`w-full bg-transparent resize-none outline-none border-none text-sm text-gray-100 placeholder-gray-500 transition-all duration-300 pr-8 ${
+                            isExpanded ? "min-h-[50vh]" : "min-h-[80px]"
+                        }`}
                         autoFocus
                     />
 

@@ -201,7 +201,7 @@ export const ArchiveLayout: React.FC<ArchiveLayoutProps> = ({
                 viewMode === 'list' ? 'space-y-2' : ''
             }`}>
                 {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4 mt-6">
                         {itemsComponent}
                     </div>
                 ) : (

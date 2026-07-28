@@ -4,5 +4,6 @@ export { SettingsFooter } from './SettingsFooter';
 export { DataManagement } from './DataManagement';
 export { CloudSync } from './CloudSync';
 export { UserPreferences } from './UserPreferences';
+export { ChatPreferences } from './ChatPreferences';
 export { FileNamingFormat } from './FileNamingFormat';
 export { ExportPreferences } from './ExportPreferences';

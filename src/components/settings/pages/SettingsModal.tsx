@@ -10,6 +10,7 @@ import {
     DataManagement,
     CloudSync,
     UserPreferences,
+    ChatPreferences,
     FileNamingFormat,
     ExportPreferences,
 } from '../components';
@@ -200,6 +201,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
                         {/* User Preferences Section */}
                         <UserPreferences settings={localSettings} onSettingsChange={setLocalSettings} />
+
+                        {/* Chat Preferences Section */}
+                        <ChatPreferences settings={localSettings} onSettingsChange={setLocalSettings} />
 
                         {/* File Naming Format */}
                         <FileNamingFormat settings={localSettings} onSettingsChange={setLocalSettings} />

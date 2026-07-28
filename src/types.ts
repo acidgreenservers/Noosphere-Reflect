@@ -154,6 +154,7 @@ export interface AppSettings {
   workDescription?: string;
   customInstructions?: string;
   theme?: 'system' | 'light' | 'dark';
+  chatSendShortcut?: 'enter' | 'ctrl-enter';
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -165,7 +166,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   modelCallName: '',
   workDescription: '',
   customInstructions: '',
-  theme: 'system'
+  theme: 'system',
+  chatSendShortcut: 'enter'
 };
 
 // Memory Archive Types

@@ -121,93 +121,9 @@ export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionM
         </div>
     );
 
-    if (viewMode === 'list') {
-        return (
-            <div
-                onClick={() => onPreview(workflow)}
-                draggable
-                onDragStart={handleDragStart}
-                className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer border-b border-transparent hover:bg-white/5 relative ${
-                    isSelected ? 'bg-cyan-900/20' : ''
-                }`}
-            >
-                <div className="flex items-center gap-4 min-w-0">
-                    {isSelectionMode && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleSelect(workflow.id);
-                            }}
-                            className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${
-                                isSelected
-                                    ? 'bg-cyan-500 border-cyan-500 text-white'
-                                    : 'border-gray-500 hover:border-cyan-400 text-transparent'
-                            }`}
-                        >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </button>
-                    )}
-                    
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-semibold text-gray-200 truncate group-hover:text-cyan-300 transition-colors">
-                            {workflow.metadata.title}
-                        </span>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                            <span className="opacity-80 text-cyan-400">{workflow.metadata.category || 'General'}</span>
-                            {workflow.tags.length > 0 && (
-                                <>
-                                    <span>•</span>
-                                    <span className="truncate max-w-[200px]">{workflow.tags.join(', ')}</span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 shrink-0 pl-4 relative">
-                    {workflow.projectId && (
-                        <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded font-bold" title="In a project">
-                            Project
-                        </span>
-                    )}
-                    {workflow.metadata.exportStatus === 'modified' && (
-                        <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded" title={`Exported ${workflow.metadata.exportCount || 1} time(s)`}>
-                            Modified
-                        </span>
-                    )}
-                    {workflow.metadata.exportStatus === 'exported' && (
-                        <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded" title={`Exported ${workflow.metadata.exportCount || 1} time(s)`}>
-                            Exported
-                        </span>
-                    )}
-
-                    <div className="w-24 flex justify-end items-center relative">
-                        <span className="text-xs text-gray-500 group-hover:opacity-0 transition-opacity absolute right-0">
-                            {formattedDate}
-                        </span>
-                        
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 flex items-center">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsMenuOpen(!isMenuOpen);
-                                }}
-                                className="p-1 text-gray-400 hover:text-white rounded-md hover:bg-white/10 transition-colors"
-                            >
-                                ⋮
-                            </button>
-                            {isMenuOpen && renderMenu()}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <UnifiedGridCard
+            isListView={viewMode === 'list'}
             title={workflow.metadata.title}
             icon="⚡"
             color="orange"

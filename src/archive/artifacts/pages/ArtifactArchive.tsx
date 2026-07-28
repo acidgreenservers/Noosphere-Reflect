@@ -6,6 +6,7 @@ import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ArtifactCard, AggregatedArtifact } from '../components/ArtifactCard';
 import { UnsupportedFileModal } from '../components/UnsupportedFileModal';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
+import { isSupportedByReader } from '../../../components/ArtifactReader/utils';
 
 const ArtifactArchive: React.FC = () => {
     const [artifacts, setArtifacts] = useState<AggregatedArtifact[]>([]);
@@ -101,16 +102,8 @@ const ArtifactArchive: React.FC = () => {
         return a.fileName.toLowerCase().includes(query) || a.sourceTitle.toLowerCase().includes(query);
     });
 
-    const isSupported = (fileName: string) => {
-        const lower = fileName.toLowerCase();
-        return lower.endsWith('.md') || lower.endsWith('.markdown') || 
-               lower.endsWith('.txt') || lower.endsWith('.json') || 
-               lower.endsWith('.csv') || lower.endsWith('.ts') || 
-               lower.endsWith('.tsx') || lower.endsWith('.js');
-    };
-
     const handleArtifactClick = (artifact: AggregatedArtifact) => {
-        if (isSupported(artifact.fileName)) {
+        if (isSupportedByReader(artifact.fileName, artifact.mimeType)) {
             setViewingArtifact(artifact);
         } else {
             setUnsupportedArtifact(artifact);

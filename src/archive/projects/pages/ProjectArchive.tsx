@@ -120,6 +120,7 @@ const ProjectArchive: React.FC = () => {
                                 title={project.metadata.title}
                                 icon="📁"
                                 color="green"
+                                isListView={viewMode === 'list'}
                                 metadataLine={
                                     <>
                                         <span>

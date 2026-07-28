@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedChatSession, ConversationArtifact } from '../../../types';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
+import { isSupportedByReader } from '../../../components/ArtifactReader/utils';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { useMathJax } from '../../../hooks/useMathJax';
@@ -96,24 +97,10 @@ export const ChatPreviewModal: React.FC<ChatPreviewModalProps> = ({ session, onC
         }
     };
 
-    const isMarkdownFile = (fileName: string): boolean => {
-        return fileName.toLowerCase().endsWith('.md') || fileName.toLowerCase().endsWith('.markdown');
-    };
-
     const handleArtifactAction = (artifact: any) => {
-        const isTextFile = isMarkdownFile(artifact.fileName) ||
-            artifact.fileName.toLowerCase().endsWith('.txt') ||
-            artifact.fileName.toLowerCase().endsWith('.json') ||
-            artifact.fileName.toLowerCase().endsWith('.csv') ||
-            artifact.fileName.toLowerCase().endsWith('.ts') ||
-            artifact.fileName.toLowerCase().endsWith('.tsx') ||
-            artifact.fileName.toLowerCase().endsWith('.js');
-
-        if (isTextFile) {
-            // View text/markdown in immersive reader
+        if (isSupportedByReader(artifact.fileName, artifact.mimeType)) {
             setViewingArtifact(artifact);
         } else {
-            // Download other files
             handleDownloadArtifact(artifact);
         }
     };

@@ -6,6 +6,7 @@ import { ProjectMemoryModal } from '../components/ProjectMemoryModal';
 import { ProjectInstructionsModal } from '../components/ProjectInstructionsModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
+import { isSupportedByReader } from '../../../components/ArtifactReader/utils';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 
 type ProjectAssetType = 'chat' | 'memory' | 'prompt' | 'skill' | 'workflow';
@@ -113,7 +114,7 @@ const ProjectDetail: React.FC = () => {
             inputContent: text,
             chatTitle: autoTitle,
             userName: 'User', // Fallback
-            aiName: 'Claude 3.5 Sonnet', // Fallback, would normally read from settings
+            aiName: 'Claude', // Fallback, would normally read from settings
             selectedTheme: 'DarkDefault' as any,
             parserMode: 'basic' as any,
             projectId: project.id,
@@ -128,7 +129,7 @@ const ProjectDetail: React.FC = () => {
                 ],
                 metadata: {
                     title: autoTitle,
-                    model: 'Claude 3.5 Sonnet',
+                    model: 'Claude',
                     date: new Date().toISOString(),
                     tags: ['real-time', 'proxy-turn'],
                     updatedAt: new Date().toISOString()
@@ -136,7 +137,7 @@ const ProjectDetail: React.FC = () => {
             },
             metadata: {
                 title: autoTitle,
-                model: 'Claude 3.5 Sonnet',
+                model: 'Claude',
                 date: new Date().toISOString(),
                 tags: ['real-time', 'proxy-turn'],
                 updatedAt: new Date().toISOString()
@@ -264,8 +265,7 @@ const ProjectDetail: React.FC = () => {
     };
 
     const handleReadArtifact = (artifact: ConversationArtifact) => {
-        const isMarkdown = artifact.fileName.endsWith('.md') || artifact.fileName.endsWith('.markdown') || artifact.fileName.endsWith('.txt');
-        if (isMarkdown) {
+        if (isSupportedByReader(artifact.fileName, artifact.mimeType)) {
             setViewingArtifact(artifact);
         } else {
             // download

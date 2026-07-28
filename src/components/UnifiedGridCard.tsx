@@ -2,7 +2,7 @@ import React from 'react';
 
 export interface GridCardBadge {
     text: string;
-    colorClass?: string; // custom color classes if any
+    colorClass?: string;
     title?: string;
 }
 
@@ -20,6 +20,7 @@ interface Props {
     menuElement?: React.ReactNode;
     draggable?: boolean;
     onDragStart?: (e: React.DragEvent) => void;
+    isListView?: boolean;
 }
 
 export default function UnifiedGridCard({
@@ -35,7 +36,8 @@ export default function UnifiedGridCard({
     onMenuClick,
     menuElement,
     draggable = false,
-    onDragStart
+    onDragStart,
+    isListView = false
 }: Props) {
     
     // Set color themes
@@ -50,12 +52,86 @@ export default function UnifiedGridCard({
 
     const theme = themes[color];
 
+    if (isListView) {
+        return (
+            <div
+                onClick={onClick}
+                draggable={draggable}
+                onDragStart={onDragStart}
+                className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all border-b border-transparent hover:bg-white/5 relative cursor-pointer ${
+                    isSelected ? 'bg-green-900/20' : ''
+                }`}
+            >
+                <div className="flex items-center gap-4 min-w-0">
+                    {isSelectionMode && onToggleSelect && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onToggleSelect(e);
+                            }}
+                            className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${
+                                isSelected
+                                    ? 'bg-green-500 border-green-500 text-[#0e1511]'
+                                    : 'border-gray-500 hover:border-green-400 text-transparent'
+                            }`}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </button>
+                    )}
+                    
+                    <div className={`w-8 h-8 rounded bg-[#151a18] flex items-center justify-center shrink-0 border border-gray-800 ${theme.text}`}>
+                        {icon}
+                    </div>
+
+                    <div className="flex flex-col min-w-0">
+                        <span className={`text-base font-semibold text-gray-200 truncate ${theme.hoverText} transition-colors`}>
+                            {title}
+                        </span>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                            {metadataLine}
+                            {badges.length > 0 && (
+                                <div className="flex items-center gap-1.5 ml-2">
+                                    {badges.map((b, i) => (
+                                        <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${b.colorClass || 'text-gray-400 bg-gray-800/50'}`}>
+                                            {b.text}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                    {menuElement}
+                    {onMenuClick && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onMenuClick(e);
+                            }}
+                            className="text-gray-500 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             onClick={onClick}
             draggable={draggable}
             onDragStart={onDragStart}
-            className={`group relative flex flex-col aspect-square w-full rounded-xl overflow-hidden cursor-pointer border transition-all duration-200
+            className={`group relative flex flex-col aspect-square w-full rounded-[25px] overflow-hidden cursor-pointer border transition-all duration-200
                 ${isSelected 
                     ? `bg-[#151a18] ${theme.border.replace('/20', '/50')} ring-1 ${theme.activeRing}`
                     : `bg-[#1a1f1c] border-gray-700/40 ${theme.hoverBorder} hover:bg-[#1c221e]`
@@ -66,11 +142,11 @@ export default function UnifiedGridCard({
                 
                 {/* Floating Badges */}
                 {badges.length > 0 && (
-                    <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-1.5 pointer-events-none z-10">
+                    <div className="absolute top-2 left-2 right-2 flex flex-wrap gap-1 pointer-events-none z-10">
                         {badges.map((b, i) => (
                             <span 
                                 key={i} 
-                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
                                     b.colorClass || 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
                                 }`}
                                 title={b.title}
@@ -89,20 +165,20 @@ export default function UnifiedGridCard({
                             e.stopPropagation();
                             onToggleSelect(e);
                         }}
-                        className={`absolute top-3 right-3 z-20 w-5.5 h-5.5 rounded border flex items-center justify-center transition-all
+                        className={`absolute top-2 right-2 z-20 w-5 h-5 rounded border flex items-center justify-center transition-all
                             ${isSelected
                                 ? `${theme.selectBg} text-white`
                                 : 'bg-[#111412]/80 border-gray-600 hover:border-gray-400 text-transparent'
                             }`}
                     >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
                     </button>
                 )}
 
                 {/* Central Iconic Node */}
-                <div className={`text-4xl select-none transition-transform duration-300 group-hover:scale-110 flex items-center justify-center opacity-85 group-hover:opacity-100 ${theme.text}`}>
+                <div className={`text-5xl select-none transition-transform duration-300 group-hover:scale-110 flex items-center justify-center opacity-85 group-hover:opacity-100 ${theme.text}`}>
                     {icon}
                 </div>
             </div>
@@ -111,9 +187,9 @@ export default function UnifiedGridCard({
             <div className="w-full border-t border-gray-700/40" />
 
             {/* Bottom Area (Info Zone) */}
-            <div className="p-3.5 flex flex-col gap-1 shrink-0 bg-transparent relative min-h-[64px] justify-center">
+            <div className="p-4 flex flex-col gap-1 shrink-0 bg-transparent relative min-h-[64px] justify-center">
                 <div className="flex items-center justify-between gap-2">
-                    <h3 className={`text-xs font-semibold text-gray-200 truncate ${theme.hoverText} transition-colors`}>
+                    <h3 className={`text-base font-semibold text-gray-200 truncate ${theme.hoverText} transition-colors`}>
                         {title}
                     </h3>
                     {onMenuClick && (
@@ -121,11 +197,12 @@ export default function UnifiedGridCard({
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    e.preventDefault();
                                     onMenuClick(e);
                                 }}
                                 className="text-gray-400 hover:text-white p-0.5 transition-colors"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                 </svg>
                             </button>
@@ -133,7 +210,7 @@ export default function UnifiedGridCard({
                     )}
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium truncate">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium truncate">
                     {metadataLine}
                 </div>
 

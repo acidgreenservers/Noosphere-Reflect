@@ -17,3 +17,23 @@ export const safeDecode = (fileData: string): string => {
     }
     return fileData;
 };
+
+export const SUPPORTED_READER_EXTENSIONS = new Set([
+    'md', 'markdown',
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',
+    'txt', 'json', 'csv', 'ts', 'tsx', 'js', 'jsx', 'py', 'sh', 'html', 'css', 'yaml', 'yml', 'xml', 'sql'
+]);
+
+export const isSupportedByReader = (fileName: string, mimeType?: string): boolean => {
+    if (!fileName) return false;
+    const ext = fileName.toLowerCase().split('.').pop() || '';
+    if (SUPPORTED_READER_EXTENSIONS.has(ext)) return true;
+    if (mimeType) {
+        const mime = mimeType.toLowerCase();
+        if (mime.startsWith('image/') || mime.startsWith('text/') || mime === 'application/json') {
+            return true;
+        }
+    }
+    return false;
+};
+

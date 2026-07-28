@@ -1,4 +1,5 @@
 import { ArtifactReaderLayer } from '../ArtifactReader';
+import { isSupportedByReader } from '../ArtifactReader/utils';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
@@ -923,6 +924,38 @@ export default function UnifiedChatInterface() {
                                 onSaveSkill={handleSaveAsSkill}
                                 onSaveWorkflow={handleSaveAsWorkflow}
                                 onEditMessage={handleEditMessage}
+                                onArtifactClick={(art) => {
+                                    if (isSupportedByReader(art.fileName, art.mimeType)) {
+                                        setViewingArtifact(art);
+                                    } else {
+                                        // Download fallback for unsupported files
+                                        try {
+                                            let blob: Blob;
+                                            if (art.mimeType?.startsWith('text/')) {
+                                                blob = new Blob([art.fileData], { type: art.mimeType });
+                                            } else {
+                                                const byteCharacters = atob(art.fileData);
+                                                const byteNumbers = new Array(byteCharacters.length);
+                                                for (let i = 0; i < byteCharacters.length; i++) {
+                                                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                                }
+                                                const byteArray = new Uint8Array(byteNumbers);
+                                                blob = new Blob([byteArray], { type: art.mimeType });
+                                            }
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = art.fileName;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+                                        } catch (err) {
+                                            console.error('Failed to download file', err);
+                                        }
+                                    }
+                                }}
+                                onImageClick={handleImageClick}
                             />
                         </div>
                     ))}

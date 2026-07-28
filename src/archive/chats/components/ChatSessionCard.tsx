@@ -6,6 +6,7 @@ import { getChatSessionById } from '../services/chatStorage';
 import { formatRelativeDate } from '../../../utils/dateUtils';
 
 interface ChatSessionCardProps {
+    isListView?: boolean;
     session: SavedChatSessionMetadata;
     isSelectionMode?: boolean;
     isSelected: boolean;
@@ -155,96 +156,10 @@ export function ChatSessionCard({
         </div>
     );
 
-    if (viewMode === 'list') {
-        return (
-            <div
-                draggable
-                onDragStart={handleDragStart}
-                className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all border-b border-transparent hover:bg-white/5 relative ${
-                    isSelected ? 'bg-green-900/20' : ''
-                }`}
-            >
-                <div className="flex items-center gap-4 min-w-0">
-                    {isSelectionMode && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSelect(session.id, e);
-                            }}
-                            className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${
-                                isSelected
-                                    ? 'bg-green-500 border-green-500 text-[#0e1511]'
-                                    : 'border-gray-500 hover:border-green-400 text-transparent'
-                            }`}
-                        >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </button>
-                    )}
-                    
-                    <div className="flex flex-col min-w-0">
-                        <span 
-                            onClick={handleCardClick}
-                            className="text-sm font-semibold text-gray-200 truncate hover:text-green-300 transition-colors cursor-pointer hover:underline"
-                        >
-                            {session.metadata?.title || session.chatTitle || 'Untitled Chat'}
-                        </span>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                            <span className="opacity-80">{session.metadata?.model || session.aiName}</span>
-                            {session.metadata?.tags && session.metadata.tags.length > 0 && (
-                                <>
-                                    <span>•</span>
-                                    <span className="truncate max-w-[200px]">{session.metadata.tags.join(', ')}</span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 shrink-0 pl-4 relative">
-                    {session.exportStatus === 'modified' && (
-                        <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded" title={`Exported ${session.metadata?.exportCount || 1} time(s)`}>
-                            Modified
-                        </span>
-                    )}
-                    {session.exportStatus === 'exported' && (
-                        <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded" title={`Exported ${session.metadata?.exportCount || 1} time(s)`}>
-                            Exported
-                        </span>
-                    )}
-                    {artifactCount > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded">
-                            {artifactCount} Artifacts
-                        </span>
-                    )}
-
-                    <div className="w-24 flex justify-end items-center relative">
-                        <span className="text-xs text-gray-500 group-hover:opacity-0 transition-opacity absolute right-0">
-                            {formattedDate}
-                        </span>
-                        
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 flex items-center">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsMenuOpen(!isMenuOpen);
-                                }}
-                                className="p-1 text-gray-400 hover:text-white rounded-md hover:bg-white/10 transition-colors"
-                            >
-                                ⋮
-                            </button>
-                            {isMenuOpen && renderMenu()}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     // Grid View
     return (
         <UnifiedGridCard
+            isListView={viewMode === 'list'}
             title={session.metadata?.title || session.chatTitle || 'Untitled Chat'}
             icon="💬"
             color="green"

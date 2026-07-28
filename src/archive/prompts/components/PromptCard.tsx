@@ -109,93 +109,9 @@ export default function PromptCard({ prompt, viewMode = 'grid', isSelectionMode 
         </div>
     );
 
-    if (viewMode === 'list') {
-        return (
-            <div
-                onClick={() => onEdit(prompt)}
-                draggable
-                onDragStart={handleDragStart}
-                className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer border-b border-transparent hover:bg-white/5 relative ${
-                    isSelected ? 'bg-blue-900/20' : ''
-                }`}
-            >
-                <div className="flex items-center gap-4 min-w-0">
-                    {isSelectionMode && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleSelect(prompt.id);
-                            }}
-                            className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${
-                                isSelected
-                                    ? 'bg-blue-500 border-blue-500 text-white'
-                                    : 'border-gray-500 hover:border-blue-400 text-transparent'
-                            }`}
-                        >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </button>
-                    )}
-                    
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-semibold text-gray-200 truncate group-hover:text-blue-300 transition-colors">
-                            {prompt.metadata.title}
-                        </span>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                            <span className="opacity-80 text-blue-400">{prompt.category}</span>
-                            {prompt.tags.length > 0 && (
-                                <>
-                                    <span>•</span>
-                                    <span className="truncate max-w-[200px]">{prompt.tags.join(', ')}</span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 shrink-0 pl-4 relative">
-                    {prompt.projectId && (
-                        <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded font-bold" title="In a project">
-                            Project
-                        </span>
-                    )}
-                    {prompt.metadata.exportStatus === 'modified' && (
-                        <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded" title={`Exported ${prompt.metadata.exportCount || 1} time(s)`}>
-                            Modified
-                        </span>
-                    )}
-                    {prompt.metadata.exportStatus === 'exported' && (
-                        <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded" title={`Exported ${prompt.metadata.exportCount || 1} time(s)`}>
-                            Exported
-                        </span>
-                    )}
-
-                    <div className="w-24 flex justify-end items-center relative">
-                        <span className="text-xs text-gray-500 group-hover:opacity-0 transition-opacity absolute right-0">
-                            {formattedDate}
-                        </span>
-                        
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 flex items-center">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsMenuOpen(!isMenuOpen);
-                                }}
-                                className="p-1 text-gray-400 hover:text-white rounded-md hover:bg-white/10 transition-colors"
-                            >
-                                ⋮
-                            </button>
-                            {isMenuOpen && renderMenu()}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <UnifiedGridCard
+            isListView={viewMode === 'list'}
             title={prompt.metadata.title}
             icon="✨"
             color="blue"
