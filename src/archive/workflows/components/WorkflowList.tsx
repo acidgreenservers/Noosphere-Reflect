@@ -10,12 +10,13 @@ interface Props {
     onExport: (workflow: Workflow, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
     onStatusToggle: (workflow: Workflow, e: React.MouseEvent) => void;
     onPreview: (workflow: Workflow) => void;
+    onMoveToProject?: (workflow: Workflow) => void;
     selectedWorkflows: Set<string>;
     isSelectionMode?: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function WorkflowList({ workflows, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedWorkflows, isSelectionMode = false, onToggleSelect }: Props) {
+export default function WorkflowList({ workflows, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, onMoveToProject, selectedWorkflows, isSelectionMode = false, onToggleSelect }: Props) {
     if (workflows.length === 0) return null;
 
     return (
@@ -30,6 +31,7 @@ export default function WorkflowList({ workflows, viewMode = 'grid', onEdit, onD
                     onExport={onExport}
                     onStatusToggle={onStatusToggle}
                     onPreview={onPreview}
+                    onMoveToProject={onMoveToProject}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedWorkflows.has(workflow.id)}
                     onToggleSelect={onToggleSelect}

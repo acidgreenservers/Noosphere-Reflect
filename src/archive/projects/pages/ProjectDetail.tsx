@@ -1,13 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Project, SavedChatSession, ConversationArtifact } from '../../../types';
+import { Project, SavedChatSession, ConversationArtifact, Memory, Prompt, Skill, Workflow } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { ProjectMemoryModal } from '../components/ProjectMemoryModal';
 import { ProjectInstructionsModal } from '../components/ProjectInstructionsModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReaderLayer';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
-import { ChatSessionCard } from '../../chats/components/ChatSessionCard';
+
+type ProjectAssetType = 'chat' | 'memory' | 'prompt' | 'skill' | 'workflow';
+
+interface ProjectAsset {
+    id: string;
+    type: ProjectAssetType;
+    title: string;
+    description: string;
+    date: string;
+    original: any;
+}
 
 const ProjectDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -15,6 +25,12 @@ const ProjectDetail: React.FC = () => {
     
     const [project, setProject] = useState<Project | null>(null);
     const [sessions, setSessions] = useState<SavedChatSession[]>([]);
+    const [memories, setMemories] = useState<Memory[]>([]);
+    const [prompts, setPrompts] = useState<Prompt[]>([]);
+    const [skills, setSkills] = useState<Skill[]>([]);
+    const [workflows, setWorkflows] = useState<Workflow[]>([]);
+    const [activeFilter, setActiveFilter] = useState<'all' | ProjectAssetType>('all');
+    
     const [inputValue, setInputValue] = useState('');
     
     // Modals
@@ -24,12 +40,26 @@ const ProjectDetail: React.FC = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [artifactToDelete, setArtifactToDelete] = useState<string | null>(null);
 
-    // Artifact Reader
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
     const [readerWidth, setReaderWidth] = useState<number>(50);
     const [isDraggingReader, setIsDraggingReader] = useState(false);
 
+    const [activeMenuSessionId, setActiveMenuSessionId] = useState<string | null>(null);
+    const sessionMenuRef = useRef<HTMLDivElement>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (sessionMenuRef.current && !sessionMenuRef.current.contains(event.target as Node)) {
+                setActiveMenuSessionId(null);
+            }
+        };
+        if (activeMenuSessionId) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [activeMenuSessionId]);
 
     const loadProjectData = async () => {
         if (!id) return;
@@ -37,8 +67,18 @@ const ProjectDetail: React.FC = () => {
             const p = await storageService.getProjectById(id);
             if (p) {
                 setProject(p);
-                const s = await storageService.getSessionsByProjectId(id);
+                const [s, m, pr, sk, w] = await Promise.all([
+                    storageService.getSessionsByProjectId(id),
+                    storageService.getMemoriesByProjectId(id),
+                    storageService.getPromptsByProjectId(id),
+                    storageService.getSkillsByProjectId(id),
+                    storageService.getWorkflowsByProjectId(id)
+                ]);
                 setSessions(s);
+                setMemories(m);
+                setPrompts(pr);
+                setSkills(sk);
+                setWorkflows(w);
             } else {
                 navigate('/projects');
             }
@@ -164,6 +204,53 @@ const ProjectDetail: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
+    const handleRemoveAssetFromProject = async (e: React.MouseEvent, asset: ProjectAsset) => {
+        e.stopPropagation();
+        try {
+            if (asset.type === 'chat') {
+                const item = await storageService.getSessionById(asset.id);
+                if (item) { delete item.projectId; await storageService.saveSession(item); }
+            } else if (asset.type === 'memory') {
+                const item = await storageService.getMemoryById(asset.id);
+                if (item) { delete item.projectId; await storageService.updateMemory(item); }
+            } else if (asset.type === 'prompt') {
+                const item = await storageService.getPromptById(asset.id);
+                if (item) { delete item.projectId; await storageService.savePrompt(item); }
+            } else if (asset.type === 'skill') {
+                const item = await storageService.getSkillById(asset.id);
+                if (item) { delete item.projectId; await storageService.saveSkill(item); }
+            } else if (asset.type === 'workflow') {
+                const item = await storageService.getWorkflowById(asset.id);
+                if (item) { delete item.projectId; await storageService.saveWorkflow(item); }
+            }
+            await loadProjectData();
+        } catch (error) {
+            console.error('Failed to remove asset from project', error);
+        }
+        setActiveMenuSessionId(null);
+    };
+    
+    const handleViewAsset = (asset: ProjectAsset) => {
+        if (asset.type === 'chat') {
+            navigate(`/chat/${asset.id}`);
+        } else {
+            let fileData = '';
+            if (asset.type === 'memory') fileData = (asset.original as Memory).content;
+            else if (asset.type === 'prompt') fileData = (asset.original as Prompt).content;
+            else if (asset.type === 'skill') fileData = (asset.original as Skill).content;
+            else if (asset.type === 'workflow') fileData = (asset.original as Workflow).content;
+            
+            setViewingArtifact({
+                id: asset.id,
+                fileName: `${asset.title}.md`,
+                fileSize: fileData.length,
+                mimeType: 'text/markdown',
+                fileData,
+                uploadedAt: asset.date
+            });
+        }
+    };
+
     const confirmDeleteArtifact = async () => {
         if (!project || !artifactToDelete) return;
         const updatedProject = {
@@ -206,6 +293,43 @@ const ProjectDetail: React.FC = () => {
             } catch (error) {
                 console.error('Failed to download', error);
             }
+        }
+    };
+
+
+    // Aggregate assets
+    const allAssets: ProjectAsset[] = useMemo(() => {
+        const arr: ProjectAsset[] = [
+            ...sessions.map(s => ({ id: s.id, type: 'chat' as const, title: s.metadata?.title || s.chatTitle, description: s.inputContent, date: s.date, original: s })),
+            ...memories.map(m => ({ id: m.id, type: 'memory' as const, title: m.metadata.title, description: (m.metadata.notes || m.content).substring(0, 100), date: m.updatedAt, original: m })),
+            ...prompts.map(p => ({ id: p.id, type: 'prompt' as const, title: p.metadata.title, description: p.content.substring(0, 100), date: p.updatedAt, original: p })),
+            ...skills.map(s => ({ id: s.id, type: 'skill' as const, title: s.metadata.title, description: s.content.substring(0, 100), date: s.updatedAt, original: s })),
+            ...workflows.map(w => ({ id: w.id, type: 'workflow' as const, title: w.metadata.title, description: w.content.substring(0, 100), date: w.updatedAt, original: w }))
+        ];
+        return arr.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [sessions, memories, prompts, skills, workflows]);
+
+    const filteredAssets = useMemo(() => {
+        if (activeFilter === 'all') return allAssets;
+        return allAssets.filter(a => a.type === activeFilter);
+    }, [allAssets, activeFilter]);
+    
+    const assetCounts = {
+        all: allAssets.length,
+        chat: sessions.length,
+        memory: memories.length,
+        prompt: prompts.length,
+        skill: skills.length,
+        workflow: workflows.length
+    };
+    
+    const getTypeIcon = (type: ProjectAssetType) => {
+        switch(type) {
+            case 'chat': return '💬';
+            case 'memory': return '🧠';
+            case 'prompt': return '✨';
+            case 'skill': return '🛠️';
+            case 'workflow': return '⚡';
         }
     };
 
@@ -280,34 +404,99 @@ const ProjectDetail: React.FC = () => {
                             </button>
                         </div>
                     </form>
+                    
+                    {/* Cognitive Canvas Filter Bar */}
+                    <div className="flex items-center gap-6 mt-8 overflow-x-auto scrollbar-hide">
+                        <button 
+                            onClick={() => setActiveFilter('all')}
+                            className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'all' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}
+                        >
+                            All ({assetCounts.all})
+                        </button>
+                        {assetCounts.chat > 0 && (
+                            <button onClick={() => setActiveFilter('chat')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'chat' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                                Chats ({assetCounts.chat})
+                            </button>
+                        )}
+                        {assetCounts.memory > 0 && (
+                            <button onClick={() => setActiveFilter('memory')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'memory' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                                Memories ({assetCounts.memory})
+                            </button>
+                        )}
+                        {assetCounts.prompt > 0 && (
+                            <button onClick={() => setActiveFilter('prompt')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'prompt' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                                Prompts ({assetCounts.prompt})
+                            </button>
+                        )}
+                        {assetCounts.skill > 0 && (
+                            <button onClick={() => setActiveFilter('skill')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'skill' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                                Skills ({assetCounts.skill})
+                            </button>
+                        )}
+                        {assetCounts.workflow > 0 && (
+                            <button onClick={() => setActiveFilter('workflow')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'workflow' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                                Workflows ({assetCounts.workflow})
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4">Project Chats</h3>
-                    {sessions.length === 0 ? (
+                    {filteredAssets.length === 0 ? (
                         <div className="text-center py-10 text-gray-500 text-sm">
-                            No chats in this project yet. Start one above!
+                            No assets found. Start a chat or link an item from the archives!
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {sessions.map(session => (
+                            {filteredAssets.map(asset => (
                                 <div 
-                                    key={session.id} 
-                                    onClick={() => navigate(`/chat/${session.id}`)}
+                                    key={`${asset.type}-${asset.id}`}
+                                    onClick={() => handleViewAsset(asset)}
                                     className="bg-[#122622]/30 border border-green-500/10 hover:border-green-500/30 p-4 rounded-xl cursor-pointer transition-all hover:bg-[#122622]/50 group"
                                 >
-                                    <div className="flex items-start gap-3">
-                                        <div className="text-xl">💬</div>
+                                    <div className="flex items-start gap-3 relative">
+                                        <div className="text-xl">{getTypeIcon(asset.type)}</div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="text-sm font-bold text-gray-200 truncate group-hover:text-green-400 transition-colors">
-                                                {session.metadata?.title || session.chatTitle}
-                                            </h4>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-sm font-bold text-gray-200 truncate group-hover:text-green-400 transition-colors">
+                                                    {asset.title}
+                                                </h4>
+                                                <span className="text-[9px] font-bold tracking-widest uppercase bg-green-500/10 text-green-400 border border-green-500/20 rounded px-1.5 py-0.5">
+                                                    {asset.type}
+                                                </span>
+                                            </div>
                                             <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                                {session.inputContent}
+                                                {asset.description}
                                             </p>
                                         </div>
-                                        <div className="text-[10px] text-gray-600 font-mono whitespace-nowrap">
-                                            {new Date(session.date).toLocaleDateString()}
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-[10px] text-gray-600 font-mono whitespace-nowrap">
+                                                {new Date(asset.date).toLocaleDateString()}
+                                            </div>
+                                            <div className="relative" ref={activeMenuSessionId === asset.id ? sessionMenuRef : null}>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveMenuSessionId(activeMenuSessionId === asset.id ? null : asset.id);
+                                                    }}
+                                                    className="p-1 text-gray-400 hover:text-white rounded hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    ⋮
+                                                </button>
+                                                {activeMenuSessionId === asset.id && (
+                                                    <div 
+                                                        className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 py-1 w-44"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <button
+                                                            onClick={(e) => handleRemoveAssetFromProject(e, asset)}
+                                                            className="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2"
+                                                        >
+                                                            <span>📁</span> Remove from Project
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -456,6 +456,10 @@ export default function WorkflowArchive() {
                 onExport={handleExport}
                 onStatusToggle={handleStatusToggle}
                 onPreview={handleEditStart}
+                onMoveToProject={(workflow) => {
+                    setWorkflowToProjectMove(workflow.id);
+                    setProjectModalOpen(true);
+                }}
                 isSelectionMode={isSelectionMode}
                 selectedWorkflows={selectedWorkflows}
                 onToggleSelect={handleToggleSelect}
@@ -494,6 +498,22 @@ export default function WorkflowArchive() {
             totalFilteredItems={filteredWorkflows.length}
             itemsComponent={itemsComponent}
         >
+            <ProjectSelectionModal
+                isOpen={projectModalOpen}
+                onClose={() => {
+                    setProjectModalOpen(false);
+                    setWorkflowToProjectMove(null);
+                }}
+                onSelectProject={async (projectId) => {
+                    if (workflowToProjectMove) {
+                        await storageService.addWorkflowToProject(workflowToProjectMove, projectId);
+                        await loadWorkflows();
+                    }
+                    setProjectModalOpen(false);
+                    setWorkflowToProjectMove(null);
+                }}
+            />
+
             <ConfirmationModal
                 isOpen={deleteModalOpen}
                 title={deletingWorkflowId === 'batch' ? "Delete Selected Workflows" : "Delete Workflow"}

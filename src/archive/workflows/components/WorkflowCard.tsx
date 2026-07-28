@@ -10,11 +10,12 @@ interface Props {
     onDelete: (id: string) => void;
     onExport: (workflow: Workflow, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
     onPreview: (workflow: Workflow) => void;
+    onMoveToProject?: (workflow: Workflow) => void;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionMode = false, onEdit, onDelete, onExport, onPreview, isSelected, onToggleSelect }: Props) {
+export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionMode = false, onEdit, onDelete, onExport, onPreview, onMoveToProject, isSelected, onToggleSelect }: Props) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +70,18 @@ export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionM
             >
                 <span>✏️</span> Edit Workflow
             </button>
+            {onMoveToProject && (
+                <button
+                    onClick={(e) => {
+                        setIsMenuOpen(false);
+                        e.stopPropagation();
+                        onMoveToProject(workflow);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2 border-t border-gray-800"
+                >
+                    <span>📁</span> Move to Project
+                </button>
+            )}
                         {/* Export Menu */}
             <div className="relative group/export border-t border-gray-800">
                 <button className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex justify-between items-center">
@@ -153,6 +166,11 @@ export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionM
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0 pl-4 relative">
+                    {workflow.projectId && (
+                        <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded font-bold" title="In a project">
+                            Project
+                        </span>
+                    )}
                     {workflow.metadata.exportStatus === 'modified' && (
                         <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded" title={`Exported ${workflow.metadata.exportCount || 1} time(s)`}>
                             Modified
@@ -208,6 +226,11 @@ export default function WorkflowCard({ workflow, viewMode = 'grid', isSelectionM
                         <span className={`px-2 py-0.5 rounded border ${getCategoryColor(workflow.metadata.category || 'General')}`}>
                             {workflow.metadata.category || 'General'}
                         </span>
+                        {workflow.projectId && (
+                            <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded text-[10px] font-bold" title="In a project">
+                                Project
+                            </span>
+                        )}
                     </div>
                 </div>
 

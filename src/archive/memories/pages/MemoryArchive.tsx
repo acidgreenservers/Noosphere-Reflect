@@ -397,6 +397,10 @@ export default function MemoryArchive() {
             onDelete={handleDeleteMemory}
             onExport={handleExport}
             onStatusToggle={handleStatusToggle}
+            onMoveToProject={(memory) => {
+                setMemoryToProjectMove(memory.id);
+                setProjectModalOpen(true);
+            }}
             isSelectionMode={isSelectionMode}
             selectedMemories={selectedMemories}
             onToggleSelect={handleToggleSelect}

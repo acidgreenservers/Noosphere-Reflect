@@ -447,6 +447,10 @@ export default function PromptArchive() {
             onDelete={handleDeletePrompt}
             onExport={handleExport}
             onStatusToggle={handleStatusToggle}
+            onMoveToProject={(prompt) => {
+                setPromptToProjectMove(prompt.id);
+                setProjectModalOpen(true);
+            }}
             isSelectionMode={isSelectionMode}
             selectedPrompts={selectedPrompts}
             onToggleSelect={handleToggleSelect}
@@ -484,6 +488,22 @@ export default function PromptArchive() {
             totalFilteredItems={filteredPrompts.length}
             itemsComponent={itemsComponent}
         >
+            <ProjectSelectionModal
+                isOpen={projectModalOpen}
+                onClose={() => {
+                    setProjectModalOpen(false);
+                    setPromptToProjectMove(null);
+                }}
+                onSelectProject={async (projectId) => {
+                    if (promptToProjectMove) {
+                        await storageService.addPromptToProject(promptToProjectMove, projectId);
+                        await loadPrompts();
+                    }
+                    setProjectModalOpen(false);
+                    setPromptToProjectMove(null);
+                }}
+            />
+
             <ConfirmationModal
                 isOpen={deleteModalOpen}
                 title={deletingPromptId === 'batch' ? "Delete Selected Prompts" : "Delete Prompt"}

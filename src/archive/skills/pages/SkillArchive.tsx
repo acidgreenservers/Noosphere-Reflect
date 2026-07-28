@@ -456,6 +456,10 @@ export default function SkillArchive() {
                 onExport={handleExport}
                 onStatusToggle={handleStatusToggle}
                 onPreview={handleEditStart}
+                onMoveToProject={(skill) => {
+                    setSkillToProjectMove(skill.id);
+                    setProjectModalOpen(true);
+                }}
                 isSelectionMode={isSelectionMode}
                 selectedSkills={selectedSkills}
                 onToggleSelect={handleToggleSelect}
@@ -494,6 +498,22 @@ export default function SkillArchive() {
             totalFilteredItems={filteredSkills.length}
             itemsComponent={itemsComponent}
         >
+            <ProjectSelectionModal
+                isOpen={projectModalOpen}
+                onClose={() => {
+                    setProjectModalOpen(false);
+                    setSkillToProjectMove(null);
+                }}
+                onSelectProject={async (projectId) => {
+                    if (skillToProjectMove) {
+                        await storageService.addSkillToProject(skillToProjectMove, projectId);
+                        await loadSkills();
+                    }
+                    setProjectModalOpen(false);
+                    setSkillToProjectMove(null);
+                }}
+            />
+
             <ConfirmationModal
                 isOpen={deleteModalOpen}
                 title={deletingSkillId === 'batch' ? "Delete Selected Skills" : "Delete Skill"}

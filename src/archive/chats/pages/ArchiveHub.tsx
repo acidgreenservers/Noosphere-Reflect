@@ -21,7 +21,7 @@ import { ChatSessionCard } from '../components';
 import { useExtensionBridge } from '../hooks/useExtensionBridge';
 import { useArchiveSearch } from '../hooks/useArchiveSearch';
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
-import { MoveToProjectModal } from '../../projects/components/MoveToProjectModal';
+import { ProjectSelectionModal } from '../../../components/ProjectSelectionModal';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 
@@ -1217,28 +1217,7 @@ const ArchiveHub: React.FC = () => {
         navigate(`/converter?load=${sessionId}&msg=${messageIndex}`);
     };
 
-    const handleMoveToProject = async (projectId: string | null) => {
-        const idsToMove = movingSessionId ? [movingSessionId] : Array.from(selectedIds);
-        
-        for (const id of idsToMove) {
-            const fullSession = await storageService.getSessionById(id);
-            if (fullSession) {
-                if (projectId) {
-                    fullSession.projectId = projectId;
-                } else {
-                    delete fullSession.projectId;
-                }
-                await storageService.saveSession(fullSession);
-            }
-        }
-        
-        await loadSessions();
-        if (!movingSessionId) {
-            setIsSelectionMode(false);
-            setSelectedIds(new Set());
-        }
-        setMovingSessionId(null);
-    };
+
 
     const itemsComponent = isLoading ? (
         <div className="col-span-full py-20 text-center">
@@ -1457,10 +1436,31 @@ const ArchiveHub: React.FC = () => {
                 isImporting={isImportingFromDrive}
             />
 
-            <MoveToProjectModal
+            <ProjectSelectionModal
                 isOpen={isMoveToProjectModalOpen}
-                onClose={() => setIsMoveToProjectModalOpen(false)}
-                onMove={handleMoveToProject}
+                onClose={() => {
+                    setIsMoveToProjectModalOpen(false);
+                    setMovingSessionId(null);
+                }}
+                onSelectProject={async (projectId) => {
+                    const idsToMove = movingSessionId ? [movingSessionId] : Array.from(selectedIds);
+                    
+                    for (const id of idsToMove) {
+                        const fullSession = await storageService.getSessionById(id);
+                        if (fullSession) {
+                            fullSession.projectId = projectId;
+                            await storageService.saveSession(fullSession);
+                        }
+                    }
+                    
+                    await loadSessions();
+                    if (!movingSessionId) {
+                        setIsSelectionMode(false);
+                        setSelectedIds(new Set());
+                    }
+                    setIsMoveToProjectModalOpen(false);
+                    setMovingSessionId(null);
+                }}
             />
 
             <ConfirmationModal

@@ -9,12 +9,13 @@ interface Props {
     onDelete: (id: string) => void;
     onExport: (prompt: Prompt, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
     onStatusToggle: (prompt: Prompt, e: React.MouseEvent) => void;
+    onMoveToProject?: (prompt: Prompt) => void;
     selectedPrompts: Set<string>;
     isSelectionMode?: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function PromptList({ prompts, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, selectedPrompts, isSelectionMode = false, onToggleSelect }: Props) {
+export default function PromptList({ prompts, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onMoveToProject, selectedPrompts, isSelectionMode = false, onToggleSelect }: Props) {
     if (prompts.length === 0) return null;
 
     return (
@@ -28,6 +29,7 @@ export default function PromptList({ prompts, viewMode = 'grid', onEdit, onDelet
                     onDelete={onDelete}
                     onExport={onExport}
                     onStatusToggle={onStatusToggle}
+                    onMoveToProject={onMoveToProject}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedPrompts.has(prompt.id)}
                     onToggleSelect={onToggleSelect}
