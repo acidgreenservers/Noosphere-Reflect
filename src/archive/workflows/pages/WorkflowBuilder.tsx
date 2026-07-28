@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Workflow, AppSettings, DEFAULT_SETTINGS } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
@@ -226,12 +226,13 @@ export default function WorkflowBuilder() {
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showClearModal, setShowClearModal] = useState(false);
+    const { id: urlId } = useParams<{ id: string }>();
 
     const compiledMarkdown = useMemo(() => generateWorkflowMarkdown(state), [state]);
 
     useEffect(() => {
         const loadWorkflow = async () => {
-            const workflowId = location.state?.workflowId;
+            const workflowId = urlId || location.state?.workflowId;
             if (workflowId) {
                 const workflow = await storageService.getWorkflowById(workflowId);
                 if (workflow) {
@@ -243,7 +244,7 @@ export default function WorkflowBuilder() {
             setIsLoading(false);
         };
         loadWorkflow();
-    }, [location.state]);
+    }, [urlId, location.state]);
 
     const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
         setToast({ message, type });
@@ -287,7 +288,7 @@ export default function WorkflowBuilder() {
                 setExistingId(workflow.id);
                 setOriginalWorkflow(workflow);
                 showToast('Workflow created successfully!', 'success');
-                window.history.replaceState({ ...window.history.state, usr: { workflowId: workflow.id } }, '');
+                navigate(`/workflows/builder/${workflow.id}`, { replace: true });
             }
             setTimeout(() => navigate('/workflows'), 1000);
         } catch (error) {

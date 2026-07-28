@@ -8,6 +8,7 @@ import {
     DataManagement,
     CloudSync,
     UserPreferences,
+    ChatPreferences,
     FileNamingFormat,
     ExportPreferences,
 } from '../settings/components';
@@ -22,7 +23,7 @@ interface SettingsMenuProps {
 
 export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, settings, onSave }) => {
     const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
-    const [activeTab, setActiveTab] = useState<'preferences' | 'naming' | 'export' | 'sync' | 'data'>('preferences');
+    const [activeTab, setActiveTab] = useState<'preferences' | 'chat' | 'naming' | 'export' | 'sync' | 'data'>('preferences');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -178,6 +179,16 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 👤 Preferences
                             </button>
                             <button
+                                onClick={() => setActiveTab('chat')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
+                                    activeTab === 'chat'
+                                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                        : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                                }`}
+                            >
+                                💬 Chat
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('naming')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'naming'
@@ -242,6 +253,13 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold text-green-400">User Preferences</h3>
                                 <UserPreferences settings={localSettings} onSettingsChange={setLocalSettings} />
+                            </div>
+                        )}
+
+                        {activeTab === 'chat' && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold text-green-400">Chat Settings</h3>
+                                <ChatPreferences settings={localSettings} onSettingsChange={setLocalSettings} />
                             </div>
                         )}
 

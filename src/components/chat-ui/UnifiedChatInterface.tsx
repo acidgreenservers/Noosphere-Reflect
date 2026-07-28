@@ -3,7 +3,7 @@ import { isSupportedByReader } from '../ArtifactReader/utils';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
-import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ParserMode } from '../../types';
+import { SavedChatSession, ChatMessage, ChatMessageType, ConversationArtifact, Memory, Prompt, Skill, ChatTheme, ParserMode, AppSettings, DEFAULT_SETTINGS } from '../../types';
 import logo from '../../assets/logo.png';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
@@ -13,6 +13,7 @@ const ChatMessageBubble = React.memo(({
     msg, 
     index, 
     aiName, 
+    isLastMessage,
     onCopyText, 
     onForkChat, 
     onSaveMemory, 
@@ -26,6 +27,7 @@ const ChatMessageBubble = React.memo(({
     msg: ChatMessage; 
     index: number; 
     aiName: string; 
+    isLastMessage: boolean;
     onCopyText: (text: string) => void; 
     onForkChat: (index: number) => void; 
     onSaveMemory: (msg: ChatMessage) => void; 
@@ -40,10 +42,16 @@ const ChatMessageBubble = React.memo(({
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(msg.content);
     const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
+    const [isMessageExpanded, setIsMessageExpanded] = useState(false);
+    const editRef = useRef<HTMLDivElement>(null);
     
     // Detect and extract Exporter Attribution
     let displayContent = msg.content;
     let attributionBadge = null;
+    
+    const wordCount = displayContent.split(/\s+/).filter(Boolean).length;
+    const isShort = wordCount <= 4;
+    const isLongMessage = isUser && (wordCount > 150 || displayContent.length > 500);
     
     // Matches variations:
     // Powered by Gemini Exporter (https://www.ai-chat-exporter.com)
@@ -53,22 +61,38 @@ const ChatMessageBubble = React.memo(({
     
     if (match) {
         attributionBadge = match[1];
-        // Remove the attribution and clean up any trailing dashes (e.g. from markdown horizontal rules) or whitespace
         displayContent = displayContent.replace(attributionRegex, '').replace(/-+\s*$/, '').trim();
     }
 
-    // Sync edit content when message content changes externally
     useEffect(() => {
         setEditContent(displayContent);
+        setIsMessageExpanded(false);
     }, [displayContent]);
 
-    return (
-        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-            {/* Message Bubble Header (Meta) */}
-            <div className="flex items-center gap-2 mb-1.5 px-2 text-[10px] font-mono text-gray-500">
-                <span>{isUser ? '👤 You' : `🤖 ${aiName}`}</span>
-            </div>
+    useEffect(() => {
+        if (isEditing && editRef.current) {
+            editRef.current.textContent = editContent;
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(editRef.current);
+            range.collapse(false);
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+    }, [isEditing]);
 
+    const handleEditInput = () => {
+        if (editRef.current) {
+            setEditContent(editRef.current.textContent || '');
+        }
+    };
+
+    const btnBase = isShort
+        ? 'w-6 h-6 rounded-lg flex items-center justify-center text-[10px] transition-all'
+        : 'px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all flex items-center gap-1.5';
+
+    return (
+        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} group`}>
             {/* Render associated artifacts/attachments ABOVE the bubble */}
             {msg.artifacts && msg.artifacts.length > 0 && (
                 <div className="w-full max-w-xl flex flex-wrap gap-2 mb-2">
@@ -87,122 +111,252 @@ const ChatMessageBubble = React.memo(({
                 </div>
             )}
 
-            {/* Message Turn Bubble */}
-            <div
-                className={`w-full max-w-2xl px-5 py-4 rounded-3xl text-sm leading-relaxed border shadow-sm transition-all ${
-                    isUser
-                        ? 'bg-[#122622]/60 border-blue-500/15 text-blue-100 rounded-tr-sm'
-                        : 'bg-[#1a211d]/40 border-green-500/10 text-green-100 rounded-tl-sm'
-                }`}
-            >
-                {isEditing ? (
-                    <div className="flex flex-col gap-3">
-                        <textarea
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            className="w-full bg-[#09100c]/50 border border-green-500/20 rounded-xl p-3 text-sm text-gray-200 focus:outline-none focus:border-green-500/50 min-h-[150px] font-mono resize-y"
-                            placeholder="Edit message..."
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button 
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setIsEditing(false);
-                                    setEditContent(displayContent);
-                                }}
-                                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onEditMessage(index, editContent);
-                                    setIsEditing(false);
-                                }}
-                                className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors font-medium cursor-pointer"
-                            >
-                                Save Changes
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
-                )}
+            {/* Message Bubble Header (Meta) */}
+            <div className="flex items-center gap-2 mb-1.5 text-[10px] font-mono text-gray-500">
+                <span>{isUser ? '👤 You' : `🤖 ${aiName}`}</span>
             </div>
 
-            {/* Interactive Actions Row under the bubble */}
-            {!isEditing && (
-                <div className={`mt-2 w-full max-w-2xl flex flex-wrap items-center gap-2 text-[10px] font-mono select-none ${isUser ? 'justify-end' : 'justify-start'}`}>
-                    <button
-                        onClick={() => onCopyText(displayContent)}
-                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 border border-white/10 rounded-full transition-all flex items-center gap-1 shadow-sm"
-                        title="Copy message contents"
-                    >
-                        📋 Copy
-                    </button>
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        className="px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20 rounded-full transition-all flex items-center gap-1 shadow-sm"
-                        title="Edit message contents"
-                    >
-                        ✏️ Edit
-                    </button>
-                    <button
-                        onClick={() => onForkChat(index)}
-                        className="px-2.5 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 border border-green-500/20 rounded-full transition-all flex items-center gap-1 shadow-sm"
-                        title="Fork conversation from this message"
-                    >
-                        🌿 Fork
-                    </button>
-
-                    {/* Extraction / Saving Options */}
-                    <div className="relative group flex items-center">
-                        <span className="text-gray-700 mx-1">|</span>
-                        <button
-                            onClick={() => setIsSaveMenuOpen(!isSaveMenuOpen)}
-                            className="px-2.5 py-1 bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 hover:text-gray-300 border border-gray-500/20 rounded-full transition-all flex items-center gap-1 shadow-sm"
-                            title="Save this message as an artifact"
-                        >
-                            📥 Save As...
-                        </button>
-                        
-                        {isSaveMenuOpen && (
-                            <>
-                                <div className="fixed inset-0 z-[90]" onClick={() => setIsSaveMenuOpen(false)} />
-                                <div className={`absolute bottom-full mb-2 w-36 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5 ${isUser ? 'right-0' : 'left-8'}`}>
-                                    <button
-                                        onClick={() => { onSaveMemory(msg); setIsSaveMenuOpen(false); }}
-                                        className="w-full text-left px-3 py-1.5 text-[11px] text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 transition-colors flex items-center gap-2"
+            {/* User Message: Tight Blue Bubble */}
+            {isUser ? (
+                <div className="w-fit max-w-[65ch]">
+                    <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words">
+                        {isEditing ? (
+                            <div className="flex flex-col gap-3">
+                                <div
+                                    key={`edit-${isEditing}`}
+                                    ref={editRef}
+                                    contentEditable
+                                    onInput={handleEditInput}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Escape') {
+                                            setIsEditing(false);
+                                            setEditContent(displayContent);
+                                        }
+                                    }}
+                                    className="w-full bg-[#09100c]/50 border border-blue-500/20 rounded-xl p-3 text-sm text-gray-200 focus:outline-none focus:border-blue-500/50 min-h-[60px] font-mono whitespace-pre-wrap break-words"
+                                    suppressContentEditableWarning
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button 
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setIsEditing(false);
+                                            setEditContent(displayContent);
+                                        }}
+                                        className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
                                     >
-                                        🧠 Memory
+                                        Cancel
                                     </button>
-                                    <button
-                                        onClick={() => { onSavePrompt(msg); setIsSaveMenuOpen(false); }}
-                                        className="w-full text-left px-3 py-1.5 text-[11px] text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition-colors flex items-center gap-2"
+                                    <button 
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onEditMessage(index, editContent);
+                                            setIsEditing(false);
+                                        }}
+                                        className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors font-medium cursor-pointer"
                                     >
-                                        💡 Prompt
-                                    </button>
-                                    <button
-                                        onClick={() => { onSaveSkill(msg); setIsSaveMenuOpen(false); }}
-                                        className="w-full text-left px-3 py-1.5 text-[11px] text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center gap-2"
-                                    >
-                                        ⚡ Skill
-                                    </button>
-                                    <button
-                                        onClick={() => { onSaveWorkflow(msg); setIsSaveMenuOpen(false); }}
-                                        className="w-full text-left px-3 py-1.5 text-[11px] text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 transition-colors flex items-center gap-2"
-                                    >
-                                        🔄 Workflow
+                                        Save Changes
                                     </button>
                                 </div>
-                            </>
+                            </div>
+                        ) : (
+                            <div className={`transition-all duration-300 overflow-hidden ${isLongMessage && !isMessageExpanded ? 'max-h-[200px] relative' : ''}`}>
+                                {isLongMessage && !isMessageExpanded && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-blue-950/30 to-transparent z-10 pointer-events-none" />
+                                )}
+                                <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
+                                {isLongMessage && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsMessageExpanded(!isMessageExpanded)}
+                                        className="mt-1 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                                    >
+                                        {isMessageExpanded ? 'Show Less' : 'Show More'}
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
+
+                    {/* Actions — always visible on last message, hover on others */}
+                    {!isEditing && (
+                        <div className={`mt-1.5 flex items-center gap-1 ${isLastMessage ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity duration-150`}>
+                            <button
+                                onClick={() => onCopyText(displayContent)}
+                                className={`${btnBase} bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 border border-white/10`}
+                                title="Copy"
+                            >{isShort ? '📋' : '📋 Copy'}</button>
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className={`${btnBase} bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20`}
+                                title="Edit"
+                            >{isShort ? '✏️' : '✏️ Edit'}</button>
+                            <button
+                                onClick={() => onForkChat(index)}
+                                className={`${btnBase} bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 border border-green-500/20`}
+                                title="Fork"
+                            >{isShort ? '🌿' : '🌿 Fork'}</button>
+
+                            {/* Save As */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsSaveMenuOpen(!isSaveMenuOpen)}
+                                    className={`${btnBase} bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 hover:text-gray-300 border border-gray-500/20`}
+                                    title="Save As"
+                                >{isShort ? '📥' : '📥 Save'}</button>
+                                
+                                {isSaveMenuOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsSaveMenuOpen(false)} />
+                                        <div className="absolute bottom-full mb-1 left-0 w-36 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5">
+                                            <button
+                                                onClick={() => { onSaveMemory(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🧠 Memory
+                                            </button>
+                                            <button
+                                                onClick={() => { onSavePrompt(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition-colors flex items-center gap-2"
+                                            >
+                                                💡 Prompt
+                                            </button>
+                                            <button
+                                                onClick={() => { onSaveSkill(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-colors flex items-center gap-2"
+                                            >
+                                                ⚡ Skill
+                                            </button>
+                                            <button
+                                                onClick={() => { onSaveWorkflow(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🔄 Workflow
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                /* AI Message: No Bubble, Raw Text */
+                <div className="w-[65ch] max-w-full break-words">
+                    {isEditing ? (
+                        <div className="flex flex-col gap-3">
+                            <div
+                                key={`edit-${isEditing}`}
+                                ref={editRef}
+                                contentEditable
+                                onInput={handleEditInput}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Escape') {
+                                        setIsEditing(false);
+                                        setEditContent(displayContent);
+                                    }
+                                }}
+                                className="w-full bg-[#09100c]/50 border border-green-500/20 rounded-xl p-3 text-sm text-gray-200 focus:outline-none focus:border-green-500/50 min-h-[60px] font-mono whitespace-pre-wrap break-words"
+                                suppressContentEditableWarning
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setIsEditing(false);
+                                        setEditContent(displayContent);
+                                    }}
+                                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onEditMessage(index, editContent);
+                                        setIsEditing(false);
+                                    }}
+                                    className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors font-medium cursor-pointer"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-sm leading-relaxed text-gray-100">
+                                <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
+                            </div>
+                    )}
+
+                    {/* Actions — always visible on last message, hover on others */}
+                    {!isEditing && (
+                        <div className={`mt-1.5 flex items-center gap-1 ${isLastMessage ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity duration-150`}>
+                            <button
+                                onClick={() => onCopyText(displayContent)}
+                                className={`${btnBase} bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 border border-white/10`}
+                                title="Copy"
+                            >{isShort ? '📋' : '📋 Copy'}</button>
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className={`${btnBase} bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20`}
+                                title="Edit"
+                            >{isShort ? '✏️' : '✏️ Edit'}</button>
+                            <button
+                                onClick={() => onForkChat(index)}
+                                className={`${btnBase} bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 border border-green-500/20`}
+                                title="Fork"
+                            >{isShort ? '🌿' : '🌿 Fork'}</button>
+
+                            {/* Save As */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsSaveMenuOpen(!isSaveMenuOpen)}
+                                    className={`${btnBase} bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 hover:text-gray-300 border border-gray-500/20`}
+                                    title="Save As"
+                                >{isShort ? '📥' : '📥 Save'}</button>
+                                
+                                {isSaveMenuOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsSaveMenuOpen(false)} />
+                                        <div className="absolute bottom-full mb-1 left-0 w-36 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5">
+                                            <button
+                                                onClick={() => { onSaveMemory(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🧠 Memory
+                                            </button>
+                                            <button
+                                                onClick={() => { onSavePrompt(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition-colors flex items-center gap-2"
+                                            >
+                                                💡 Prompt
+                                            </button>
+                                            <button
+                                                onClick={() => { onSaveSkill(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-colors flex items-center gap-2"
+                                            >
+                                                ⚡ Skill
+                                            </button>
+                                            <button
+                                                onClick={() => { onSaveWorkflow(msg); setIsSaveMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🔄 Workflow
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -265,6 +419,8 @@ export default function UnifiedChatInterface() {
 
     // Notification banner state
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+    const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -326,6 +482,17 @@ export default function UnifiedChatInterface() {
             scrollToBottom();
         }
     }, [messages, currentRole, searchParams]);
+
+    useEffect(() => {
+        const loadSettings = async () => {
+            const settings = await storageService.getSettings();
+            setAppSettings(settings);
+        };
+        loadSettings();
+        const handleSettingsUpdated = () => loadSettings();
+        window.addEventListener('settingsUpdated', handleSettingsUpdated);
+        return () => window.removeEventListener('settingsUpdated', handleSettingsUpdated);
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -916,6 +1083,7 @@ export default function UnifiedChatInterface() {
                             <ChatMessageBubble 
                                 msg={msg}
                                 index={index}
+                                isLastMessage={index === messages.length - 1}
                                 aiName={session?.aiName || 'AI'}
                                 onCopyText={handleCopyText}
                                 onForkChat={handleForkChat}
@@ -1053,21 +1221,45 @@ export default function UnifiedChatInterface() {
                     </div>
 
                     {/* Input box styled according to active turn */}
-                    <form
-                        onSubmit={handleSendMessage}
-                        className={`w-full bg-[#122622]/40 border rounded-3xl p-3 flex flex-col gap-2.5 focus-within:shadow-md transition-all ${
+                    <div
+                        className={`w-full bg-[#122622]/40 border rounded-3xl p-3 flex flex-col gap-2.5 focus-within:shadow-md transition-all relative ${
                             currentRole === 'prompt'
                                 ? 'border-blue-500/30 focus-within:border-blue-500 shadow-blue-900/10'
                                 : 'border-green-500/30 focus-within:border-green-500 shadow-green-900/10'
                         }`}
                     >
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="absolute top-3 right-3 text-gray-500 hover:text-blue-400 transition-colors p-1"
+                            title={isExpanded ? "Collapse" : "Full Screen"}
+                        >
+                            {isExpanded ? (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 14h6m0 0v6m0-6l-7 7m17-11h-6m0 0V4m0 6l7-7" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                            )}
+                        </button>
                         <textarea
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSendMessage();
+                                if (e.key === 'Enter') {
+                                    if (appSettings.chatSendShortcut === 'ctrl-enter') {
+                                        if (e.ctrlKey || e.metaKey) {
+                                            e.preventDefault();
+                                            handleSendMessage();
+                                        }
+                                    } else {
+                                        if (!e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendMessage();
+                                        }
+                                    }
                                 }
                             }}
                             placeholder={
@@ -1075,7 +1267,9 @@ export default function UnifiedChatInterface() {
                                     ? "Message Noosphere..."
                                     : "Waiting for model response (Paste AI message here)..."
                             }
-                            className="w-full bg-transparent resize-none outline-none border-none text-xs text-gray-100 placeholder-gray-500 min-h-[50px] pr-12 scrollbar-none"
+                            className={`w-full bg-transparent resize-none outline-none border-none text-xs text-gray-100 placeholder-gray-500 pr-12 scrollbar-none transition-all duration-300 ${
+                                isExpanded ? "min-h-[50vh]" : "min-h-[50px]"
+                            }`}
                         />
 
                         {/* Actions Row */}
@@ -1197,7 +1391,8 @@ export default function UnifiedChatInterface() {
 
                             {/* Submit Button */}
                             <button
-                                type="submit"
+                                type="button"
+                                onClick={() => handleSendMessage()}
                                 disabled={!inputValue.trim() && attachedFiles.length === 0}
                                 className={`w-8 h-8 rounded-xl flex items-center justify-center text-white transition-all shadow-md active:scale-95 shrink-0 ${
                                     currentRole === 'prompt' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-green-600 hover:bg-green-500'
@@ -1210,7 +1405,7 @@ export default function UnifiedChatInterface() {
                             </button>
                             </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
             )}
@@ -1222,6 +1417,14 @@ export default function UnifiedChatInterface() {
                 onChange={handleFileChange}
                 className="hidden"
                 accept="*/*"
+            />
+
+            <ArtifactReaderLayer
+                artifact={viewingArtifact}
+                onClose={() => setViewingArtifact(null)}
+                width={readerWidth}
+                onWidthChange={setReaderWidth}
+                onCopyChat={() => {}}
             />
         </div>
     );

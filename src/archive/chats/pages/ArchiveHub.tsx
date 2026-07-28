@@ -1184,6 +1184,7 @@ const ArchiveHub: React.FC = () => {
     const handleSaveSettings = async (newSettings: AppSettings) => {
         await storageService.saveSettings(newSettings);
         setAppSettings(newSettings);
+        window.dispatchEvent(new Event('settingsUpdated'));
     };
 
     const areAllSelected = filteredSessions.length > 0 && filteredSessions.every(s => selectedIds.has(s.id));

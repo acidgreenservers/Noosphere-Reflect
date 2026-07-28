@@ -550,7 +550,7 @@ class StorageService {
     }
 
     async getWorkflowById(id: string): Promise<Workflow | undefined> {
-        return workflowStore.get(id);
+        return workflowStore.getById(id);
     }
 
     async updateWorkflow(workflow: Workflow): Promise<void> {

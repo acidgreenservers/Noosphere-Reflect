@@ -22,6 +22,10 @@ export const NewChatView: React.FC = () => {
             }
         };
         loadSettings();
+
+        const handleSettingsUpdated = () => loadSettings();
+        window.addEventListener('settingsUpdated', handleSettingsUpdated);
+        return () => window.removeEventListener('settingsUpdated', handleSettingsUpdated);
     }, []);
 
     const models = [
@@ -94,15 +98,17 @@ export const NewChatView: React.FC = () => {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (appSettings.chatSendShortcut === 'ctrl-enter') {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                handleSubmit();
-            }
-        } else {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
+        if (e.key === 'Enter') {
+            if (appSettings.chatSendShortcut === 'ctrl-enter') {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                }
+            } else {
+                if (!e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                }
             }
         }
     };
@@ -131,8 +137,7 @@ export const NewChatView: React.FC = () => {
 
 
                 {/* Main Prominent Chatbox */}
-                <form
-                    onSubmit={handleSubmit}
+                <div
                     className="w-full bg-[#122622]/40 border border-blue-500/30 rounded-3xl p-4 flex flex-col gap-3 focus-within:border-blue-500 focus-within:shadow-[0_0_25px_rgba(59,130,246,0.15)] transition-all relative"
                 >
                     {/* Expand/Collapse Button */}
@@ -220,7 +225,8 @@ export const NewChatView: React.FC = () => {
 
                         {/* Submit Button */}
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={() => handleSubmit()}
                             disabled={!inputValue.trim()}
                             className="w-9 h-9 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all shadow-md active:scale-95 shrink-0"
                             title="Start New Chat Session"
@@ -231,7 +237,7 @@ export const NewChatView: React.FC = () => {
                         </button>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
 
             {/* Quick Tips Column */}

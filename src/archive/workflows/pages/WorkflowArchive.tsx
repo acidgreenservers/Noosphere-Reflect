@@ -171,7 +171,7 @@ export default function WorkflowArchive() {
     };
 
     const handleEditStart = (workflow: Workflow) => {
-        navigate('/workflows/builder', { state: { workflowId: workflow.id } });
+        navigate(`/workflows/builder/${workflow.id}`);
     };
 
     const handleDeleteWorkflow = (id: string) => {

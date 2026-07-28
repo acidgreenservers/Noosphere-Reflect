@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Project, SavedChatSession, ConversationArtifact, Memory, Prompt, Skill, Workflow } from '../../../types';
+import { Project, SavedChatSession, ConversationArtifact, Memory, Prompt, Skill, Workflow, AppSettings, DEFAULT_SETTINGS } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { ProjectMemoryModal } from '../components/ProjectMemoryModal';
 import { ProjectInstructionsModal } from '../components/ProjectInstructionsModal';
@@ -33,6 +33,8 @@ const ProjectDetail: React.FC = () => {
     const [activeFilter, setActiveFilter] = useState<'all' | ProjectAssetType>('all');
     
     const [inputValue, setInputValue] = useState('');
+    const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+    const [isExpanded, setIsExpanded] = useState(false);
     
     // Modals
     const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false);
@@ -93,13 +95,24 @@ const ProjectDetail: React.FC = () => {
         loadProjectData();
     }, [id]);
 
+    useEffect(() => {
+        const loadSettings = async () => {
+            const settings = await storageService.getSettings();
+            setAppSettings(settings);
+        };
+        loadSettings();
+        const handleSettingsUpdated = () => loadSettings();
+        window.addEventListener('settingsUpdated', handleSettingsUpdated);
+        return () => window.removeEventListener('settingsUpdated', handleSettingsUpdated);
+    }, []);
+
     const handleSaveProject = async (updatedProject: Project) => {
         await storageService.saveProject(updatedProject);
         setProject(updatedProject);
     };
 
-    const handleStartChat = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleStartChat = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!inputValue.trim() || !project) return;
         
         // This mirrors NewChatView's logic but sets projectId
@@ -395,29 +408,57 @@ const ProjectDetail: React.FC = () => {
             <div className="flex-1 border-r border-green-500/10 flex flex-col bg-[#122622]/20">
                 <div className="p-8 border-b border-green-500/10 bg-[#0e1511]">
                     <h2 className="text-2xl font-bold text-white mb-6">How can I help you today?</h2>
-                    <form onSubmit={handleStartChat} className="relative">
+                    <div className="relative bg-[#122622]/40 border border-green-500/20 rounded-2xl p-4">
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="absolute top-3 right-3 text-gray-500 hover:text-green-400 transition-colors p-1"
+                            title={isExpanded ? "Collapse" : "Full Screen"}
+                        >
+                            {isExpanded ? (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 14h6m0 0v6m0-6l-7 7m17-11h-6m0 0V4m0 6l7-7" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                            )}
+                        </button>
                         <textarea
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             placeholder="Type a message to start a new chat in this project..."
-                            className="w-full bg-[#122622]/40 border border-green-500/20 rounded-2xl p-4 text-gray-100 focus:outline-none focus:border-green-500/50 resize-none h-32 text-sm shadow-inner"
+                            className={`w-full bg-transparent outline-none border-none text-gray-100 placeholder-gray-500 resize-none text-sm transition-all duration-300 ${
+                                isExpanded ? "min-h-[50vh]" : "h-32"
+                            }`}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleStartChat(e);
+                                if (e.key === 'Enter') {
+                                    if (appSettings.chatSendShortcut === 'ctrl-enter') {
+                                        if (e.ctrlKey || e.metaKey) {
+                                            e.preventDefault();
+                                            handleStartChat();
+                                        }
+                                    } else {
+                                        if (!e.shiftKey) {
+                                            e.preventDefault();
+                                            handleStartChat();
+                                        }
+                                    }
                                 }
                             }}
                         />
-                        <div className="absolute bottom-4 right-4">
+                        <div className="flex justify-end pt-3">
                             <button
-                                type="submit"
+                                type="button"
+                                onClick={() => handleStartChat()}
                                 disabled={!inputValue.trim()}
                                 className="px-4 py-2 bg-green-500 hover:bg-green-400 disabled:bg-gray-700 text-[#09100c] disabled:text-gray-400 rounded-xl text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] disabled:shadow-none"
                             >
                                 Start Chat
                             </button>
                         </div>
-                    </form>
+                    </div>
                     
                     {/* Cognitive Canvas Filter Bar */}
                     <div className="flex items-center gap-6 mt-8 overflow-x-auto scrollbar-hide">

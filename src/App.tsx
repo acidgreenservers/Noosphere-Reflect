@@ -37,7 +37,7 @@ function App() {
         <Route path="/skills" element={<AppShell><SkillArchive /></AppShell>} />
         <Route path="/skills/workshop" element={<AppShell><SkillWorkshop /></AppShell>} />
         <Route path="/workflows" element={<AppShell><WorkflowArchive /></AppShell>} />
-        <Route path="/workflows/builder" element={<AppShell><WorkflowBuilder /></AppShell>} />
+        <Route path="/workflows/builder/:id?" element={<AppShell><WorkflowBuilder /></AppShell>} />
         <Route path="/changelog" element={<AppShell><Changelog /></AppShell>} />
         <Route path="/features" element={<AppShell><Features /></AppShell>} />
       </Routes>
