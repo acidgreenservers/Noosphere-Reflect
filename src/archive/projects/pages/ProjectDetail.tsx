@@ -313,6 +313,10 @@ const ProjectDetail: React.FC = () => {
         if (activeFilter === 'all') return allAssets;
         return allAssets.filter(a => a.type === activeFilter);
     }, [allAssets, activeFilter]);
+
+    const linkedNonChatAssets = useMemo(() => {
+        return allAssets.filter(a => a.type !== 'chat');
+    }, [allAssets]);
     
     const assetCounts = {
         all: allAssets.length,
@@ -330,6 +334,16 @@ const ProjectDetail: React.FC = () => {
             case 'prompt': return '✨';
             case 'skill': return '🛠️';
             case 'workflow': return '⚡';
+        }
+    };
+
+    const getTypeColor = (type: ProjectAssetType) => {
+        switch(type) {
+            case 'chat': return { text: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20', hoverText: 'group-hover:text-green-400', hoverBorder: 'hover:border-green-500/30' };
+            case 'memory': return { text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', hoverText: 'group-hover:text-purple-400', hoverBorder: 'hover:border-purple-500/30' };
+            case 'prompt': return { text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', hoverText: 'group-hover:text-blue-400', hoverBorder: 'hover:border-blue-500/30' };
+            case 'skill': return { text: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', hoverText: 'group-hover:text-cyan-400', hoverBorder: 'hover:border-cyan-500/30' };
+            case 'workflow': return { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', hoverText: 'group-hover:text-orange-400', hoverBorder: 'hover:border-orange-500/30' };
         }
     };
 
@@ -414,27 +428,27 @@ const ProjectDetail: React.FC = () => {
                             All ({assetCounts.all})
                         </button>
                         {assetCounts.chat > 0 && (
-                            <button onClick={() => setActiveFilter('chat')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'chat' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                            <button onClick={() => setActiveFilter('chat')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'chat' ? 'text-green-400' : 'text-gray-500 hover:text-green-400'}`}>
                                 Chats ({assetCounts.chat})
                             </button>
                         )}
                         {assetCounts.memory > 0 && (
-                            <button onClick={() => setActiveFilter('memory')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'memory' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                            <button onClick={() => setActiveFilter('memory')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'memory' ? 'text-purple-400' : 'text-gray-500 hover:text-purple-400'}`}>
                                 Memories ({assetCounts.memory})
                             </button>
                         )}
                         {assetCounts.prompt > 0 && (
-                            <button onClick={() => setActiveFilter('prompt')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'prompt' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                            <button onClick={() => setActiveFilter('prompt')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'prompt' ? 'text-blue-400' : 'text-gray-500 hover:text-blue-400'}`}>
                                 Prompts ({assetCounts.prompt})
                             </button>
                         )}
                         {assetCounts.skill > 0 && (
-                            <button onClick={() => setActiveFilter('skill')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'skill' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                            <button onClick={() => setActiveFilter('skill')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'skill' ? 'text-cyan-400' : 'text-gray-500 hover:text-cyan-400'}`}>
                                 Skills ({assetCounts.skill})
                             </button>
                         )}
                         {assetCounts.workflow > 0 && (
-                            <button onClick={() => setActiveFilter('workflow')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'workflow' ? 'text-green-400' : 'text-gray-500 hover:text-gray-400'}`}>
+                            <button onClick={() => setActiveFilter('workflow')} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFilter === 'workflow' ? 'text-orange-400' : 'text-gray-500 hover:text-orange-400'}`}>
                                 Workflows ({assetCounts.workflow})
                             </button>
                         )}
@@ -448,20 +462,22 @@ const ProjectDetail: React.FC = () => {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {filteredAssets.map(asset => (
+                            {filteredAssets.map(asset => {
+                                const colors = getTypeColor(asset.type);
+                                return (
                                 <div 
                                     key={`${asset.type}-${asset.id}`}
                                     onClick={() => handleViewAsset(asset)}
-                                    className="bg-[#122622]/30 border border-green-500/10 hover:border-green-500/30 p-4 rounded-xl cursor-pointer transition-all hover:bg-[#122622]/50 group"
+                                    className={`bg-[#122622]/30 border border-gray-600/10 ${colors.hoverBorder} p-4 rounded-xl cursor-pointer transition-all hover:bg-[#122622]/50 group`}
                                 >
                                     <div className="flex items-start gap-3 relative">
                                         <div className="text-xl">{getTypeIcon(asset.type)}</div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <h4 className="text-sm font-bold text-gray-200 truncate group-hover:text-green-400 transition-colors">
+                                                <h4 className={`text-sm font-bold text-gray-200 truncate ${colors.hoverText} transition-colors`}>
                                                     {asset.title}
                                                 </h4>
-                                                <span className="text-[9px] font-bold tracking-widest uppercase bg-green-500/10 text-green-400 border border-green-500/20 rounded px-1.5 py-0.5">
+                                                <span className={`text-[9px] font-bold tracking-widest uppercase ${colors.bg} ${colors.text} border ${colors.border} rounded px-1.5 py-0.5`}>
                                                     {asset.type}
                                                 </span>
                                             </div>
@@ -500,7 +516,8 @@ const ProjectDetail: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -628,6 +645,46 @@ const ProjectDetail: React.FC = () => {
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Linked Assets Block */}
+                    {linkedNonChatAssets.length > 0 && (
+                        <div className="mt-8 mb-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Linked Assets</h3>
+                            </div>
+                            <div className="space-y-2">
+                                {linkedNonChatAssets.map(asset => {
+                                    const colors = getTypeColor(asset.type);
+                                    return (
+                                    <div 
+                                        key={`right-${asset.type}-${asset.id}`} 
+                                        onClick={() => handleViewAsset(asset)}
+                                        className={`flex items-center gap-3 bg-[#122622]/30 border border-gray-600/10 p-2.5 rounded-xl group ${colors.hoverBorder} transition-all cursor-pointer`}
+                                    >
+                                        <div className="text-xl shrink-0">{getTypeIcon(asset.type)}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <h5 className={`text-xs font-bold text-gray-300 truncate ${colors.hoverText} transition-colors`}>
+                                                {asset.title}
+                                            </h5>
+                                            <p className={`text-[10px] ${colors.text} opacity-80 font-mono uppercase tracking-widest`}>
+                                                {asset.type}
+                                            </p>
+                                        </div>
+                                        <button 
+                                            onClick={(e) => handleRemoveAssetFromProject(e, asset)}
+                                            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Unlink from Project"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                 </div>
