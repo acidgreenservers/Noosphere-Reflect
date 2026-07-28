@@ -5,7 +5,7 @@ import { storageService } from '../../../services/storageService';
 import { ProjectMemoryModal } from '../components/ProjectMemoryModal';
 import { ProjectInstructionsModal } from '../components/ProjectInstructionsModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
-import { ArtifactReaderLayer } from '../../../components/ArtifactReaderLayer';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 
 type ProjectAssetType = 'chat' | 'memory' | 'prompt' | 'skill' | 'workflow';

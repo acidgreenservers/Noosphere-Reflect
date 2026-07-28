@@ -5,7 +5,7 @@ import { sessionStore } from '../../../services/storage/SessionStore';
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ArtifactCard, AggregatedArtifact } from '../components/ArtifactCard';
 import { UnsupportedFileModal } from '../components/UnsupportedFileModal';
-import { ArtifactReaderLayer } from '../../../components/ArtifactReaderLayer';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
 
 const ArtifactArchive: React.FC = () => {
     const [artifacts, setArtifacts] = useState<AggregatedArtifact[]>([]);

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedChatSession, ConversationArtifact } from '../../../types';
 import { MessageEditorModal } from '../../../components/MessageEditorModal';
-import { ArtifactReaderLayer } from '../../../components/ArtifactReaderLayer';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { useMathJax } from '../../../hooks/useMathJax';
