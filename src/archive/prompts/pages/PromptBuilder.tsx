@@ -183,12 +183,7 @@ export default function PromptBuilder() {
             };
             (newPrompt.metadata as any).mainContent = state.content;
             
-            await storageService.savePrompt(newPrompt.content, state.category, tagsArray, state.title || 'Untitled Prompt');
-            // Wait, storageService.savePrompt takes (content, category, tags, title) and creates it internally.
-            // It doesn't let us pass metadata!
-            // I should just use `savePrompt` and then immediately update it with the extra metadata, or just construct it and save via internal.
-            // Let's just construct it and push it directly using a custom update or bypass savePrompt.
-            // Wait, `storageService.getAllPrompts()` -> modify -> `storageService.saveData()`
+            await storageService.savePrompt(newPrompt);
         }
         navigate('/prompts');
     };
