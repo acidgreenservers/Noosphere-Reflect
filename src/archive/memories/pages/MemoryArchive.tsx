@@ -15,6 +15,8 @@ import {
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ArchiveItemModal, ArchiveItemField } from '../../../components/layout/ArchiveItemModal';
 import MemoryList from '../components/MemoryList';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { ProjectSelectionModal } from '../../../components/ProjectSelectionModal';
 import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
 import { MemoryPreviewModal } from '../components/MemoryPreviewModal';
@@ -42,6 +44,10 @@ export default function MemoryArchive() {
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [projectModalOpen, setProjectModalOpen] = useState(false);
+    const [memoryToProjectMove, setMemoryToProjectMove] = useState<string | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deletingMemoryId, setDeletingMemoryId] = useState<string | 'batch' | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
@@ -164,11 +170,24 @@ export default function MemoryArchive() {
         setIsAddModalOpen(true);
     };
 
-    const handleDeleteMemory = async (id: string) => {
-        if (confirm('Delete this memory? This action cannot be undone.')) {
-            await storageService.deleteMemory(id);
-            await loadMemories();
+    const handleDeleteMemory = (id: string) => {
+        setDeletingMemoryId(id);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (deletingMemoryId === 'batch') {
+            for (const id of selectedMemories) {
+                await storageService.deleteMemory(id);
+            }
+            setSelectedMemories(new Set());
+            setShowExportModal(false);
+        } else if (deletingMemoryId) {
+            await storageService.deleteMemory(deletingMemoryId);
         }
+        setDeleteModalOpen(false);
+        setDeletingMemoryId(null);
+        await loadMemories();
     };
 
     const handleExport = async (memory: Memory, format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
@@ -254,16 +273,10 @@ export default function MemoryArchive() {
         setSelectedMemories(newSelected);
     };
 
-    const handleBatchDelete = async () => {
+    const handleBatchDelete = () => {
         if (selectedMemories.size === 0) return;
-        if (!confirm(`Delete ${selectedMemories.size} selected memories? This cannot be undone.`)) return;
-
-        for (const id of selectedMemories) {
-            await storageService.deleteMemory(id);
-        }
-        setSelectedMemories(new Set());
-        setShowExportModal(false);
-        await loadMemories();
+        setDeletingMemoryId('batch');
+        setDeleteModalOpen(true);
     };
 
 
@@ -438,6 +451,37 @@ export default function MemoryArchive() {
             totalFilteredItems={filteredMemories.length}
             itemsComponent={itemsComponent}
         >
+            <ProjectSelectionModal
+                isOpen={projectModalOpen}
+                onClose={() => {
+                    setProjectModalOpen(false);
+                    setMemoryToProjectMove(null);
+                }}
+                onSelectProject={async (projectId) => {
+                    if (memoryToProjectMove) {
+                        await storageService.addMemoryToProject(memoryToProjectMove, projectId);
+                        await loadMemories();
+                    }
+                    setProjectModalOpen(false);
+                    setMemoryToProjectMove(null);
+                }}
+            />
+
+            <ConfirmationModal
+                isOpen={deleteModalOpen}
+                title={deletingMemoryId === 'batch' ? "Delete Selected Memories" : "Delete Memory"}
+                message={deletingMemoryId === 'batch' 
+                    ? `Are you sure you want to permanently delete ${selectedMemories.size} selected memories? This action cannot be undone.`
+                    : "Are you sure you want to delete this memory permanently? This action cannot be undone."}
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                    setDeleteModalOpen(false);
+                    setDeletingMemoryId(null);
+                }}
+            />
+
             <ArchiveItemModal
                 isOpen={isAddModalOpen}
                 onClose={() => {

@@ -15,6 +15,8 @@ import {
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ArchiveItemModal, ArchiveItemField } from '../../../components/layout/ArchiveItemModal';
 import SkillList from '../components/SkillList';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { ProjectSelectionModal } from '../../../components/ProjectSelectionModal';
 import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
 import { SkillPreviewModal } from '../components/SkillPreviewModal';
@@ -42,6 +44,10 @@ export default function SkillArchive() {
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [projectModalOpen, setProjectModalOpen] = useState(false);
+    const [skillToProjectMove, setSkillToProjectMove] = useState<string | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deletingSkillId, setDeletingSkillId] = useState<string | 'batch' | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
@@ -168,11 +174,24 @@ export default function SkillArchive() {
         navigate('/skills/workshop', { state: { skillId: skill.id } });
     };
 
-    const handleDeleteSkill = async (id: string) => {
-        if (confirm('Delete this skill? This action cannot be undone.')) {
-            await storageService.deleteSkill(id);
-            await loadSkills();
+    const handleDeleteSkill = (id: string) => {
+        setDeletingSkillId(id);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (deletingSkillId === 'batch') {
+            for (const id of selectedSkills) {
+                await storageService.deleteSkill(id);
+            }
+            setSelectedSkills(new Set());
+            setShowExportModal(false);
+        } else if (deletingSkillId) {
+            await storageService.deleteSkill(deletingSkillId);
         }
+        setDeleteModalOpen(false);
+        setDeletingSkillId(null);
+        await loadSkills();
     };
 
     const handleExport = async (skill: Skill, format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
@@ -271,16 +290,10 @@ export default function SkillArchive() {
         setSelectedSkills(newSelected);
     };
 
-    const handleBatchDelete = async () => {
+    const handleBatchDelete = () => {
         if (selectedSkills.size === 0) return;
-        if (!confirm(`Delete ${selectedSkills.size} selected skills? This cannot be undone.`)) return;
-
-        for (const id of selectedSkills) {
-            await storageService.deleteSkill(id);
-        }
-        setSelectedSkills(new Set());
-        setShowExportModal(false);
-        await loadSkills();
+        setDeletingSkillId('batch');
+        setDeleteModalOpen(true);
     };
 
 
@@ -481,6 +494,20 @@ export default function SkillArchive() {
             totalFilteredItems={filteredSkills.length}
             itemsComponent={itemsComponent}
         >
+            <ConfirmationModal
+                isOpen={deleteModalOpen}
+                title={deletingSkillId === 'batch' ? "Delete Selected Skills" : "Delete Skill"}
+                message={deletingSkillId === 'batch' 
+                    ? `Are you sure you want to permanently delete ${selectedSkills.size} selected skills? This action cannot be undone.`
+                    : "Are you sure you want to delete this skill permanently? This action cannot be undone."}
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                    setDeleteModalOpen(false);
+                    setDeletingSkillId(null);
+                }}
+            />
             {previewSkill && (
                 <SkillPreviewModal skill={previewSkill} onClose={() => setPreviewSkill(null)} onSave={async (updated) => { await storageService.updateSkill(updated); await loadSkills(); setPreviewSkill(updated); }} />
             )}

@@ -15,9 +15,10 @@ import {
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ArchiveItemModal, ArchiveItemField } from '../../../components/layout/ArchiveItemModal';
 import PromptList from '../components/PromptList';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { ProjectSelectionModal } from '../../../components/ProjectSelectionModal';
 import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
-import { PromptPreviewModal } from '../components/PromptPreviewModal';
 import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
@@ -29,7 +30,6 @@ export default function PromptArchive() {
     const navigate = useNavigate();
     const [prompts, setPrompts] = useState<Prompt[]>([]);
     const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
-    const [previewPrompt, setPreviewPrompt] = useState<Prompt | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [, setIsExporting] = useState(false);
     const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -42,6 +42,10 @@ export default function PromptArchive() {
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [projectModalOpen, setProjectModalOpen] = useState(false);
+    const [promptToProjectMove, setPromptToProjectMove] = useState<string | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deletingPromptId, setDeletingPromptId] = useState<string | 'batch' | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
@@ -168,11 +172,24 @@ export default function PromptArchive() {
         navigate('/prompts/builder', { state: { editingPrompt: prompt } });
     };
 
-    const handleDeletePrompt = async (id: string) => {
-        if (confirm('Delete this prompt? This action cannot be undone.')) {
-            await storageService.deletePrompt(id);
-            await loadPrompts();
+    const handleDeletePrompt = (id: string) => {
+        setDeletingPromptId(id);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (deletingPromptId === 'batch') {
+            for (const id of selectedPrompts) {
+                await storageService.deletePrompt(id);
+            }
+            setSelectedPrompts(new Set());
+            setShowExportModal(false);
+        } else if (deletingPromptId) {
+            await storageService.deletePrompt(deletingPromptId);
         }
+        setDeleteModalOpen(false);
+        setDeletingPromptId(null);
+        await loadPrompts();
     };
 
     const handleExport = async (prompt: Prompt, format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
@@ -275,16 +292,10 @@ export default function PromptArchive() {
         setSelectedPrompts(newSelected);
     };
 
-    const handleBatchDelete = async () => {
+    const handleBatchDelete = () => {
         if (selectedPrompts.size === 0) return;
-        if (!confirm(`Delete ${selectedPrompts.size} selected prompts? This cannot be undone.`)) return;
-
-        for (const id of selectedPrompts) {
-            await storageService.deletePrompt(id);
-        }
-        setSelectedPrompts(new Set());
-        setShowExportModal(false);
-        await loadPrompts();
+        setDeletingPromptId('batch');
+        setDeleteModalOpen(true);
     };
 
 
@@ -436,7 +447,6 @@ export default function PromptArchive() {
             onDelete={handleDeletePrompt}
             onExport={handleExport}
             onStatusToggle={handleStatusToggle}
-            onPreview={setPreviewPrompt}
             isSelectionMode={isSelectionMode}
             selectedPrompts={selectedPrompts}
             onToggleSelect={handleToggleSelect}
@@ -474,11 +484,20 @@ export default function PromptArchive() {
             totalFilteredItems={filteredPrompts.length}
             itemsComponent={itemsComponent}
         >
-
-
-            {previewPrompt && (
-                <PromptPreviewModal prompt={previewPrompt} onClose={() => setPreviewPrompt(null)} onSave={async (updated) => { await storageService.updatePrompt(updated); await loadPrompts(); setPreviewPrompt(updated); }} />
-            )}
+            <ConfirmationModal
+                isOpen={deleteModalOpen}
+                title={deletingPromptId === 'batch' ? "Delete Selected Prompts" : "Delete Prompt"}
+                message={deletingPromptId === 'batch' 
+                    ? `Are you sure you want to permanently delete ${selectedPrompts.size} selected prompts? This action cannot be undone.`
+                    : "Are you sure you want to delete this prompt permanently? This action cannot be undone."}
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                    setDeleteModalOpen(false);
+                    setDeletingPromptId(null);
+                }}
+            />
 
             <ExportDestinationModal isOpen={showExportDestination} onClose={() => setShowExportDestination(false)} onDestinationSelected={(d) => { setExportDestination(d); setShowExportDestination(false); setExportModalOpen(true); }} isExporting={isSendingToDrive} accentColor="blue" />
             <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} onExport={handleBatchExport} selectedCount={selectedPrompts.size} hasArtifacts={false} exportFormat={exportFormat} setExportFormat={setExportFormat} exportPackage={exportPackage} setExportPackage={setExportPackage} accentColor="blue" exportDestination={exportDestination} onExportDrive={handleBatchExportToDrive} isExportingToDrive={isSendingToDrive} />

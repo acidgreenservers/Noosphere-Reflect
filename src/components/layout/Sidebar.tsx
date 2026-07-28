@@ -6,6 +6,7 @@ import logo from '../../assets/logo.png';
 import { SettingsMenu } from './SettingsMenu';
 import { RenameChatModal } from '../RenameChatModal';
 import { ProjectSelectionModal } from '../ProjectSelectionModal';
+import { ConfirmationModal } from '../ConfirmationModal';
 import { ContentImportWizard } from '../wizard/pages/ContentImportWizard';
 import { ParsedContent } from '../../services/converterService';
 
@@ -36,6 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const [chatToRename, setChatToRename] = useState<{id: string, title: string} | null>(null);
     const [projectModalOpen, setProjectModalOpen] = useState(false);
     const [chatToProjectMove, setChatToProjectMove] = useState<string | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
     const loadRecentChats = async () => {
         try {
@@ -106,17 +109,24 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         }
     };
 
-    const handleDeleteChat = async (id: string, e: React.MouseEvent) => {
+    const handleDeleteChat = (id: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (confirm('Delete this chat permanently? This cannot be undone.')) {
-            await storageService.deleteSession(id);
+        setChatToDelete(id);
+        setDeleteModalOpen(true);
+        setActiveActionMenuId(null);
+    };
+
+    const confirmDeleteChat = async () => {
+        if (chatToDelete) {
+            await storageService.deleteSession(chatToDelete);
             await loadRecentChats();
-            if (location.pathname === `/chat/${id}`) {
+            if (location.pathname === `/chat/${chatToDelete}`) {
                 navigate('/');
             }
         }
-        setActiveActionMenuId(null);
+        setDeleteModalOpen(false);
+        setChatToDelete(null);
     };
 
     const handleRenameChat = async (id: string, e: React.MouseEvent) => {
@@ -531,6 +541,19 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 }}
                 onRename={submitRename}
                 initialTitle={chatToRename?.title || ''}
+            />
+
+            <ConfirmationModal
+                isOpen={deleteModalOpen}
+                title="Delete Chat"
+                message="Are you sure you want to delete this chat permanently? This action cannot be undone."
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={confirmDeleteChat}
+                onCancel={() => {
+                    setDeleteModalOpen(false);
+                    setChatToDelete(null);
+                }}
             />
         </aside>
     );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Prompt, DEFAULT_SETTINGS, AppSettings } from '../../../types';
+import { Prompt, DEFAULT_SETTINGS, AppSettings, PromptSection, PromptConstraint } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
 
 const ChevronLeft = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>
@@ -444,38 +445,15 @@ export default function PromptBuilder() {
                 </div>
             </div>
 
-            {/* Custom Clear Confirmation Modal */}
-            {showClearModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
-                    <div className="bg-gray-900 border border-red-500/30 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-                        <div className="flex items-start gap-4 mb-4">
-                            <div className="p-3 bg-red-500/20 rounded-xl text-red-400">
-                                <RotateCcw size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-semibold text-white mb-1">Clear Prompt?</h3>
-                                <p className="text-sm text-gray-400 leading-relaxed">
-                                    Are you sure you want to clear all fields? This action cannot be undone and you will lose any unsaved work.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                onClick={() => setShowClearModal(false)}
-                                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmClear}
-                                className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-400 text-white transition-colors shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-                            >
-                                Clear All
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmationModal
+                isOpen={showClearModal}
+                title="Clear Prompt?"
+                message="Are you sure you want to clear all fields? This action cannot be undone and you will lose any unsaved work."
+                confirmText="Clear All"
+                variant="danger"
+                onConfirm={confirmClear}
+                onCancel={() => setShowClearModal(false)}
+            />
         </div>
     );
 }

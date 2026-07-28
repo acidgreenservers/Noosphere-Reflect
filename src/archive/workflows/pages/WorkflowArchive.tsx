@@ -15,6 +15,8 @@ import {
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ArchiveItemModal, ArchiveItemField } from '../../../components/layout/ArchiveItemModal';
 import WorkflowList from '../components/WorkflowList';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { ProjectSelectionModal } from '../../../components/ProjectSelectionModal';
 import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
 import { WorkflowPreviewModal } from '../components/WorkflowPreviewModal';
@@ -42,6 +44,10 @@ export default function WorkflowArchive() {
     const [isSendingToDrive, setIsSendingToDrive] = useState(false);
     const [exportDestination, setExportDestination] = useState<'local' | 'drive'>('local');
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [projectModalOpen, setProjectModalOpen] = useState(false);
+    const [workflowToProjectMove, setWorkflowToProjectMove] = useState<string | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deletingWorkflowId, setDeletingWorkflowId] = useState<string | 'batch' | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
@@ -168,11 +174,24 @@ export default function WorkflowArchive() {
         navigate('/workflows/builder', { state: { workflowId: workflow.id } });
     };
 
-    const handleDeleteWorkflow = async (id: string) => {
-        if (confirm('Delete this workflow? This action cannot be undone.')) {
-            await storageService.deleteWorkflow(id);
-            await loadWorkflows();
+    const handleDeleteWorkflow = (id: string) => {
+        setDeletingWorkflowId(id);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (deletingWorkflowId === 'batch') {
+            for (const id of selectedWorkflows) {
+                await storageService.deleteWorkflow(id);
+            }
+            setSelectedWorkflows(new Set());
+            setShowExportModal(false);
+        } else if (deletingWorkflowId) {
+            await storageService.deleteWorkflow(deletingWorkflowId);
         }
+        setDeleteModalOpen(false);
+        setDeletingWorkflowId(null);
+        await loadWorkflows();
     };
 
     const handleExport = async (workflow: Workflow, format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
@@ -271,16 +290,10 @@ export default function WorkflowArchive() {
         setSelectedWorkflows(newSelected);
     };
 
-    const handleBatchDelete = async () => {
+    const handleBatchDelete = () => {
         if (selectedWorkflows.size === 0) return;
-        if (!confirm(`Delete ${selectedWorkflows.size} selected workflows? This cannot be undone.`)) return;
-
-        for (const id of selectedWorkflows) {
-            await storageService.deleteWorkflow(id);
-        }
-        setSelectedWorkflows(new Set());
-        setShowExportModal(false);
-        await loadWorkflows();
+        setDeletingWorkflowId('batch');
+        setDeleteModalOpen(true);
     };
 
 
@@ -481,6 +494,20 @@ export default function WorkflowArchive() {
             totalFilteredItems={filteredWorkflows.length}
             itemsComponent={itemsComponent}
         >
+            <ConfirmationModal
+                isOpen={deleteModalOpen}
+                title={deletingWorkflowId === 'batch' ? "Delete Selected Workflows" : "Delete Workflow"}
+                message={deletingWorkflowId === 'batch' 
+                    ? `Are you sure you want to permanently delete ${selectedWorkflows.size} selected workflows? This action cannot be undone.`
+                    : "Are you sure you want to delete this workflow permanently? This action cannot be undone."}
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                    setDeleteModalOpen(false);
+                    setDeletingWorkflowId(null);
+                }}
+            />
             {previewWorkflow && (
                 <WorkflowPreviewModal workflow={previewWorkflow} onClose={() => setPreviewWorkflow(null)} onSave={async (updated) => { await storageService.updateWorkflow(updated); await loadWorkflows(); setPreviewWorkflow(updated); }} />
             )}

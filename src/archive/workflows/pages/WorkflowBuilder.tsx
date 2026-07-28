@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Workflow, AppSettings, DEFAULT_SETTINGS } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
 
 const ChevronLeft = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>
@@ -728,34 +729,15 @@ export default function WorkflowBuilder() {
                 </div>
             </div>
 
-            {/* Clear Modal */}
-            {showClearModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-[#111] border border-gray-800 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl animate-scale-in">
-                        <div className="p-6">
-                            <h3 className="text-lg font-semibold text-white mb-2">Clear Builder?</h3>
-                            <p className="text-sm text-gray-400">
-                                This will erase all current inputs and reset the workflow. This action cannot be undone.
-                            </p>
-                        </div>
-                        <div className="flex border-t border-gray-800 bg-[#0a0a0a]">
-                            <button
-                                onClick={() => setShowClearModal(false)}
-                                className="flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <div className="w-px bg-gray-800"></div>
-                            <button
-                                onClick={confirmClear}
-                                className="flex-1 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors"
-                            >
-                                Clear All
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmationModal
+                isOpen={showClearModal}
+                title="Clear Builder?"
+                message="This will erase all current inputs and reset the workflow. This action cannot be undone."
+                confirmText="Clear All"
+                variant="danger"
+                onConfirm={confirmClear}
+                onCancel={() => setShowClearModal(false)}
+            />
         </div>
     );
 }
