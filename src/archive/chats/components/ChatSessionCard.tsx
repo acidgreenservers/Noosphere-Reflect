@@ -1,4 +1,4 @@
-import UnifiedGridCard from '../../../../components/UnifiedGridCard';
+import UnifiedGridCard from '../../../components/UnifiedGridCard';
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SavedChatSessionMetadata, SavedChatSession } from '../types';
