@@ -6,6 +6,7 @@ import NewChatView from './components/chat-ui/NewChatView';
 import UnifiedChatInterface from './components/chat-ui/UnifiedChatInterface';
 import ArchiveHub from './archive/chats/pages/ArchiveHub';
 import MemoryArchive from './archive/memories/pages/MemoryArchive';
+import MemoryBuilder from './archive/memories/pages/MemoryBuilder';
 import PromptArchive from './archive/prompts/pages/PromptArchive';
 import PromptBuilder from './archive/prompts/pages/PromptBuilder';
 import SkillArchive from './archive/skills/pages/SkillArchive';
@@ -30,6 +31,7 @@ function App() {
         <Route path="/projects/:id" element={<AppShell><ProjectDetail /></AppShell>} />
         <Route path="/artifacts" element={<AppShell><ArtifactArchive /></AppShell>} />
         <Route path="/memories" element={<AppShell><MemoryArchive /></AppShell>} />
+        <Route path="/memories/builder" element={<AppShell><MemoryBuilder /></AppShell>} />
         <Route path="/prompts" element={<AppShell><PromptArchive /></AppShell>} />
         <Route path="/prompts/builder" element={<AppShell><PromptBuilder /></AppShell>} />
         <Route path="/skills" element={<AppShell><SkillArchive /></AppShell>} />

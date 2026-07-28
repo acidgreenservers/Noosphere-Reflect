@@ -13,13 +13,11 @@ import {
     generateMemoryBatchDirectoryExportWithPicker
 } from '../../../services/converterService';
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
-import { ArchiveItemModal, ArchiveItemField } from '../../../components/layout/ArchiveItemModal';
 import MemoryList from '../components/MemoryList';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { ProjectSelectionModal } from '../../../components/ProjectSelectionModal';
 import { ExportModal } from '../../../components/exports/ExportModal';
 import { ExportDestinationModal } from '../../../components/exports/ExportDestinationModal';
-import { MemoryPreviewModal } from '../components/MemoryPreviewModal';
 import { sanitizeFilename } from '../../../utils/securityUtils';
 import { useGoogleAuth } from '../../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../../services/googleDriveService';
@@ -30,8 +28,6 @@ import { googleDriveService } from '../../../services/googleDriveService';
 export default function MemoryArchive() {
     const navigate = useNavigate();
     const [memories, setMemories] = useState<Memory[]>([]);
-    const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
-    const [previewMemory, setPreviewMemory] = useState<Memory | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [, setIsExporting] = useState(false);
     const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -48,7 +44,6 @@ export default function MemoryArchive() {
     const [memoryToProjectMove, setMemoryToProjectMove] = useState<string | null>(null);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deletingMemoryId, setDeletingMemoryId] = useState<string | 'batch' | null>(null);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
 
@@ -166,8 +161,7 @@ export default function MemoryArchive() {
     };
 
     const handleEditStart = (memory: Memory) => {
-        setEditingMemory(memory);
-        setIsAddModalOpen(true);
+        navigate('/memories/builder', { state: { editingMemory: memory } });
     };
 
     const handleDeleteMemory = (id: string) => {
@@ -395,15 +389,6 @@ export default function MemoryArchive() {
     };
 
 
-    const memoryFields: ArchiveItemField[] = [
-        { id: 'title', label: 'Memory Title', type: 'text', placeholder: 'Give this memory a clear title...', required: true },
-        { id: 'aiModel', label: 'AI Model', type: 'text', placeholder: 'e.g., Claude, ChatGPT, Gemini...', required: true },
-        { id: 'tags', label: 'Tags', type: 'tags', placeholder: 'Comma separated tags (e.g., concepts, coding)' },
-        { id: 'content', label: 'Content', type: 'textarea', placeholder: 'Paste the actual conversation or memory content here...', required: true, rows: 8 }
-    ];
-
-
-
     const itemsComponent = (
         <MemoryList
             memories={filteredMemories}
@@ -412,7 +397,6 @@ export default function MemoryArchive() {
             onDelete={handleDeleteMemory}
             onExport={handleExport}
             onStatusToggle={handleStatusToggle}
-            onPreview={setPreviewMemory}
             isSelectionMode={isSelectionMode}
             selectedMemories={selectedMemories}
             onToggleSelect={handleToggleSelect}
@@ -426,10 +410,7 @@ export default function MemoryArchive() {
             description="Preserve and organize your important LLM interactions and context."
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            onAddClick={() => {
-                setEditingMemory(null);
-                setIsAddModalOpen(true);
-            }}
+            onAddClick={() => navigate('/memories/builder')}
             addLabel="Add New Memory"
             viewMode={viewMode}
             onViewModeChange={setViewMode}
@@ -482,32 +463,8 @@ export default function MemoryArchive() {
                 }}
             />
 
-            <ArchiveItemModal
-                isOpen={isAddModalOpen}
-                onClose={() => {
-                    setIsAddModalOpen(false);
-                    setEditingMemory(null);
-                }}
-                title={editingMemory ? 'Edit Memory' : 'New Memory'}
-                icon="🧠"
-                fields={memoryFields}
-                initialValues={editingMemory ? {
-                    title: editingMemory.metadata.title,
-                    aiModel: editingMemory.aiModel,
-                    tags: editingMemory.tags.join(', '),
-                    content: editingMemory.content
-                } : { aiModel: 'Claude' }}
-                onSave={async (values) => {
-                    const tagsArray = values.tags ? values.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-                    await handleSaveMemory(values.content, values.aiModel, tagsArray, values.title);
-                    setIsAddModalOpen(false);
-                }}
-                saveLabel={editingMemory ? 'Save Changes' : 'Create Memory'}
-            />
 
-            {previewMemory && (
-                <MemoryPreviewModal memory={previewMemory} onClose={() => setPreviewMemory(null)} onSave={async (updated) => { await storageService.updateMemory(updated); await loadMemories(); setPreviewMemory(updated); }} />
-            )}
+
 
             <ExportDestinationModal isOpen={showExportDestination} onClose={() => setShowExportDestination(false)} onDestinationSelected={(d) => { setExportDestination(d); setShowExportDestination(false); setExportModalOpen(true); }} isExporting={isSendingToDrive} accentColor="purple" />
             <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} onExport={handleBatchExport} selectedCount={selectedMemories.size} hasArtifacts={false} exportFormat={exportFormat} setExportFormat={setExportFormat} exportPackage={exportPackage} setExportPackage={setExportPackage} accentColor="purple" exportDestination={exportDestination} onExportDrive={handleBatchExportToDrive} isExportingToDrive={isSendingToDrive} />

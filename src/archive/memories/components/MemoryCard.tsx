@@ -9,12 +9,11 @@ interface Props {
     onEdit: (memory: Memory) => void;
     onDelete: (id: string) => void;
     onExport: (memory: Memory, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
-    onPreview: (memory: Memory) => void;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function MemoryCard({ memory, viewMode = 'grid', isSelectionMode = false, onEdit, onDelete, onExport, onPreview, isSelected, onToggleSelect }: Props) {
+export default function MemoryCard({ memory, viewMode = 'grid', isSelectionMode = false, onEdit, onDelete, onExport, isSelected, onToggleSelect }: Props) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -112,7 +111,7 @@ export default function MemoryCard({ memory, viewMode = 'grid', isSelectionMode 
     if (viewMode === 'list') {
         return (
             <div
-                onClick={() => onPreview(memory)}
+                onClick={() => onEdit(memory)}
                 draggable
                 onDragStart={handleDragStart}
                 className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer border-b border-transparent hover:bg-white/5 relative ${
@@ -191,7 +190,7 @@ export default function MemoryCard({ memory, viewMode = 'grid', isSelectionMode 
 
     return (
         <div
-            onClick={() => onPreview(memory)}
+            onClick={() => onEdit(memory)}
             draggable
             onDragStart={handleDragStart}
             className={`group relative border rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer flex flex-col h-[280px]

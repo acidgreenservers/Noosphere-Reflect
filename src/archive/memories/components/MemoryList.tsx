@@ -9,13 +9,12 @@ interface Props {
     onDelete: (id: string) => void;
     onExport: (memory: Memory, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
     onStatusToggle: (memory: Memory, e: React.MouseEvent) => void;
-    onPreview: (memory: Memory) => void;
     selectedMemories: Set<string>;
     isSelectionMode?: boolean;
     onToggleSelect: (id: string) => void;
 }
 
-export default function MemoryList({ memories, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, onPreview, selectedMemories, isSelectionMode = false, onToggleSelect }: Props) {
+export default function MemoryList({ memories, viewMode = 'grid', onEdit, onDelete, onExport, onStatusToggle, selectedMemories, isSelectionMode = false, onToggleSelect }: Props) {
     if (memories.length === 0) return null;
 
     return (
@@ -29,7 +28,6 @@ export default function MemoryList({ memories, viewMode = 'grid', onEdit, onDele
                     onDelete={onDelete}
                     onExport={onExport}
                     onStatusToggle={onStatusToggle}
-                    onPreview={onPreview}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedMemories.has(memory.id)}
                     onToggleSelect={onToggleSelect}
