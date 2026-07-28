@@ -9,9 +9,10 @@ import { useMathJax } from './MathJaxProvider';
 
 interface MarkdownRendererProps {
   content: string;
+  onImageClick?: (src: string, alt?: string) => void;
 }
 
-const CustomComponents = {
+const CustomComponents = (onImageClick?: (src: string, alt?: string) => void) => ({
   a: ({ href, children }: { href?: string; children: React.ReactNode }) => {
     const safeUrl = sanitizeUrl(href || '');
     if (!safeUrl) {
@@ -38,7 +39,12 @@ const CustomComponents = {
       <img
         src={safeUrl}
         alt={alt || ''}
-        className="max-w-full rounded-lg my-3 border border-gray-700 shadow-md"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onImageClick) onImageClick(safeUrl, alt);
+        }}
+        className="max-w-full rounded-lg my-3 border border-gray-700 shadow-md cursor-pointer hover:opacity-90 transition-opacity hover:border-purple-500/50"
+        title="Click to view in Side Reader"
       />
     );
   },
@@ -124,7 +130,7 @@ const CustomComponents = {
       {children}
     </CollapsibleBlock>
   ),
-};
+});
 
 interface CollapsibleBlockProps {
   title: string;
@@ -173,7 +179,7 @@ const schema = {
   tagNames: [...(defaultSchema.tagNames || []), 'collapsible', 'thoughts', 'thought'],
 };
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onImageClick }) => {
   const { typeset } = useMathJax();
 
   useEffect(() => {
@@ -246,12 +252,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     return result.join('\n');
   }, [content]);
 
+  const componentsMemo = React.useMemo(() => CustomComponents(onImageClick) as any, [onImageClick]);
+
   return (
     <div className="markdown-content max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, schema], rehypeHighlight]}
-        components={CustomComponents as any}
+        components={componentsMemo}
         urlTransform={(url) => {
           if (url.startsWith('data:image/')) return url;
           return defaultUrlTransform(url);

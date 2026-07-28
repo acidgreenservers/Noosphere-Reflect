@@ -1,3 +1,4 @@
+import { ArtifactReaderLayer } from '../ArtifactReader';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
@@ -15,7 +16,11 @@ const ChatMessageBubble = React.memo(({
     onForkChat, 
     onSaveMemory, 
     onSavePrompt, 
-    onSaveSkill 
+    onSaveSkill,
+    onSaveWorkflow,
+    onEditMessage,
+    onArtifactClick,
+    onImageClick
 }: { 
     msg: ChatMessage; 
     index: number; 
@@ -27,6 +32,8 @@ const ChatMessageBubble = React.memo(({
     onSaveSkill: (msg: ChatMessage) => void; 
     onSaveWorkflow: (msg: ChatMessage) => void;
     onEditMessage: (index: number, newContent: string) => void;
+    onArtifactClick?: (art: ConversationArtifact) => void;
+    onImageClick?: (src: string, alt?: string) => void;
 }) => {
     const isUser = msg.type === ChatMessageType.Prompt;
     const [isEditing, setIsEditing] = useState(false);
@@ -67,10 +74,12 @@ const ChatMessageBubble = React.memo(({
                     {msg.artifacts.map((art) => (
                         <div
                             key={art.id}
-                            className="px-3 py-2 bg-[#09100c] border border-green-500/10 rounded-xl flex items-center gap-2 text-xs"
+                            onClick={() => onArtifactClick && onArtifactClick(art)}
+                            className="px-3 py-2 bg-[#09100c] border border-green-500/10 hover:border-green-500/30 rounded-xl flex items-center gap-2 text-xs cursor-pointer transition-all hover:bg-[#122622]/50 group"
+                            title="Click to view in Side Reader"
                         >
                             <span>📎</span>
-                            <span className="font-medium text-gray-300 truncate max-w-[150px]">{art.fileName}</span>
+                            <span className="font-medium text-gray-300 group-hover:text-green-400 transition-colors truncate max-w-[150px]">{art.fileName}</span>
                             <span className="text-[9px] text-gray-500 font-mono">({Math.round(art.fileSize / 1024)} KB)</span>
                         </div>
                     ))}
@@ -95,27 +104,33 @@ const ChatMessageBubble = React.memo(({
                         />
                         <div className="flex justify-end gap-2">
                             <button 
-                                onClick={() => {
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     setIsEditing(false);
                                     setEditContent(displayContent);
                                 }}
-                                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium"
+                                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button 
-                                onClick={() => {
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     onEditMessage(index, editContent);
                                     setIsEditing(false);
                                 }}
-                                className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors font-medium"
+                                className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors font-medium cursor-pointer"
                             >
                                 Save Changes
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <MarkdownRenderer content={displayContent} />
+                    <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
                 )}
             </div>
 
@@ -224,6 +239,28 @@ export default function UnifiedChatInterface() {
 
     // Attached files for the CURRENT draft message
     const [attachedFiles, setAttachedFiles] = useState<ConversationArtifact[]>([]);
+    const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const [readerWidth, setReaderWidth] = useState<number>(50);
+
+    const handleImageClick = useCallback((src: string, alt?: string) => {
+        const isBase64Data = src.startsWith('data:');
+        let base64Content = src;
+        let mimeType = 'image/png';
+
+        if (isBase64Data) {
+            const parts = src.split(',');
+            mimeType = parts[0].replace('data:', '').split(';')[0];
+            base64Content = parts[1];
+        }
+
+        setViewingArtifact({
+            id: `img-${Date.now()}`,
+            fileName: alt && alt.trim() ? alt : 'Image Preview.png',
+            fileData: base64Content,
+            mimeType: mimeType,
+            fileSize: Math.round((base64Content.length * 3) / 4)
+        });
+    }, []);
 
     // Notification banner state
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -350,20 +387,32 @@ export default function UnifiedChatInterface() {
     }, []);
 
     const handleEditMessage = useCallback(async (index: number, newContent: string) => {
-        if (!session) return;
         const updatedMessages = [...messages];
+        if (index < 0 || index >= updatedMessages.length) return;
+
         updatedMessages[index] = {
             ...updatedMessages[index],
             content: newContent,
             isEdited: true
         };
-        const updatedSession = { 
-            ...session, 
-            chatData: { ...session.chatData, messages: updatedMessages } 
-        };
-        setSession(updatedSession);
-        await storageService.saveSession(updatedSession);
+
         setMessages(updatedMessages);
+
+        if (session) {
+            const updatedSession: SavedChatSession = { 
+                ...session, 
+                chatData: { 
+                    ...(session.chatData || { rawText: '', messages: [] }), 
+                    messages: updatedMessages 
+                } 
+            };
+            setSession(updatedSession);
+            try {
+                await storageService.saveSession(updatedSession);
+            } catch (err) {
+                console.error('Failed to save updated session:', err);
+            }
+        }
         showToast('✓ Message updated', 'success');
     }, [session, messages]);
 
