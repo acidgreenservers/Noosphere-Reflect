@@ -1,3 +1,4 @@
+import UnifiedGridCard from '../../../../components/UnifiedGridCard';
 import React, { useState, useRef, useEffect } from 'react';
 import { Prompt } from '../types';
 import { formatRelativeDate } from '../../../utils/dateUtils';
@@ -194,112 +195,38 @@ export default function PromptCard({ prompt, viewMode = 'grid', isSelectionMode 
     }
 
     return (
-        <div
-            onClick={() => onEdit(prompt)}
-            draggable
-            onDragStart={handleDragStart}
-            className={`group relative border rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] hover:z-10 active:scale-95 cursor-pointer flex flex-col h-[240px]
-            ${isSelected
-                    ? 'bg-blue-900/10 border-blue-500/50 shadow-lg shadow-blue-900/10 shadow-blue-500/20 ring-1 ring-blue-500/50 scale-[1.03]'
-                    : 'bg-[#122622]/20 hover:bg-[#122622]/40 border-gray-600/10 hover:border-blue-500/30 hover:shadow-blue-900/5 hover:shadow-blue-500/10 hover:shadow-lg'
-                }`}>
-            
-            {/* Header */}
-            <div className="flex justify-between items-start mb-3 gap-4">
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-gray-200 truncate group-hover:text-blue-300 transition-colors">
-                        {prompt.metadata.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-1 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded border bg-blue-900/40 text-blue-200 border-blue-700/50`}>
-                            {prompt.category}
-                        </span>
-                        {prompt.projectId && (
-                            <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded text-[10px] font-bold" title="In a project">
-                                Project
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                {isSelectionMode && (
-                    <button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onToggleSelect(prompt.id);
-                        }}
-                        className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110 active:scale-95
-                            ${isSelected
-                                ? 'bg-blue-500 border-blue-500 text-white opacity-100'
-                                : 'bg-[#09100c]/50 border-gray-600 hover:border-blue-400 text-transparent opacity-100'
-                            }`}
-                        title={isSelected ? "Deselect this prompt" : "Select this prompt"}
-                        aria-label={isSelected ? "Deselect this prompt" : "Select this prompt"}
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                    </button>
-                )}
-            </div>
-
-            <div className="text-sm text-gray-400 font-mono whitespace-pre-wrap mb-4 flex-1 overflow-hidden relative">
-                {previewContent}
-                {prompt.content.length > 300 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0e1511] to-transparent pointer-events-none" />
-                )}
-            </div>
-
-            {/* Tags */}
-            <div className="flex flex-wrap gap-2 mb-2 overflow-hidden h-[24px]">
-                {prompt.tags.length > 0 ? prompt.tags.map((tag, i) => (
-                    <span key={i} className="px-1.5 py-0.5 bg-gray-500/5 rounded text-[10px] text-gray-500 border border-gray-500/10 whitespace-nowrap">
-                        #{tag}
-                    </span>
-                )) : (
-                    <span className="text-[10px] text-gray-600 italic px-2 py-1">No tags</span>
-                )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
-                <div className="flex items-center gap-2">
-                    {prompt.metadata.exportStatus === 'modified' && (
-                        <span className="text-[10px] text-amber-400/80" title={`Modified since export (${prompt.metadata.exportCount || 1} exports)`}>📝 Modified</span>
-                    )}
-                    {prompt.metadata.exportStatus === 'exported' && (
-                        <span className="text-[10px] text-blue-400/80" title={`Exported (${prompt.metadata.exportCount || 1} exports)`}>📤 Exported</span>
-                    )}
-                    {prompt.metadata.wordCount > 0 && (
-                        <span className="text-[10px] text-gray-500" title="Word count">
-                            {prompt.metadata.wordCount} words
-                        </span>
-                    )}
-                </div>
-                
-                <div className="flex justify-end items-center relative w-32 h-6">
-                    <div className="absolute right-0 text-xs text-gray-500 group-hover:opacity-0 transition-opacity flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <UnifiedGridCard
+            title={prompt.metadata.title}
+            icon="✨"
+            color="blue"
+            metadataLine={<>
+                    <span className="flex items-center gap-1">
+                        <svg className="w-3 h-3 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {formattedDate}
-                    </div>
-                    
-                    <div className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsMenuOpen(!isMenuOpen);
-                            }}
-                            className="p-1 w-6 h-6 flex items-center justify-center text-gray-300 hover:text-white rounded-md hover:bg-white/10 transition-colors"
-                        >
-                            ⋮
-                        </button>
-                        {isMenuOpen && renderMenu()}
-                    </div>
-                </div>
-            </div>
-        </div>
+                    </span>
+                    <span className="opacity-50">•</span>
+                    <span>{prompt.metadata.wordCount || 0} words</span>
+                </>}
+            badges={[
+                ...(prompt.variables && prompt.variables.length > 0 ? [{ text: `${prompt.variables.length} Vars`, colorClass: 'bg-blue-500/10 text-blue-400 border border-blue-500/20' }] : []),
+                ...(prompt.projectId ? [{ text: 'Project', colorClass: 'bg-orange-500/10 text-orange-400 border border-orange-500/20' }] : [])
+            ]}
+            isSelected={isSelected}
+            isSelectionMode={isSelectionMode}
+            onToggleSelect={(e) => {
+                e.stopPropagation();
+                onToggleSelect(prompt.id);
+            }}
+            onClick={() => onEdit(prompt)}
+            onMenuClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+            }}
+            menuElement={isMenuOpen && renderMenu()}
+            draggable
+            onDragStart={handleDragStart}
+        />
     );
 }

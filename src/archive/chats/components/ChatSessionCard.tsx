@@ -1,3 +1,4 @@
+import UnifiedGridCard from '../../../../components/UnifiedGridCard';
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SavedChatSessionMetadata, SavedChatSession } from '../types';
@@ -243,103 +244,37 @@ export function ChatSessionCard({
 
     // Grid View
     return (
-        <div
-            draggable
-            onDragStart={handleDragStart}
-            className={`group relative border rounded-2xl p-4 transition-all duration-300 hover:shadow-xl hover:z-10 flex flex-col h-[160px]
-                ${isSelected
-                    ? 'bg-green-900/20 border-green-500/50 shadow-green-900/10 shadow-lg shadow-green-500/20 ring-2 ring-green-500/50'
-                    : 'bg-gray-800/30 hover:bg-gray-800/50 border-white/5 hover:border-green-500/30 hover:shadow-green-900/10 hover:shadow-lg hover:shadow-green-500/20'
-                }`}
-        >
-            {/* Header */}
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex gap-2">
-                    {session.metadata?.model && (
-                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${getModelBadgeColor(session.metadata.model)}`}>
-                            {session.metadata.model.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('-')}
-                        </span>
-                    )}
-                </div>
-                
-                {isSelectionMode && (
-                    <button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onSelect(session.id, e);
-                        }}
-                        className={`w-6 h-6 rounded border flex items-center justify-center transition-all hover:scale-110 active:scale-95
-                            ${isSelected
-                                ? 'bg-green-500 border-green-500 text-white'
-                                : 'bg-gray-900/50 border-gray-600 hover:border-green-400 text-transparent'
-                            }`}
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                    </button>
-                )}
-            </div>
-
-            {/* Title & Preview */}
-            <div className="mb-2">
-                <h3 
-                    onClick={handleCardClick}
-                    className="font-semibold text-base line-clamp-2 text-gray-100 hover:text-green-400 transition-colors cursor-pointer hover:underline"
-                >
-                    {session.metadata?.title || session.chatTitle || 'Untitled Chat'}
-                </h3>
-            </div>
-
-            {/* Tags */}
-            <div className="flex flex-wrap gap-1.5 mb-2 overflow-hidden h-[20px]">
-                {(session.metadata?.tags || []).map((tag, i) => (
-                    <span key={i} className="text-[10px] text-gray-400 bg-white/5 px-2 py-0.5 rounded-full whitespace-nowrap">
-                        #{tag}
-                    </span>
-                ))}
-                {(!session.metadata?.tags || session.metadata.tags.length === 0) && (
-                    <span className="text-[10px] text-gray-600 italic">No tags</span>
-                )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
-                <div className="flex items-center gap-2">
-                    {session.exportStatus === 'modified' && (
-                        <span className="text-[10px] text-amber-400/80" title={`Modified since export (${session.metadata?.exportCount || 1} exports)`}>📝 Modified</span>
-                    )}
-                    {session.exportStatus === 'exported' && (
-                        <span className="text-[10px] text-purple-400/80" title={`Exported (${session.metadata?.exportCount || 1} exports)`}>📤 Exported</span>
-                    )}
-                    {artifactCount > 0 && (
-                        <span className="text-[10px] text-blue-400/80" title="Has Artifacts">📎 {artifactCount}</span>
-                    )}
-                </div>
-                
-                <div className="flex justify-end items-center relative w-32 h-6">
-                    <div className="absolute right-0 text-xs text-gray-500 group-hover:opacity-0 transition-opacity flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <UnifiedGridCard
+            title={session.metadata?.title || session.chatTitle || 'Untitled Chat'}
+            icon="💬"
+            color="green"
+            metadataLine={<>
+                    <span className="flex items-center gap-1">
+                        <svg className="w-3 h-3 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {formattedDate}
-                    </div>
-                    
-                    <div className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsMenuOpen(!isMenuOpen);
-                            }}
-                            className="p-1 w-6 h-6 flex items-center justify-center text-gray-300 hover:text-white rounded-md hover:bg-white/10 transition-colors"
-                        >
-                            ⋮
-                        </button>
-                        {isMenuOpen && renderMenu()}
-                    </div>
-                </div>
-            </div>
-        </div>
+                    </span>
+                </>}
+            badges={[
+                ...(session.metadata?.model ? [{ text: session.metadata.model, colorClass: getModelBadgeColor(session.metadata.model) }] : []),
+                ...(artifactCount > 0 ? [{ text: `${artifactCount} Artifacts`, colorClass: 'bg-blue-500/10 text-blue-400 border border-blue-500/20' }] : []),
+                ...(session.projectId ? [{ text: 'Project', colorClass: 'bg-orange-500/10 text-orange-400 border border-orange-500/20' }] : [])
+            ]}
+            isSelected={isSelected}
+            isSelectionMode={isSelectionMode}
+            onToggleSelect={(e) => {
+                e.stopPropagation();
+                onSelect(session.id, e);
+            }}
+            onClick={handleCardClick}
+            onMenuClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+            }}
+            menuElement={isMenuOpen && renderMenu()}
+            draggable
+            onDragStart={handleDragStart}
+        />
     );
 }

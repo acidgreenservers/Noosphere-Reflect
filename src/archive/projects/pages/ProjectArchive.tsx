@@ -1,3 +1,4 @@
+import UnifiedGridCard from '../../../../components/UnifiedGridCard';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Project } from '../../../types';
@@ -114,55 +115,37 @@ const ProjectArchive: React.FC = () => {
                     {filteredProjects.map(project => {
                         const isSelected = selectedIds.has(project.id);
                         return (
-                            <div
+                            <UnifiedGridCard
                                 key={project.id}
+                                title={project.metadata.title}
+                                icon="📁"
+                                color="green"
+                                metadataLine={
+                                    <>
+                                        <span>
+                                            {new Date(project.updatedAt).toLocaleDateString()}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            📎 {project.artifacts?.length || 0}
+                                        </span>
+                                    </>
+                                }
+                                badges={[
+                                    ...(project.artifacts?.length ? [{ text: `${project.artifacts.length} Files`, colorClass: 'bg-green-500/10 text-green-400 border border-green-500/20' }] : [])
+                                ]}
+                                isSelected={isSelected}
+                                isSelectionMode={isSelectionMode}
+                                onToggleSelect={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedIds(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(project.id)) next.delete(project.id);
+                                        else next.add(project.id);
+                                        return next;
+                                    });
+                                }}
                                 onClick={(e) => handleProjectClick(project.id, e)}
-                                className={`relative group p-4 rounded-xl border transition-all cursor-pointer overflow-hidden ${
-                                    viewMode === 'list' ? 'flex items-center gap-4' : 'flex flex-col h-40'
-                                } ${
-                                    isSelected 
-                                        ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-900/10 shadow-green-500/20 ring-1 ring-green-500/50 scale-[1.03]'
-                                        : 'bg-[#122622]/20 hover:bg-[#122622]/40 border-gray-600/10 hover:border-green-500/30 hover:shadow-green-900/5 hover:shadow-green-500/10 hover:shadow-lg'
-                                }`}
-                            >
-                                {/* Selection Checkbox */}
-                                {isSelectionMode && (
-                                    <div className={`absolute top-3 right-3 w-5 h-5 rounded border flex items-center justify-center transition-colors z-10 ${
-                                        isSelected ? 'bg-green-500 border-green-500' : 'border-gray-500 group-hover:border-green-500/50'
-                                    }`}>
-                                        {isSelected && (
-                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className={`flex items-start gap-3 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                                    <div className="w-10 h-10 rounded-lg bg-green-500/5 border border-green-500/10 flex items-center justify-center text-xl shrink-0">
-                                        📁
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="text-sm font-bold text-gray-100 truncate pr-8">
-                                            {project.metadata.title}
-                                        </h3>
-                                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
-                                            {project.metadata.description || 'No description provided.'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className={`mt-auto pt-3 flex items-center justify-between text-[10px] text-gray-500 font-medium ${
-                                    viewMode === 'list' ? 'mt-0 pt-0 w-48 shrink-0 border-l border-gray-600/10 pl-4 ml-4' : 'border-t border-gray-600/10'
-                                }`}>
-                                    <span>
-                                        {new Date(project.updatedAt).toLocaleDateString()}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        📎 {project.artifacts?.length || 0}
-                                    </span>
-                                </div>
-                            </div>
+                            />
                         );
                     })}
                 </>

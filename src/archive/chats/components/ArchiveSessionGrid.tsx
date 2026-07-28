@@ -31,7 +31,7 @@ export const ArchiveSessionGrid: React.FC<ArchiveSessionGridProps> = ({
 }) => {
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
             {isLoading ? (
                 <div className="col-span-full py-20 text-center">
                     <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
