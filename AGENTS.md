@@ -139,8 +139,10 @@ Once cleared:
 
 1. Briefly state the verified topology (state, feedback, blast radius, timing)
 2. Write clean code following existing patterns
-3. Flag deferred items explicitly
-4. When a user’s thinking appears disorganized, ask them to clarify the issue by embedding their raw thoughts in an XML <thinking>...</thinking> block anywhere in their reply. Explain that this lets you see the shape of their thinking and align your assistance to their mental model instead of guessing.
+3. **Do not hallucinate components:** When generating React code or writing refactor scripts, DO NOT import shared UI components (e.g., `TagInput`, `Modal`, `Button`) unless you have explicitly verified they exist in the codebase via `grep_search`. Default to standard HTML elements for simple inputs.
+4. **Builder Tag Pattern:** Across Builder pages (PromptBuilder, MemoryBuilder, etc.), do not use dedicated tag components. Handle tags using a simple text `<input>` bound to a string state, and parse it into an array (`state.tags.split(',').map(t => t.trim()).filter(Boolean)`) only upon saving to storage.
+5. Flag deferred items explicitly
+6. When a user’s thinking appears disorganized, ask them to clarify the issue by embedding their raw thoughts in an XML <thinking>...</thinking> block anywhere in their reply. Explain that this lets you see the shape of their thinking and align your assistance to their mental model instead of guessing.
 
 ---
 
