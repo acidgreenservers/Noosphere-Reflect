@@ -37,8 +37,9 @@ export const NewChatView: React.FC = () => {
         { name: 'Leo AI', provider: 'Brave', icon: '🦁' },
         { name: 'Kimi', provider: 'Moonshot', icon: '🌙' },
         { name: 'AI Studio', provider: 'Google', icon: '✨' },
-        { name: 'Llamacoder', provider: 'Together', icon: '🦙' }
-    ];
+{ name: 'Llamacoder', provider: 'Together', icon: '🦙' },
+    { name: 'Brave', provider: 'Brave', icon: '🦁' }
+];
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();

@@ -164,16 +164,18 @@ const ChatMessageBubble = React.memo(({
                                 </div>
                             </div>
                         ) : (
-                            <div className={`transition-all duration-300 overflow-hidden ${isLongMessage && !isMessageExpanded ? 'max-h-[200px] relative' : ''}`}>
-                                {isLongMessage && !isMessageExpanded && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-blue-950/30 to-transparent z-10 pointer-events-none" />
-                                )}
-                                <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
+                            <div>
+                                <div className={`transition-all duration-300 overflow-hidden ${isLongMessage && !isMessageExpanded ? 'max-h-[200px] relative' : ''}`}>
+                                    {isLongMessage && !isMessageExpanded && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-blue-950/30 to-transparent z-10 pointer-events-none" />
+                                    )}
+                                    <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
+                                </div>
                                 {isLongMessage && (
                                     <button
                                         type="button"
                                         onClick={() => setIsMessageExpanded(!isMessageExpanded)}
-                                        className="mt-1 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                                        className="mt-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
                                     >
                                         {isMessageExpanded ? 'Show Less' : 'Show More'}
                                     </button>
@@ -940,17 +942,18 @@ export default function UnifiedChatInterface() {
     };
 
 
-    const modelsList = [
-        'Claude',
-        'ChatGPT',
-        'Gemini',
-        'Grok',
-        'LeChat',
-        'Leo AI',
-        'Kimi',
-        'AI Studio',
-        'Llamacoder'
-    ];
+const modelsList = [
+    'Claude',
+    'ChatGPT',
+    'Gemini',
+    'Grok',
+    'LeChat',
+    'Leo AI',
+    'Kimi',
+    'AI Studio',
+    'Llamacoder',
+    'Brave'
+];
 
     if (!session) {
         return (
