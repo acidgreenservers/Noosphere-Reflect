@@ -16,13 +16,15 @@ interface ArtifactReaderLayerProps {
     onDragStart?: () => void;
     onDragEnd?: () => void;
     onCopyChat?: () => void;
+    pushMode?: boolean;
 }
 
 export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ 
-    artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd, onCopyChat 
+    artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd, onCopyChat, pushMode = false 
 }) => {
-    const [isAnimatingIn, setIsAnimatingIn] = useState(false);
-    const dragRef = useRef<{ isDragging: boolean; startX: number; startWidth: number }>({ isDragging: false, startX: 0, startWidth: 50 });
+    const [isAnimatingIn, setIsAnimatingIn] = useState(true);
+    const dragRef = useRef<{ isDragging: boolean; startX: number; startWidth: number; maxWidthVw: number }>({ isDragging: false, startX: 0, startWidth: 50, maxWidthVw: 90 });
+    const containerRef = useRef<HTMLDivElement>(null);
     const [isChatCopied, setIsChatCopied] = useState(false);
 
     useEffect(() => {
@@ -40,7 +42,7 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
             const deltaX = dragRef.current.startX - e.clientX;
             const deltaVw = (deltaX / window.innerWidth) * 100;
             let newWidth = dragRef.current.startWidth + deltaVw;
-            newWidth = Math.max(30, Math.min(newWidth, 90));
+            newWidth = Math.max(30, Math.min(newWidth, dragRef.current.maxWidthVw));
             if (onWidthChange) {
                 onWidthChange(newWidth);
             }
@@ -127,20 +129,39 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
     const isImage = mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
     const isText = ['txt', 'json', 'csv', 'ts', 'tsx', 'js', 'py', 'sh', 'html', 'css', 'yaml', 'yml'].includes(ext) || mime.startsWith('text/') || mime === 'application/json';
 
+    const containerClasses = pushMode
+        ? "flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl relative shrink-0 h-full overflow-hidden z-[50]"
+        : `fixed right-0 top-0 h-full z-[100] flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl ${
+            isAnimatingIn ? 'translate-x-full' : 'translate-x-0'
+        }`;
+
+    const containerStyle = pushMode
+        ? {
+            width: isAnimatingIn ? '0vw' : `${width}vw`,
+            opacity: isAnimatingIn ? 0 : 1,
+            transition: dragRef.current.isDragging ? 'none' : 'width 0.3s ease-out, opacity 0.3s ease-out'
+        }
+        : {
+            width: `${width}vw`,
+            transition: dragRef.current.isDragging ? 'none' : 'transform 0.5s ease-out'
+        };
+
     return (
         <div 
-            className={`fixed right-0 top-0 h-full z-[100] flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl ${
-                isAnimatingIn ? 'translate-x-full' : 'translate-x-0'
-            }`}
-            style={{ 
-                width: `${width}vw`,
-                transition: dragRef.current.isDragging ? 'none' : 'transform 0.5s ease-out'
-            }}
+            ref={containerRef}
+            className={containerClasses}
+            style={containerStyle}
         >
             <div 
                 className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-purple-500/50 transition-colors z-[101]"
                 onMouseDown={(e) => {
-                    dragRef.current = { isDragging: true, startX: e.clientX, startWidth: width };
+                    let maxVw = 90;
+                    if (pushMode && containerRef.current && containerRef.current.parentElement) {
+                        const parentWidth = containerRef.current.parentElement.clientWidth;
+                        const maxPx = parentWidth - 360;
+                        maxVw = (maxPx / window.innerWidth) * 100;
+                    }
+                    dragRef.current = { isDragging: true, startX: e.clientX, startWidth: width, maxWidthVw: Math.max(30, maxVw) };
                     document.body.style.cursor = 'col-resize';
                     document.body.style.userSelect = 'none';
                     if (onDragStart) onDragStart();

@@ -1,5 +1,7 @@
 import { ArtifactReaderLayer } from '../ArtifactReader';
 import { isSupportedByReader } from '../ArtifactReader/utils';
+import { DocumentBuilder } from './DocumentBuilder';
+import { ArtifactListSidebar } from './ArtifactListSidebar';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
@@ -398,6 +400,10 @@ export default function UnifiedChatInterface() {
     const [attachedFiles, setAttachedFiles] = useState<ConversationArtifact[]>([]);
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
     const [readerWidth, setReaderWidth] = useState<number>(50);
+    const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
+    const [showArtifactList, setShowArtifactList] = useState(false);
+    const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
+    const [artifactListWidth, setArtifactListWidth] = useState<number>(40);
 
     const handleImageClick = useCallback((src: string, alt?: string) => {
         const isBase64Data = src.startsWith('data:');
@@ -417,6 +423,7 @@ export default function UnifiedChatInterface() {
             mimeType: mimeType,
             fileSize: Math.round((base64Content.length * 3) / 4)
         });
+        setShowArtifactList(false);
     }, []);
 
     // Notification banner state
@@ -941,6 +948,69 @@ export default function UnifiedChatInterface() {
         }
     };
 
+    const handleSaveDocument = async (artifact: ConversationArtifact, messageIndex: number | null) => {
+        if (!session) return;
+        if (messageIndex !== null) {
+            const updated = { ...session };
+            if (!updated.chatData) return;
+            const msg = updated.chatData.messages[messageIndex];
+            if (!msg) return;
+            if (!msg.artifacts) msg.artifacts = [];
+            msg.artifacts.push(artifact);
+            await storageService.saveSession(updated);
+            setSession(updated);
+            setMessages([...updated.chatData.messages]);
+        } else {
+            await storageService.attachArtifact(session.id, artifact);
+            const updated = await storageService.getSessionById(session.id);
+            if (updated) setSession(updated);
+        }
+        showToast('Document saved as artifact', 'success');
+        window.dispatchEvent(new Event('chatSaved'));
+    };
+
+    const handleRemoveArtifact = async (artifactId: string) => {
+        if (!session) return;
+        await storageService.removeArtifact(session.id, artifactId);
+        const updated = await storageService.getSessionById(session.id);
+        if (updated) setSession(updated);
+        showToast('Artifact removed', 'success');
+    };
+
+    const handleDownloadArtifact = (artifact: ConversationArtifact) => {
+        try {
+            let blob: Blob;
+            if (artifact.mimeType?.startsWith('text/') || artifact.mimeType === 'text/markdown') {
+                blob = new Blob([artifact.fileData], { type: artifact.mimeType });
+            } else {
+                const byteCharacters = atob(artifact.fileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                blob = new Blob([byteArray], { type: artifact.mimeType });
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = artifact.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to download artifact', err);
+        }
+    };
+
+    const allArtifacts: ConversationArtifact[] = React.useMemo(() => {
+        if (!session) return [];
+        const sessionArtifacts = session.metadata?.artifacts || [];
+        const messageArtifacts = (session.chatData?.messages || []).flatMap(m => m.artifacts || []);
+        return [...sessionArtifacts, ...messageArtifacts];
+    }, [session]);
+
 
 const modelsList = [
     'Claude',
@@ -964,7 +1034,36 @@ const modelsList = [
     }
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0e1511] relative">
+        <div className="flex-1 flex h-full overflow-hidden bg-[#0e1511] relative">
+            {/* Absolute Top Right Buttons (overlaid on chat, hidden by right panels) */}
+            <div className="absolute top-[18px] right-6 flex items-center gap-3 z-[40]">
+                {/* Proxy Turn Badge */}
+                <div className={`px-3 py-1.5 text-[10px] font-bold font-mono tracking-wider rounded-full border transition-colors select-none ${
+                    currentRole === 'response'
+                        ? 'bg-green-900/30 text-green-400 border-green-500/30' 
+                        : 'bg-blue-900/30 text-blue-400 border-blue-500/30'
+                }`}>
+                    PROXY: {currentRole === 'response' ? 'AWAITING AI' : 'USER TURN'}
+                </div>
+
+                {/* Document Button */}
+                <button
+                    onClick={() => setShowDocumentBuilder(!showDocumentBuilder)}
+                    className="px-3 py-1.5 bg-[#122622] hover:bg-blue-500/20 text-[10px] font-bold font-mono tracking-wider text-blue-400 hover:text-blue-300 border border-blue-500/20 hover:border-blue-500/40 hover:shadow-[0_0_12px_rgba(59,130,246,0.2)] rounded-full transition-all cursor-pointer"
+                >
+                    DOCUMENT
+                </button>
+
+                {/* Artifacts Button */}
+                <button
+                    onClick={() => setShowArtifactList(!showArtifactList)}
+                    className="px-3 py-1.5 bg-[#122622] hover:bg-purple-500/20 text-[10px] font-bold font-mono tracking-wider text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 hover:shadow-[0_0_12px_rgba(168,85,247,0.2)] rounded-full transition-all cursor-pointer"
+                >
+                    ARTIFACTS
+                </button>
+            </div>
+
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-[360px] transition-all duration-300">
             {/* Notification Toast */}
             {notification && (
                 <div className="absolute top-4 right-4 z-[90] px-4 py-2 bg-[#122622] border border-green-500/30 text-green-400 rounded-xl text-xs font-mono shadow-xl animate-fade-in flex items-center gap-2">
@@ -975,12 +1074,19 @@ const modelsList = [
 
             {/* Chat Workspace Header */}
             <header className="px-6 py-4 bg-[#09100c] border-b border-green-500/10 flex justify-between items-center shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
+                {/* Left: Title + Actions Chevron */}
+                <div className="relative flex items-center gap-3">
+                    <div className="flex flex-col cursor-pointer" onClick={() => setShowChatActionsMenu(!showChatActionsMenu)}>
                         <div className="flex items-center gap-2">
                             <h2 className="text-sm font-bold text-gray-100 max-w-md truncate">
                                 {session.metadata?.title || session.chatTitle || 'Untitled Conversation'}
                             </h2>
+                            <svg
+                                className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${showChatActionsMenu ? 'rotate-180' : ''}`}
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
                             {session.metadata?.exportStatus === 'exported' && (
                                 <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-bold">
                                     EXPORTED
@@ -997,30 +1103,12 @@ const modelsList = [
                             </span>
                         </div>
                     </div>
-                </div>
 
-                {/* Right Header Buttons */}
-                <div className="flex items-center gap-3 relative">
-                    {/* Proxy Turn Badge */}
-                    <div className={`px-3 py-1.5 text-[10px] font-bold font-mono tracking-wider rounded-full border transition-colors select-none ${
-                        currentRole === 'response'
-                            ? 'bg-green-900/30 text-green-400 border-green-500/30' 
-                            : 'bg-blue-900/30 text-blue-400 border-blue-500/30'
-                    }`}>
-                        PROXY: {currentRole === 'response' ? 'AWAITING AI' : 'USER TURN'}
-                    </div>
-
-                    <button
-                        onClick={() => setShowChatActionsMenu(!showChatActionsMenu)}
-                        className="px-3 py-1.5 bg-[#122622] hover:bg-green-500/20 text-[10px] font-bold font-mono tracking-wider text-green-400 hover:text-green-300 border border-green-500/20 hover:border-green-500/40 hover:shadow-[0_0_12px_rgba(34,197,94,0.2)] rounded-full transition-all cursor-pointer"
-                    >
-                        ACTIONS ▾
-                    </button>
-
+                    {/* Actions Dropdown (below title) */}
                     {showChatActionsMenu && (
                         <>
                             <div className="fixed inset-0 z-30" onClick={() => setShowChatActionsMenu(false)} />
-                            <div className="absolute right-0 top-full mt-2 w-56 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl z-40 animate-fade-in">
+                            <div className="absolute left-0 top-full mt-2 w-56 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl z-40 animate-fade-in">
                                 <div className="py-1">
                                     <button
                                         onClick={() => {
@@ -1076,9 +1164,14 @@ const modelsList = [
                         </>
                     )}
                 </div>
+
             </header>
 
-            {/* Conversation Feed */}
+            {/* Lower Flex Row for Body and Sidebar */}
+            <div className="flex-1 flex overflow-hidden relative">
+                {/* Chat Body Column */}
+                <div className="flex-1 flex flex-col min-w-[360px] overflow-hidden">
+                    {/* Conversation Feed */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
                 <div className="w-full max-w-3xl mx-auto space-y-6 flex flex-col pb-4">
                     {messages.map((msg, index) => (
@@ -1098,6 +1191,7 @@ const modelsList = [
                                 onArtifactClick={(art) => {
                                     if (isSupportedByReader(art.fileName, art.mimeType)) {
                                         setViewingArtifact(art);
+                                        setShowArtifactList(false);
                                     } else {
                                         // Download fallback for unsupported files
                                         try {
@@ -1421,6 +1515,26 @@ const modelsList = [
                 className="hidden"
                 accept="*/*"
             />
+            </div> {/* End of chat body column */}
+
+            {/* ArtifactListSidebar placed here to not overlap header */}
+            {session && (
+                <ArtifactListSidebar
+                    isOpen={showArtifactList}
+                    artifacts={allArtifacts}
+                    messages={messages}
+                    onClose={() => setShowArtifactList(false)}
+                    onViewArtifact={(art) => {
+                        setViewingArtifact(art);
+                        setShowArtifactList(false);
+                    }}
+                    onDownloadArtifact={handleDownloadArtifact}
+                    onRemoveArtifact={handleRemoveArtifact}
+                />
+            )}
+            </div> {/* End of lower flex row */}
+
+            </div> {/* End of main chat column */}
 
             <ArtifactReaderLayer
                 artifact={viewingArtifact}
@@ -1428,7 +1542,20 @@ const modelsList = [
                 width={readerWidth}
                 onWidthChange={setReaderWidth}
                 onCopyChat={() => {}}
+                pushMode={true}
             />
+
+            {showDocumentBuilder && session && (
+                <DocumentBuilder
+                    sessionId={session.id}
+                    messages={messages}
+                    onClose={() => setShowDocumentBuilder(false)}
+                    onSave={handleSaveDocument}
+                    width={docBuilderWidth}
+                    onWidthChange={setDocBuilderWidth}
+                    pushMode={true}
+                />
+            )}
         </div>
     );
 }
