@@ -392,7 +392,7 @@ export default function SkillArchive() {
             for (const skill of selectedMetas) {
                 const filename = sanitizeFilename(skill.metadata.title, appSettings.preferences.fileNamingCase);
                 const skillAsChat: ChatData = {
-                    messages: [{ type: ChatMessageType.Response, content: skill.content, isEdited: false }],
+                    messages: [{ type: ChatMessageType.Response, content: skill.content, isEdited: false, createdAt: new Date().toISOString() }],
                     metadata: { title: skill.metadata.title, model: 'Skill', date: skill.createdAt, tags: skill.tags || [] }
                 };
 

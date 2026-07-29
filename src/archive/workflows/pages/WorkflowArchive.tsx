@@ -392,7 +392,7 @@ export default function WorkflowArchive() {
             for (const workflow of selectedMetas) {
                 const filename = sanitizeFilename(workflow.metadata.title, appSettings.preferences.fileNamingCase);
                 const workflowAsChat: ChatData = {
-                    messages: [{ type: ChatMessageType.Response, content: workflow.content, isEdited: false }],
+                    messages: [{ type: ChatMessageType.Response, content: workflow.content, isEdited: false, createdAt: new Date().toISOString() }],
                     metadata: { title: workflow.metadata.title, model: 'Workflow', date: workflow.createdAt, tags: workflow.tags || [] }
                 };
 

@@ -11,6 +11,17 @@ import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
 import { sanitizeFilename } from '../../utils/securityUtils';
 
+const formatTimestamp = (isoString?: string): string | null => {
+    if (!isoString) return null;
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return null;
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (isToday) return time;
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+};
+
 const ChatMessageBubble = React.memo(({ 
     msg, 
     index, 
@@ -54,6 +65,7 @@ const ChatMessageBubble = React.memo(({
     const wordCount = displayContent.split(/\s+/).filter(Boolean).length;
     const isShort = wordCount <= 4;
     const isLongMessage = isUser && (wordCount > 150 || displayContent.length > 500);
+    const timestampStr = formatTimestamp(msg.createdAt);
     
     // Matches variations:
     // Powered by Gemini Exporter (https://www.ai-chat-exporter.com)
@@ -116,6 +128,9 @@ const ChatMessageBubble = React.memo(({
             {/* Message Bubble Header (Meta) */}
             <div className="flex items-center gap-2 mb-1.5 text-[10px] font-mono text-gray-500">
                 <span>{isUser ? '👤 You' : `🤖 ${aiName}`}</span>
+                {timestampStr && (
+                    <span className="text-gray-600">· {timestampStr}</span>
+                )}
             </div>
 
             {/* User Message: Tight Blue Bubble */}
@@ -521,6 +536,7 @@ export default function UnifiedChatInterface() {
             type: currentRole === 'prompt' ? ChatMessageType.Prompt : ChatMessageType.Response,
             content: text,
             isEdited: false,
+            createdAt: new Date().toISOString(),
             artifacts: [...attachedFiles]
         };
 
@@ -716,7 +732,7 @@ export default function UnifiedChatInterface() {
     const handleForkChat = useCallback(async (messageIndex: number) => {
         if (!session) return;
         
-        const forkedMessages = messages.slice(0, messageIndex + 1);
+        const forkedMessages = messages.slice(messageIndex, messageIndex + 1);
         const newSessionId = (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
         const forkedTitle = `${session.chatTitle} - Fork`;
         
@@ -971,9 +987,31 @@ export default function UnifiedChatInterface() {
 
     const handleRemoveArtifact = async (artifactId: string) => {
         if (!session) return;
-        await storageService.removeArtifact(session.id, artifactId);
+        
+        // Search inside session.metadata.artifacts and messages
+        let isMessageArtifact = false;
+        let messageIndex = -1;
+        
+        session.chatData?.messages?.forEach((m, idx) => {
+            if (m.artifacts?.some(a => a.id === artifactId)) {
+                isMessageArtifact = true;
+                messageIndex = idx;
+            }
+        });
+
+        if (isMessageArtifact) {
+            await storageService.removeMessageArtifact(session.id, messageIndex, artifactId);
+        } else {
+            await storageService.removeArtifact(session.id, artifactId);
+        }
+        
         const updated = await storageService.getSessionById(session.id);
-        if (updated) setSession(updated);
+        if (updated) {
+            setSession(updated);
+            if (updated.chatData) {
+                setMessages([...updated.chatData.messages]);
+            }
+        }
         showToast('Artifact removed', 'success');
     };
 
@@ -1048,7 +1086,10 @@ const modelsList = [
 
                 {/* Document Button */}
                 <button
-                    onClick={() => setShowDocumentBuilder(!showDocumentBuilder)}
+                    onClick={() => {
+                        setShowDocumentBuilder(!showDocumentBuilder);
+                        if (!showDocumentBuilder) setShowArtifactList(false);
+                    }}
                     className="px-3 py-1.5 bg-[#122622] hover:bg-blue-500/20 text-[10px] font-bold font-mono tracking-wider text-blue-400 hover:text-blue-300 border border-blue-500/20 hover:border-blue-500/40 hover:shadow-[0_0_12px_rgba(59,130,246,0.2)] rounded-full transition-all cursor-pointer"
                 >
                     DOCUMENT
@@ -1056,7 +1097,10 @@ const modelsList = [
 
                 {/* Artifacts Button */}
                 <button
-                    onClick={() => setShowArtifactList(!showArtifactList)}
+                    onClick={() => {
+                        setShowArtifactList(!showArtifactList);
+                        if (!showArtifactList) setShowDocumentBuilder(false);
+                    }}
                     className="px-3 py-1.5 bg-[#122622] hover:bg-purple-500/20 text-[10px] font-bold font-mono tracking-wider text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 hover:shadow-[0_0_12px_rgba(168,85,247,0.2)] rounded-full transition-all cursor-pointer"
                 >
                     ARTIFACTS
@@ -1541,7 +1585,6 @@ const modelsList = [
                 onClose={() => setViewingArtifact(null)}
                 width={readerWidth}
                 onWidthChange={setReaderWidth}
-                onCopyChat={() => {}}
                 pushMode={true}
             />
 

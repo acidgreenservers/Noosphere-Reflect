@@ -353,7 +353,7 @@ export default function MemoryArchive() {
             for (const memory of selectedMetas) {
                 const filename = sanitizeFilename(memory.metadata.title, appSettings.preferences.fileNamingCase);
                 const memoryAsChat: ChatData = {
-                    messages: [{ type: ChatMessageType.Response, content: memory.content, isEdited: false }],
+                    messages: [{ type: ChatMessageType.Response, content: memory.content, isEdited: false, createdAt: new Date().toISOString() }],
                     metadata: { title: memory.metadata.title, model: 'Memory', date: memory.createdAt, tags: memory.tags || [] }
                 };
 

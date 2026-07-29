@@ -16,6 +16,7 @@ interface ArtifactListSidebarProps {
 export const ArtifactListSidebar: React.FC<ArtifactListSidebarProps> = ({
     isOpen, artifacts, messages, onClose, onViewArtifact, onDownloadArtifact, onRemoveArtifact
 }) => {
+    const [confirmingRemoveArtifact, setConfirmingRemoveArtifact] = useState<ConversationArtifact | null>(null);
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -105,7 +106,7 @@ export const ArtifactListSidebar: React.FC<ArtifactListSidebarProps> = ({
                                     </div>
                                     <div className="absolute right-3 flex items-center gap-1 bg-[#161b22] group-hover:bg-[#1a2028] pl-2 transition-colors">
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); onRemoveArtifact(art.id); }}
+                                            onClick={(e) => { e.stopPropagation(); setConfirmingRemoveArtifact(art); }}
                                             className="p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                                             title="Remove"
                                         >
@@ -129,6 +130,41 @@ export const ArtifactListSidebar: React.FC<ArtifactListSidebarProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {confirmingRemoveArtifact && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 min-w-[360px]">
+                    <div className="mx-4 p-5 bg-[#1a1d2e] border border-red-500/30 rounded-2xl shadow-2xl max-w-sm w-full">
+                        <div className="flex items-center gap-3 mb-3">
+                            <span className="text-xl">{getFileIcon(confirmingRemoveArtifact.mimeType)}</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-200 truncate">{confirmingRemoveArtifact.fileName}</p>
+                                <p className="text-[11px] text-gray-500 mt-0.5">{formatFileSize(confirmingRemoveArtifact.fileSize)}</p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-400 mb-4">
+                            Remove this artifact from the conversation? This cannot be undone.
+                        </p>
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={() => setConfirmingRemoveArtifact(null)}
+                                className="px-4 py-2 text-xs font-medium text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onRemoveArtifact(confirmingRemoveArtifact.id);
+                                    setConfirmingRemoveArtifact(null);
+                                }}
+                                className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

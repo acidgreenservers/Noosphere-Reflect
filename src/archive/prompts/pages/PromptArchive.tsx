@@ -394,7 +394,7 @@ export default function PromptArchive() {
             for (const prompt of selectedMetas) {
                 const filename = sanitizeFilename(prompt.metadata.title, appSettings.preferences.fileNamingCase);
                 const promptAsChat: ChatData = {
-                    messages: [{ type: ChatMessageType.Response, content: prompt.content, isEdited: false }],
+                    messages: [{ type: ChatMessageType.Response, content: prompt.content, isEdited: false, createdAt: new Date().toISOString() }],
                     metadata: { title: prompt.metadata.title, model: 'Prompt', date: prompt.createdAt, tags: prompt.tags || [] }
                 };
 

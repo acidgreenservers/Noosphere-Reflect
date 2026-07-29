@@ -53,6 +53,7 @@ export interface ChatMessage {
   type: ChatMessageType;
   content: string;
   isEdited?: boolean;
+  createdAt?: string; // ISO timestamp for temporal context
   artifacts?: ConversationArtifact[]; // Per-message artifacts
 }
 

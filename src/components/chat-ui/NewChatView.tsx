@@ -68,6 +68,7 @@ export const NewChatView: React.FC = () => {
                         type: ChatMessageType.Prompt,
                         content: text,
                         isEdited: false,
+                        createdAt: new Date().toISOString(),
                         artifacts: []
                     }
                 ],
