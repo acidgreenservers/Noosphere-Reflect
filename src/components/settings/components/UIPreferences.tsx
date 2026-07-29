@@ -31,10 +31,10 @@ export const UIPreferences: React.FC<UIPreferencesProps> = ({ settings, onSettin
                                 key={t}
                                 onClick={() => onSettingsChange({ 
                                     ...settings, 
-                                    preferences: { ...settings.preferences, theme: t as 'system'|'light'|'dark' }
+                                    preferences: { ...settings.preferences, ui: { ...settings.preferences.ui, theme: t as 'system'|'light'|'dark' } }
                                 })}
                                 className={`relative w-28 py-2.5 rounded-lg text-sm font-medium transition-all z-10 capitalize ${
-                                    (settings.preferences.theme || 'system') === t 
+                                    (settings.preferences.ui?.theme || 'system') === t 
                                         ? 'text-purple-400' 
                                         : 'text-gray-400 hover:text-gray-200'
                                 }`}
@@ -46,7 +46,7 @@ export const UIPreferences: React.FC<UIPreferencesProps> = ({ settings, onSettin
                         <div 
                             className="absolute inset-y-1 w-28 bg-purple-500/10 rounded-lg transition-all duration-300 ease-out border border-purple-500/20"
                             style={{
-                                transform: `translateX(${(settings.preferences.theme || 'system') === 'light' ? '112px' : (settings.preferences.theme || 'system') === 'dark' ? '224px' : '0px'})`,
+                                transform: `translateX(${(settings.preferences.ui?.theme || 'system') === 'light' ? '112px' : (settings.preferences.ui?.theme || 'system') === 'dark' ? '224px' : '0px'})`,
                             }}
                         />
                     </div>

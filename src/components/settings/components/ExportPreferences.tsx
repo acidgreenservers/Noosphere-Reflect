@@ -22,8 +22,8 @@ export const ExportPreferences: React.FC<ExportPreferencesProps> = ({
                 <div className="flex gap-0 bg-gray-700/50 rounded-lg p-1 border border-gray-600">
                     <button
                         type="button"
-                        onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, markdownLayout: 'universal' } })}
-                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${settings.preferences.markdownLayout === 'universal'
+                        onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, ui: { ...settings.preferences.ui, markdownLayout: 'universal' } } })}
+                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${(settings.preferences.ui?.markdownLayout || 'universal') === 'universal'
                                 ? 'bg-purple-600 text-white shadow-lg'
                                 : 'text-gray-300 hover:text-white'
                             }`}
@@ -33,8 +33,8 @@ export const ExportPreferences: React.FC<ExportPreferencesProps> = ({
                     <div className="w-px bg-gray-600 my-2" />
                     <button
                         type="button"
-                        onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, markdownLayout: 'fancy' } })}
-                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${settings.preferences.markdownLayout === 'fancy'
+                        onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, ui: { ...settings.preferences.ui, markdownLayout: 'fancy' } } })}
+                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${(settings.preferences.ui?.markdownLayout || 'universal') === 'fancy'
                                 ? 'bg-purple-600 text-white shadow-lg'
                                 : 'text-gray-300 hover:text-white'
                             }`}
@@ -43,7 +43,7 @@ export const ExportPreferences: React.FC<ExportPreferencesProps> = ({
                     </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                    {settings.preferences.markdownLayout === 'universal'
+                    {(settings.preferences.ui?.markdownLayout || 'universal') === 'universal'
                         ? 'Clean format with simple headers and code blocks'
                         : 'Rich format with collapsible details and emojis'}
                 </p>
@@ -66,13 +66,13 @@ export const ExportPreferences: React.FC<ExportPreferencesProps> = ({
                         type="button"
                         onClick={() => onSettingsChange({
                             ...settings,
-                            preferences: { ...settings.preferences, exportRootMetadata: !settings.preferences.exportRootMetadata }
+                            preferences: { ...settings.preferences, export: { ...settings.preferences.export, exportRootMetadata: !(settings.preferences.export?.exportRootMetadata ?? true) } }
                         })}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.preferences.exportRootMetadata ? 'bg-purple-600' : 'bg-gray-600'
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${(settings.preferences.export?.exportRootMetadata ?? true) ? 'bg-purple-600' : 'bg-gray-600'
                             }`}
                     >
                         <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.preferences.exportRootMetadata ? 'translate-x-6' : 'translate-x-1'
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${(settings.preferences.export?.exportRootMetadata ?? true) ? 'translate-x-6' : 'translate-x-1'
                                 }`}
                         />
                     </button>
@@ -93,13 +93,13 @@ export const ExportPreferences: React.FC<ExportPreferencesProps> = ({
                         type="button"
                         onClick={() => onSettingsChange({
                             ...settings,
-                            preferences: { ...settings.preferences, exportChatMetadata: !settings.preferences.exportChatMetadata }
+                            preferences: { ...settings.preferences, export: { ...settings.preferences.export, exportChatMetadata: !(settings.preferences.export?.exportChatMetadata ?? true) } }
                         })}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.preferences.exportChatMetadata ? 'bg-purple-600' : 'bg-gray-600'
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${(settings.preferences.export?.exportChatMetadata ?? true) ? 'bg-purple-600' : 'bg-gray-600'
                             }`}
                     >
                         <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.preferences.exportChatMetadata ? 'translate-x-6' : 'translate-x-1'
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${(settings.preferences.export?.exportChatMetadata ?? true) ? 'translate-x-6' : 'translate-x-1'
                                 }`}
                         />
                     </button>

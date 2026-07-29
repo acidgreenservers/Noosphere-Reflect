@@ -26,16 +26,16 @@ export const ChatPreferences: React.FC<ChatPreferencesProps> = ({ settings, onSe
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div
-                            onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, chatSendShortcut: 'enter' } })}
+                            onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, chat: { ...settings.preferences.chat, chatSendShortcut: 'enter' } } })}
                             className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                                (settings.preferences.chatSendShortcut || 'enter') === 'enter'
+                                (settings.preferences.chat?.chatSendShortcut || 'enter') === 'enter'
                                     ? 'bg-blue-500/10 border-blue-500/50'
                                     : 'bg-[#0A0A0A] border-blue-500/10 hover:border-blue-500/30'
                             }`}
                         >
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-semibold text-gray-200">Enter</span>
-                                {(settings.preferences.chatSendShortcut || 'enter') === 'enter' && (
+                                {(settings.preferences.chat?.chatSendShortcut || 'enter') === 'enter' && (
                                     <span className="text-blue-400">✓</span>
                                 )}
                             </div>
@@ -45,16 +45,16 @@ export const ChatPreferences: React.FC<ChatPreferencesProps> = ({ settings, onSe
                         </div>
 
                         <div
-                            onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, chatSendShortcut: 'ctrl-enter' } })}
+                            onClick={() => onSettingsChange({ ...settings, preferences: { ...settings.preferences, chat: { ...settings.preferences.chat, chatSendShortcut: 'ctrl-enter' } } })}
                             className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                                settings.preferences.chatSendShortcut === 'ctrl-enter'
+                                settings.preferences.chat?.chatSendShortcut === 'ctrl-enter'
                                     ? 'bg-blue-500/10 border-blue-500/50'
                                     : 'bg-[#0A0A0A] border-blue-500/10 hover:border-blue-500/30'
                             }`}
                         >
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-semibold text-gray-200">Ctrl + Enter</span>
-                                {settings.preferences.chatSendShortcut === 'ctrl-enter' && (
+                                {settings.preferences.chat?.chatSendShortcut === 'ctrl-enter' && (
                                     <span className="text-blue-400">✓</span>
                                 )}
                             </div>

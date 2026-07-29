@@ -27,6 +27,55 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
     const [activeTab, setActiveTab] = useState<'preferences' | 'chat' | 'ui' | 'naming' | 'export' | 'sync' | 'data'>('preferences');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pendingTab, setPendingTab] = useState<string | null>(null);
+    const [pendingClose, setPendingClose] = useState(false);
+    
+    // Check if current tab is dirty
+    const isCurrentTabDirty = () => {
+        switch (activeTab) {
+            case 'preferences': return JSON.stringify(localSettings.profile) !== JSON.stringify(settings.profile);
+            case 'chat': return JSON.stringify(localSettings.preferences.chat) !== JSON.stringify(settings.preferences.chat);
+            case 'ui': return JSON.stringify(localSettings.preferences.ui) !== JSON.stringify(settings.preferences.ui);
+            case 'naming': return JSON.stringify(localSettings.preferences.naming) !== JSON.stringify(settings.preferences.naming);
+            case 'export': return JSON.stringify(localSettings.preferences.export) !== JSON.stringify(settings.preferences.export);
+            default: return false;
+        }
+    };
+    
+    const handleTabChange = (newTab: 'preferences' | 'chat' | 'ui' | 'naming' | 'export' | 'sync' | 'data') => {
+        if (newTab === activeTab) return;
+        if (isCurrentTabDirty()) {
+            setPendingTab(newTab);
+        } else {
+            setActiveTab(newTab);
+        }
+    };
+
+    const handleCloseMenu = () => {
+        if (isCurrentTabDirty()) {
+            setPendingClose(true);
+        } else {
+            onClose();
+        }
+    };
+
+    const confirmDiscard = () => {
+        // Reset localSettings to props
+        setLocalSettings(settings);
+        if (pendingTab) {
+            setActiveTab(pendingTab as any);
+            setPendingTab(null);
+        }
+        if (pendingClose) {
+            onClose();
+            setPendingClose(false);
+        }
+    };
+
+    const cancelDiscard = () => {
+        setPendingTab(null);
+        setPendingClose(false);
+    };
 
     // Sync local state when settings prop changes (e.g. loaded asynchronously)
     useEffect(() => {
@@ -48,7 +97,8 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
         setError(null);
         try {
             await onSave(localSettings);
-            onClose();
+            // Re-sync local settings with updated props to clear dirty state
+            // (Assuming onSave causes settings prop to update, but we can do it explicitly here if needed)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save settings');
         } finally {
@@ -165,7 +215,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
     };
 
     return (
-        <div className="fixed inset-0 bg-black/75 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
+        <div 
+            className="fixed inset-0 bg-black/75 z-[100] flex items-center justify-center p-4 backdrop-blur-md"
+            onClick={handleCloseMenu}
+        >
             <div
                 className="bg-[#0e1511]/90 border border-green-500/20 rounded-3xl w-full max-w-4xl h-[80vh] flex overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-fade-in"
                 onClick={(e) => e.stopPropagation()}
@@ -178,7 +231,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                         </div>
                         <nav className="space-y-1">
                             <button
-                                onClick={() => setActiveTab('preferences')}
+                                onClick={() => handleTabChange('preferences')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'preferences'
                                         ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -188,7 +241,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 👤 Preferences
                             </button>
                             <button
-                                onClick={() => setActiveTab('chat')}
+                                onClick={() => handleTabChange('chat')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'chat'
                                         ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -198,7 +251,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 💬 Chat
                             </button>
                             <button
-                                onClick={() => setActiveTab('ui')}
+                                onClick={() => handleTabChange('ui')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'ui'
                                         ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -208,7 +261,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 🎨 UI Preferences
                             </button>
                             <button
-                                onClick={() => setActiveTab('naming')}
+                                onClick={() => handleTabChange('naming')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'naming'
                                         ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -218,7 +271,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 🏷️ Naming case
                             </button>
                             <button
-                                onClick={() => setActiveTab('export')}
+                                onClick={() => handleTabChange('export')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'export'
                                         ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -228,7 +281,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 📤 Export formats
                             </button>
                             <button
-                                onClick={() => setActiveTab('sync')}
+                                onClick={() => handleTabChange('sync')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'sync'
                                         ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -238,7 +291,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 ☁️ Cloud Sync
                             </button>
                             <button
-                                onClick={() => setActiveTab('data')}
+                                onClick={() => handleTabChange('data')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'data'
                                         ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -251,7 +304,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                     </div>
 
                     <button
-                        onClick={onClose}
+                        onClick={handleCloseMenu}
                         className="w-full bg-[#122622] hover:bg-[#1a211d] text-gray-400 hover:text-white border border-green-500/10 hover:border-green-500/20 py-2 rounded-xl text-sm font-medium transition-all"
                     >
                         Close Menu
@@ -332,23 +385,52 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-6 border-t border-green-500/10 bg-[#09100c] flex justify-end gap-3">
-                        <button
-                            onClick={onClose}
-                            className="px-5 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="px-6 py-2 rounded-xl text-sm font-semibold bg-green-500 hover:bg-green-400 text-[#09100c] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                        >
-                            {isSaving ? 'Saving...' : 'Save Settings'}
-                        </button>
-                    </div>
+                    {['preferences', 'chat', 'ui', 'naming', 'export'].includes(activeTab) && (
+                        <div className="p-6 border-t border-green-500/10 bg-[#09100c] flex justify-end gap-3">
+                            <button
+                                onClick={handleSave}
+                                disabled={!isCurrentTabDirty() || isSaving}
+                                className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${
+                                    isCurrentTabDirty() 
+                                        ? 'bg-green-500 hover:bg-green-400 text-[#09100c] shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
+                                        : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                }`}
+                            >
+                                {isSaving ? 'Saving...' : 'Save Settings'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Unsaved Changes Modal */}
+            {(pendingTab || pendingClose) && (
+                <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center backdrop-blur-sm">
+                    <div className="bg-[#111111] border border-red-500/30 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl animate-fade-in">
+                        <div className="flex items-center gap-3 mb-4 text-red-400">
+                            <span className="text-2xl">⚠️</span>
+                            <h3 className="text-lg font-bold">Unsaved Changes</h3>
+                        </div>
+                        <p className="text-sm text-gray-300 mb-6">
+                            You have unsaved changes in the current category. Are you sure you want to exit without saving?
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={cancelDiscard}
+                                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDiscard}
+                                className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-400 text-white transition-colors"
+                            >
+                                Discard Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <ContentImportWizard
                 isOpen={isWizardOpen}

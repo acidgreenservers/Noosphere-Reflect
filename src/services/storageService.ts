@@ -72,13 +72,13 @@ class StorageService {
 
     // Settings & Profile
     async getSettings(): Promise<AppSettings> {
-        const preferences = await settingsStore.getSettings();
+        const preferences = settingsStore.getSettings();
         const profile = await profileStore.getProfile();
         return { profile, preferences };
     }
 
     async saveSettings(settings: AppSettings): Promise<void> {
-        await settingsStore.saveSettings(settings.preferences);
+        settingsStore.saveSettings(settings.preferences);
         await profileStore.saveProfile(settings.profile);
     }
 
