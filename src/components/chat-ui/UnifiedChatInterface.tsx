@@ -120,7 +120,7 @@ const ChatMessageBubble = React.memo(({
 
             {/* User Message: Tight Blue Bubble */}
             {isUser ? (
-                <div className="w-fit max-w-[65ch]">
+                <div className="w-fit" style={{ maxWidth: 'min(100%, 65ch)' }}>
                     <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words">
                         {isEditing ? (
                             <div className="flex flex-col gap-3">
