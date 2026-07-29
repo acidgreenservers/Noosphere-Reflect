@@ -1,4 +1,4 @@
-import { ChatData, ChatMetadata } from '../../../types';
+import { ChatData, ChatMetadata, ChatMessageType } from '../../../types';
 import { ExportGenerator } from './ExportService';
 
 export class TextGenerator implements ExportGenerator {
@@ -34,11 +34,11 @@ export class TextGenerator implements ExportGenerator {
     // Messages
     const { messages } = chatData;
     for (const msg of messages) {
-      const senderName = msg.sender === 'user' ? userName : aiName;
+      const senderName = msg.type === ChatMessageType.Prompt ? userName : aiName;
       lines.push(`${senderName}:`);
       
       // Basic markdown stripping (removing **, __, ```, etc)
-      let text = msg.text || '';
+      let text = msg.content || '';
       
       // Remove code blocks
       text = text.replace(/```[\s\S]*?```/g, (match) => {

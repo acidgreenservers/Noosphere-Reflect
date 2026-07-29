@@ -1,8 +1,8 @@
 # Noosphere Reflect: Development Roadmap
 
-**Last Updated**: January 10, 2026
-**Current Version**: v0.5.3
-**Current Status**: Phase 6.1 Complete + Governance Framework (v0.5.2-0.5.3) → Sprint 6.2 Next
+**Last Updated**: July 28, 2026
+**Current Version**: v0.6.0
+**Current Status**: Phase 6.3 Active — Chat UX Overhaul & Document Builder
 
 ---
 
@@ -127,188 +127,63 @@ This roadmap is organized into three tiers:
 ---
 
 
-## 🚧 PLANNED PHASES (Active Work)
+## 🚧 ACTIVE PHASE
 
-## Phase 6.2.5: Smart Import Detection & Google Drive Sync (v0.5.8.2)
+### Phase 6.3: Chat UX Overhaul & Document Builder (v0.6.0)
 
-**Goal**: Seamless import/export of Noosphere chats + 3rd-party chat support with intelligent file detection
+**Goal**: Redesign chat workspace interactions, move actions into title area, introduce Document Builder for in-app document creation, and provide an Artifact list sidebar.
 
-### Part A: Import File Type Detection (ACTIVE)
+**Session 6.3.1 — Foundation (Complete ✅)**
+- [x] Move Actions menu to title area (left side, chevron interaction)
+- [x] Replace old top-right Actions button with Document + Artifacts buttons
+- [x] Document Builder sliding sidebar (markdown editor, preview toggle, message attachment picker)
+- [x] Artifact List sliding sidebar (browse, view, download, remove session artifacts)
+- [x] Drag-handle resizing on all sidebars (document builder, artifact list, artifact reader)
+- [x] Chat message bubble redesign (user = blue bubble, AI = raw text, dynamic action buttons)
+- [x] Show More / Show Less for long user messages (>150 words)
+- [x] Chat Preferences tab in Settings Menu (Enter vs Ctrl+Enter toggle)
+- [x] `<form>` → `<div>` on all chat inputs (prevent native form submission)
+- [x] Settings sync via `settingsUpdated` event listener
+- [x] Edit mode overhaul (contentEditable divs, cursor placement)
+- [x] Workflow builder route fix (`:id?` param, `getById` fix)
+- [x] ArtifactReaderLayer wired into UnifiedChatInterface
+- [x] Brave model added across all selection surfaces
 
-**Detection Constraint 1: Noosphere Exported Chats (Priority)**
-- Files must contain standardized structure:
-  - `## Prompt:` and `## Response:` section headers
-  - Attribution text: `'Noosphere Reflect'` (searchable phrase in file)
-- When detected: **Full metadata preservation** (title, model, tags, author, source)
-- Filename pattern (optional): `[AI Service] - Title.ext` for enhanced metadata
-- Result: Seamless import with all metadata intact
-
-**Detection Constraint 2: 3rd-Party Chat Exports (Supported)**
-- Files with structure but WITHOUT 'Noosphere Reflect' attribution
-- Must contain: `## Prompt:` and `## Response:` section headers
-- Examples: Manual Markdown exports from any chat app, Claude exports, ChatGPT exports
-- When detected: **Import as basic chat** (auto-detect model from content)
-- Result: Import works, but limited metadata (auto-extracted only)
-
-**Detection Constraint 3: HTML Exports (Platform-Specific)**
-- Already supported: Claude HTML, ChatGPT HTML, Gemini HTML, LeChat HTML
-- Detected via content markers (no filename required)
-- Result: Full parsing with model/platform detection
-
-**Constraint 4: Reject Unsupported**
-- Files without `## Prompt:` / `## Response:` structure
-- Files that can't be parsed
-- Result: Show error, allow user to skip file
-
-### Part B: Import UI Modal - File Origin Detection
-
-**New Step 1: File Selection**
-- List all detected chat files (.md, .json, .html, .txt)
-- Display: filename, detected type (Noosphere/3rd-party/Platform), file size
-
-**New Step 2: Origin Detection (After selection)**
-- For each selected file:
-  - Search file content for `'Noosphere Reflect'`
-  - Search for `## Prompt:` / `## Response:` headers
-  - Identify platform (Claude/ChatGPT/Gemini via HTML markers)
-- Show user: "Detected as: Noosphere Export | 3rd-Party Markdown | Claude HTML"
-
-**New Step 3: Confirmation Dialog** (If mixed sources)
-Example: "Your selection includes 5 Noosphere exports and 2 3rd-party chats.
-- Noosphere files will import with full metadata
-- 3rd-party files will import as standard chats
-Continue?"
-
-### Part C: Apply Detection to Both Import Methods
-
-**Method 1: Google Drive Sync (Current Work)**
-- [ ] Search Drive for chat files (.md, .json, .html, .txt)
-- [ ] Download each file
-- [ ] Detect origin (Noosphere vs 3rd-party)
-- [ ] Show origin in modal UI
-- [ ] User confirms before import
-- [ ] Parse and save with appropriate metadata
-
-**Method 2: Local File Upload (Existing Wizard)**
-- [ ] Apply same detection logic
-- [ ] Show origin in file preview
-- [ ] User confirms source type
-- [ ] Parse and save with appropriate metadata
-
-### Part D: Implementation Files
-
-- `src/utils/importDetector.ts` (NEW) - Detect Noosphere vs 3rd-party
-  - `isNoosphereExport(content: string): boolean`
-  - `extractNoosphereMetadata(content: string): ChatMetadata`
-  - `hasChatStructure(content: string): boolean`
-  - `detectPlatform(content: string): ParserMode`
-
-- `src/components/GoogleDriveImportModal.tsx` (MODIFY)
-  - Add file origin detection before displaying
-  - Show "Detected: Noosphere | 3rd-Party | [Platform]" badge
-  - Confirmation dialog for mixed sources
-  - Pre-import validation
-
-- `src/services/converterService.ts` (MODIFY)
-  - Add detection functions to export
-  - Existing `parseChat()` already handles all formats
-
-### Part E: User Flow Example
-
-```
-User clicks "Sync from Drive"
-  ↓
-Modal searches Drive for .md, .json, .html, .txt files
-  ↓
-Shows 8 files total:
-  - 5 Noosphere exports (green badge "✨ Noosphere")
-  - 2 3rd-party Markdown (yellow badge "📄 3rd-Party")
-  - 1 Claude HTML (blue badge "🔵 Claude")
-  ↓
-User selects all 8 files
-  ↓
-Modal shows: "Detected origins: 5 Noosphere + 3 3rd-Party. Proceed?"
-  ↓
-User clicks "Import All"
-  ↓
-For each file:
-  1. Download from Drive
-  2. Detect origin (Noosphere/3rd-party/platform)
-  3. If Noosphere: Use enrichedMetadata() for full preservation
-  4. If 3rd-party: Use basic parser, auto-detect model
-  5. Save to IndexedDB
-  ↓
-Results: "✅ Imported 8 files: 5 with full metadata, 3 as standard chats"
-```
-
-### Acceptance Criteria
-- [ ] Noosphere exports detect correctly (via 'Noosphere Reflect' phrase)
-- [ ] 3rd-party chats detect correctly (via `## Prompt:` / `## Response:`)
-- [ ] HTML exports detect platform correctly (Claude/ChatGPT/Gemini)
-- [ ] Google Drive import shows file origins in UI
-- [ ] Mixed source imports show confirmation dialog
-- [ ] Metadata preserved for Noosphere exports, auto-detected for 3rd-party
-- [ ] Works for both Google Drive sync AND local file upload
-- [ ] All tests pass, no regression
+**Session 6.3.2 — Document Builder Deepening (Pending)**
+- [ ] Extended edit bar with image insertion, tables, task lists
+- [ ] Template library (common doc types)
+- [ ] Auto-save draft recovery
+- [ ] Export document standalone (not just as artifact)
 
 ---
 
-## Future Enhancements (Post 6.2.5)
+### Deferred (Previously Planned)
 
-**GitHub Integration for sync** (Phase 6.2.6)
-- Granular control over what to sync
+The following items were moved from PLANNED status to make room for the Chat UX focus:
 
-**Sharing System** (Phase 6.2.7)
-- Public link sharing for conversations
+**Phase 6.2.5: Smart Import Detection & Google Drive Sync** — Seamless import/export with intelligent file detection, Noosphere/3rd-party origin detection, Google Drive sync modal. *(Postponed)*
 
-### Sprint 6.3: Archive Hub Polish (v0.5.8.3)
-**Goal:** Enhance Archive Hub with denser, more information-rich conversation cards.
-**Consistency** Consistent operation and functionality across all pages.
-- All pages should have the same operation of selection, badges, export functionality, 
-feeling. 
+**Sprint 6.3 (old): Archive Hub Polish** — Conversation card redesign, filter UI, batch action bar. *(Postponed; some polish absorbed into Phase 6.3.1)*
 
-**Folder System for Organization** (Phase 6.2.8)
-- New folder system for organization
-- Export specific folders
-- Share folder groups
-**Status**: 🚧 Next Up
+**Sprint 6.4 (old): Extension Reliability** — Toast notification queue, error handling, performance. *(Partially complete — toast queue shipped)*
 
+---
 
-#### Sprint 6.3 Tasks
-- [ ] Redesign conversation cards for higher information density
-- [ ] Improve visual hierarchy (title, metadata, badges)
-- [ ] Enhanced filter UI with better visual feedback
+## 🚧 PLANNED PHASES (Future Active Work)
+
+### Phase 6.4: Document Export & Standalone View
+**Goal**: Export documents standalone (not just as session artifacts), with full preview and download.
+- [ ] Standalone document view page
+- [ ] Multi-format export (Markdown, HTML, PDF via browser print)
+- [ ] Document library (browse all documents across sessions)
+
+### Phase 6.5: Archive Hub Consistency
+**Goal**: Consistent operation and functionality across all pages (Archive Hub, Memory Archive, Prompt Archive).
+- [ ] Conversation card redesign for higher density
+- [ ] Filter UI with visual feedback
 - [ ] Batch action bar improvements
-- [ ] Responsive layout optimizations
-- [ ] Export Themes Matching Services from exports
-
-**Acceptance Criteria**:
-- Conversation cards display more information without feeling cluttered
-- Improved scannability and visual hierarchy
-- Filter UI is more intuitive and visually consistent
-- Batch operations are more discoverable
-- Responsive design works on all screen sizes
-
----
-
-### Sprint 6.4: Extension Reliability (v0.5.3)
-**Goal:** Fix toast notification overlaps and improve extension UX.
-                      ^ Completed
-
-**Status**: 🚧 Planned
-
-#### Sprint 6.4 Tasks
-- [x] Implement toast notification queue (prevent overlaps)
-- [x] Fix toast stacking (side-by-side instead of on top)
-- [ ] Improve error handling and user feedback
-- [ ] Extension settings optimization
-- [ ] Performance improvements for large captures
-
-**Acceptance Criteria**:
-- Toast notifications never overlap
-- Clear visual feedback for all extension actions
-- Graceful error handling with helpful messages
-- Improved performance on large conversations
+- [ ] Export themes matching services
+- [ ] Selection, badges, export functionality consistent across all archive pages
 
 ---
 
@@ -335,9 +210,8 @@ The following are potential future directions pending strategic decisions:
 - **PDF/DOCX/EPUB Export**: Enhanced export formats
 - **Cloud Synchronization**: Optional end-to-end encrypted backup - Added Google Drive Sync (January 16, 2026)
 - **Cross-Platform Intelligence**: Semantic linking of conversations
-- **Additional AI Platforms**: Perplexity, HuggingChat, custom interfaces
 - **Artifact Auto-Capture**: Extension auto-detection during capture (foundation: v0.3.2)
-- **Collaboration Features**: Share, comment, annotate conversations <<< MOVE UP LIST TO SPRINT 6.3
+- **Collaboration Features**: Share, comment, annotate conversations
 
 ---
 
@@ -353,8 +227,8 @@ The following are potential future directions pending strategic decisions:
 | Phase 6 | v0.5.0 | ✅ Complete | Jan 8 | Jan 8, 2026 |
 | Phase 6.1 | v0.5.1 | ✅ Complete | Jan 9 | Jan 9, 2026 |
 | Phase 6.2 | v0.5.2-0.5.3 | ✅ Complete | Jan 10 | Jan 10, 2026 |
-| **Sprint 6.3** | **v0.6.0** | 🚧 Next Up | TBD | TBD |
-| **Sprint 5.1** | **v0.5.x** | 🚧 Planned | TBD | TBD |
+| **Phase 6.3** | **v0.6.0** | **🚧 Active** | **Jul 28, 2026** | **TBD** |
+| **Phase 6.4** | **v0.6.1** | 🚧 Planned | TBD | TBD |
 | Phase 5 | v0.7.0+ | 🔮 Future | TBD | TBD |
 | Phase 7+ | v0.8.0+ | 🔮 Future | TBD | TBD |
 
@@ -387,17 +261,17 @@ The following are potential future directions pending strategic decisions:
 
 ---
 
-## 📈 Key Metrics (v0.5.3)
+## 📈 Key Metrics (v0.6.0)
 
 **Code Quality**:
-- 64 modules in production build
-- 0 compilation errors
+- 68 modules in production build
+- 0 compilation errors (new code)
 - TypeScript strict mode
 - React 19 functional components
 - Tailwind CSS v4
 - Build time: ~4s
 
-**Platform Support** (7 platforms):
+**Platform Support** (8 platforms):
 - ✅ Claude (claude.ai) - 🟠 Orange Theme
 - ✅ ChatGPT (chatgpt.com) - 🟢 Green Theme
 - ✅ Gemini (gemini.google.com) - 🔵 Blue Theme
@@ -405,6 +279,7 @@ The following are potential future directions pending strategic decisions:
 - ✅ Grok (x.ai) - ⚫ Black Theme
 - ✅ Llamacoder (llamacoder.together.ai) - ⚪ White Theme
 - ✅ AI Studio (aistudio.google.com) - 🔵 Blue Theme
+- ✅ Brave (brave.com) - 🦁 Lion Theme
 
 **Features**:
 - One-click extension capture
@@ -419,6 +294,9 @@ The following are potential future directions pending strategic decisions:
 - Database export (full backup) ✅
 - Multi-agent governance framework ✅
 - 7 core protocols with formal documentation ✅
+- Document Builder (inline markdown editor) ✅
+- Artifact List sidebar (browse/view/download) ✅
+- Chat title actions chevron menu ✅
 
 ---
 
@@ -455,9 +333,9 @@ The following are potential future directions pending strategic decisions:
 
 ---
 
-**Roadmap Version**: 2.2 (Updated Jan 10, 2026)
+**Roadmap Version**: 3.0 (Updated Jul 28, 2026)
 **Maintained By**: User + Claude + Antigravity + Gemini
-**Last Review**: January 10, 2026
+**Last Review**: July 28, 2026
 
 
 

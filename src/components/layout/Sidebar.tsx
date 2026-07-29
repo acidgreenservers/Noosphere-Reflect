@@ -43,9 +43,9 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const loadRecentChats = async () => {
         try {
             const allMetas = await storageService.getAllSessionsMetadata();
-            // Sort by date descending, take top 15
+            // Sort by most recent activity (updatedAt > date), take top 15
             const sorted = allMetas.sort((a, b) =>
-                new Date(b.date).getTime() - new Date(a.date).getTime()
+                new Date(b.metadata?.updatedAt || b.date).getTime() - new Date(a.metadata?.updatedAt || a.date).getTime()
             );
             setRecentChats(sorted.slice(0, 15));
         } catch (e) {
@@ -459,12 +459,12 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                     title="Profile & Settings"
                 >
                     <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-green-500 to-emerald-600 flex items-center justify-center text-[#09100c] font-bold text-xs shadow-[0_0_10px_rgba(16,185,129,0.3)] shrink-0">
-                        {appSettings.defaultUserName?.slice(0, 2).toUpperCase() || 'UR'}
+                        {appSettings.profile.name?.slice(0, 2).toUpperCase() || 'UR'}
                     </div>
                     {!isCollapsed && (
                         <div className="flex-1 min-w-0 animate-fade-in">
                             <div className="text-xs font-semibold text-gray-200 truncate">
-                                {appSettings.defaultUserName || 'User'}
+                                {appSettings.profile.name || 'User'}
                             </div>
                             <div className="text-[9px] text-gray-500 font-mono tracking-wider">
                                 SECURE SANCTUARY

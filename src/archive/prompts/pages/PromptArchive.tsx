@@ -250,7 +250,7 @@ export default function PromptArchive() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${sanitizeFilename(prompt.metadata.title, appSettings.fileNamingCase)}.${extension}`;
+            a.download = `${sanitizeFilename(prompt.metadata.title, appSettings.preferences.fileNamingCase)}.${extension}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -309,7 +309,7 @@ export default function PromptArchive() {
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedPrompts.size === 0) return;
         const selected = prompts.filter(p => selectedPrompts.has(p.id));
-        const caseFormat = appSettings.fileNamingCase;
+        const caseFormat = appSettings.preferences.fileNamingCase;
         
         if (selected.length > 50) {
             if (!window.confirm(`You are exporting ${selected.length} items. Over 50 items exported may result in split zip archives depending on the amount exported. Continue?`)) {
@@ -392,9 +392,9 @@ export default function PromptArchive() {
         setIsSendingToDrive(true);
         try {
             for (const prompt of selectedMetas) {
-                const filename = sanitizeFilename(prompt.metadata.title, appSettings.fileNamingCase);
+                const filename = sanitizeFilename(prompt.metadata.title, appSettings.preferences.fileNamingCase);
                 const promptAsChat: ChatData = {
-                    messages: [{ type: ChatMessageType.Response, content: prompt.content, isEdited: false }],
+                    messages: [{ type: ChatMessageType.Response, content: prompt.content, isEdited: false, createdAt: new Date().toISOString() }],
                     metadata: { title: prompt.metadata.title, model: 'Prompt', date: prompt.createdAt, tags: prompt.tags || [] }
                 };
 

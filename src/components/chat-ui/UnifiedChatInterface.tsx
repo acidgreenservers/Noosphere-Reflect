@@ -1,5 +1,8 @@
 import { ArtifactReaderLayer } from '../ArtifactReader';
 import { isSupportedByReader } from '../ArtifactReader/utils';
+import { DocumentBuilder } from './DocumentBuilder';
+import { ArtifactListSidebar } from './ArtifactListSidebar';
+import { ConfirmationModal } from '../ConfirmationModal';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
@@ -8,6 +11,18 @@ import logo from '../../assets/logo.png';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
 import { sanitizeFilename } from '../../utils/securityUtils';
+import { copyToClipboard } from '../../utils/fileUtils';
+
+const formatTimestamp = (isoString?: string): string | null => {
+    if (!isoString) return null;
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return null;
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (isToday) return time;
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+};
 
 const ChatMessageBubble = React.memo(({ 
     msg, 
@@ -21,6 +36,7 @@ const ChatMessageBubble = React.memo(({
     onSaveSkill,
     onSaveWorkflow,
     onEditMessage,
+    onDeleteMessage,
     onArtifactClick,
     onImageClick
 }: { 
@@ -35,6 +51,7 @@ const ChatMessageBubble = React.memo(({
     onSaveSkill: (msg: ChatMessage) => void; 
     onSaveWorkflow: (msg: ChatMessage) => void;
     onEditMessage: (index: number, newContent: string) => void;
+    onDeleteMessage: (index: number) => void;
     onArtifactClick?: (art: ConversationArtifact) => void;
     onImageClick?: (src: string, alt?: string) => void;
 }) => {
@@ -42,6 +59,7 @@ const ChatMessageBubble = React.memo(({
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(msg.content);
     const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isMessageExpanded, setIsMessageExpanded] = useState(false);
     const editRef = useRef<HTMLDivElement>(null);
     
@@ -52,6 +70,7 @@ const ChatMessageBubble = React.memo(({
     const wordCount = displayContent.split(/\s+/).filter(Boolean).length;
     const isShort = wordCount <= 4;
     const isLongMessage = isUser && (wordCount > 150 || displayContent.length > 500);
+    const timestampStr = formatTimestamp(msg.createdAt);
     
     // Matches variations:
     // Powered by Gemini Exporter (https://www.ai-chat-exporter.com)
@@ -114,11 +133,14 @@ const ChatMessageBubble = React.memo(({
             {/* Message Bubble Header (Meta) */}
             <div className="flex items-center gap-2 mb-1.5 text-[10px] font-mono text-gray-500">
                 <span>{isUser ? '👤 You' : `🤖 ${aiName}`}</span>
+                {timestampStr && (
+                    <span className="text-gray-600">· {timestampStr}</span>
+                )}
             </div>
 
             {/* User Message: Tight Blue Bubble */}
             {isUser ? (
-                <div className="w-fit max-w-[65ch]">
+                <div className="w-fit" style={{ maxWidth: 'min(100%, 65ch)' }}>
                     <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words">
                         {isEditing ? (
                             <div className="flex flex-col gap-3">
@@ -243,6 +265,32 @@ const ChatMessageBubble = React.memo(({
                                     </>
                                 )}
                             </div>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsDeleteConfirmOpen(!isDeleteConfirmOpen)}
+                                    className={`${btnBase} bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20`}
+                                    title="Delete"
+                                >{isShort ? '🗑️' : '🗑️ Delete'}</button>
+                                {isDeleteConfirmOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsDeleteConfirmOpen(false)} />
+                                        <div className="absolute bottom-full mb-1 left-0 w-28 bg-black border border-red-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5">
+                                            <button
+                                                onClick={() => { onDeleteMessage(index); setIsDeleteConfirmOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🗑️ Delete
+                                            </button>
+                                            <button
+                                                onClick={() => setIsDeleteConfirmOpen(false)}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-colors flex items-center gap-2"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -357,6 +405,32 @@ const ChatMessageBubble = React.memo(({
                                     </>
                                 )}
                             </div>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsDeleteConfirmOpen(!isDeleteConfirmOpen)}
+                                    className={`${btnBase} bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20`}
+                                    title="Delete"
+                                >{isShort ? '🗑️' : '🗑️ Delete'}</button>
+                                {isDeleteConfirmOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsDeleteConfirmOpen(false)} />
+                                        <div className="absolute bottom-full mb-1 left-0 w-28 bg-black border border-red-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5">
+                                            <button
+                                                onClick={() => { onDeleteMessage(index); setIsDeleteConfirmOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🗑️ Delete
+                                            </button>
+                                            <button
+                                                onClick={() => setIsDeleteConfirmOpen(false)}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-colors flex items-center gap-2"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -398,6 +472,14 @@ export default function UnifiedChatInterface() {
     const [attachedFiles, setAttachedFiles] = useState<ConversationArtifact[]>([]);
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
     const [readerWidth, setReaderWidth] = useState<number>(50);
+    const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
+    const [showArtifactList, setShowArtifactList] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editingTitle, setEditingTitle] = useState('');
+    const titleInputRef = useRef<HTMLInputElement>(null);
+    const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
+    const [artifactListWidth, setArtifactListWidth] = useState<number>(40);
 
     const handleImageClick = useCallback((src: string, alt?: string) => {
         const isBase64Data = src.startsWith('data:');
@@ -417,6 +499,7 @@ export default function UnifiedChatInterface() {
             mimeType: mimeType,
             fileSize: Math.round((base64Content.length * 3) / 4)
         });
+        setShowArtifactList(false);
     }, []);
 
     // Notification banner state
@@ -426,6 +509,13 @@ export default function UnifiedChatInterface() {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isEditingTitle && titleInputRef.current) {
+            titleInputRef.current.focus();
+            titleInputRef.current.select();
+        }
+    }, [isEditingTitle]);
 
     const loadSession = async () => {
         if (!id) return;
@@ -514,6 +604,7 @@ export default function UnifiedChatInterface() {
             type: currentRole === 'prompt' ? ChatMessageType.Prompt : ChatMessageType.Response,
             content: text,
             isEdited: false,
+            createdAt: new Date().toISOString(),
             artifacts: [...attachedFiles]
         };
 
@@ -552,8 +643,11 @@ export default function UnifiedChatInterface() {
     };
 
     const handleCopyText = useCallback((text: string) => {
-        navigator.clipboard.writeText(text);
-        showToast('✓ Message copied to clipboard', 'success');
+        if (copyToClipboard(text)) {
+            showToast('✓ Message copied to clipboard', 'success');
+        } else {
+            showToast('❌ Copy failed', 'info');
+        }
     }, []);
 
     const handleEditMessage = useCallback(async (index: number, newContent: string) => {
@@ -584,6 +678,28 @@ export default function UnifiedChatInterface() {
             }
         }
         showToast('✓ Message updated', 'success');
+    }, [session, messages]);
+
+    const handleDeleteMessage = useCallback(async (index: number) => {
+        const updatedMessages = messages.filter((_, i) => i !== index);
+        if (updatedMessages.length === messages.length) return;
+        setMessages(updatedMessages);
+        if (session) {
+            const updatedSession: SavedChatSession = {
+                ...session,
+                chatData: {
+                    ...(session.chatData || { rawText: '', messages: [] }),
+                    messages: updatedMessages
+                }
+            };
+            setSession(updatedSession);
+            try {
+                await storageService.saveSession(updatedSession);
+            } catch (err) {
+                console.error('Failed to save updated session:', err);
+            }
+        }
+        showToast('🗑️ Message deleted', 'success');
     }, [session, messages]);
 
     const showToast = (msg: string, type: 'success' | 'info' = 'success') => {
@@ -709,7 +825,7 @@ export default function UnifiedChatInterface() {
     const handleForkChat = useCallback(async (messageIndex: number) => {
         if (!session) return;
         
-        const forkedMessages = messages.slice(0, messageIndex + 1);
+        const forkedMessages = messages.slice(messageIndex, messageIndex + 1);
         const newSessionId = (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
         const forkedTitle = `${session.chatTitle} - Fork`;
         
@@ -741,7 +857,7 @@ export default function UnifiedChatInterface() {
         showToast('✓ Chat forked in new tab', 'success');
     }, [session, messages]);
 
-    const handleExport = async (format: 'html' | 'markdown' | 'json', toClipboard: boolean = false) => {
+    const handleExport = async (format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
         if (!session || !session.chatData) return;
         
         try {
@@ -771,6 +887,17 @@ export default function UnifiedChatInterface() {
                     undefined,
                     session.metadata
                 );
+            } else if (format === 'text') {
+                content = await exportService.generate(
+                    'text',
+                    session.chatData,
+                    session.metadata?.title || session.chatTitle,
+                    undefined,
+                    session.userName || 'User',
+                    session.aiName || 'AI',
+                    undefined,
+                    session.metadata
+                );
             } else {
                 content = await exportService.generate(
                     'json',
@@ -781,8 +908,11 @@ export default function UnifiedChatInterface() {
             }
 
             if (toClipboard) {
-                navigator.clipboard.writeText(content);
-                showToast(`✓ Copied as ${format.toUpperCase()}`, 'success');
+                if (copyToClipboard(content)) {
+                    showToast(`✓ Copied as ${format.toUpperCase()}`, 'success');
+                } else {
+                    showToast('❌ Copy failed', 'info');
+                }
                 setShowChatActionsMenu(false);
                 return;
             }
@@ -793,8 +923,8 @@ export default function UnifiedChatInterface() {
             );
             const baseFilename = `[${session.aiName || 'AI'}] - ${sanitizedTitle}`;
             
-            const extension = format === 'markdown' ? 'md' : format;
-            const mimeType = format === 'html' ? 'text/html' : format === 'markdown' ? 'text/markdown' : 'application/json';
+            const extension = format === 'markdown' ? 'md' : format === 'text' ? 'txt' : format;
+            const mimeType = format === 'html' ? 'text/html' : format === 'markdown' ? 'text/markdown' : format === 'text' ? 'text/plain' : 'application/json';
 
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
@@ -908,38 +1038,132 @@ export default function UnifiedChatInterface() {
         showToast(`Model updated to ${modelName}`, 'info');
     };
 
+    const handleTitleSave = async (title: string) => {
+        if (!session || !title.trim()) return;
+        setShowChatActionsMenu(false);
+        const updatedTitle = title.trim().slice(0, 50);
+        const updated = {
+            ...session,
+            chatTitle: updatedTitle,
+            name: updatedTitle,
+            metadata: {
+                ...(session.metadata || { title: updatedTitle, model: session.aiName, date: session.date, tags: [] }),
+                title: updatedTitle,
+                updatedAt: new Date().toISOString()
+            }
+        };
+        await storageService.saveSession(updated);
+        setSession(updated);
+        window.dispatchEvent(new Event('chatSaved'));
+        showToast('Chat renamed successfully', 'success');
+        setIsEditingTitle(false);
+    };
+
     const handleRenameChat = async () => {
         if (!session) return;
-        const newTitle = prompt('Rename Chat:', session.metadata?.title || session.chatTitle);
-        if (newTitle && newTitle.trim()) {
-            const updated = {
-                ...session,
-                chatTitle: newTitle,
-                name: newTitle,
-                metadata: {
-                    ...(session.metadata || { title: newTitle, model: session.aiName, date: session.date, tags: [] }),
-                    title: newTitle,
-                    updatedAt: new Date().toISOString()
-                }
-            };
-            await storageService.saveSession(updated);
-            setSession(updated);
-            // Refresh sidebar
-            window.dispatchEvent(new Event('chatSaved'));
-            showToast('Chat renamed successfully', 'success');
-        }
+        setEditingTitle(session.metadata?.title || session.chatTitle || '');
+        setIsEditingTitle(true);
         setShowChatActionsMenu(false);
     };
 
     const handleDeleteChat = async () => {
         if (!session) return;
-        if (confirm('Delete this chat permanently? This cannot be undone.')) {
-            await storageService.deleteSession(session.id);
-            // Refresh sidebar
-            window.dispatchEvent(new Event('chatSaved'));
-            navigate('/');
+        setShowDeleteConfirm(true);
+        setShowChatActionsMenu(false);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!session) return;
+        await storageService.deleteSession(session.id);
+        window.dispatchEvent(new Event('chatSaved'));
+        setShowDeleteConfirm(false);
+        navigate('/');
+    };
+
+    const handleSaveDocument = async (artifact: ConversationArtifact, messageIndex: number | null) => {
+        if (!session) return;
+        if (messageIndex !== null) {
+            const updated = { ...session };
+            if (!updated.chatData) return;
+            const msg = updated.chatData.messages[messageIndex];
+            if (!msg) return;
+            if (!msg.artifacts) msg.artifacts = [];
+            msg.artifacts.push(artifact);
+            await storageService.saveSession(updated);
+            setSession(updated);
+            setMessages([...updated.chatData.messages]);
+        } else {
+            await storageService.attachArtifact(session.id, artifact);
+            const updated = await storageService.getSessionById(session.id);
+            if (updated) setSession(updated);
+        }
+        showToast('Document saved as artifact', 'success');
+        window.dispatchEvent(new Event('chatSaved'));
+    };
+
+    const handleRemoveArtifact = async (artifactId: string) => {
+        if (!session) return;
+
+        // Search inside session.metadata.artifacts and messages
+        let isMessageArtifact = false;
+        let messageIndex = -1;
+
+        session.chatData?.messages?.forEach((m, idx) => {
+            if (m.artifacts?.some(a => a.id === artifactId)) {
+                isMessageArtifact = true;
+                messageIndex = idx;
+            }
+        });
+
+        if (isMessageArtifact) {
+            await storageService.removeMessageArtifact(session.id, messageIndex, artifactId);
+        } else {
+            await storageService.removeArtifact(session.id, artifactId);
+        }
+
+        const updated = await storageService.getSessionById(session.id);
+        if (updated) {
+            setSession(updated);
+            if (updated.chatData) {
+                setMessages([...updated.chatData.messages]);
+            }
+        }
+        showToast('Artifact removed', 'success');
+    };
+
+    const handleDownloadArtifact = (artifact: ConversationArtifact) => {
+        try {
+            let blob: Blob;
+            if (artifact.mimeType?.startsWith('text/') || artifact.mimeType === 'text/markdown') {
+                blob = new Blob([artifact.fileData], { type: artifact.mimeType });
+            } else {
+                const byteCharacters = atob(artifact.fileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                blob = new Blob([byteArray], { type: artifact.mimeType });
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = artifact.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to download artifact', err);
         }
     };
+
+    const allArtifacts: ConversationArtifact[] = React.useMemo(() => {
+        if (!session) return [];
+        const sessionArtifacts = session.metadata?.artifacts || [];
+        const messageArtifacts = (session.chatData?.messages || []).flatMap(m => m.artifacts || []);
+        return [...sessionArtifacts, ...messageArtifacts];
+    }, [session]);
 
 
 const modelsList = [
@@ -964,7 +1188,42 @@ const modelsList = [
     }
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0e1511] relative">
+        <div className="flex-1 flex h-full overflow-hidden bg-[#0e1511] relative">
+            {/* Absolute Top Right Buttons (overlaid on chat, hidden by right panels) */}
+            <div className="absolute top-[18px] right-6 flex items-center gap-3 z-[40]">
+                {/* Proxy Turn Badge */}
+                <div className={`px-3 py-1.5 text-[10px] font-bold font-mono tracking-wider rounded-full border transition-colors select-none ${
+                    currentRole === 'response'
+                        ? 'bg-green-900/30 text-green-400 border-green-500/30'
+                        : 'bg-blue-900/30 text-blue-400 border-blue-500/30'
+                }`}>
+                    PROXY: {currentRole === 'response' ? 'AWAITING AI' : 'USER TURN'}
+                </div>
+
+                {/* Document Button */}
+                <button
+                    onClick={() => {
+                        setShowDocumentBuilder(!showDocumentBuilder);
+                        if (!showDocumentBuilder) setShowArtifactList(false);
+                    }}
+                    className="px-3 py-1.5 bg-[#122622] hover:bg-blue-500/20 text-[10px] font-bold font-mono tracking-wider text-blue-400 hover:text-blue-300 border border-blue-500/20 hover:border-blue-500/40 hover:shadow-[0_0_12px_rgba(59,130,246,0.2)] rounded-full transition-all cursor-pointer"
+                >
+                    DOCUMENT
+                </button>
+
+                {/* Artifacts Button */}
+                <button
+                    onClick={() => {
+                        setShowArtifactList(!showArtifactList);
+                        if (!showArtifactList) setShowDocumentBuilder(false);
+                    }}
+                    className="px-3 py-1.5 bg-[#122622] hover:bg-purple-500/20 text-[10px] font-bold font-mono tracking-wider text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 hover:shadow-[0_0_12px_rgba(168,85,247,0.2)] rounded-full transition-all cursor-pointer"
+                >
+                    ARTIFACTS
+                </button>
+            </div>
+
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-[360px] transition-all duration-300">
             {/* Notification Toast */}
             {notification && (
                 <div className="absolute top-4 right-4 z-[90] px-4 py-2 bg-[#122622] border border-green-500/30 text-green-400 rounded-xl text-xs font-mono shadow-xl animate-fade-in flex items-center gap-2">
@@ -975,12 +1234,46 @@ const modelsList = [
 
             {/* Chat Workspace Header */}
             <header className="px-6 py-4 bg-[#09100c] border-b border-green-500/10 flex justify-between items-center shrink-0">
-                <div className="flex items-center gap-3">
+                {/* Left: Title + Actions Chevron */}
+                <div className="relative flex items-center gap-3">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-bold text-gray-100 max-w-md truncate">
-                                {session.metadata?.title || session.chatTitle || 'Untitled Conversation'}
-                            </h2>
+                            {isEditingTitle ? (
+                                <input
+                                    ref={titleInputRef}
+                                    type="text"
+                                    value={editingTitle}
+                                    onChange={(e) => setEditingTitle(e.target.value.slice(0, 50))}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleTitleSave(editingTitle);
+                                        } else if (e.key === 'Escape') {
+                                            setIsEditingTitle(false);
+                                        }
+                                    }}
+                                    onBlur={() => handleTitleSave(editingTitle)}
+                                    maxLength={50}
+                                    className="text-sm font-bold text-gray-100 bg-[#0e1511] border border-green-500/30 rounded px-2 py-0.5 focus:outline-none focus:border-green-500 w-64"
+                                />
+                            ) : (
+                                <h2
+                                    className="text-sm font-bold text-gray-100 max-w-md truncate cursor-pointer hover:text-green-400 transition-colors"
+                                    onClick={() => {
+                                        setEditingTitle(session.metadata?.title || session.chatTitle || '');
+                                        setIsEditingTitle(true);
+                                    }}
+                                >
+                                    {session.metadata?.title || session.chatTitle || 'Untitled Conversation'}
+                                </h2>
+                            )}
+                            <svg
+                                className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 cursor-pointer ${showChatActionsMenu ? 'rotate-180' : ''}`}
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                onClick={(e) => { e.stopPropagation(); setShowChatActionsMenu(!showChatActionsMenu); }}
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
                             {session.metadata?.exportStatus === 'exported' && (
                                 <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-bold">
                                     EXPORTED
@@ -997,30 +1290,12 @@ const modelsList = [
                             </span>
                         </div>
                     </div>
-                </div>
 
-                {/* Right Header Buttons */}
-                <div className="flex items-center gap-3 relative">
-                    {/* Proxy Turn Badge */}
-                    <div className={`px-3 py-1.5 text-[10px] font-bold font-mono tracking-wider rounded-full border transition-colors select-none ${
-                        currentRole === 'response'
-                            ? 'bg-green-900/30 text-green-400 border-green-500/30' 
-                            : 'bg-blue-900/30 text-blue-400 border-blue-500/30'
-                    }`}>
-                        PROXY: {currentRole === 'response' ? 'AWAITING AI' : 'USER TURN'}
-                    </div>
-
-                    <button
-                        onClick={() => setShowChatActionsMenu(!showChatActionsMenu)}
-                        className="px-3 py-1.5 bg-[#122622] hover:bg-green-500/20 text-[10px] font-bold font-mono tracking-wider text-green-400 hover:text-green-300 border border-green-500/20 hover:border-green-500/40 hover:shadow-[0_0_12px_rgba(34,197,94,0.2)] rounded-full transition-all cursor-pointer"
-                    >
-                        ACTIONS ▾
-                    </button>
-
+                    {/* Actions Dropdown (below title) */}
                     {showChatActionsMenu && (
                         <>
                             <div className="fixed inset-0 z-30" onClick={() => setShowChatActionsMenu(false)} />
-                            <div className="absolute right-0 top-full mt-2 w-56 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl z-40 animate-fade-in">
+                            <div className="absolute left-0 top-full mt-2 w-56 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl z-40 animate-fade-in">
                                 <div className="py-1">
                                     <button
                                         onClick={() => {
@@ -1041,17 +1316,17 @@ const modelsList = [
                                     <div className="relative group/export rounded-b-xl">
                                         <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center rounded-b-xl">
                                             <span>📤 Export</span>
-                                            <span className="text-[10px]">◀</span>
+                                            <span className="text-[10px]">▶</span>
                                         </button>
-                                        <div className="absolute right-full top-0 mr-1 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-xs">
+                                        <div className="absolute left-full top-0 ml-1 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-xs">
                                             
                                             {/* Clipboard Submenu */}
                                             <div className="relative group/clipboard">
                                                 <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center">
                                                     <span>📋 Clipboard</span>
-                                                    <span className="text-[10px]">◀</span>
+                                                    <span className="text-[10px]">▶</span>
                                                 </button>
-                                                <div className="absolute right-full top-0 mr-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
+                                                <div className="absolute left-full top-0 ml-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
                                                     <button onClick={() => { handleExport('text', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Text</button>
                                                     <button onClick={() => { handleExport('markdown', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Markdown</button>
                                                 </div>
@@ -1076,9 +1351,14 @@ const modelsList = [
                         </>
                     )}
                 </div>
+
             </header>
 
-            {/* Conversation Feed */}
+            {/* Lower Flex Row for Body and Sidebar */}
+            <div className="flex-1 flex overflow-hidden relative">
+                {/* Chat Body Column */}
+                <div className="flex-1 flex flex-col min-w-[360px] overflow-hidden">
+                    {/* Conversation Feed */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
                 <div className="w-full max-w-3xl mx-auto space-y-6 flex flex-col pb-4">
                     {messages.map((msg, index) => (
@@ -1095,9 +1375,11 @@ const modelsList = [
                                 onSaveSkill={handleSaveAsSkill}
                                 onSaveWorkflow={handleSaveAsWorkflow}
                                 onEditMessage={handleEditMessage}
+                                onDeleteMessage={handleDeleteMessage}
                                 onArtifactClick={(art) => {
                                     if (isSupportedByReader(art.fileName, art.mimeType)) {
                                         setViewingArtifact(art);
+                                        setShowArtifactList(false);
                                     } else {
                                         // Download fallback for unsupported files
                                         try {
@@ -1252,7 +1534,7 @@ const modelsList = [
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                    if (appSettings.chatSendShortcut === 'ctrl-enter') {
+                                    if (appSettings.preferences.chatSendShortcut === 'ctrl-enter') {
                                         if (e.ctrlKey || e.metaKey) {
                                             e.preventDefault();
                                             handleSendMessage();
@@ -1421,14 +1703,58 @@ const modelsList = [
                 className="hidden"
                 accept="*/*"
             />
+            </div> {/* End of chat body column */}
+
+            {/* ArtifactListSidebar placed here to not overlap header */}
+            {session && (
+                <ArtifactListSidebar
+                    isOpen={showArtifactList}
+                    artifacts={allArtifacts}
+                    messages={messages}
+                    onClose={() => setShowArtifactList(false)}
+                    onViewArtifact={(art) => {
+                        setViewingArtifact(art);
+                        setShowArtifactList(false);
+                    }}
+                    onDownloadArtifact={handleDownloadArtifact}
+                    onRemoveArtifact={handleRemoveArtifact}
+                />
+            )}
+            </div> {/* End of lower flex row */}
+
+            </div> {/* End of main chat column */}
 
             <ArtifactReaderLayer
                 artifact={viewingArtifact}
                 onClose={() => setViewingArtifact(null)}
                 width={readerWidth}
                 onWidthChange={setReaderWidth}
-                onCopyChat={() => {}}
+                pushMode={true}
             />
+
+            {showDocumentBuilder && session && (
+                <DocumentBuilder
+                    sessionId={session.id}
+                    messages={messages}
+                    onClose={() => setShowDocumentBuilder(false)}
+                    onSave={handleSaveDocument}
+                    width={docBuilderWidth}
+                    onWidthChange={setDocBuilderWidth}
+                    pushMode={true}
+                />
+            )}
+
+            {showDeleteConfirm && session && (
+                <ConfirmationModal
+                    isOpen={showDeleteConfirm}
+                    title="Delete Conversation"
+                    message="Are you sure you want to delete this chat permanently? This action cannot be undone."
+                    confirmText="Delete"
+                    variant="danger"
+                    onConfirm={handleConfirmDelete}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                />
+            )}
         </div>
     );
 }

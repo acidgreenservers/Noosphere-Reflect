@@ -248,7 +248,7 @@ export default function SkillArchive() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${sanitizeFilename(skill.metadata.title, appSettings.fileNamingCase)}.${extension}`;
+            a.download = `${sanitizeFilename(skill.metadata.title, appSettings.preferences.fileNamingCase)}.${extension}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -307,7 +307,7 @@ export default function SkillArchive() {
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedSkills.size === 0) return;
         const selected = skills.filter(p => selectedSkills.has(p.id));
-        const caseFormat = appSettings.fileNamingCase;
+        const caseFormat = appSettings.preferences.fileNamingCase;
         
         if (selected.length > 50) {
             if (!window.confirm(`You are exporting ${selected.length} items. Over 50 items exported may result in split zip archives depending on the amount exported. Continue?`)) {
@@ -390,9 +390,9 @@ export default function SkillArchive() {
         setIsSendingToDrive(true);
         try {
             for (const skill of selectedMetas) {
-                const filename = sanitizeFilename(skill.metadata.title, appSettings.fileNamingCase);
+                const filename = sanitizeFilename(skill.metadata.title, appSettings.preferences.fileNamingCase);
                 const skillAsChat: ChatData = {
-                    messages: [{ type: ChatMessageType.Response, content: skill.content, isEdited: false }],
+                    messages: [{ type: ChatMessageType.Response, content: skill.content, isEdited: false, createdAt: new Date().toISOString() }],
                     metadata: { title: skill.metadata.title, model: 'Skill', date: skill.createdAt, tags: skill.tags || [] }
                 };
 

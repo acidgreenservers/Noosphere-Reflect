@@ -91,13 +91,36 @@ export const SavedChatSessionSchema = z.object({
     folderId: z.string().nullable().optional()
 });
 
+const UserProfileSchema = z.object({
+    id: z.string(),
+    name: z.string().max(100),
+    modelCallName: z.string().max(100),
+    workDescription: z.string().max(1000),
+    customInstructions: z.string().max(5000),
+    isDefault: z.boolean()
+});
+
+const AppPreferencesSchema = z.object({
+    chat: z.object({
+        chatSendShortcut: z.enum(['enter', 'ctrl-enter'])
+    }),
+    ui: z.object({
+        theme: z.enum(['system', 'light', 'dark']),
+        markdownLayout: z.enum(['universal', 'fancy'])
+    }),
+    naming: z.object({
+        fileNamingCase: z.enum(['kebab-case', 'Kebab-Case', 'snake_case', 'Snake_Case', 'PascalCase', 'camelCase'])
+    }),
+    export: z.object({
+        exportRootMetadata: z.boolean(),
+        exportChatMetadata: z.boolean()
+    })
+});
+
 // App Settings Schema - matching AppSettings interface
 const AppSettingsSchema = z.object({
-    defaultUserName: z.string().max(100),
-    fileNamingCase: z.enum(['kebab-case', 'Kebab-Case', 'snake_case', 'Snake_Case', 'PascalCase', 'camelCase']).default('kebab-case'),
-    markdownLayout: z.enum(['universal', 'fancy']).default('universal'),
-    exportRootMetadata: z.boolean().default(true),
-    exportChatMetadata: z.boolean().default(true)
+    profile: UserProfileSchema,
+    preferences: AppPreferencesSchema
 });
 
 // Memory Metadata Schema - matching MemoryMetadata interface
@@ -141,12 +164,60 @@ export const PromptSchema = z.object({
     folderId: z.string().nullable().optional()
 });
 
+// Skill Metadata Schema
+const SkillMetadataSchema = z.object({
+    title: z.string().max(200),
+    category: z.string().max(100).optional(),
+    wordCount: z.number(),
+    characterCount: z.number(),
+    exportStatus: z.enum(['exported', 'not_exported', 'modified']).optional(),
+    lastExportDate: z.string().optional(),
+    exportFormats: z.array(z.string()).optional(),
+    exportCount: z.number().optional()
+});
+
+// Skill Schema - matching Skill interface
+export const SkillSchema = z.object({
+    id: z.string(),
+    content: z.string().max(1_000_000), // Raw content preserved
+    tags: z.array(z.string().max(50)).max(20),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    metadata: SkillMetadataSchema,
+    projectId: z.string().optional()
+});
+
+// Workflow Metadata Schema
+const WorkflowMetadataSchema = z.object({
+    title: z.string().max(200),
+    triggerWord: z.string().max(100).optional(),
+    wordCount: z.number(),
+    characterCount: z.number(),
+    exportStatus: z.enum(['exported', 'not_exported', 'modified']).optional(),
+    lastExportDate: z.string().optional(),
+    exportFormats: z.array(z.string()).optional(),
+    exportCount: z.number().optional()
+});
+
+// Workflow Schema - matching Workflow interface
+export const WorkflowSchema = z.object({
+    id: z.string(),
+    content: z.string().max(1_000_000), // Raw content preserved
+    tags: z.array(z.string().max(50)).max(20),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    metadata: WorkflowMetadataSchema,
+    projectId: z.string().optional()
+});
+
 // Database Export Schema
 const DatabaseExportSchema = z.object({
     sessions: z.array(SavedChatSessionSchema).max(10_000).optional(),
     settings: AppSettingsSchema.optional(),
     memories: z.array(MemorySchema).max(10_000).optional(),
     prompts: z.array(PromptSchema).max(10_000).optional(),
+    skills: z.array(SkillSchema).max(10_000).optional(),
+    workflows: z.array(WorkflowSchema).max(10_000).optional(),
     version: z.number().optional(),
     exportedAt: z.string().optional()
 });

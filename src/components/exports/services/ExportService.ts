@@ -121,8 +121,8 @@ export class ExportService {
           userName,
           aiName,
           metadata,
-          settings.markdownLayout,
-          settings.exportChatMetadata
+          settings.preferences.markdownLayout,
+          settings.preferences.exportChatMetadata
         );
 
       case 'json':

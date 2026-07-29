@@ -16,14 +16,17 @@ interface ArtifactReaderLayerProps {
     onDragStart?: () => void;
     onDragEnd?: () => void;
     onCopyChat?: () => void;
+    pushMode?: boolean;
 }
 
 export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ 
-    artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd, onCopyChat 
+    artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd, onCopyChat, pushMode = false
 }) => {
-    const [isAnimatingIn, setIsAnimatingIn] = useState(false);
-    const dragRef = useRef<{ isDragging: boolean; startX: number; startWidth: number }>({ isDragging: false, startX: 0, startWidth: 50 });
+    const [isAnimatingIn, setIsAnimatingIn] = useState(true);
+    const dragRef = useRef<{ isDragging: boolean; startX: number; startWidth: number; maxWidthVw: number }>({ isDragging: false, startX: 0, startWidth: 50, maxWidthVw: 90 });
+    const containerRef = useRef<HTMLDivElement>(null);
     const [isChatCopied, setIsChatCopied] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
 
     useEffect(() => {
         if (artifact) {
@@ -40,7 +43,7 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
             const deltaX = dragRef.current.startX - e.clientX;
             const deltaVw = (deltaX / window.innerWidth) * 100;
             let newWidth = dragRef.current.startWidth + deltaVw;
-            newWidth = Math.max(30, Math.min(newWidth, 90));
+            newWidth = Math.max(30, Math.min(newWidth, dragRef.current.maxWidthVw));
             if (onWidthChange) {
                 onWidthChange(newWidth);
             }
@@ -94,13 +97,29 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
         }
     };
 
-    const handleCopy = (e: React.MouseEvent) => {
+    const handleCopy = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!artifact) return;
         const content = safeDecode(artifact.fileData);
-        navigator.clipboard.writeText(content).then(() => {
-            alert('Copied to clipboard!');
-        });
+        try {
+            await navigator.clipboard.writeText(content);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        } catch (err) {
+            console.error('Clipboard copy failed:', err);
+            const textArea = document.createElement("textarea");
+            textArea.value = content;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            } catch (err2) {
+                console.error('Fallback copy failed:', err2);
+            }
+            document.body.removeChild(textArea);
+        }
     };
 
     const handleCopyChatInternal = async () => {
@@ -127,20 +146,39 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
     const isImage = mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
     const isText = ['txt', 'json', 'csv', 'ts', 'tsx', 'js', 'py', 'sh', 'html', 'css', 'yaml', 'yml'].includes(ext) || mime.startsWith('text/') || mime === 'application/json';
 
+    const containerClasses = pushMode
+        ? "flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl relative shrink-0 h-full overflow-hidden z-[50]"
+        : `fixed right-0 top-0 h-full z-[100] flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl ${
+            isAnimatingIn ? 'translate-x-full' : 'translate-x-0'
+        }`;
+
+    const containerStyle = pushMode
+        ? {
+            width: isAnimatingIn ? '0vw' : `${width}vw`,
+            opacity: isAnimatingIn ? 0 : 1,
+            transition: dragRef.current.isDragging ? 'none' : 'width 0.3s ease-out, opacity 0.3s ease-out'
+        }
+        : {
+            width: `${width}vw`,
+            transition: dragRef.current.isDragging ? 'none' : 'transform 0.5s ease-out'
+        };
+
     return (
         <div 
-            className={`fixed right-0 top-0 h-full z-[100] flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl ${
-                isAnimatingIn ? 'translate-x-full' : 'translate-x-0'
-            }`}
-            style={{ 
-                width: `${width}vw`,
-                transition: dragRef.current.isDragging ? 'none' : 'transform 0.5s ease-out'
-            }}
+            ref={containerRef}
+            className={containerClasses}
+            style={containerStyle}
         >
             <div 
                 className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-purple-500/50 transition-colors z-[101]"
                 onMouseDown={(e) => {
-                    dragRef.current = { isDragging: true, startX: e.clientX, startWidth: width };
+                    let maxVw = 90;
+                    if (pushMode && containerRef.current && containerRef.current.parentElement) {
+                        const parentWidth = containerRef.current.parentElement.clientWidth;
+                        const maxPx = parentWidth - 360;
+                        maxVw = (maxPx / window.innerWidth) * 100;
+                    }
+                    dragRef.current = { isDragging: true, startX: e.clientX, startWidth: width, maxWidthVw: Math.max(30, maxVw) };
                     document.body.style.cursor = 'col-resize';
                     document.body.style.userSelect = 'none';
                     if (onDragStart) onDragStart();
@@ -159,13 +197,28 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
                     {!isImage && (
                         <button
                             onClick={handleCopy}
-                            className="p-1.5 text-gray-400 hover:bg-gray-700 hover:text-white rounded-md transition-colors flex items-center gap-1 border border-gray-600/50 bg-gray-800 text-xs px-2"
+                            className={`p-1.5 rounded-md transition-colors flex items-center gap-1 border text-xs px-2 ${
+                                isCopied
+                                    ? 'border-green-500/50 bg-green-500/10 text-green-400'
+                                    : 'border-gray-600/50 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                            }`}
                             title="Copy file contents"
                         >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            Copy
+                            {isCopied ? (
+                                <>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Copied!
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                    Copy
+                                </>
+                            )}
                         </button>
                     )}
                     

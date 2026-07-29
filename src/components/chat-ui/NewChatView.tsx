@@ -17,8 +17,8 @@ export const NewChatView: React.FC = () => {
         const loadSettings = async () => {
             const settings = await storageService.getSettings();
             setAppSettings(settings);
-            if (settings.defaultUserName) {
-                setUserName(settings.defaultUserName);
+            if (settings.profile.name) {
+                setUserName(settings.profile.name);
             }
         };
         loadSettings();
@@ -68,6 +68,7 @@ export const NewChatView: React.FC = () => {
                         type: ChatMessageType.Prompt,
                         content: text,
                         isEdited: false,
+                        createdAt: new Date().toISOString(),
                         artifacts: []
                     }
                 ],
@@ -100,7 +101,7 @@ export const NewChatView: React.FC = () => {
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter') {
-            if (appSettings.chatSendShortcut === 'ctrl-enter') {
+            if (appSettings.preferences.chatSendShortcut === 'ctrl-enter') {
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     handleSubmit();

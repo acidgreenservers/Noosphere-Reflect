@@ -122,8 +122,8 @@ const ArchiveHub: React.FC = () => {
         try {
             const allSessions = await storageService.getAllSessionsMetadata();
             setSessions(allSessions.sort((a, b) =>
-                new Date(b.metadata?.date || b.date).getTime() -
-                new Date(a.metadata?.date || a.date).getTime()
+                new Date(b.metadata?.updatedAt || b.metadata?.date || b.date).getTime() -
+                new Date(a.metadata?.updatedAt || a.metadata?.date || a.date).getTime()
             ));
         } catch (e) {
             console.error('Failed to load sessions', e);
@@ -303,7 +303,7 @@ const ArchiveHub: React.FC = () => {
                 // Generate filename with [AIName] - chatname format (matching ArchiveHub convention)
                 const sanitizedTitle = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
                 const baseFilename = `[${session.aiName || 'AI'}] - ${sanitizedTitle}`;
 
@@ -402,7 +402,7 @@ const ArchiveHub: React.FC = () => {
                 a.href = url;
                 const filename = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
                 a.download = `${filename}.zip`;
                 document.body.appendChild(a);
@@ -436,7 +436,7 @@ const ArchiveHub: React.FC = () => {
                     // Generate folder name with service prefix: [Service] - title
                     const sanitizedTitle = sanitizeFilename(
                         session.metadata?.title || session.chatTitle,
-                        appSettings.fileNamingCase
+                        appSettings.preferences.fileNamingCase
                     );
                     const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 
@@ -584,7 +584,7 @@ const ArchiveHub: React.FC = () => {
         // Generate folder name with service prefix: [Service] - title
         const sanitizedTitle = sanitizeFilename(
             session.metadata?.title || session.chatTitle,
-            appSettings.fileNamingCase
+            appSettings.preferences.fileNamingCase
         );
         const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 
@@ -781,7 +781,7 @@ const ArchiveHub: React.FC = () => {
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
                 const filename = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
 
                 // Generate content based on format
@@ -1037,7 +1037,7 @@ const ArchiveHub: React.FC = () => {
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
                 const filename = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
 
                 let content: string;
@@ -1134,7 +1134,7 @@ const ArchiveHub: React.FC = () => {
             for (const session of fullSessions) {
                 const filename = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
 
                 // Generate HTML content for upload

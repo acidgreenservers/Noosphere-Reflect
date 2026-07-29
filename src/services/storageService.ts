@@ -6,6 +6,7 @@ import { promptStore } from './storage/PromptStore';
 import { skillStore } from './storage/SkillStore';
 import { workflowStore } from './storage/WorkflowStore';
 import { settingsStore } from './storage/SettingsStore';
+import { profileStore } from './storage/ProfileStore';
 import { projectStore } from './storage/ProjectStore';
 import { STORES, DB_VERSION } from './db/schema';
 import {
@@ -69,13 +70,16 @@ class StorageService {
         return sessionStore.deleteWithSearch(id);
     }
 
-    // Settings
+    // Settings & Profile
     async getSettings(): Promise<AppSettings> {
-        return settingsStore.getSettings();
+        const preferences = settingsStore.getSettings();
+        const profile = await profileStore.getProfile();
+        return { profile, preferences };
     }
 
     async saveSettings(settings: AppSettings): Promise<void> {
-        return settingsStore.saveSettings(settings);
+        settingsStore.saveSettings(settings.preferences);
+        await profileStore.saveProfile(settings.profile);
     }
 
     async migrateLegacyData(): Promise<void> {
@@ -318,6 +322,18 @@ class StorageService {
             }
         }
 
+        if (validatedData.skills && Array.isArray(validatedData.skills)) {
+            for (const skill of validatedData.skills) {
+                await this.saveSkill(skill);
+            }
+        }
+
+        if (validatedData.workflows && Array.isArray(validatedData.workflows)) {
+            for (const workflow of validatedData.workflows) {
+                await this.saveWorkflow(workflow);
+            }
+        }
+
         console.log('✅ Database import complete (validated and sanitized)');
     }
 
@@ -362,8 +378,17 @@ class StorageService {
                         let session: SavedChatSession;
                         if (parsed.id && parsed.chatData) {
                             // Guard Noosphere attribution: Only allow it if detection confirmed it
-                            if (parsed.metadata?.exportedBy && detection.source !== 'noosphere') {
-                                delete parsed.metadata.exportedBy;
+                            if (detection.source !== 'noosphere') {
+                                if (parsed.metadata) {
+                                    delete parsed.metadata.exportedBy;
+                                    delete parsed.metadata.exportedAt;
+                                    delete parsed.metadata.lastExportDate;
+                                    delete parsed.metadata.exportCount;
+                                    delete parsed.metadata.exportFormats;
+                                }
+                                if (parsed.exportStatus) {
+                                    parsed.exportStatus = 'not_exported';
+                                }
                             }
                             session = SavedChatSessionSchema.parse(parsed) as SavedChatSession;
                         } else {
@@ -595,7 +620,7 @@ class StorageService {
     async getSessionsByProjectId(projectId: string): Promise<SavedChatSession[]> {
         const db = await this.getDB();
         const sessions = await db.getAllFromIndex(STORES.SESSIONS, 'projectId', projectId);
-        return sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return sessions.sort((a, b) => new Date(b.metadata?.updatedAt || b.date).getTime() - new Date(a.metadata?.updatedAt || a.date).getTime());
     }
 
     async addSessionToProject(sessionId: string, projectId: string): Promise<void> {

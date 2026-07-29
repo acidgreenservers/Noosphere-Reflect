@@ -6,11 +6,30 @@ import { ChatData, ChatMessageType, ParserMode, ChatStyle } from '../../src/type
 vi.mock('../../src/services/storageService', () => ({
     storageService: {
         getSettings: vi.fn().mockResolvedValue({
-            defaultUserName: 'User',
-            fileNamingCase: 'kebab-case',
-            markdownLayout: 'universal',
-            exportRootMetadata: true,
-            exportChatMetadata: true
+            profile: {
+                id: 'default',
+                name: 'User',
+                modelCallName: 'User',
+                workDescription: '',
+                customInstructions: '',
+                isDefault: true
+            },
+            preferences: {
+                chat: {
+                    chatSendShortcut: 'enter'
+                },
+                ui: {
+                    theme: 'dark',
+                    markdownLayout: 'universal'
+                },
+                naming: {
+                    fileNamingCase: 'kebab-case'
+                },
+                export: {
+                    exportRootMetadata: true,
+                    exportChatMetadata: true
+                }
+            }
         })
     }
 }));
