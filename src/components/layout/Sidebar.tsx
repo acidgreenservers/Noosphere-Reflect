@@ -43,9 +43,9 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const loadRecentChats = async () => {
         try {
             const allMetas = await storageService.getAllSessionsMetadata();
-            // Sort by date descending, take top 15
+            // Sort by most recent activity (updatedAt > date), take top 15
             const sorted = allMetas.sort((a, b) =>
-                new Date(b.date).getTime() - new Date(a.date).getTime()
+                new Date(b.metadata?.updatedAt || b.date).getTime() - new Date(a.metadata?.updatedAt || a.date).getTime()
             );
             setRecentChats(sorted.slice(0, 15));
         } catch (e) {

@@ -3,16 +3,17 @@ import { AppPreferences, DEFAULT_APP_PREFERENCES } from '../../types';
 export class SettingsStore {
     getSettings(): AppPreferences {
         try {
-            const chatStr = localStorage.getItem('reflect_settings_chat');
-            const uiStr = localStorage.getItem('reflect_settings_ui');
-            const namingStr = localStorage.getItem('reflect_settings_naming');
-            const exportStr = localStorage.getItem('reflect_settings_export');
+            const parseItem = (key: string, fallback: any) => {
+                const val = localStorage.getItem(key);
+                if (!val || val === 'undefined' || val === 'null') return { ...fallback };
+                return JSON.parse(val);
+            };
 
             return {
-                chat: chatStr ? JSON.parse(chatStr) : { ...DEFAULT_APP_PREFERENCES.chat },
-                ui: uiStr ? JSON.parse(uiStr) : { ...DEFAULT_APP_PREFERENCES.ui },
-                naming: namingStr ? JSON.parse(namingStr) : { ...DEFAULT_APP_PREFERENCES.naming },
-                export: exportStr ? JSON.parse(exportStr) : { ...DEFAULT_APP_PREFERENCES.export }
+                chat: parseItem('reflect_settings_chat', DEFAULT_APP_PREFERENCES.chat),
+                ui: parseItem('reflect_settings_ui', DEFAULT_APP_PREFERENCES.ui),
+                naming: parseItem('reflect_settings_naming', DEFAULT_APP_PREFERENCES.naming),
+                export: parseItem('reflect_settings_export', DEFAULT_APP_PREFERENCES.export)
             };
         } catch (e) {
             console.error('Failed to load settings from localStorage', e);

@@ -599,7 +599,7 @@ class StorageService {
     async getSessionsByProjectId(projectId: string): Promise<SavedChatSession[]> {
         const db = await this.getDB();
         const sessions = await db.getAllFromIndex(STORES.SESSIONS, 'projectId', projectId);
-        return sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return sessions.sort((a, b) => new Date(b.metadata?.updatedAt || b.date).getTime() - new Date(a.metadata?.updatedAt || a.date).getTime());
     }
 
     async addSessionToProject(sessionId: string, projectId: string): Promise<void> {

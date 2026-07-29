@@ -122,8 +122,8 @@ const ArchiveHub: React.FC = () => {
         try {
             const allSessions = await storageService.getAllSessionsMetadata();
             setSessions(allSessions.sort((a, b) =>
-                new Date(b.metadata?.date || b.date).getTime() -
-                new Date(a.metadata?.date || a.date).getTime()
+                new Date(b.metadata?.updatedAt || b.metadata?.date || b.date).getTime() -
+                new Date(a.metadata?.updatedAt || a.metadata?.date || a.date).getTime()
             ));
         } catch (e) {
             console.error('Failed to load sessions', e);

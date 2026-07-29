@@ -11,6 +11,7 @@ import logo from '../../assets/logo.png';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
 import { sanitizeFilename } from '../../utils/securityUtils';
+import { copyToClipboard } from '../../utils/fileUtils';
 
 const formatTimestamp = (isoString?: string): string | null => {
     if (!isoString) return null;
@@ -642,8 +643,11 @@ export default function UnifiedChatInterface() {
     };
 
     const handleCopyText = useCallback((text: string) => {
-        navigator.clipboard.writeText(text);
-        showToast('✓ Message copied to clipboard', 'success');
+        if (copyToClipboard(text)) {
+            showToast('✓ Message copied to clipboard', 'success');
+        } else {
+            showToast('❌ Copy failed', 'info');
+        }
     }, []);
 
     const handleEditMessage = useCallback(async (index: number, newContent: string) => {
@@ -853,7 +857,7 @@ export default function UnifiedChatInterface() {
         showToast('✓ Chat forked in new tab', 'success');
     }, [session, messages]);
 
-    const handleExport = async (format: 'html' | 'markdown' | 'json', toClipboard: boolean = false) => {
+    const handleExport = async (format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
         if (!session || !session.chatData) return;
         
         try {
@@ -883,6 +887,17 @@ export default function UnifiedChatInterface() {
                     undefined,
                     session.metadata
                 );
+            } else if (format === 'text') {
+                content = await exportService.generate(
+                    'text',
+                    session.chatData,
+                    session.metadata?.title || session.chatTitle,
+                    undefined,
+                    session.userName || 'User',
+                    session.aiName || 'AI',
+                    undefined,
+                    session.metadata
+                );
             } else {
                 content = await exportService.generate(
                     'json',
@@ -893,8 +908,11 @@ export default function UnifiedChatInterface() {
             }
 
             if (toClipboard) {
-                navigator.clipboard.writeText(content);
-                showToast(`✓ Copied as ${format.toUpperCase()}`, 'success');
+                if (copyToClipboard(content)) {
+                    showToast(`✓ Copied as ${format.toUpperCase()}`, 'success');
+                } else {
+                    showToast('❌ Copy failed', 'info');
+                }
                 setShowChatActionsMenu(false);
                 return;
             }
@@ -905,8 +923,8 @@ export default function UnifiedChatInterface() {
             );
             const baseFilename = `[${session.aiName || 'AI'}] - ${sanitizedTitle}`;
             
-            const extension = format === 'markdown' ? 'md' : format;
-            const mimeType = format === 'html' ? 'text/html' : format === 'markdown' ? 'text/markdown' : 'application/json';
+            const extension = format === 'markdown' ? 'md' : format === 'text' ? 'txt' : format;
+            const mimeType = format === 'html' ? 'text/html' : format === 'markdown' ? 'text/markdown' : format === 'text' ? 'text/plain' : 'application/json';
 
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
