@@ -34,6 +34,7 @@ const ChatMessageBubble = React.memo(({
     onSaveSkill,
     onSaveWorkflow,
     onEditMessage,
+    onDeleteMessage,
     onArtifactClick,
     onImageClick
 }: { 
@@ -48,6 +49,7 @@ const ChatMessageBubble = React.memo(({
     onSaveSkill: (msg: ChatMessage) => void; 
     onSaveWorkflow: (msg: ChatMessage) => void;
     onEditMessage: (index: number, newContent: string) => void;
+    onDeleteMessage: (index: number) => void;
     onArtifactClick?: (art: ConversationArtifact) => void;
     onImageClick?: (src: string, alt?: string) => void;
 }) => {
@@ -55,6 +57,7 @@ const ChatMessageBubble = React.memo(({
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(msg.content);
     const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isMessageExpanded, setIsMessageExpanded] = useState(false);
     const editRef = useRef<HTMLDivElement>(null);
     
@@ -260,6 +263,32 @@ const ChatMessageBubble = React.memo(({
                                     </>
                                 )}
                             </div>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsDeleteConfirmOpen(!isDeleteConfirmOpen)}
+                                    className={`${btnBase} bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20`}
+                                    title="Delete"
+                                >{isShort ? '🗑️' : '🗑️ Delete'}</button>
+                                {isDeleteConfirmOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsDeleteConfirmOpen(false)} />
+                                        <div className="absolute bottom-full mb-1 left-0 w-28 bg-black border border-red-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5">
+                                            <button
+                                                onClick={() => { onDeleteMessage(index); setIsDeleteConfirmOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🗑️ Delete
+                                            </button>
+                                            <button
+                                                onClick={() => setIsDeleteConfirmOpen(false)}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-colors flex items-center gap-2"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -374,6 +403,32 @@ const ChatMessageBubble = React.memo(({
                                     </>
                                 )}
                             </div>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsDeleteConfirmOpen(!isDeleteConfirmOpen)}
+                                    className={`${btnBase} bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20`}
+                                    title="Delete"
+                                >{isShort ? '🗑️' : '🗑️ Delete'}</button>
+                                {isDeleteConfirmOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsDeleteConfirmOpen(false)} />
+                                        <div className="absolute bottom-full mb-1 left-0 w-28 bg-black border border-red-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5">
+                                            <button
+                                                onClick={() => { onDeleteMessage(index); setIsDeleteConfirmOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2"
+                                            >
+                                                🗑️ Delete
+                                            </button>
+                                            <button
+                                                onClick={() => setIsDeleteConfirmOpen(false)}
+                                                className="w-full text-left px-3 py-1.5 text-[11px] text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-colors flex items-center gap-2"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -417,6 +472,10 @@ export default function UnifiedChatInterface() {
     const [readerWidth, setReaderWidth] = useState<number>(50);
     const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
     const [showArtifactList, setShowArtifactList] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editingTitle, setEditingTitle] = useState('');
+    const titleInputRef = useRef<HTMLInputElement>(null);
     const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
     const [artifactListWidth, setArtifactListWidth] = useState<number>(40);
 
@@ -448,6 +507,13 @@ export default function UnifiedChatInterface() {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isEditingTitle && titleInputRef.current) {
+            titleInputRef.current.focus();
+            titleInputRef.current.select();
+        }
+    }, [isEditingTitle]);
 
     const loadSession = async () => {
         if (!id) return;
@@ -607,6 +673,28 @@ export default function UnifiedChatInterface() {
             }
         }
         showToast('✓ Message updated', 'success');
+    }, [session, messages]);
+
+    const handleDeleteMessage = useCallback(async (index: number) => {
+        const updatedMessages = messages.filter((_, i) => i !== index);
+        if (updatedMessages.length === messages.length) return;
+        setMessages(updatedMessages);
+        if (session) {
+            const updatedSession: SavedChatSession = { 
+                ...session, 
+                chatData: { 
+                    ...(session.chatData || { rawText: '', messages: [] }), 
+                    messages: updatedMessages 
+                } 
+            };
+            setSession(updatedSession);
+            try {
+                await storageService.saveSession(updatedSession);
+            } catch (err) {
+                console.error('Failed to save updated session:', err);
+            }
+        }
+        showToast('🗑️ Message deleted', 'success');
     }, [session, messages]);
 
     const showToast = (msg: string, type: 'success' | 'info' = 'success') => {
@@ -931,37 +1019,46 @@ export default function UnifiedChatInterface() {
         showToast(`Model updated to ${modelName}`, 'info');
     };
 
+    const handleTitleSave = async (title: string) => {
+        if (!session || !title.trim()) return;
+        setShowChatActionsMenu(false);
+        const updatedTitle = title.trim().slice(0, 50);
+        const updated = {
+            ...session,
+            chatTitle: updatedTitle,
+            name: updatedTitle,
+            metadata: {
+                ...(session.metadata || { title: updatedTitle, model: session.aiName, date: session.date, tags: [] }),
+                title: updatedTitle,
+                updatedAt: new Date().toISOString()
+            }
+        };
+        await storageService.saveSession(updated);
+        setSession(updated);
+        window.dispatchEvent(new Event('chatSaved'));
+        showToast('Chat renamed successfully', 'success');
+        setIsEditingTitle(false);
+    };
+
     const handleRenameChat = async () => {
         if (!session) return;
-        const newTitle = prompt('Rename Chat:', session.metadata?.title || session.chatTitle);
-        if (newTitle && newTitle.trim()) {
-            const updated = {
-                ...session,
-                chatTitle: newTitle,
-                name: newTitle,
-                metadata: {
-                    ...(session.metadata || { title: newTitle, model: session.aiName, date: session.date, tags: [] }),
-                    title: newTitle,
-                    updatedAt: new Date().toISOString()
-                }
-            };
-            await storageService.saveSession(updated);
-            setSession(updated);
-            // Refresh sidebar
-            window.dispatchEvent(new Event('chatSaved'));
-            showToast('Chat renamed successfully', 'success');
-        }
+        setEditingTitle(session.metadata?.title || session.chatTitle || '');
+        setIsEditingTitle(true);
         setShowChatActionsMenu(false);
     };
 
     const handleDeleteChat = async () => {
         if (!session) return;
-        if (confirm('Delete this chat permanently? This cannot be undone.')) {
-            await storageService.deleteSession(session.id);
-            // Refresh sidebar
-            window.dispatchEvent(new Event('chatSaved'));
-            navigate('/');
-        }
+        setShowDeleteConfirm(true);
+        setShowChatActionsMenu(false);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!session) return;
+        await storageService.deleteSession(session.id);
+        window.dispatchEvent(new Event('chatSaved'));
+        setShowDeleteConfirm(false);
+        navigate('/');
     };
 
     const handleSaveDocument = async (artifact: ConversationArtifact, messageIndex: number | null) => {
@@ -1120,14 +1217,41 @@ const modelsList = [
             <header className="px-6 py-4 bg-[#09100c] border-b border-green-500/10 flex justify-between items-center shrink-0">
                 {/* Left: Title + Actions Chevron */}
                 <div className="relative flex items-center gap-3">
-                    <div className="flex flex-col cursor-pointer" onClick={() => setShowChatActionsMenu(!showChatActionsMenu)}>
+                    <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-bold text-gray-100 max-w-md truncate">
-                                {session.metadata?.title || session.chatTitle || 'Untitled Conversation'}
-                            </h2>
+                            {isEditingTitle ? (
+                                <input
+                                    ref={titleInputRef}
+                                    type="text"
+                                    value={editingTitle}
+                                    onChange={(e) => setEditingTitle(e.target.value.slice(0, 50))}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleTitleSave(editingTitle);
+                                        } else if (e.key === 'Escape') {
+                                            setIsEditingTitle(false);
+                                        }
+                                    }}
+                                    onBlur={() => handleTitleSave(editingTitle)}
+                                    maxLength={50}
+                                    className="text-sm font-bold text-gray-100 bg-[#0e1511] border border-green-500/30 rounded px-2 py-0.5 focus:outline-none focus:border-green-500 w-64"
+                                />
+                            ) : (
+                                <h2
+                                    className="text-sm font-bold text-gray-100 max-w-md truncate cursor-pointer hover:text-green-400 transition-colors"
+                                    onClick={() => {
+                                        setEditingTitle(session.metadata?.title || session.chatTitle || '');
+                                        setIsEditingTitle(true);
+                                    }}
+                                >
+                                    {session.metadata?.title || session.chatTitle || 'Untitled Conversation'}
+                                </h2>
+                            )}
                             <svg
-                                className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${showChatActionsMenu ? 'rotate-180' : ''}`}
+                                className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 cursor-pointer ${showChatActionsMenu ? 'rotate-180' : ''}`}
                                 fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                onClick={(e) => { e.stopPropagation(); setShowChatActionsMenu(!showChatActionsMenu); }}
                             >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
@@ -1173,17 +1297,17 @@ const modelsList = [
                                     <div className="relative group/export rounded-b-xl">
                                         <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center rounded-b-xl">
                                             <span>📤 Export</span>
-                                            <span className="text-[10px]">◀</span>
+                                            <span className="text-[10px]">▶</span>
                                         </button>
-                                        <div className="absolute right-full top-0 mr-1 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-xs">
+                                        <div className="absolute left-full top-0 ml-1 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-xs">
                                             
                                             {/* Clipboard Submenu */}
                                             <div className="relative group/clipboard">
                                                 <button className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400 transition-colors flex justify-between items-center">
                                                     <span>📋 Clipboard</span>
-                                                    <span className="text-[10px]">◀</span>
+                                                    <span className="text-[10px]">▶</span>
                                                 </button>
-                                                <div className="absolute right-full top-0 mr-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
+                                                <div className="absolute left-full top-0 ml-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
                                                     <button onClick={() => { handleExport('text', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Text</button>
                                                     <button onClick={() => { handleExport('markdown', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Markdown</button>
                                                 </div>
@@ -1232,6 +1356,7 @@ const modelsList = [
                                 onSaveSkill={handleSaveAsSkill}
                                 onSaveWorkflow={handleSaveAsWorkflow}
                                 onEditMessage={handleEditMessage}
+                                onDeleteMessage={handleDeleteMessage}
                                 onArtifactClick={(art) => {
                                     if (isSupportedByReader(art.fileName, art.mimeType)) {
                                         setViewingArtifact(art);
