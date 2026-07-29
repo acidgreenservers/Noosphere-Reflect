@@ -1346,7 +1346,7 @@ const modelsList = [
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                    if (appSettings.chatSendShortcut === 'ctrl-enter') {
+                                    if (appSettings.preferences.chatSendShortcut === 'ctrl-enter') {
                                         if (e.ctrlKey || e.metaKey) {
                                             e.preventDefault();
                                             handleSendMessage();

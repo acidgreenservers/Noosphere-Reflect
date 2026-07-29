@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppSettings } from '../../types';
 import { useGoogleAuth } from '../../contexts/GoogleAuthContext';
 import { googleDriveService } from '../../services/googleDriveService';
@@ -9,6 +9,7 @@ import {
     CloudSync,
     UserPreferences,
     ChatPreferences,
+    UIPreferences,
     FileNamingFormat,
     ExportPreferences,
 } from '../settings/components';
@@ -23,9 +24,17 @@ interface SettingsMenuProps {
 
 export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, settings, onSave }) => {
     const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
-    const [activeTab, setActiveTab] = useState<'preferences' | 'chat' | 'naming' | 'export' | 'sync' | 'data'>('preferences');
+    const [activeTab, setActiveTab] = useState<'preferences' | 'chat' | 'ui' | 'naming' | 'export' | 'sync' | 'data'>('preferences');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Sync local state when settings prop changes (e.g. loaded asynchronously)
+    useEffect(() => {
+        if (isOpen) {
+            setLocalSettings(settings);
+            setError(null);
+        }
+    }, [isOpen, settings]);
 
     // Google Auth
     const { login, logout, isLoggedIn, user, accessToken, driveFolderId } = useGoogleAuth();
@@ -189,6 +198,16 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                                 💬 Chat
                             </button>
                             <button
+                                onClick={() => setActiveTab('ui')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
+                                    activeTab === 'ui'
+                                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                        : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                                }`}
+                            >
+                                🎨 UI Preferences
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('naming')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                     activeTab === 'naming'
@@ -260,6 +279,13 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold text-green-400">Chat Settings</h3>
                                 <ChatPreferences settings={localSettings} onSettingsChange={setLocalSettings} />
+                            </div>
+                        )}
+
+                        {activeTab === 'ui' && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold text-green-400">UI Preferences</h3>
+                                <UIPreferences settings={localSettings} onSettingsChange={setLocalSettings} />
                             </div>
                         )}
 

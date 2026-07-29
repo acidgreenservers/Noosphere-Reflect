@@ -220,5 +220,44 @@ export const migrations: Migration[] = [
                 }
             });
         }
+    },
+    {
+        version: 15,
+        description: 'Create profiles store and split settings',
+        migrate: async (db, transaction) => {
+            if (!db.objectStoreNames.contains(STORES.PROFILES)) {
+                db.createObjectStore(STORES.PROFILES, { keyPath: 'key' });
+            }
+
+            const settingsStore = transaction.objectStore(STORES.SETTINGS);
+            const profilesStore = transaction.objectStore(STORES.PROFILES);
+
+            const oldSettings = await settingsStore.get('appSettings');
+            
+            if (oldSettings) {
+                // Split oldSettings into preferences and profile
+                const preferences = {
+                    theme: oldSettings.theme || 'system',
+                    chatSendShortcut: oldSettings.chatSendShortcut || 'enter',
+                    fileNamingCase: oldSettings.fileNamingCase || 'kebab-case',
+                    markdownLayout: oldSettings.markdownLayout || 'universal',
+                    exportRootMetadata: oldSettings.exportRootMetadata ?? true,
+                    exportChatMetadata: oldSettings.exportChatMetadata ?? true
+                };
+
+                const profile = {
+                    id: 'default',
+                    name: oldSettings.defaultUserName || 'User',
+                    modelCallName: oldSettings.modelCallName || '',
+                    workDescription: oldSettings.workDescription || '',
+                    customInstructions: oldSettings.customInstructions || '',
+                    isDefault: true
+                };
+
+                // Save both
+                await settingsStore.put({ key: 'appSettings', value: preferences });
+                await profilesStore.put({ key: 'defaultProfile', value: profile });
+            }
+        }
     }
 ];

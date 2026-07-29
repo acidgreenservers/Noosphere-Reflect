@@ -112,7 +112,7 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({
 
       const sanitizedTitle = sanitizeFilename(
         chatTitle,
-        appSettings.fileNamingCase
+        appSettings.preferences.fileNamingCase
       );
       const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 

@@ -101,7 +101,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
             if (packageType === 'single') {
                 const sanitizedTitle = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
                 const baseFilename = `[${session.aiName || 'AI'}] - ${sanitizedTitle}`;
 
@@ -176,7 +176,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
                 a.href = url;
                 const filename = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
                 a.download = `${filename}.zip`;
                 document.body.appendChild(a);
@@ -208,7 +208,7 @@ export function useArchiveExport(): UseArchiveExportReturn {
 
                 const sanitizedTitle = sanitizeFilename(
                     session.metadata?.title || session.chatTitle,
-                    appSettings.fileNamingCase
+                    appSettings.preferences.fileNamingCase
                 );
                 const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
                 const chatDirHandle = await rootDirHandle.getDirectoryHandle(baseFilename, { create: true });

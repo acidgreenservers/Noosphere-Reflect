@@ -1,18 +1,17 @@
 import { STORES } from '../db/schema';
-import { AppSettings, DEFAULT_SETTINGS } from '../../types';
+import { AppPreferences, DEFAULT_APP_PREFERENCES } from '../../types';
 import { BaseStore } from './BaseStore';
-
 export class SettingsStore extends BaseStore<any, typeof STORES.SETTINGS> {
     constructor() {
         super(STORES.SETTINGS);
     }
 
-    async getSettings(): Promise<AppSettings> {
+    async getSettings(): Promise<AppPreferences> {
         const result = await this.getById('appSettings');
-        return result ? result.value : { ...DEFAULT_SETTINGS };
+        return result ? result.value : { ...DEFAULT_APP_PREFERENCES };
     }
 
-    async saveSettings(settings: AppSettings): Promise<void> {
+    async saveSettings(settings: AppPreferences): Promise<void> {
         const db = await this.getDB();
         await db.put(this.storeName, {
             key: 'appSettings',

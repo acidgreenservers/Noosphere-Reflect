@@ -248,7 +248,7 @@ export default function WorkflowArchive() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${sanitizeFilename(workflow.metadata.title, appSettings.fileNamingCase)}.${extension}`;
+            a.download = `${sanitizeFilename(workflow.metadata.title, appSettings.preferences.fileNamingCase)}.${extension}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -307,7 +307,7 @@ export default function WorkflowArchive() {
     const handleBatchExport = async (format: 'html' | 'markdown' | 'json' | 'text', packageType: 'directory' | 'zip' | 'single') => {
         if (selectedWorkflows.size === 0) return;
         const selected = workflows.filter(p => selectedWorkflows.has(p.id));
-        const caseFormat = appSettings.fileNamingCase;
+        const caseFormat = appSettings.preferences.fileNamingCase;
         
         if (selected.length > 50) {
             if (!window.confirm(`You are exporting ${selected.length} items. Over 50 items exported may result in split zip archives depending on the amount exported. Continue?`)) {
@@ -390,7 +390,7 @@ export default function WorkflowArchive() {
         setIsSendingToDrive(true);
         try {
             for (const workflow of selectedMetas) {
-                const filename = sanitizeFilename(workflow.metadata.title, appSettings.fileNamingCase);
+                const filename = sanitizeFilename(workflow.metadata.title, appSettings.preferences.fileNamingCase);
                 const workflowAsChat: ChatData = {
                     messages: [{ type: ChatMessageType.Response, content: workflow.content, isEdited: false }],
                     metadata: { title: workflow.metadata.title, model: 'Workflow', date: workflow.createdAt, tags: workflow.tags || [] }

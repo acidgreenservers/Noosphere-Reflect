@@ -215,13 +215,13 @@ export class FilePackager {
 
       namingService.reset();
       const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
-      const baseFolderName = namingService.getSafeUniqueName(`[${session.aiName}] - ${title}`, '', appSettings.fileNamingCase);
+      const baseFolderName = namingService.getSafeUniqueName(`[${session.aiName}] - ${title}`, '', appSettings.preferences.fileNamingCase);
 
       const chatDirHandle = await dirHandle.getDirectoryHandle(baseFolderName, { create: true });
 
       const content = await generateContent(session, format);
       const extension = format === 'html' ? 'html' : format === 'markdown' ? 'md' : 'json';
-      const filename = namingService.getSafeUniqueName(title, extension, appSettings.fileNamingCase);
+      const filename = namingService.getSafeUniqueName(title, extension, appSettings.preferences.fileNamingCase);
 
       const fileHandle = await chatDirHandle.getFileHandle(filename, { create: true });
       const writable = await fileHandle.createWritable();

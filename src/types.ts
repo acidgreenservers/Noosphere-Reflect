@@ -144,30 +144,66 @@ export interface SavedChatSession {
 
 export type SavedChatSessionMetadata = Omit<SavedChatSession, 'inputContent' | 'chatData'>;
 
-export interface AppSettings {
-  defaultUserName: string;
-  fileNamingCase: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase';
-  markdownLayout: 'universal' | 'fancy';
-  exportRootMetadata: boolean;
-  exportChatMetadata: boolean;
-  modelCallName?: string;
-  workDescription?: string;
-  customInstructions?: string;
-  theme?: 'system' | 'light' | 'dark';
-  chatSendShortcut?: 'enter' | 'ctrl-enter';
+export interface UserProfile {
+  id: string;
+  name: string;
+  modelCallName: string;
+  workDescription: string;
+  customInstructions: string;
+  isDefault: boolean;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = {
-  defaultUserName: 'User',
-  fileNamingCase: 'kebab-case',
-  markdownLayout: 'universal',
-  exportRootMetadata: true,
-  exportChatMetadata: true,
+export interface AppPreferences {
+  chat: {
+    chatSendShortcut: 'enter' | 'ctrl-enter';
+  };
+  ui: {
+    theme: 'system' | 'light' | 'dark';
+    markdownLayout: 'universal' | 'fancy';
+  };
+  naming: {
+    fileNamingCase: 'kebab-case' | 'Kebab-Case' | 'snake_case' | 'Snake_Case' | 'PascalCase' | 'camelCase';
+  };
+  export: {
+    exportRootMetadata: boolean;
+    exportChatMetadata: boolean;
+  };
+}
+
+export interface AppSettings {
+  profile: UserProfile;
+  preferences: AppPreferences;
+}
+
+export const DEFAULT_USER_PROFILE: UserProfile = {
+  id: 'default',
+  name: 'User',
   modelCallName: '',
   workDescription: '',
   customInstructions: '',
-  theme: 'system',
-  chatSendShortcut: 'enter'
+  isDefault: true
+};
+
+export const DEFAULT_APP_PREFERENCES: AppPreferences = {
+  chat: {
+    chatSendShortcut: 'enter',
+  },
+  ui: {
+    theme: 'system',
+    markdownLayout: 'universal',
+  },
+  naming: {
+    fileNamingCase: 'kebab-case',
+  },
+  export: {
+    exportRootMetadata: true,
+    exportChatMetadata: true,
+  }
+};
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  profile: DEFAULT_USER_PROFILE,
+  preferences: DEFAULT_APP_PREFERENCES
 };
 
 // Memory Archive Types

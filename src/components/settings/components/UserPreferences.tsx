@@ -151,10 +151,13 @@ export const UserPreferences: React.FC<UserPreferencesProps> = ({ settings, onSe
                         </label>
                         <input
                             type="text"
-                            value={settings.defaultUserName || ''}
+                            value={settings.profile.name || ''}
                             onChange={(e) => onSettingsChange({
                                 ...settings,
-                                defaultUserName: e.target.value
+                                profile: {
+                                    ...settings.profile,
+                                    name: e.target.value
+                                }
                             })}
                             className="w-full bg-[#0A0A0A] border border-green-500/20 rounded-xl p-3.5 text-white focus:ring-2 focus:ring-green-500/50 focus:border-green-500 outline-none transition-all shadow-inner"
                             placeholder="e.g. John Doe"
@@ -169,10 +172,13 @@ export const UserPreferences: React.FC<UserPreferencesProps> = ({ settings, onSe
                         </label>
                         <input
                             type="text"
-                            value={settings.modelCallName || ''}
+                            value={settings.profile.modelCallName || ''}
                             onChange={(e) => onSettingsChange({
                                 ...settings,
-                                modelCallName: e.target.value
+                                profile: {
+                                    ...settings.profile,
+                                    modelCallName: e.target.value
+                                }
                             })}
                             className="w-full bg-[#0A0A0A] border border-green-500/20 rounded-xl p-3.5 text-white focus:ring-2 focus:ring-green-500/50 focus:border-green-500 outline-none transition-all shadow-inner"
                             placeholder="e.g. Boss"
@@ -190,10 +196,13 @@ export const UserPreferences: React.FC<UserPreferencesProps> = ({ settings, onSe
                     </label>
                     <div className="relative">
                         <select
-                            value={settings.workDescription || ''}
+                            value={settings.profile.workDescription || ''}
                             onChange={(e) => onSettingsChange({
                                 ...settings,
-                                workDescription: e.target.value
+                                profile: {
+                                    ...settings.profile,
+                                    workDescription: e.target.value
+                                }
                             })}
                             className="w-full bg-[#0A0A0A] border border-green-500/20 rounded-xl p-3.5 pr-10 text-white focus:ring-2 focus:ring-green-500/50 focus:border-green-500 outline-none transition-all shadow-inner appearance-none cursor-pointer"
                         >
@@ -214,13 +223,16 @@ export const UserPreferences: React.FC<UserPreferencesProps> = ({ settings, onSe
                 <div>
                     <label className="block text-sm font-semibold text-gray-200 mb-2 flex justify-between items-end">
                         <span>Instructions for Models</span>
-                        <span className="text-xs text-gray-500 font-normal">{(settings.customInstructions?.length || 0)} / 1500 chars</span>
+                        <span className="text-xs text-gray-500 font-normal">{(settings.profile.customInstructions?.length || 0)} / 1500 chars</span>
                     </label>
                     <textarea
-                        value={settings.customInstructions || ''}
+                        value={settings.profile.customInstructions || ''}
                         onChange={(e) => onSettingsChange({
                             ...settings,
-                            customInstructions: e.target.value.substring(0, 1500)
+                            profile: {
+                                ...settings.profile,
+                                customInstructions: e.target.value.substring(0, 1500)
+                            }
                         })}
                         rows={6}
                         className="w-full bg-[#0A0A0A] border border-green-500/20 rounded-xl p-4 text-white focus:ring-2 focus:ring-green-500/50 focus:border-green-500 outline-none transition-all shadow-inner resize-y font-mono text-sm leading-relaxed"
@@ -231,37 +243,7 @@ export const UserPreferences: React.FC<UserPreferencesProps> = ({ settings, onSe
                     </p>
                 </div>
 
-                {/* Theme Selector */}
-                <div>
-                    <label className="block text-sm font-semibold text-gray-200 mb-3">
-                        Theme Preference
-                    </label>
-                    <div className="inline-flex bg-[#0A0A0A] border border-green-500/20 rounded-xl p-1 relative">
-                        {['system', 'light', 'dark'].map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => onSettingsChange({ ...settings, theme: t as 'system'|'light'|'dark' })}
-                                className={`relative w-28 py-2.5 rounded-lg text-sm font-medium transition-all z-10 capitalize ${
-                                    (settings.theme || 'system') === t 
-                                        ? 'text-green-400' 
-                                        : 'text-gray-400 hover:text-gray-200'
-                                }`}
-                            >
-                                {t === 'system' ? '💻 System' : t === 'light' ? '☀️ Light' : '🌙 Dark'}
-                            </button>
-                        ))}
-                        {/* Highlight Pill */}
-                        <div 
-                            className="absolute inset-y-1 w-28 bg-green-500/10 rounded-lg transition-all duration-300 ease-out border border-green-500/20"
-                            style={{
-                                transform: `translateX(${(settings.theme || 'system') === 'light' ? '112px' : (settings.theme || 'system') === 'dark' ? '224px' : '0px'})`,
-                            }}
-                        />
-                    </div>
-                    <p className="text-[11px] text-gray-500 mt-3 font-medium">
-                        (Theme switching will be fully integrated in a future update)
-                    </p>
-                </div>
+
             </div>
         </div>
     );

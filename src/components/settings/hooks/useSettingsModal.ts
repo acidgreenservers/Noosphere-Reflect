@@ -33,7 +33,7 @@ export const useSettingsModal = (
         setError(null);
 
         // Validation
-        if (!localSettings.defaultUserName.trim()) {
+        if (!localSettings.profile.name.trim()) {
             setError('Username cannot be empty');
             return;
         }

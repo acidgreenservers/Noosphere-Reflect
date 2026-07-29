@@ -86,7 +86,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
 
         const sanitizedTitle = sanitizeFilename(
             session.metadata?.title || session.chatTitle,
-            appSettings.fileNamingCase
+            appSettings.preferences.fileNamingCase
         );
         const baseFilename = `[${aiName}] - ${sanitizedTitle}`;
 
@@ -298,7 +298,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                 const session = await storageService.getSessionById(meta.id);
                 if (!session) continue;
 
-                const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.fileNamingCase);
+                const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.preferences.fileNamingCase);
                 const theme = session.selectedTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
@@ -345,7 +345,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                 await loadSessions();
                 alert(`✅ Exported to Google Drive folder:\n- ${result.folderName}/\n  - ${result.mainFile}\n  - artifacts/ (${result.artifactsUploaded} files)\n  - export-metadata.json`);
             } else {
-                const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.fileNamingCase);
+                const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.preferences.fileNamingCase);
                 const theme = session.selectedTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
@@ -397,7 +397,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                 const session = await storageService.getSessionById(meta.id);
                 if (!session) continue;
 
-                const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.fileNamingCase);
+                const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.preferences.fileNamingCase);
                 const theme = session.selectedTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';

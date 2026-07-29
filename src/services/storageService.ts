@@ -6,6 +6,7 @@ import { promptStore } from './storage/PromptStore';
 import { skillStore } from './storage/SkillStore';
 import { workflowStore } from './storage/WorkflowStore';
 import { settingsStore } from './storage/SettingsStore';
+import { profileStore } from './storage/ProfileStore';
 import { projectStore } from './storage/ProjectStore';
 import { STORES, DB_VERSION } from './db/schema';
 import {
@@ -69,13 +70,16 @@ class StorageService {
         return sessionStore.deleteWithSearch(id);
     }
 
-    // Settings
+    // Settings & Profile
     async getSettings(): Promise<AppSettings> {
-        return settingsStore.getSettings();
+        const preferences = await settingsStore.getSettings();
+        const profile = await profileStore.getProfile();
+        return { profile, preferences };
     }
 
     async saveSettings(settings: AppSettings): Promise<void> {
-        return settingsStore.saveSettings(settings);
+        await settingsStore.saveSettings(settings.preferences);
+        await profileStore.saveProfile(settings.profile);
     }
 
     async migrateLegacyData(): Promise<void> {
