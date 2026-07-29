@@ -2,6 +2,7 @@ import { ArtifactReaderLayer } from '../ArtifactReader';
 import { isSupportedByReader } from '../ArtifactReader/utils';
 import { DocumentBuilder } from './DocumentBuilder';
 import { ArtifactListSidebar } from './ArtifactListSidebar';
+import { ConfirmationModal } from '../ConfirmationModal';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
@@ -1722,6 +1723,18 @@ const modelsList = [
                     width={docBuilderWidth}
                     onWidthChange={setDocBuilderWidth}
                     pushMode={true}
+                />
+            )}
+
+            {showDeleteConfirm && session && (
+                <ConfirmationModal
+                    isOpen={showDeleteConfirm}
+                    title="Delete Conversation"
+                    message="Are you sure you want to delete this chat permanently? This action cannot be undone."
+                    confirmText="Delete"
+                    variant="danger"
+                    onConfirm={handleConfirmDelete}
+                    onCancel={() => setShowDeleteConfirm(false)}
                 />
             )}
         </div>
