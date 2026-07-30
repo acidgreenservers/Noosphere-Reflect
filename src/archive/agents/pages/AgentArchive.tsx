@@ -8,6 +8,8 @@ import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { ProjectSelectionModal } from '../../../components/ProjectSelectionModal';
 import { sanitizeFilename } from '../../../utils/securityUtils';
+import UnifiedGridCard from '../../../components/UnifiedGridCard';
+import { formatRelativeDate } from '../../../utils/dateUtils';
 
 const MoreHorizontal = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -36,6 +38,7 @@ export default function AgentArchive() {
     // Delete Modals
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deletingAgentId, setDeletingAgentId] = useState<string | 'batch' | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     // Active Action Menu Popovers
     const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
@@ -49,9 +52,7 @@ export default function AgentArchive() {
         loadSettings();
 
         const handleOutsideClick = (e: MouseEvent) => {
-            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
-                setActiveActionMenuId(null);
-            }
+            setOpenMenuId(null);
         };
         document.addEventListener('click', handleOutsideClick);
         return () => document.removeEventListener('click', handleOutsideClick);
@@ -90,6 +91,56 @@ export default function AgentArchive() {
             setAgents([]);
         }
     };
+
+    const renderAgentMenu = (agent: Agent) => (
+        <div
+            className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 text-left"
+            onClick={(e) => e.stopPropagation()}
+        >
+            <button
+                onClick={(e) => {
+                    setOpenMenuId(null);
+                    e.stopPropagation();
+                    navigate(`/agents/builder/${agent.id}`);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2"
+            >
+                <span>✏️</span> Edit Agent
+            </button>
+            <button
+                onClick={(e) => {
+                    setOpenMenuId(null);
+                    e.stopPropagation();
+                    setAgentToProjectLink(agent.id);
+                    setProjectModalOpen(true);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2 border-t border-gray-800"
+            >
+                <span>📁</span> Link to Project
+            </button>
+            <button
+                onClick={(e) => {
+                    setOpenMenuId(null);
+                    e.stopPropagation();
+                    handleExportZip(agent, e);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2 border-t border-gray-800"
+            >
+                <span>📦</span> Export ZIP Bundle
+            </button>
+            <button
+                onClick={(e) => {
+                    setOpenMenuId(null);
+                    e.stopPropagation();
+                    setDeletingAgentId(agent.id);
+                    setDeleteModalOpen(true);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2 border-t border-gray-800"
+            >
+                <span>🗑️</span> Delete Agent
+            </button>
+        </div>
+    );
 
     // Filter agents list
     const filteredAgents = useMemo(() => {
@@ -280,118 +331,40 @@ export default function AgentArchive() {
                     No agents in the Forge. Create or import your first agent blueprint to get started!
                 </div>
             ) : (
-                <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-3"}>
-                    {filteredAgents.map(agent => {
-                        const isSelected = selectedAgents.has(agent.id);
-                        return (
-                            <div
-                                key={agent.id}
-                                onClick={(e) => handleEditAgent(agent.id, e)}
-                                className={`group relative bg-[#122622]/30 border rounded-2xl cursor-pointer transition-all hover:bg-[#122622]/50 hover:scale-[1.01] ${
-                                    isSelected
-                                        ? 'border-green-500/50 ring-2 ring-green-500/20'
-                                        : 'border-gray-600/10 hover:border-green-500/30'
-                                } ${viewMode === 'grid' ? 'p-5 flex flex-col justify-between h-48' : 'p-4 flex items-center justify-between'}`}
-                            >
-                                <div className="flex items-start gap-4 min-w-0 flex-1">
-                                    {isSelectionMode && (
-                                        <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleToggleSelect(agent.id);
-                                            }}
-                                            className="pt-1 pr-1 shrink-0"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => {}}
-                                                className="rounded border-gray-700 text-[#82f94b] focus:ring-[#82f94b] bg-black h-4 w-4"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="w-12 h-12 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-2xl shrink-0">
-                                        🤖
-                                    </div>
-
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-sm font-bold text-gray-200 truncate group-hover:text-green-400 transition-colors">
-                                                {agent.name}
-                                            </h4>
-                                            {agent.projectId && (
-                                                <span className="shrink-0 text-[9px] font-bold bg-orange-500/15 border border-orange-500/20 text-orange-400 rounded px-1.5 py-0.5 uppercase tracking-wider">
-                                                    Project
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                            {agent.description || 'No description set.'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className={`flex items-center gap-3 shrink-0 ${viewMode === 'grid' ? 'mt-4 justify-between border-t border-gray-800/40 pt-3' : 'pl-4'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] text-gray-500 font-mono">
-                                            {agent.sections.length} node{agent.sections.length === 1 ? '' : 's'}
-                                        </span>
-                                        <span className="text-[10px] text-gray-500 font-mono">
-                                            {agent.files.length} file{agent.files.length === 1 ? '' : 's'}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 relative">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveActionMenuId(activeActionMenuId === agent.id ? null : agent.id);
-                                            }}
-                                            className="p-1 text-gray-400 hover:text-white rounded hover:bg-white/10"
-                                        >
-                                            <MoreHorizontal size={16} />
-                                        </button>
-
-                                        {/* Action Menu Popover */}
-                                        {activeActionMenuId === agent.id && (
-                                            <div
-                                                ref={actionMenuRef}
-                                                className="absolute right-0 bottom-full mb-1 w-44 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1 z-50 text-xs animate-fade-in"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <button
-                                                    onClick={(e) => handleEditAgent(agent.id, e)}
-                                                    className="w-full text-left px-3 py-2 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
-                                                >
-                                                    ✏️ Edit Agent
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleLinkProjectClick(agent.id, e)}
-                                                    className="w-full text-left px-3 py-2 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
-                                                >
-                                                    📁 Link to Project
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleExportZip(agent, e)}
-                                                    className="w-full text-left px-3 py-2 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
-                                                >
-                                                    📦 Export ZIP Bundle
-                                                </button>
-                                                <div className="border-t border-green-500/10 my-1"></div>
-                                                <button
-                                                    onClick={(e) => handleDeleteClick(agent.id, e)}
-                                                    className="w-full text-left px-3 py-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-                                                >
-                                                    🗑️ Delete Agent
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6" : "space-y-3"}>
+                    {filteredAgents.map(agent => (
+                        <UnifiedGridCard
+                            key={agent.id}
+                            isListView={viewMode === 'list'}
+                            title={agent.name}
+                            icon="🤖"
+                            color="green"
+                            metadataLine={
+                                <span className="flex items-center gap-1 font-mono text-[10px] text-gray-500">
+                                    <span>{formatRelativeDate(agent.createdAt)}</span>
+                                    <span>•</span>
+                                    <span>{agent.sections.length} node{agent.sections.length === 1 ? '' : 's'}</span>
+                                    <span>•</span>
+                                    <span>{agent.files.length} file{agent.files.length === 1 ? '' : 's'}</span>
+                                </span>
+                            }
+                            badges={[
+                                ...(agent.projectId ? [{ text: 'Project', colorClass: 'bg-orange-500/10 text-orange-400 border border-orange-500/20' }] : [])
+                            ]}
+                            isSelected={selectedAgents.has(agent.id)}
+                            isSelectionMode={isSelectionMode}
+                            onToggleSelect={(e) => {
+                                e.stopPropagation();
+                                handleToggleSelect(agent.id);
+                            }}
+                            onClick={() => navigate(`/agents/builder/${agent.id}`)}
+                            onMenuClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(openMenuId === agent.id ? null : agent.id);
+                            }}
+                            menuElement={openMenuId === agent.id && renderAgentMenu(agent)}
+                        />
+                    ))}
                 </div>
             )}
         </div>
