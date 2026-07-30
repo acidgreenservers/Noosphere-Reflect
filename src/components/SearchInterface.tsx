@@ -193,7 +193,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({ onResultSelect
                         <div>
                             <label className="text-xs font-medium text-gray-400 block mb-2">AI Model</label>
                             <div className="flex gap-2 flex-wrap">
-                                {['Claude', 'ChatGPT', 'Gemini', 'LeChat', 'Brave', 'Other'].map(model => (
+                                {['Claude', 'ChatGPT', 'Gemini', 'LeChat', 'Brave', 'Copilot', 'Other'].map(model => (
                                     <button
                                         key={model}
                                         onClick={() => setSelectedModels(prev =>
