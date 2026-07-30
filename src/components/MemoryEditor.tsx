@@ -86,9 +86,10 @@ export default function MemoryEditor({ memory, onSave, onCancel }: Props) {
                                     <option value="ChatGPT">ChatGPT</option>
                                     <option value="LeChat">LeChat</option>
                                     <option value="Llama">Llama</option>
-<option value="Grok">Grok</option>
-                            <option value="Brave">Brave</option>
-                            <option value="Other">Other</option>
+                                    <option value="Grok">Grok</option>
+                                    <option value="Brave">Brave</option>
+                                    <option value="Copilot">Copilot</option>
+                                    <option value="Other">Other</option>
                                 </select>
                             </div>
 

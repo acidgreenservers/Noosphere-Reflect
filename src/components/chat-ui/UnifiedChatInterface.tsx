@@ -1188,7 +1188,8 @@ const modelsList = [
     'Kimi',
     'AI Studio',
     'Llamacoder',
-    'Brave'
+    'Brave',
+    'Copilot'
 ];
 
     if (!session) {
