@@ -477,7 +477,7 @@ export default function SkillArchive() {
             onAddClick={() => {
                 navigate('/skills/workshop');
             }}
-            addLabel="New Workflow"
+            addLabel="New Skill"
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             isSelectionMode={isSelectionMode}
