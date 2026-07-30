@@ -1,5 +1,5 @@
 import UnifiedGridCard from '../../../components/UnifiedGridCard';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Project } from '../../../types';
 import { storageService } from '../../../services/storageService';
@@ -17,8 +17,24 @@ const ProjectArchive: React.FC = () => {
     // Modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
     
+    const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setMenuOpenId(null);
+            }
+        };
+        if (menuOpenId) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [menuOpenId]);
 
     const loadProjects = async () => {
         try {
@@ -74,18 +90,47 @@ const ProjectArchive: React.FC = () => {
     };
 
     const confirmDelete = async () => {
-        for (const id of selectedIds) {
-            await storageService.deleteProject(id);
+        if (deletingProjectId) {
+            await storageService.deleteProject(deletingProjectId);
+            setDeletingProjectId(null);
+        } else {
+            for (const id of selectedIds) {
+                await storageService.deleteProject(id);
+            }
+            setSelectedIds(new Set());
         }
-        setSelectedIds(new Set());
         await loadProjects();
         setIsDeleteModalOpen(false);
+    };
+
+    const handleDeleteSingleProject = (id: string) => {
+        setDeletingProjectId(id);
+        setMenuOpenId(null);
+        setIsDeleteModalOpen(true);
     };
 
     const toggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
         if (isSelectionMode) setSelectedIds(new Set());
     };
+
+    const renderMenu = (project: Project) => (
+        <div 
+            ref={menuRef}
+            className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50"
+            onClick={(e) => e.stopPropagation()}
+        >
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSingleProject(project.id);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2"
+            >
+                <span>🗑️</span> Delete Project
+            </button>
+        </div>
+    );
 
     return (
         <ArchiveLayout
@@ -146,6 +191,11 @@ const ProjectArchive: React.FC = () => {
                                     });
                                 }}
                                 onClick={(e) => handleProjectClick(project.id, e)}
+                                onMenuClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuOpenId(menuOpenId === project.id ? null : project.id);
+                                }}
+                                menuElement={menuOpenId === project.id && renderMenu(project)}
                             />
                         );
                     })}
@@ -160,11 +210,16 @@ const ProjectArchive: React.FC = () => {
 
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
-                title="Delete Selected Projects"
-                message={`Are you sure you want to permanently delete ${selectedIds.size} selected projects? This action cannot be undone and will not delete associated chats unless they are only linked here.`}
+                title={deletingProjectId ? "Delete Project" : "Delete Selected Projects"}
+                message={deletingProjectId
+                    ? "Are you sure you want to permanently delete this project? This action cannot be undone and will not delete associated chats unless they are only linked here."
+                    : `Are you sure you want to permanently delete ${selectedIds.size} selected projects? This action cannot be undone and will not delete associated chats unless they are only linked here.`}
                 confirmText="Delete"
                 onConfirm={confirmDelete}
-                onCancel={() => setIsDeleteModalOpen(false)}
+                onCancel={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeletingProjectId(null);
+                }}
             />
         </ArchiveLayout>
     );

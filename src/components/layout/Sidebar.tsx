@@ -358,48 +358,40 @@ export const Sidebar: React.FC<SidebarProps> = () => {
 
                 <div className="border-t border-green-500/10 my-2 mx-3"></div>
 
-                {/* Recent Chats Section */}
-                <div className={`flex-1 flex flex-col min-h-0 ${isCollapsed ? 'px-2' : 'px-3'} animate-fade-in`}>
-                    {!isCollapsed && (
+                {!isCollapsed && (
+                    <div className="flex-1 flex flex-col min-h-0 px-3 animate-fade-in">
                         <span className="text-[10px] font-bold text-gray-500 tracking-widest uppercase px-3 py-2">
                             Recent Conversations
                         </span>
-                    )}
-                    <div className="flex-1 overflow-y-auto space-y-0.5 pr-1 scrollbar-thin">
-                        {recentChats.map((chat) => {
-                            const isActive = location.pathname === `/chat/${chat.id}`;
-                            return (
-                                <div
-                                    key={chat.id}
-                                    className={`group relative flex items-center rounded-xl transition-all duration-150 ${
-                                        activeActionMenuId === chat.id ? 'z-50' : 'z-0'
-                                    } ${
-                                        isActive
-                                            ? 'bg-green-500/10 text-green-400'
-                                            : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
-                                    }`}
-                                >
-                                    <Link
-                                        to={`/chat/${chat.id}`}
-                                        className={`flex-1 py-2.5 text-xs truncate font-medium flex items-center gap-2 ${isCollapsed ? 'px-0 justify-center' : 'px-3 pr-10'}`}
-                                        title={chat.chatTitle || 'Untitled Session'}
+                        <div className="flex-1 overflow-y-auto space-y-0.5 pr-1 scrollbar-thin">
+                            {recentChats.map((chat) => {
+                                const isActive = location.pathname === `/chat/${chat.id}`;
+                                return (
+                                    <div
+                                        key={chat.id}
+                                        className={`group relative flex items-center rounded-xl transition-all duration-150 ${
+                                            activeActionMenuId === chat.id ? 'z-50' : 'z-0'
+                                        } ${
+                                            isActive
+                                                ? 'bg-green-500/10 text-green-400'
+                                                : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
+                                        }`}
                                     >
-                                        <span className={isCollapsed ? '' : ''}>💬</span>
-                                        {!isCollapsed && <span className="truncate">{chat.chatTitle || 'Untitled Session'}</span>}
-                                        {!isCollapsed && chat.projectId && (
-                                            <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
-                                                Project
-                                            </span>
-                                        )}
-                                    </Link>
+                                        <Link
+                                            to={`/chat/${chat.id}`}
+                                            className="flex-1 py-2.5 text-xs truncate font-medium flex items-center gap-2 px-3 pr-10"
+                                            title={chat.chatTitle || 'Untitled Session'}
+                                        >
+                                            <span>💬</span>
+                                            <span className="truncate">{chat.chatTitle || 'Untitled Session'}</span>
+                                            {chat.projectId && (
+                                                <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
+                                                    Project
+                                                </span>
+                                            )}
+                                        </Link>
 
-                                    {/* Action trigger button */}
-                                    {!isCollapsed && (
-                                        <div className={`absolute right-1 top-1/2 -translate-y-1/2 transition-opacity ${
-                                            activeActionMenuId === chat.id 
-                                                ? 'opacity-100 z-50' 
-                                                : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
-                                        }`}>
+                                        <div className="absolute right-1 top-1/2 -translate-y-1/2 transition-opacity opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault();
@@ -411,7 +403,6 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                                 <MoreHorizontal size={14} />
                                             </button>
 
-                                            {/* Action Popover Menu */}
                                             {activeActionMenuId === chat.id && (
                                                 <div className="absolute right-0 mt-1 w-44 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1 z-[9999] animate-fade-in text-xs">
                                                     <button
@@ -447,17 +438,17 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                                 </div>
                                             )}
                                         </div>
-                                    )}
                                     </div>
                                 );
                             })}
                             {recentChats.length === 0 && (
                                 <div className="text-center py-8 text-gray-600 text-xs">
-                                    {isCollapsed ? '...' : 'No recent chats'}
+                                    No recent chats
                                 </div>
                             )}
                         </div>
                     </div>
+                )}
             </div>
 
             {/* Bottom Profile and Settings Block */}
