@@ -62,6 +62,16 @@ export class SessionStore extends BaseStore<SavedChatSession, typeof STORES.SESS
     }
 
     async save(session: SavedChatSession): Promise<void> {
+        // Clone to avoid mutating the caller's object
+        session = {
+            ...session,
+            chatData: session.chatData ? {
+                ...session.chatData,
+                messages: session.chatData.messages?.map(m => ({ ...m }))
+            } : undefined,
+            metadata: session.metadata ? { ...session.metadata } : undefined
+        };
+
         // Sanitize content and metadata
         session.chatTitle = sanitizeMessageContent(session.chatTitle || '');
         session.name = sanitizeMessageContent(session.name || '');

@@ -477,6 +477,7 @@ export default function UnifiedChatInterface() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editingTitle, setEditingTitle] = useState('');
+    const sendingRef = useRef(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
     const [artifactListWidth, setArtifactListWidth] = useState<number>(40);
@@ -593,13 +594,13 @@ export default function UnifiedChatInterface() {
     const handleSendMessage = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!inputValue.trim() && attachedFiles.length === 0) return;
-
         if (!session) return;
+        if (sendingRef.current) return;
+        sendingRef.current = true;
 
         setIsSaving(true);
         const text = inputValue.trim();
 
-        // Create new message object
         const newMessage: ChatMessage = {
             type: currentRole === 'prompt' ? ChatMessageType.Prompt : ChatMessageType.Response,
             content: text,
@@ -610,7 +611,6 @@ export default function UnifiedChatInterface() {
 
         const updatedMessages = [...messages, newMessage];
 
-        // Update session state and database in real-time
         const updatedSession: SavedChatSession = {
             ...session,
             date: new Date().toISOString(),
@@ -628,18 +628,19 @@ export default function UnifiedChatInterface() {
             }
         };
 
-        await storageService.saveSession(updatedSession);
-
-        // Dispatch event so sidebar refreshes
-        window.dispatchEvent(new Event('chatSaved'));
-
-        // Reset draft states
-        setInputValue('');
-        setAttachedFiles([]);
-        setIsSaving(false);
-
-        // Reload updated messages
-        await loadSession();
+        try {
+            await storageService.saveSession(updatedSession);
+            window.dispatchEvent(new Event('chatSaved'));
+            setInputValue('');
+            setAttachedFiles([]);
+            await loadSession();
+        } catch (err) {
+            console.error('Failed to save message:', err);
+            showToast('❌ Failed to send message', 'info');
+        } finally {
+            setIsSaving(false);
+            sendingRef.current = false;
+        }
     };
 
     const handleCopyText = useCallback((text: string) => {
@@ -653,6 +654,9 @@ export default function UnifiedChatInterface() {
     const handleEditMessage = useCallback(async (index: number, newContent: string) => {
         const updatedMessages = [...messages];
         if (index < 0 || index >= updatedMessages.length) return;
+
+        const prevMessages = [...messages];
+        const prevSession = session;
 
         updatedMessages[index] = {
             ...updatedMessages[index],
@@ -673,14 +677,19 @@ export default function UnifiedChatInterface() {
             setSession(updatedSession);
             try {
                 await storageService.saveSession(updatedSession);
+                showToast('✓ Message updated', 'success');
             } catch (err) {
                 console.error('Failed to save updated session:', err);
+                setMessages(prevMessages);
+                if (prevSession) setSession(prevSession);
+                showToast('❌ Failed to save changes', 'info');
             }
         }
-        showToast('✓ Message updated', 'success');
     }, [session, messages]);
 
     const handleDeleteMessage = useCallback(async (index: number) => {
+        const prevMessages = [...messages];
+        const prevSession = session;
         const updatedMessages = messages.filter((_, i) => i !== index);
         if (updatedMessages.length === messages.length) return;
         setMessages(updatedMessages);
@@ -695,11 +704,14 @@ export default function UnifiedChatInterface() {
             setSession(updatedSession);
             try {
                 await storageService.saveSession(updatedSession);
+                showToast('🗑️ Message deleted', 'success');
             } catch (err) {
                 console.error('Failed to save updated session:', err);
+                setMessages(prevMessages);
+                if (prevSession) setSession(prevSession);
+                showToast('❌ Failed to delete message', 'info');
             }
         }
-        showToast('🗑️ Message deleted', 'success');
     }, [session, messages]);
 
     const showToast = (msg: string, type: 'success' | 'info' = 'success') => {
