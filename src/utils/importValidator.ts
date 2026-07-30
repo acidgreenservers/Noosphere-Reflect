@@ -210,6 +210,49 @@ export const WorkflowSchema = z.object({
     projectId: z.string().optional()
 });
 
+// Agent Section Schema
+const AgentSectionSchema = z.object({
+    id: z.string(),
+    title: z.string().max(200),
+    content: z.string().max(100000)
+});
+
+// Agent Personality Trait Schema
+const AgentPersonalityTraitSchema = z.object({
+    id: z.string(),
+    trait: z.string().max(100),
+    value: z.string().max(100)
+});
+
+// Agent Metadata Schema
+const AgentMetadataSchema = z.object({
+    title: z.string().max(200),
+    description: z.string().max(1000).optional(),
+    wordCount: z.number(),
+    characterCount: z.number(),
+    exportStatus: z.enum(['exported', 'not_exported', 'modified']).optional(),
+    lastExportDate: z.string().optional(),
+    exportFormats: z.array(z.string()).optional(),
+    exportCount: z.number().optional()
+});
+
+// Agent Schema
+export const AgentSchema = z.object({
+    id: z.string(),
+    name: z.string().max(200),
+    description: z.string().max(1000),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    mainInstructions: z.string().max(1000000),
+    sections: z.array(AgentSectionSchema).max(100),
+    personalityTraits: z.array(AgentPersonalityTraitSchema).max(100),
+    skills: z.array(z.string()).max(100),
+    workflows: z.array(z.string()).max(100),
+    files: z.array(ConversationArtifactSchema).max(100),
+    metadata: AgentMetadataSchema,
+    projectId: z.string().optional()
+});
+
 // Database Export Schema
 const DatabaseExportSchema = z.object({
     sessions: z.array(SavedChatSessionSchema).max(10_000).optional(),
@@ -218,6 +261,7 @@ const DatabaseExportSchema = z.object({
     prompts: z.array(PromptSchema).max(10_000).optional(),
     skills: z.array(SkillSchema).max(10_000).optional(),
     workflows: z.array(WorkflowSchema).max(10_000).optional(),
+    agents: z.array(AgentSchema).max(10_000).optional(),
     version: z.number().optional(),
     exportedAt: z.string().optional()
 });

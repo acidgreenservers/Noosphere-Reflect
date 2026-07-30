@@ -1,5 +1,5 @@
 export const DB_NAME = 'AIChatArchiverDB';
-export const DB_VERSION = 15;
+export const DB_VERSION = 16;
 
 export const STORES = {
     SESSIONS: 'sessions',
@@ -11,4 +11,5 @@ export const STORES = {
     FOLDERS: 'folders',
     PROJECTS: 'projects',
     WORKFLOWS: 'workflows',
+    AGENTS: 'agents',
 } as const;

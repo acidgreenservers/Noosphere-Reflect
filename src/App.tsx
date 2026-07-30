@@ -13,6 +13,8 @@ import SkillArchive from './archive/skills/pages/SkillArchive';
 import SkillWorkshop from './archive/skills/pages/SkillWorkshop';
 import WorkflowArchive from './archive/workflows/pages/WorkflowArchive';
 import WorkflowBuilder from './archive/workflows/pages/WorkflowBuilder';
+import AgentArchive from './archive/agents/pages/AgentArchive';
+import AgentBuilder from './archive/agents/pages/AgentBuilder';
 import Changelog from './pages/Changelog';
 import Features from './pages/Features';
 import AppShell from './components/layout/AppShell';
@@ -38,6 +40,8 @@ function App() {
         <Route path="/skills/workshop" element={<AppShell><SkillWorkshop /></AppShell>} />
         <Route path="/workflows" element={<AppShell><WorkflowArchive /></AppShell>} />
         <Route path="/workflows/builder/:id?" element={<AppShell><WorkflowBuilder /></AppShell>} />
+        <Route path="/agents" element={<AppShell><AgentArchive /></AppShell>} />
+        <Route path="/agents/builder/:id?" element={<AppShell><AgentBuilder /></AppShell>} />
         <Route path="/changelog" element={<AppShell><Changelog /></AppShell>} />
         <Route path="/features" element={<AppShell><Features /></AppShell>} />
       </Routes>

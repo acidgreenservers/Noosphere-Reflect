@@ -1,4 +1,4 @@
-import type { SavedChatSession, SearchFilters, Memory, Prompt, Skill, Workflow, ArchiveType } from '../types';
+import type { SavedChatSession, SearchFilters, Memory, Prompt, Skill, Workflow, ArchiveType, Agent } from '../types';
 
 interface SearchResult {
     id: string;
@@ -97,14 +97,19 @@ class SearchService {
         await this.sendMessage('INDEX_WORKFLOW', { workflow });
     }
 
+    async indexAgent(agent: Agent): Promise<void> {
+        await this.sendMessage('INDEX_AGENT', { agent });
+    }
+
     async indexSessions(
         sessions: SavedChatSession[],
         memories: Memory[] = [],
         prompts: Prompt[] = [],
         skills: Skill[] = [],
-        workflows: Workflow[] = []
+        workflows: Workflow[] = [],
+        agents: Agent[] = []
     ): Promise<void> {
-        await this.sendMessage('INDEX_SESSIONS', { sessions, memories, prompts, skills, workflows });
+        await this.sendMessage('INDEX_SESSIONS', { sessions, memories, prompts, skills, workflows, agents });
     }
 
     async search(query: string, filters?: SearchFilters): Promise<SearchResult[]> {

@@ -259,5 +259,16 @@ export const migrations: Migration[] = [
                 await profilesStore.put({ key: 'defaultProfile', value: profile });
             }
         }
+    },
+    {
+        version: 16,
+        description: 'Create agents store',
+        migrate: (db, transaction) => {
+            if (!db.objectStoreNames.contains(STORES.AGENTS)) {
+                const agentStore = db.createObjectStore(STORES.AGENTS, { keyPath: 'id' });
+                agentStore.createIndex('createdAt', 'createdAt', { unique: false });
+                agentStore.createIndex('projectId', 'projectId', { unique: false });
+            }
+        }
     }
 ];

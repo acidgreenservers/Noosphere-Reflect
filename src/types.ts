@@ -306,7 +306,47 @@ export interface SearchFilters {
 }
 
 // Archive Types for Foldering System
-export type ArchiveType = 'chat' | 'memory' | 'prompt' | 'skill' | 'workflow';
+export type ArchiveType = 'chat' | 'memory' | 'prompt' | 'skill' | 'workflow' | 'agent';
+
+// Agent Archive Types
+export interface AgentSection {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface AgentPersonalityTrait {
+  id: string;
+  trait: string;
+  value: string;
+}
+
+export interface AgentMetadata {
+  title: string;
+  description?: string;
+  wordCount: number;
+  characterCount: number;
+  exportStatus?: 'exported' | 'not_exported' | 'modified';
+  lastExportDate?: string;
+  exportFormats?: string[];
+  exportCount?: number;
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  mainInstructions: string;
+  sections: AgentSection[];
+  personalityTraits: AgentPersonalityTrait[];
+  skills: string[]; // Skill IDs
+  workflows: string[]; // Workflow IDs
+  files: ConversationArtifact[]; // Agent-specific files
+  metadata: AgentMetadata;
+  projectId?: string;
+}
 
 // Project Types
 export interface ProjectMetadata {
