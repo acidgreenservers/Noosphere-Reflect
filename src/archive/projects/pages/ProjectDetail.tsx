@@ -4,12 +4,10 @@ import { Project, SavedChatSession, ConversationArtifact, Memory, Prompt, Skill,
 import { storageService } from '../../../services/storageService';
 import { ProjectMemoryModal } from '../components/ProjectMemoryModal';
 import { ProjectInstructionsModal } from '../components/ProjectInstructionsModal';
-import { ProjectDescriptionModal } from '../components/ProjectDescriptionModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
 import { isSupportedByReader } from '../../../components/ArtifactReader/utils';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
-import { DocumentBuilder } from '../../../components/chat-ui/DocumentBuilder';
 
 type ProjectAssetType = 'chat' | 'memory' | 'prompt' | 'skill' | 'workflow';
 
@@ -52,23 +50,6 @@ const ProjectDetail: React.FC = () => {
     const [activeMenuSessionId, setActiveMenuSessionId] = useState<string | null>(null);
     const sessionMenuRef = useRef<HTMLDivElement>(null);
 
-    const [showAddMenu, setShowAddMenu] = useState(false);
-    const addMenuRef = useRef<HTMLDivElement>(null);
-
-    const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
-    const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
-
-    const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
-
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
-    const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-    const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
-        if (toastTimer.current) clearTimeout(toastTimer.current);
-        setToast({ message, type });
-        toastTimer.current = setTimeout(() => setToast(null), 3000);
-    };
-
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -76,15 +57,12 @@ const ProjectDetail: React.FC = () => {
             if (sessionMenuRef.current && !sessionMenuRef.current.contains(event.target as Node)) {
                 setActiveMenuSessionId(null);
             }
-            if (addMenuRef.current && !addMenuRef.current.contains(event.target as Node)) {
-                setShowAddMenu(false);
-            }
         };
-        if (activeMenuSessionId || showAddMenu) {
+        if (activeMenuSessionId) {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [activeMenuSessionId, showAddMenu]);
+    }, [activeMenuSessionId]);
 
     const loadProjectData = async () => {
         if (!id) return;
@@ -331,25 +309,6 @@ const ProjectDetail: React.FC = () => {
         }
     };
 
-    const handleSaveDocument = async (artifact: ConversationArtifact, _messageIndex: number | null = null) => {
-        if (!project) return;
-        const updatedProject = {
-            ...project,
-            artifacts: [...(project.artifacts || []), artifact],
-            updatedAt: new Date().toISOString()
-        };
-        await handleSaveProject(updatedProject);
-        showToast('Document saved as artifact', 'success');
-        setShowDocumentBuilder(false);
-    };
-
-    const handleDescriptionSave = async (description: string) => {
-        if (!project) return;
-        const updated = { ...project, metadata: { ...project.metadata, description }, updatedAt: new Date().toISOString() };
-        await handleSaveProject(updated);
-        showToast('Description updated', 'success');
-    };
-
 
     // Aggregate assets
     const allAssets: ProjectAsset[] = useMemo(() => {
@@ -436,11 +395,7 @@ const ProjectDetail: React.FC = () => {
                     <h1 className="text-2xl font-bold text-white tracking-tight">
                         {project.metadata.title}
                     </h1>
-                    <p
-                        className="text-sm text-gray-400 cursor-pointer hover:text-green-400 transition-colors"
-                        onClick={() => setIsDescriptionModalOpen(true)}
-                        title="Click to edit description"
-                    >
+                    <p className="text-sm text-gray-400">
                         {project.metadata.description || 'No description provided.'}
                     </p>
                     <div className="text-xs text-gray-500 mt-2">
@@ -655,7 +610,7 @@ const ProjectDetail: React.FC = () => {
                 <div className="p-6 flex-1">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Project Files</h3>
-                        <div className="flex gap-2 relative">
+                        <div className="flex gap-2">
                             <input 
                                 type="file" 
                                 multiple 
@@ -664,7 +619,7 @@ const ProjectDetail: React.FC = () => {
                                 onChange={handleFileUpload}
                             />
                             <button 
-                                onClick={() => setShowAddMenu(!showAddMenu)}
+                                onClick={() => fileInputRef.current?.click()}
                                 className="p-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-colors border border-green-500/20"
                                 title="Add Files"
                             >
@@ -672,32 +627,6 @@ const ProjectDetail: React.FC = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
                             </button>
-                            {showAddMenu && (
-                                <div 
-                                    ref={addMenuRef}
-                                    className="absolute right-0 top-full mt-1 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <button
-                                        onClick={() => {
-                                            fileInputRef.current?.click();
-                                            setShowAddMenu(false);
-                                        }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2"
-                                    >
-                                        <span>📄</span> Upload File
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setShowDocumentBuilder(true);
-                                            setShowAddMenu(false);
-                                        }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2 border-t border-gray-800"
-                                    >
-                                        <span>📝</span> Create Document
-                                    </button>
-                                </div>
-                            )}
                         </div>
                     </div>
 
@@ -823,13 +752,6 @@ const ProjectDetail: React.FC = () => {
                 }}
             />
 
-            <ProjectDescriptionModal
-                isOpen={isDescriptionModalOpen}
-                initialDescription={project.metadata.description || ''}
-                onClose={() => setIsDescriptionModalOpen(false)}
-                onSave={handleDescriptionSave}
-            />
-
             <ArtifactReaderLayer
                 artifact={viewingArtifact}
                 onClose={() => setViewingArtifact(null)}
@@ -851,27 +773,6 @@ const ProjectDetail: React.FC = () => {
                     setArtifactToDelete(null);
                 }}
             />
-
-            {showDocumentBuilder && project && (
-                <DocumentBuilder
-                    sessionId={project.id}
-                    messages={[]}
-                    onClose={() => setShowDocumentBuilder(false)}
-                    onSave={(artifact, _messageIndex) => handleSaveDocument(artifact)}
-                    width={docBuilderWidth}
-                    onWidthChange={setDocBuilderWidth}
-                />
-            )}
-
-            {toast && (
-                <div className={`fixed bottom-4 right-4 px-4 py-2.5 rounded-xl shadow-2xl z-[200] text-sm font-medium transition-all animate-slide-up ${
-                    toast.type === 'success' ? 'bg-green-600 text-white' :
-                    toast.type === 'error' ? 'bg-red-600 text-white' :
-                    'bg-gray-800 text-gray-200'
-                }`}>
-                    {toast.message}
-                </div>
-            )}
 
         </div>
     );

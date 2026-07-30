@@ -17,52 +17,93 @@ export class AgentExportService {
     /**
      * Compile Agent prompt and sections to standard AGENTS.md Markdown format
      */
-    static compileAgentMarkdown(agent: Agent): string {
-        let md = `---\n`;
+        static compileAgentMarkdown(agent: Agent, skills: Skill[] = [], workflows: Workflow[] = []): string {
+        let md = `---
+`;
         const slugName = agent.name.trim() ? agent.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'untitled-agent';
-        md += `name: ${slugName}\n`;
-        if (agent.description) md += `description: ${agent.description}\n`;
-        md += `---\n\n`;
+        md += `name: ${slugName}
+`;
+        if (agent.description) md += `description: ${agent.description}
+`;
+        md += `---
 
-        md += `# ${agent.name}\n\n`;
+`;
+
+        md += `# ${agent.name}
+
+`;
 
         if (agent.mainInstructions.trim()) {
-            md += `## Overarching System Prompt\n${agent.mainInstructions.trim()}\n\n`;
+            md += `## Overarching System Prompt
+${agent.mainInstructions.trim()}
+
+`;
         }
 
         agent.sections.forEach(sec => {
             if (sec.title.trim() || sec.content.trim()) {
-                md += `## ${sec.title.trim() || 'Untitled Section'}\n${sec.content.trim()}\n\n`;
+                md += `## ${sec.title.trim() || 'Untitled Section'}
+${sec.content.trim()}
+
+`;
             }
         });
 
         if (agent.personalityTraits.length > 0) {
-            md += `## Personality Traits\n`;
-            md += `| Trait | Value |\n`;
-            md += `| :--- | :--- |\n`;
+            md += `## Personality Traits
+`;
+            md += `| Trait | Value |
+`;
+            md += `| :--- | :--- |
+`;
             agent.personalityTraits.forEach(trait => {
-                md += `| ${trait.trait.trim()} | ${trait.value.trim()} |\n`;
+                md += `| ${trait.trait.trim()} | ${trait.value.trim()} |
+`;
             });
-            md += `\n`;
+            md += `
+`;
         }
 
-        if (agent.files.length > 0) {
-            md += `## Attached Files\n`;
-            agent.files.forEach(file => {
-                md += `- \`files/${file.fileName}\` (${(file.fileSize / 1024).toFixed(1)} KB, ${file.mimeType})\n`;
-            });
-            md += `\n`;
-        }
+        if (skills.length > 0 || workflows.length > 0 || agent.files.length > 0) {
+            md += `## Capabilities & References
 
-        if (agent.skills.length > 0 || agent.workflows.length > 0) {
-            md += `## Attached Capabilities\n`;
-            if (agent.skills.length > 0) {
-                md += `- **Attached Skills**: ${agent.skills.join(', ')}\n`;
+`;
+
+            if (skills.length > 0) {
+                md += `### Skills
+`;
+                skills.forEach(skill => {
+                    const safeName = neutralizeDangerousExtension(sanitizeFilename(skill.metadata.title)) || 'skill';
+                    md += `- [${skill.metadata.title}](~/skills/${safeName}.md)
+`;
+                });
+                md += `
+`;
             }
-            if (agent.workflows.length > 0) {
-                md += `- **Attached Workflows**: ${agent.workflows.join(', ')}\n`;
+
+            if (workflows.length > 0) {
+                md += `### Workflows
+`;
+                workflows.forEach(wf => {
+                    const safeName = neutralizeDangerousExtension(sanitizeFilename(wf.metadata.title)) || 'workflow';
+                    md += `- [${wf.metadata.title}](~/workflows/${safeName}.md)
+`;
+                });
+                md += `
+`;
             }
-            md += `\n`;
+
+            if (agent.files.length > 0) {
+                md += `### Files
+`;
+                agent.files.forEach(file => {
+                    const safeName = neutralizeDangerousExtension(sanitizeFilename(file.fileName));
+                    md += `- [${file.fileName}](~/files/${safeName})
+`;
+                });
+                md += `
+`;
+            }
         }
 
         return md.trim() + '\n';
@@ -94,7 +135,7 @@ export class AgentExportService {
         }
 
         // 3. AGENTS.md
-        const agentsMd = this.compileAgentMarkdown(agent);
+        const agentsMd = this.compileAgentMarkdown(agent, skills, workflows);
         zip.file('AGENTS.md', agentsMd);
 
         // 4. metadata.json (embedded full raw data of agent, skills, and workflows)

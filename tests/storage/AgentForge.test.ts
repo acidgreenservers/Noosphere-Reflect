@@ -123,8 +123,8 @@ describe('Agent Forge CRUD & Package Integration Suite', () => {
         expect(compiled).toContain('Be extremely professional.');
         expect(compiled).toContain('## Personality Traits');
         expect(compiled).toContain('| Analytical | High |');
-        expect(compiled).toContain('## Attached Files');
-        expect(compiled).toContain('- `files/schema.json` (0.0 KB, application/json)');
+        expect(compiled).toContain('### Files');
+        expect(compiled).toContain('- [schema.json](~/files/schema.json)');
     });
 
     it('should package Agent and attached skills/workflows into ZIP and successfully re-import them', async () => {

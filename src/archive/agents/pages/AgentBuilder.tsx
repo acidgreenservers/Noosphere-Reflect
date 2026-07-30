@@ -143,8 +143,10 @@ export default function AgentBuilder() {
 
     // Live preview string
     const compiledMarkdownPreview = useMemo(() => {
-        return AgentExportService.compileAgentMarkdown(compiledAgentEntity);
-    }, [compiledAgentEntity]);
+        const skills = availableSkills.filter(s => attachedSkills.has(s.id));
+        const workflows = availableWorkflows.filter(w => attachedWorkflows.has(w.id));
+        return AgentExportService.compileAgentMarkdown(compiledAgentEntity, skills, workflows);
+    }, [compiledAgentEntity, availableSkills, availableWorkflows, attachedSkills, attachedWorkflows]);
 
     const handleSave = async () => {
         if (!name.trim()) {
