@@ -4,6 +4,7 @@ import { Project, SavedChatSession, ConversationArtifact, Memory, Prompt, Skill,
 import { storageService } from '../../../services/storageService';
 import { ProjectMemoryModal } from '../components/ProjectMemoryModal';
 import { ProjectInstructionsModal } from '../components/ProjectInstructionsModal';
+import { ProjectDescriptionModal } from '../components/ProjectDescriptionModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
 import { isSupportedByReader } from '../../../components/ArtifactReader/utils';
@@ -56,6 +57,8 @@ const ProjectDetail: React.FC = () => {
 
     const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
     const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
+
+    const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
 
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
     const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -340,6 +343,13 @@ const ProjectDetail: React.FC = () => {
         setShowDocumentBuilder(false);
     };
 
+    const handleDescriptionSave = async (description: string) => {
+        if (!project) return;
+        const updated = { ...project, metadata: { ...project.metadata, description }, updatedAt: new Date().toISOString() };
+        await handleSaveProject(updated);
+        showToast('Description updated', 'success');
+    };
+
 
     // Aggregate assets
     const allAssets: ProjectAsset[] = useMemo(() => {
@@ -426,7 +436,11 @@ const ProjectDetail: React.FC = () => {
                     <h1 className="text-2xl font-bold text-white tracking-tight">
                         {project.metadata.title}
                     </h1>
-                    <p className="text-sm text-gray-400">
+                    <p
+                        className="text-sm text-gray-400 cursor-pointer hover:text-green-400 transition-colors"
+                        onClick={() => setIsDescriptionModalOpen(true)}
+                        title="Click to edit description"
+                    >
                         {project.metadata.description || 'No description provided.'}
                     </p>
                     <div className="text-xs text-gray-500 mt-2">
@@ -807,6 +821,13 @@ const ProjectDetail: React.FC = () => {
                     const updated = { ...project, metadata: { ...project.metadata, instructions }, updatedAt: new Date().toISOString() };
                     await handleSaveProject(updated);
                 }}
+            />
+
+            <ProjectDescriptionModal
+                isOpen={isDescriptionModalOpen}
+                initialDescription={project.metadata.description || ''}
+                onClose={() => setIsDescriptionModalOpen(false)}
+                onSave={handleDescriptionSave}
             />
 
             <ArtifactReaderLayer
