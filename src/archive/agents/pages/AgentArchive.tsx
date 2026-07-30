@@ -331,7 +331,7 @@ export default function AgentArchive() {
                     No agents in the Forge. Create or import your first agent blueprint to get started!
                 </div>
             ) : (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6" : "space-y-3"}>
+                <>
                     {filteredAgents.map(agent => (
                         <UnifiedGridCard
                             key={agent.id}
@@ -365,7 +365,7 @@ export default function AgentArchive() {
                             menuElement={openMenuId === agent.id && renderAgentMenu(agent)}
                         />
                     ))}
-                </div>
+                </>
             )}
         </div>
     );
