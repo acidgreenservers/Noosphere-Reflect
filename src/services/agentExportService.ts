@@ -40,14 +40,19 @@ ${agent.mainInstructions.trim()}
 `;
         }
 
-        agent.sections.forEach(sec => {
-            if (sec.title.trim() || sec.content.trim()) {
-                md += `## ${sec.title.trim() || 'Untitled Section'}
+        if (agent.sections.length > 0) {
+            md += `## Instructions
+
+`;
+            agent.sections.forEach(sec => {
+                if (sec.title.trim() || sec.content.trim()) {
+                    md += `### ${sec.title.trim() || 'Untitled Section'}
 ${sec.content.trim()}
 
 `;
-            }
-        });
+                }
+            });
+        }
 
         if (agent.personalityTraits.length > 0) {
             md += `## Personality Traits
@@ -74,7 +79,8 @@ ${sec.content.trim()}
 `;
                 skills.forEach(skill => {
                     const safeName = neutralizeDangerousExtension(sanitizeFilename(skill.metadata.title)) || 'skill';
-                    md += `- [${skill.metadata.title}](~/skills/${safeName}.md)
+                    const customPath = agent.skillOverrides?.[skill.id] || `~/skills/${safeName}.md`;
+                    md += `- [${skill.metadata.title}](${customPath})
 `;
                 });
                 md += `
@@ -86,7 +92,8 @@ ${sec.content.trim()}
 `;
                 workflows.forEach(wf => {
                     const safeName = neutralizeDangerousExtension(sanitizeFilename(wf.metadata.title)) || 'workflow';
-                    md += `- [${wf.metadata.title}](~/workflows/${safeName}.md)
+                    const customPath = agent.workflowOverrides?.[wf.id] || `~/workflows/${safeName}.md`;
+                    md += `- [${wf.metadata.title}](${customPath})
 `;
                 });
                 md += `

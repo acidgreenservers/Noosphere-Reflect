@@ -5,6 +5,8 @@ import { storageService } from '../../../services/storageService';
 import { AgentExportService } from '../../../services/agentExportService';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { getFileIcon } from '../../../components/artifacts/utils';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
+import { isSupportedByReader } from '../../../components/ArtifactReader/utils';
 
 const ChevronLeft = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>
@@ -68,6 +70,11 @@ export default function AgentBuilder() {
     const [attachedSkills, setAttachedSkills] = useState<Set<string>>(new Set());
     const [attachedWorkflows, setAttachedWorkflows] = useState<Set<string>>(new Set());
     const [attachedFiles, setAttachedFiles] = useState<ConversationArtifact[]>([]);
+    const [skillOverrides, setSkillOverrides] = useState<Record<string, string>>({});
+    const [workflowOverrides, setWorkflowOverrides] = useState<Record<string, string>>({});
+    const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const [readerWidth, setReaderWidth] = useState<number>(50);
+    const [isDraggingReader, setIsDraggingReader] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
     const [showClearModal, setShowClearModal] = useState(false);
@@ -104,6 +111,8 @@ export default function AgentBuilder() {
                         setAttachedSkills(new Set(agent.skills || []));
                         setAttachedWorkflows(new Set(agent.workflows || []));
                         setAttachedFiles(agent.files || []);
+                        setSkillOverrides(agent.skillOverrides || {});
+                        setWorkflowOverrides(agent.workflowOverrides || {});
                     }
                 }
             } catch (err) {
@@ -130,6 +139,8 @@ export default function AgentBuilder() {
             skills: Array.from(attachedSkills),
             workflows: Array.from(attachedWorkflows),
             files: attachedFiles,
+            skillOverrides,
+            workflowOverrides,
             metadata: {
                 title: name || 'Untitled Agent',
                 description: description || undefined,
@@ -139,7 +150,7 @@ export default function AgentBuilder() {
             },
             projectId: existingAgent?.projectId
         };
-    }, [existingAgent, name, description, mainInstructions, sections, personalityTraits, attachedSkills, attachedWorkflows, attachedFiles]);
+    }, [existingAgent, name, description, mainInstructions, sections, personalityTraits, attachedSkills, attachedWorkflows, attachedFiles, skillOverrides, workflowOverrides]);
 
     // Live preview string
     const compiledMarkdownPreview = useMemo(() => {
@@ -147,6 +158,46 @@ export default function AgentBuilder() {
         const workflows = availableWorkflows.filter(w => attachedWorkflows.has(w.id));
         return AgentExportService.compileAgentMarkdown(compiledAgentEntity, skills, workflows);
     }, [compiledAgentEntity, availableSkills, availableWorkflows, attachedSkills, attachedWorkflows]);
+
+    const updateSkillOverride = (skillId: string, value: string) => {
+        setSkillOverrides(prev => ({ ...prev, [skillId]: value }));
+    };
+
+    const updateWorkflowOverride = (workflowId: string, value: string) => {
+        setWorkflowOverrides(prev => ({ ...prev, [workflowId]: value }));
+    };
+
+    const handleReadFile = (file: ConversationArtifact) => {
+        if (isSupportedByReader(file.fileName, file.mimeType)) {
+            setViewingArtifact(file);
+        } else {
+            // download or show popup
+            try {
+                let blob: Blob;
+                if (file.mimeType.startsWith('text/')) {
+                    blob = new Blob([file.fileData], { type: file.mimeType });
+                } else {
+                    const byteCharacters = atob(file.fileData);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    blob = new Blob([byteArray], { type: file.mimeType });
+                }
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Failed to download', error);
+            }
+        }
+    };
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -312,7 +363,13 @@ export default function AgentBuilder() {
     if (isLoading) return null;
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0a] text-gray-200 overflow-hidden font-sans">
+        <div
+            className="flex flex-col h-full bg-[#0a0a0a] text-gray-200 overflow-hidden font-sans relative"
+            style={{
+                paddingRight: viewingArtifact ? `calc(${readerWidth}vw)` : undefined,
+                transition: isDraggingReader ? 'none' : 'all 0.3s ease-out'
+            }}
+        >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-[#111]">
                 <button
@@ -530,22 +587,36 @@ export default function AgentBuilder() {
                                         <div
                                             key={skill.id}
                                             onClick={() => toggleSkill(skill.id)}
-                                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                                            className={`flex flex-col p-3 rounded-xl border cursor-pointer transition-all ${
                                                 isAttached
                                                     ? 'bg-blue-500/10 border-blue-500/40 text-blue-400'
                                                     : 'bg-[#1a1a1a] border-gray-800 text-gray-400 hover:border-gray-700'
                                             }`}
                                         >
-                                            <div className="flex-1 min-w-0 pr-2">
-                                                <span className="text-xs font-bold truncate block">{skill.metadata.title}</span>
-                                                {skill.metadata.category && <span className="text-[10px] text-gray-500 block truncate">{skill.metadata.category}</span>}
+                                            <div className="flex items-center justify-between w-full">
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <span className="text-xs font-bold truncate block">{skill.metadata.title}</span>
+                                                    {skill.metadata.category && <span className="text-[10px] text-gray-500 block truncate">{skill.metadata.category}</span>}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isAttached}
+                                                    onChange={() => {}} // handled by div click
+                                                    className="rounded border-gray-700 text-blue-500 focus:ring-blue-500 bg-[#0a0a0a] shrink-0"
+                                                />
                                             </div>
-                                            <input
-                                                type="checkbox"
-                                                checked={isAttached}
-                                                onChange={() => {}} // handled by div click
-                                                className="rounded border-gray-700 text-blue-500 focus:ring-blue-500 bg-[#0a0a0a] shrink-0"
-                                            />
+                                            {isAttached && (
+                                                <div className="mt-2 pt-2 border-t border-blue-500/20 w-full" onClick={e => e.stopPropagation()}>
+                                                    <label className="block text-[9px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Path Override</label>
+                                                    <input
+                                                        type="text"
+                                                        value={skillOverrides[skill.id] || ''}
+                                                        onChange={e => updateSkillOverride(skill.id, e.target.value)}
+                                                        placeholder="e.g. ~/custom/review.md"
+                                                        className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-2 py-1 text-[11px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-400"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -568,22 +639,36 @@ export default function AgentBuilder() {
                                         <div
                                             key={wf.id}
                                             onClick={() => toggleWorkflow(wf.id)}
-                                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                                            className={`flex flex-col p-3 rounded-xl border cursor-pointer transition-all ${
                                                 isAttached
                                                     ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
                                                     : 'bg-[#1a1a1a] border-gray-800 text-gray-400 hover:border-gray-700'
                                             }`}
                                         >
-                                            <div className="flex-1 min-w-0 pr-2">
-                                                <span className="text-xs font-bold truncate block">{wf.metadata.title}</span>
-                                                {wf.metadata.triggerWord && <span className="text-[10px] text-gray-500 block truncate font-mono">{wf.metadata.triggerWord}</span>}
+                                            <div className="flex items-center justify-between w-full">
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <span className="text-xs font-bold truncate block">{wf.metadata.title}</span>
+                                                    {wf.metadata.triggerWord && <span className="text-[10px] text-gray-500 block truncate font-mono">{wf.metadata.triggerWord}</span>}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isAttached}
+                                                    onChange={() => {}} // handled by div click
+                                                    className="rounded border-gray-700 text-orange-500 focus:ring-orange-500 bg-[#0a0a0a] shrink-0"
+                                                />
                                             </div>
-                                            <input
-                                                type="checkbox"
-                                                checked={isAttached}
-                                                onChange={() => {}} // handled by div click
-                                                className="rounded border-gray-700 text-orange-500 focus:ring-orange-500 bg-[#0a0a0a] shrink-0"
-                                            />
+                                            {isAttached && (
+                                                <div className="mt-2 pt-2 border-t border-orange-500/20 w-full" onClick={e => e.stopPropagation()}>
+                                                    <label className="block text-[9px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Path Override</label>
+                                                    <input
+                                                        type="text"
+                                                        value={workflowOverrides[wf.id] || ''}
+                                                        onChange={e => updateWorkflowOverride(wf.id, e.target.value)}
+                                                        placeholder="e.g. ~/custom/deploy.md"
+                                                        className="w-full bg-black/40 border border-orange-500/20 rounded-lg px-2 py-1 text-[11px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-orange-400"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -619,7 +704,8 @@ export default function AgentBuilder() {
                                 {attachedFiles.map(file => (
                                     <div
                                         key={file.id}
-                                        className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-800 p-2.5 rounded-xl group"
+                                        onClick={() => handleReadFile(file)}
+                                        className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-800 p-2.5 rounded-xl group cursor-pointer hover:border-[#82f94b]/30 transition-all"
                                     >
                                         <div className="text-xl shrink-0">{getFileIcon(file.mimeType)}</div>
                                         <div className="flex-1 min-w-0">
@@ -697,6 +783,16 @@ export default function AgentBuilder() {
                     </div>
                 </div>
             )}
+
+            <ArtifactReaderLayer
+                artifact={viewingArtifact}
+                onClose={() => setViewingArtifact(null)}
+                width={readerWidth}
+                onWidthChange={setReaderWidth}
+                onDragStart={() => setIsDraggingReader(true)}
+                onDragEnd={() => setIsDraggingReader(false)}
+                onCopyChat={() => {}}
+            />
         </div>
     );
 }

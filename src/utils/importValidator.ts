@@ -249,6 +249,8 @@ export const AgentSchema = z.object({
     skills: z.array(z.string()).max(100),
     workflows: z.array(z.string()).max(100),
     files: z.array(ConversationArtifactSchema).max(100),
+    skillOverrides: z.record(z.string()).optional(),
+    workflowOverrides: z.record(z.string()).optional(),
     metadata: AgentMetadataSchema,
     projectId: z.string().optional()
 });
