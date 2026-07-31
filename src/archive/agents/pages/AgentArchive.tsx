@@ -337,7 +337,7 @@ export default function AgentArchive() {
                             key={agent.id}
                             isListView={viewMode === 'list'}
                             title={agent.name}
-                            icon={agent.avatarEmoji || "🤖"}
+                            icon="🤖"
                             color="green"
                             metadataLine={
                                 <span className="flex items-center gap-1 font-mono text-[10px] text-gray-500">
@@ -372,7 +372,7 @@ export default function AgentArchive() {
 
     return (
         <ArchiveLayout
-            icon={agent.avatarEmoji || "🤖"}
+            icon="🤖"
             title="Agent Forge"
             description="Build, foundry, package, and share autonomous persona blueprints."
             searchQuery={searchQuery}
