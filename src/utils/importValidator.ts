@@ -252,6 +252,7 @@ export const AgentSchema = z.object({
     skillOverrides: z.record(z.string()).optional(),
     workflowOverrides: z.record(z.string()).optional(),
     customFrontmatter: z.array(z.object({ key: z.string().max(100), value: z.string().max(1000) })).optional(),
+    avatarEmoji: z.string().max(10).optional(),
     metadata: AgentMetadataSchema,
     projectId: z.string().optional()
 });

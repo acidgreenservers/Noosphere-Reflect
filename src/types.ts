@@ -347,6 +347,7 @@ export interface Agent {
   skillOverrides?: Record<string, string>; // Skill ID -> Custom Path
   workflowOverrides?: Record<string, string>; // Workflow ID -> Custom Path
   customFrontmatter?: { key: string; value: string }[];
+  avatarEmoji?: string;
   metadata: AgentMetadata;
   projectId?: string;
 }

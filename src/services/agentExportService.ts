@@ -40,7 +40,7 @@ export class AgentExportService {
 
 `;
 
-        md += `# ${agent.name}
+        md += `# ${agent.avatarEmoji || '🤖'} ${agent.name}
 
 `;
 

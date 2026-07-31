@@ -71,6 +71,7 @@ export default function AgentBuilder() {
     const [attachedWorkflows, setAttachedWorkflows] = useState<Set<string>>(new Set());
     const [attachedFiles, setAttachedFiles] = useState<ConversationArtifact[]>([]);
     const [customFrontmatter, setCustomFrontmatter] = useState<{ key: string; value: string }[]>([]);
+    const [avatarEmoji, setAvatarEmoji] = useState('🤖');
     const [isCopied, setIsCopied] = useState(false);
     const [skillOverrides, setSkillOverrides] = useState<Record<string, string>>({});
     const [workflowOverrides, setWorkflowOverrides] = useState<Record<string, string>>({});
@@ -116,6 +117,7 @@ export default function AgentBuilder() {
                         setSkillOverrides(agent.skillOverrides || {});
                         setWorkflowOverrides(agent.workflowOverrides || {});
                         setCustomFrontmatter(agent.customFrontmatter || []);
+                        setAvatarEmoji(agent.avatarEmoji || '🤖');
                     }
                 }
             } catch (err) {
@@ -145,6 +147,7 @@ export default function AgentBuilder() {
             skillOverrides,
             workflowOverrides,
             customFrontmatter,
+            avatarEmoji,
             metadata: {
                 title: name || 'Untitled Agent',
                 description: description || undefined,
@@ -154,7 +157,7 @@ export default function AgentBuilder() {
             },
             projectId: existingAgent?.projectId
         };
-    }, [existingAgent, name, description, mainInstructions, sections, personalityTraits, attachedSkills, attachedWorkflows, attachedFiles, skillOverrides, workflowOverrides, customFrontmatter]);
+    }, [existingAgent, name, description, mainInstructions, sections, personalityTraits, attachedSkills, attachedWorkflows, attachedFiles, skillOverrides, workflowOverrides, customFrontmatter, avatarEmoji]);
 
     // Live preview string
     const compiledMarkdownPreview = useMemo(() => {
@@ -424,15 +427,55 @@ export default function AgentBuilder() {
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-400 mb-1">AGENT NAME</label>
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                    placeholder="e.g. Scribe, Archimedes, Code Architect"
-                                    className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#82f94b]"
-                                />
+                            <div className="flex gap-4 items-start">
+                                <div className="flex-1 min-w-0">
+                                    <label className="block text-xs font-bold text-gray-400 mb-1">AGENT NAME</label>
+                                    <input
+                                        type="text"
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        placeholder="e.g. Scribe, Archimedes, Code Architect"
+                                        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#82f94b]"
+                                    />
+                                </div>
+                                <div className="shrink-0 flex flex-col items-center">
+                                    <label className="block text-xs font-bold text-gray-400 mb-1">AVATAR</label>
+                                    <div className="w-9 h-9 bg-green-500/10 border border-green-500/20 text-green-400 rounded-xl flex items-center justify-center text-xl shadow-inner font-bold">
+                                        {avatarEmoji}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Avatar Emoji Selector Node */}
+                            <div className="py-3 border-t border-b border-gray-800/40">
+                                <label className="block text-xs font-bold text-gray-400 mb-2">AGENT AVATAR / EMOJI</label>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {['🤖', '🧙‍♂️', '🕵️‍♂️', '👩‍💻', '🧠', '⚡', '🎨', '📊', '📝', '🔧', '🛡️', '🔍'].map(emoji => (
+                                        <button
+                                            key={emoji}
+                                            type="button"
+                                            onClick={() => setAvatarEmoji(emoji)}
+                                            className={`w-9 h-9 flex items-center justify-center text-xl rounded-xl border transition-all ${
+                                                avatarEmoji === emoji
+                                                    ? 'bg-[#82f94b]/20 border-[#82f94b] text-white shadow-[0_0_10px_rgba(130,249,75,0.2)] scale-105'
+                                                    : 'bg-[#1a1a1a] border-gray-700 text-gray-400 hover:border-gray-500'
+                                            }`}
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    <span className="text-xs text-gray-500 font-mono">Custom Input:</span>
+                                    <input
+                                        type="text"
+                                        maxLength={10}
+                                        value={avatarEmoji}
+                                        onChange={e => setAvatarEmoji(e.target.value)}
+                                        placeholder="e.g. 🦸‍♂️"
+                                        className="w-24 bg-[#1a1a1a] border border-gray-700 rounded-md px-2.5 py-1 text-sm text-center text-gray-100 focus:outline-none focus:border-[#82f94b]"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 mb-1">DESCRIPTION</label>

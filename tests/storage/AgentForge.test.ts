@@ -116,7 +116,7 @@ describe('Agent Forge CRUD & Package Integration Suite', () => {
         expect(compiled).toContain('---');
         expect(compiled).toContain('name: scribe');
         expect(compiled).toContain('description: Test agent description');
-        expect(compiled).toContain('# Scribe');
+        expect(compiled).toContain('# 🤖 Scribe');
         expect(compiled).toContain('## Overarching System Prompt');
         expect(compiled).toContain('This is the main overarching prompt.');
         expect(compiled).toContain('### Tone guidelines');
