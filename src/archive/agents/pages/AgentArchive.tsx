@@ -24,7 +24,7 @@ export default function AgentArchive() {
     const [agents, setAgents] = useState<Agent[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
     // Selection / Batch Mode
