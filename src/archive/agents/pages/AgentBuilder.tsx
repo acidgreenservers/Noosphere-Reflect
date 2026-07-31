@@ -80,6 +80,45 @@ export default function AgentBuilder() {
     const [isDraggingReader, setIsDraggingReader] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
+
+    const fallbackCopyText = (text: string) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showToast('Copied AGENTS.md content to clipboard!', 'success');
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            } else {
+                console.error('Fallback copy failed');
+            }
+        } catch (err) {
+            console.error('Fallback copy failed with error', err);
+        }
+        document.body.removeChild(textArea);
+    };
+
+    const copyToClipboard = (text: string) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied AGENTS.md content to clipboard!', 'success');
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            }).catch(err => {
+                console.error('Failed to copy text using clipboard API', err);
+                fallbackCopyText(text);
+            });
+        } else {
+            fallbackCopyText(text);
+        }
+    };
     const [showClearModal, setShowClearModal] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -843,10 +882,7 @@ export default function AgentBuilder() {
                         </div>
                         <button
                             onClick={() => {
-                                navigator.clipboard.writeText(compiledMarkdownPreview);
-                                showToast('Copied AGENTS.md content to clipboard!', 'success');
-                                setIsCopied(true);
-                                setTimeout(() => setIsCopied(false), 2000);
+                                copyToClipboard(compiledMarkdownPreview);
                             }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors font-semibold ${
                                 isCopied
