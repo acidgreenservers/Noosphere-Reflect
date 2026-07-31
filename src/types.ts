@@ -346,6 +346,7 @@ export interface Agent {
   files: ConversationArtifact[]; // Agent-specific files
   skillOverrides?: Record<string, string>; // Skill ID -> Custom Path
   workflowOverrides?: Record<string, string>; // Workflow ID -> Custom Path
+  customFrontmatter?: { key: string; value: string }[];
   metadata: AgentMetadata;
   projectId?: string;
 }

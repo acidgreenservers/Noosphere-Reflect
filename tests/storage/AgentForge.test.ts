@@ -119,7 +119,7 @@ describe('Agent Forge CRUD & Package Integration Suite', () => {
         expect(compiled).toContain('# Scribe');
         expect(compiled).toContain('## Overarching System Prompt');
         expect(compiled).toContain('This is the main overarching prompt.');
-        expect(compiled).toContain('## Tone guidelines');
+        expect(compiled).toContain('### Tone guidelines');
         expect(compiled).toContain('Be extremely professional.');
         expect(compiled).toContain('## Personality Traits');
         expect(compiled).toContain('| Analytical | High |');

@@ -70,6 +70,8 @@ export default function AgentBuilder() {
     const [attachedSkills, setAttachedSkills] = useState<Set<string>>(new Set());
     const [attachedWorkflows, setAttachedWorkflows] = useState<Set<string>>(new Set());
     const [attachedFiles, setAttachedFiles] = useState<ConversationArtifact[]>([]);
+    const [customFrontmatter, setCustomFrontmatter] = useState<{ key: string; value: string }[]>([]);
+    const [isCopied, setIsCopied] = useState(false);
     const [skillOverrides, setSkillOverrides] = useState<Record<string, string>>({});
     const [workflowOverrides, setWorkflowOverrides] = useState<Record<string, string>>({});
     const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
@@ -113,6 +115,7 @@ export default function AgentBuilder() {
                         setAttachedFiles(agent.files || []);
                         setSkillOverrides(agent.skillOverrides || {});
                         setWorkflowOverrides(agent.workflowOverrides || {});
+                        setCustomFrontmatter(agent.customFrontmatter || []);
                     }
                 }
             } catch (err) {
@@ -141,6 +144,7 @@ export default function AgentBuilder() {
             files: attachedFiles,
             skillOverrides,
             workflowOverrides,
+            customFrontmatter,
             metadata: {
                 title: name || 'Untitled Agent',
                 description: description || undefined,
@@ -150,7 +154,7 @@ export default function AgentBuilder() {
             },
             projectId: existingAgent?.projectId
         };
-    }, [existingAgent, name, description, mainInstructions, sections, personalityTraits, attachedSkills, attachedWorkflows, attachedFiles, skillOverrides, workflowOverrides]);
+    }, [existingAgent, name, description, mainInstructions, sections, personalityTraits, attachedSkills, attachedWorkflows, attachedFiles, skillOverrides, workflowOverrides, customFrontmatter]);
 
     // Live preview string
     const compiledMarkdownPreview = useMemo(() => {
@@ -439,6 +443,60 @@ export default function AgentBuilder() {
                                     placeholder="Brief bio or task purpose..."
                                     className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#82f94b]"
                                 />
+                            </div>
+
+                            {/* Custom YAML Frontmatter */}
+                            <div className="pt-4 border-t border-gray-800">
+                                <label className="flex items-center justify-between text-xs font-bold text-gray-400 mb-2">
+                                    <span>CUSTOM FRONTMATTER (YAML)</span>
+                                    <button
+                                        onClick={() => setCustomFrontmatter(prev => [...prev, { key: '', value: '' }])}
+                                        className="text-[#82f94b] hover:text-[#9dfa73] p-1 bg-[#1a1a1a] rounded flex items-center justify-center transition-colors"
+                                        title="Add Custom Field"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </label>
+                                {customFrontmatter.length === 0 ? (
+                                    <div className="text-[11px] text-gray-500 italic py-1">No custom frontmatter fields. Click "+" to add.</div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {customFrontmatter.map((field, idx) => (
+                                            <div key={idx} className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={field.key}
+                                                    onChange={e => {
+                                                        const next = [...customFrontmatter];
+                                                        next[idx].key = e.target.value;
+                                                        setCustomFrontmatter(next);
+                                                    }}
+                                                    placeholder="Key (e.g. author)"
+                                                    className="w-1/3 bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-100 focus:outline-none focus:border-[#82f94b]"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={field.value}
+                                                    onChange={e => {
+                                                        const next = [...customFrontmatter];
+                                                        next[idx].value = e.target.value;
+                                                        setCustomFrontmatter(next);
+                                                    }}
+                                                    placeholder="Value"
+                                                    className="flex-1 bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-100 focus:outline-none focus:border-[#82f94b]"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        setCustomFrontmatter(customFrontmatter.filter((_, i) => i !== idx));
+                                                    }}
+                                                    className="p-2 text-red-500 hover:text-red-400 bg-[#1a1a1a] hover:bg-[#2a1a1a] border border-gray-700 rounded-md transition-colors shrink-0"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -744,11 +802,17 @@ export default function AgentBuilder() {
                             onClick={() => {
                                 navigator.clipboard.writeText(compiledMarkdownPreview);
                                 showToast('Copied AGENTS.md content to clipboard!', 'success');
+                                setIsCopied(true);
+                                setTimeout(() => setIsCopied(false), 2000);
                             }}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 text-gray-300 hover:text-white rounded text-xs transition-colors"
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors font-semibold ${
+                                isCopied
+                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                    : 'bg-gray-800 text-gray-300 hover:text-white'
+                            }`}
                         >
                             <Copy size={14} />
-                            Copy Markdown
+                            {isCopied ? 'Copied!' : 'Copy Markdown'}
                         </button>
                     </div>
 

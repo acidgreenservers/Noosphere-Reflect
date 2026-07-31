@@ -25,6 +25,17 @@ export class AgentExportService {
 `;
         if (agent.description) md += `description: ${agent.description}
 `;
+
+        // Add custom frontmatter if any
+        if (agent.customFrontmatter && agent.customFrontmatter.length > 0) {
+            agent.customFrontmatter.forEach(field => {
+                if (field.key.trim()) {
+                    md += `${field.key.trim()}: ${field.value.trim()}
+`;
+                }
+            });
+        }
+
         md += `---
 
 `;
@@ -33,6 +44,7 @@ export class AgentExportService {
 
 `;
 
+        // 1. Overarching System Prompt (First)
         if (agent.mainInstructions.trim()) {
             md += `## Overarching System Prompt
 ${agent.mainInstructions.trim()}
@@ -40,20 +52,7 @@ ${agent.mainInstructions.trim()}
 `;
         }
 
-        if (agent.sections.length > 0) {
-            md += `## Instructions
-
-`;
-            agent.sections.forEach(sec => {
-                if (sec.title.trim() || sec.content.trim()) {
-                    md += `### ${sec.title.trim() || 'Untitled Section'}
-${sec.content.trim()}
-
-`;
-                }
-            });
-        }
-
+        // 2. Personality Traits (Second)
         if (agent.personalityTraits.length > 0) {
             md += `## Personality Traits
 `;
@@ -69,6 +68,22 @@ ${sec.content.trim()}
 `;
         }
 
+        // 3. Instructions (Third)
+        if (agent.sections.length > 0) {
+            md += `## Instructions
+
+`;
+            agent.sections.forEach(sec => {
+                if (sec.title.trim() || sec.content.trim()) {
+                    md += `### ${sec.title.trim() || 'Untitled Section'}
+${sec.content.trim()}
+
+`;
+                }
+            });
+        }
+
+        // 4. Capabilities & References (Fourth)
         if (skills.length > 0 || workflows.length > 0 || agent.files.length > 0) {
             md += `## Capabilities & References
 
