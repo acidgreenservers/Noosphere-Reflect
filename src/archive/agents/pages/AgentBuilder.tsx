@@ -501,6 +501,21 @@ export default function AgentBuilder() {
                         </div>
                     </div>
 
+                    {/* Overarching System Prompt Instructions Area */}
+                    <div className="border border-gray-800 rounded-lg p-5 bg-[#111] flex-shrink-0">
+                        <div className="flex items-center mb-5">
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-[#82f94b]/10 text-[#82f94b] border border-[#82f94b]/20 rounded-full px-3 py-1.5">
+                                <Code size={14} /> Overarching System Prompt
+                            </div>
+                        </div>
+                        <textarea
+                            value={mainInstructions}
+                            onChange={e => setMainInstructions(e.target.value)}
+                            placeholder="Introduce the core AI persona instructions, primary objectives, tone directives, and rules of engagement..."
+                            className="w-full h-44 bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 text-sm text-gray-100 focus:outline-none focus:border-[#82f94b] resize-y custom-scrollbar"
+                        />
+                    </div>
+
                     {/* Personality Traits Node Card */}
                     <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 rounded-2xl shadow-xl flex-shrink-0">
                         <div className="flex items-center justify-between mb-5">
@@ -545,21 +560,6 @@ export default function AgentBuilder() {
                         >
                             <Plus size={14} /> Add Personality Trait
                         </button>
-                    </div>
-
-                    {/* Overarching System Prompt Instructions Area */}
-                    <div className="border border-gray-800 rounded-lg p-5 bg-[#111] flex-shrink-0">
-                        <div className="flex items-center mb-5">
-                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-[#82f94b]/10 text-[#82f94b] border border-[#82f94b]/20 rounded-full px-3 py-1.5">
-                                <Code size={14} /> Overarching System Prompt
-                            </div>
-                        </div>
-                        <textarea
-                            value={mainInstructions}
-                            onChange={e => setMainInstructions(e.target.value)}
-                            placeholder="Introduce the core AI persona instructions, primary objectives, tone directives, and rules of engagement..."
-                            className="w-full h-44 bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 text-sm text-gray-100 focus:outline-none focus:border-[#82f94b] resize-y custom-scrollbar"
-                        />
                     </div>
 
                     {/* System Prompt Sections (Nodes) */}
