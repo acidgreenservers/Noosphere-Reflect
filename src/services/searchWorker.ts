@@ -1,6 +1,6 @@
 import MiniSearch from 'minisearch';
 import { openDB, type IDBPDatabase } from 'idb';
-import type { SavedChatSession, ChatMessage, SearchFilters, Memory, Prompt, Skill, Workflow, ArchiveType } from '../types';
+import type { SavedChatSession, ChatMessage, SearchFilters, Memory, Prompt, Skill, Workflow, ArchiveType, Agent } from '../types';
 
 interface SearchDocument {
     id: string;
@@ -66,6 +66,14 @@ async function saveIndex() {
     if (!db) await initDB();
     const data = JSON.stringify(miniSearch);
     await db!.put('index', { key: 'minisearch-data', data });
+}
+
+let debounceTimeout: any = null;
+function saveIndexDebounced() {
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        saveIndex();
+    }, 1000);
 }
 
 // Get last indexing timestamp for session
@@ -176,6 +184,23 @@ function indexWorkflow(workflow: Workflow) {
         timestamp: new Date(workflow.createdAt).getTime(),
         title: workflow.metadata.title || 'Untitled Workflow',
         tags: workflow.tags
+    };
+
+    if (miniSearch.has(doc.id)) {
+        miniSearch.discard(doc.id);
+    }
+    miniSearch.add(doc);
+}
+
+// Index an Agent
+function indexAgent(agent: Agent) {
+    const doc: SearchDocument = {
+        id: agent.id,
+        archiveType: 'agent',
+        content: agent.name + '\n' + agent.description + '\n' + agent.mainInstructions + '\n' + agent.sections.map(s => s.title + '\n' + s.content).join('\n'),
+        timestamp: new Date(agent.createdAt).getTime(),
+        title: agent.name || 'Untitled Agent',
+        tags: []
     };
 
     if (miniSearch.has(doc.id)) {
@@ -337,6 +362,11 @@ self.onmessage = async (e: MessageEvent) => {
                 saveIndexDebounced();
                 self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.workflow.id }, messageId });
                 break;
+            case 'INDEX_AGENT':
+                indexAgent(payload.agent);
+                saveIndexDebounced();
+                self.postMessage({ type: 'INDEX_COMPLETE', payload: { id: payload.agent.id }, messageId });
+                break;
 
             case 'INDEX_WITH_CHECK': {
                 // Incremental indexing: skip if session unchanged
@@ -368,7 +398,6 @@ self.onmessage = async (e: MessageEvent) => {
                 const sessions: SavedChatSession[] = payload.sessions || [];
                 const memories: Memory[] = payload.memories || [];
                 const prompts: Prompt[] = payload.prompts || [];
-                const skills: Skill[] = payload.skills || [];
                 let indexedCount = 0;
                 let skippedCount = 0;
                 const now = Date.now();
@@ -415,6 +444,13 @@ self.onmessage = async (e: MessageEvent) => {
                     }
                 }
                 
+                if (payload.agents && Array.isArray(payload.agents)) {
+                    for (const agent of payload.agents) {
+                        indexAgent(agent);
+                        indexedCount++;
+                    }
+                }
+
                 if (indexedCount > 0) {
                     await saveIndex();
                 }

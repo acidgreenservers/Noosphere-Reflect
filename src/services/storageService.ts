@@ -5,6 +5,7 @@ import { memoryStore } from './storage/MemoryStore';
 import { promptStore } from './storage/PromptStore';
 import { skillStore } from './storage/SkillStore';
 import { workflowStore } from './storage/WorkflowStore';
+import { agentStore } from './storage/AgentStore';
 import { settingsStore } from './storage/SettingsStore';
 import { profileStore } from './storage/ProfileStore';
 import { projectStore } from './storage/ProjectStore';
@@ -21,13 +22,12 @@ import {
     Workflow,
     ParserMode,
     ChatTheme,
-    ArchiveType,
-    Project
+    Project,
+    Agent
 } from '../types';
-import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema, sanitizeMessageContent } from '../utils/importValidator';
+import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema } from '../utils/importValidator';
 import { detectImportSource, detectPlatformFromHTML } from '../utils/importDetector';
 import { parseChat } from './converterService';
-import { searchService } from './searchService';
 
 class StorageService {
     // Forward to dbService
@@ -273,16 +273,18 @@ class StorageService {
         prompts: Prompt[];
         skills: Skill[];
         workflows: Workflow[];
+        agents: Agent[];
         version: number;
         exportedAt: string;
     }> {
-        const [sessions, settings, memories, prompts, skills, workflows] = await Promise.all([
+        const [sessions, settings, memories, prompts, skills, workflows, agents] = await Promise.all([
             this.getAllSessions(),
             this.getSettings(),
             this.getAllMemories(),
             this.getAllPrompts(),
             this.getAllSkills(),
-            this.getAllWorkflows()
+            this.getAllWorkflows(),
+            this.getAllAgents()
         ]);
 
         return {
@@ -292,6 +294,7 @@ class StorageService {
             prompts,
             skills,
             workflows,
+            agents,
             version: DB_VERSION,
             exportedAt: new Date().toISOString()
         };
@@ -331,6 +334,12 @@ class StorageService {
         if (validatedData.workflows && Array.isArray(validatedData.workflows)) {
             for (const workflow of validatedData.workflows) {
                 await this.saveWorkflow(workflow);
+            }
+        }
+
+        if (validatedData.agents && Array.isArray(validatedData.agents)) {
+            for (const agent of validatedData.agents) {
+                await this.saveAgent(agent);
             }
         }
 
@@ -716,6 +725,56 @@ class StorageService {
         if (item) {
             item.projectId = undefined;
             await this.saveWorkflow(item);
+        }
+    }
+
+    // Agents
+    async saveAgent(agent: Agent): Promise<void> {
+        return agentStore.save(agent);
+    }
+
+    async getAllAgents(): Promise<Agent[]> {
+        return agentStore.getAllSorted();
+    }
+
+    async getPaginatedAgents(pageSize: number = 25, offsetKey?: any) {
+        return agentStore.getPaginatedSorted(pageSize, offsetKey);
+    }
+
+    async getAgentById(id: string): Promise<Agent | undefined> {
+        return agentStore.getById(id);
+    }
+
+    async updateAgent(agent: Agent): Promise<void> {
+        agent.updatedAt = new Date().toISOString();
+        if (agent.metadata.exportStatus === 'exported') {
+            agent.metadata.exportStatus = 'modified';
+        }
+        return this.saveAgent(agent);
+    }
+
+    async deleteAgent(id: string): Promise<void> {
+        return agentStore.deleteWithSearch(id);
+    }
+
+    async getAgentsByProjectId(projectId: string) {
+        const db = await this.getDB();
+        return db.getAllFromIndex(STORES.AGENTS, 'projectId', projectId);
+    }
+
+    async addAgentToProject(id: string, projectId: string): Promise<void> {
+        const item = await this.getAgentById(id);
+        if (item) {
+            item.projectId = projectId;
+            await this.saveAgent(item);
+        }
+    }
+
+    async removeAgentFromProject(id: string): Promise<void> {
+        const item = await this.getAgentById(id);
+        if (item) {
+            item.projectId = undefined;
+            await this.saveAgent(item);
         }
     }
 }
