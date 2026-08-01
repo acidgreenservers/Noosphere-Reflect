@@ -75,18 +75,18 @@ export default function SkillArchive() {
         const query = searchQuery.toLowerCase();
 
         // 1. Synchronous instant filtering by title/tags for real-time typing updates
-        const instantMatches = skills.filter(s => 
-            s.metadata.title.toLowerCase().includes(query) || 
+        const instantMatches = skills.filter(s =>
+            s.metadata.title.toLowerCase().includes(query) ||
             (s.tags && s.tags.some(t => t.toLowerCase().includes(query)))
         );
 
         // 2. If no search results yet (or still loading), return instant matches
         if (searchResults === null) return instantMatches;
-        
+
         // 3. Merge with asynchronous full-text search results
         const resultIds = new Set(searchResults.map(r => r.id));
         const combined = new Map(instantMatches.map(s => [s.id, s]));
-        
+
         skills.forEach(s => {
             if (resultIds.has(s.id) && !combined.has(s.id)) {
                 combined.set(s.id, s);
@@ -308,7 +308,7 @@ export default function SkillArchive() {
         if (selectedSkills.size === 0) return;
         const selected = skills.filter(p => selectedSkills.has(p.id));
         const caseFormat = appSettings.preferences.fileNamingCase;
-        
+
         if (selected.length > 50) {
             if (!window.confirm(`You are exporting ${selected.length} items. Over 50 items exported may result in split zip archives depending on the amount exported. Continue?`)) {
                 return;
@@ -333,9 +333,9 @@ export default function SkillArchive() {
 
             if (packageType === 'zip' || selectedSkills.size > 1) {
                 const zipBlob = await generateMemoryBatchZipExport(memoryLike, format, caseFormat);
-                
+
                 const volumes = Array.isArray(zipBlob) ? zipBlob : [zipBlob];
-                
+
                 volumes.forEach((blob, index) => {
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -349,7 +349,7 @@ export default function SkillArchive() {
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                 });
-                
+
                 alert(`✅ Exported ${selected.length} ${selected.length === 1 ? 'skill' : 'skills'} as ZIP archive${volumes.length > 1 ? ` (Split into ${volumes.length} files)` : ''}`);
             } else {
                 await generateMemoryBatchDirectoryExportWithPicker(memoryLike, format, caseFormat);
@@ -358,7 +358,7 @@ export default function SkillArchive() {
 
             // Mark all as exported and apply optimistic UI update
             const updatedIds = new Set(selected.map(p => p.id));
-            setSkills(prev => prev.map(p => 
+            setSkills(prev => prev.map(p =>
                 updatedIds.has(p.id) ? {
                     ...p,
                     metadata: { ...p.metadata, exportStatus: 'exported' as const }
@@ -429,25 +429,6 @@ export default function SkillArchive() {
 
     const itemsComponent = (
         <div className="flex flex-col h-full">
-            {/* Explanation Bubble matching the workflow screenshot aesthetic */}
-            <div className="mb-6 border border-gray-800 rounded-xl bg-[#111] p-5 shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#82f94b]"></div>
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="text-[#82f94b]">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
-                    </div>
-                    <span className="text-xs font-bold tracking-wider text-[#82f94b] uppercase">Standardized Format, Drawn by Hand</span>
-                </div>
-                <p className="text-sm text-gray-400 leading-relaxed mb-4">
-                    A skill is the codified half of the agentic system. You compose the instructions in a modular node builder, and it compiles down to the universally standardized <code className="text-gray-300 bg-black px-1 py-0.5 rounded text-xs">SKILL.md</code> format.
-                </p>
-                <div className="flex gap-4">
-                    <span className="flex items-center gap-2 text-xs text-gray-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Compose nodes</span>
-                    <span className="flex items-center gap-2 text-xs text-gray-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Compile to Markdown</span>
-                    <span className="flex items-center gap-2 text-xs text-gray-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Share seamlessly</span>
-                </div>
-            </div>
-
             <SkillList
                 skills={filteredSkills}
                 viewMode={viewMode}
@@ -517,7 +498,7 @@ export default function SkillArchive() {
             <ConfirmationModal
                 isOpen={deleteModalOpen}
                 title={deletingSkillId === 'batch' ? "Delete Selected Skills" : "Delete Skill"}
-                message={deletingSkillId === 'batch' 
+                message={deletingSkillId === 'batch'
                     ? `Are you sure you want to permanently delete ${selectedSkills.size} selected skills? This action cannot be undone.`
                     : "Are you sure you want to delete this skill permanently? This action cannot be undone."}
                 confirmText="Delete"

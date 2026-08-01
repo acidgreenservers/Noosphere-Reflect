@@ -7,6 +7,7 @@ import { safeDecode, isBase64 } from './utils';
 import { MarkdownReader } from './capabilities/markdown/MarkdownReader';
 import { TextReader } from './capabilities/text/TextReader';
 import { ImageReader } from './capabilities/image/ImageReader';
+import { HtmlReader } from './capabilities/html/HtmlReader';
 
 interface ArtifactReaderLayerProps {
     artifact: ConversationArtifact | null;
@@ -19,7 +20,7 @@ interface ArtifactReaderLayerProps {
     pushMode?: boolean;
 }
 
-export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({ 
+export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
     artifact, onClose, width = 50, onWidthChange, onDragStart, onDragEnd, onCopyChat, pushMode = false
 }) => {
     const [isAnimatingIn, setIsAnimatingIn] = useState(true);
@@ -144,12 +145,12 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
 
     const isMarkdown = ext === 'md' || ext === 'markdown';
     const isImage = mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
-    const isText = ['txt', 'json', 'csv', 'ts', 'tsx', 'js', 'py', 'sh', 'html', 'css', 'yaml', 'yml'].includes(ext) || mime.startsWith('text/') || mime === 'application/json';
+    const isHtml = ['html', 'htm', 'jsx', 'tsx'].includes(ext) || mime === 'text/html';
+    const isText = ['txt', 'json', 'csv', 'ts', 'js', 'py', 'sh', 'css', 'yaml', 'yml'].includes(ext) || mime.startsWith('text/') || mime === 'application/json';
 
     const containerClasses = pushMode
         ? "flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl relative shrink-0 h-full overflow-hidden z-[50]"
-        : `fixed right-0 top-0 h-full z-[100] flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl ${
-            isAnimatingIn ? 'translate-x-full' : 'translate-x-0'
+        : `fixed right-0 top-0 h-full z-[100] flex flex-col bg-[#0f111a] border-l border-gray-700/50 shadow-2xl ${isAnimatingIn ? 'translate-x-full' : 'translate-x-0'
         }`;
 
     const containerStyle = pushMode
@@ -164,12 +165,12 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
         };
 
     return (
-        <div 
+        <div
             ref={containerRef}
             className={containerClasses}
             style={containerStyle}
         >
-            <div 
+            <div
                 className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-purple-500/50 transition-colors z-[101]"
                 onMouseDown={(e) => {
                     let maxVw = 90;
@@ -192,16 +193,15 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
                         {artifact.fileName}
                     </h3>
                 </div>
-                
+
                 <div className="flex items-center gap-2 flex-shrink-0">
                     {!isImage && (
                         <button
                             onClick={handleCopy}
-                            className={`p-1.5 rounded-md transition-colors flex items-center gap-1 border text-xs px-2 ${
-                                isCopied
+                            className={`p-1.5 rounded-md transition-colors flex items-center gap-1 border text-xs px-2 ${isCopied
                                     ? 'border-green-500/50 bg-green-500/10 text-green-400'
                                     : 'border-gray-600/50 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-                            }`}
+                                }`}
                             title="Copy file contents"
                         >
                             {isCopied ? (
@@ -221,7 +221,7 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
                             )}
                         </button>
                     )}
-                    
+
                     <button
                         onClick={handleDownload}
                         className="p-1.5 text-gray-400 hover:bg-gray-700 hover:text-white rounded-md transition-colors border border-gray-600/50 bg-gray-800"
@@ -231,15 +231,14 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                     </button>
-                    
+
                     {onCopyChat && (
                         <button
                             onClick={handleCopyChatInternal}
-                            className={`p-1.5 rounded-md transition-colors flex items-center gap-1 border text-xs px-2 ml-2 ${
-                                isChatCopied
+                            className={`p-1.5 rounded-md transition-colors flex items-center gap-1 border text-xs px-2 ml-2 ${isChatCopied
                                     ? 'bg-green-600/50 text-green-300 border-green-500/50'
                                     : 'text-gray-400 hover:bg-green-500/20 hover:text-green-400 border-gray-600/50 bg-gray-800'
-                            }`}
+                                }`}
                             title="Copy full chat (Noosphere Format)"
                         >
                             {isChatCopied ? (
@@ -286,6 +285,8 @@ export const ArtifactReaderLayer: React.FC<ArtifactReaderLayerProps> = ({
                     <ImageReader artifact={artifact} />
                 ) : isMarkdown ? (
                     <MarkdownReader artifact={artifact} />
+                ) : isHtml ? (
+                    <HtmlReader artifact={artifact} />
                 ) : isText ? (
                     <TextReader artifact={artifact} />
                 ) : (

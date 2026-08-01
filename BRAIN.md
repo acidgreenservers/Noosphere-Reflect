@@ -56,3 +56,5 @@ Every seed I compress must pass four invariants. If it fails any one of them, it
 
 - **Feedback must be true. Never flash success on unverified completion.** — A ✓ shown for work that never happened is a lying UI; wire feedback to the actual result path, not the intent path. (2026-07-31, validated: Noosphere Reflect message action buttons)
 - **Sniff the data; never trust the encoding contract.** — Storage outlives the code that wrote it; assuming one encoding crashes on the oldest record. Decode by evidence, not by schema. (2026-08-01, validated: Noosphere Takeout dual-encoding artifact fix)
+- **Sandboxed iframes inherit the parent's prison.** — srcDoc doesn't get a fresh CSP; it inherits the parent's. CDN scripts silently die until the parent policy opens the door. (2026-08-01, validated: HtmlReader CDN rendering blocked by parent CSP)
+- **`new Function` is a scope wall, not a window mirror.** — `fn.call(window)` sets `this`, but function/const/let declarations stay local. Expose what you need explicitly; never assume the scope leaks. (2026-08-01, validated: HtmlReader component auto-render failed for named exports)

@@ -1,6 +1,23 @@
 # STATE.md — Project State & Invariant Ledger
 
-## Current Phase: Phase 6.5 — Full Application Export ("Noosphere Takeout")
+## Current Phase: Phase 6.6 — Real-Time Artifact Rendering (HTML/JSX/TSX)
+
+### Verified State Invariants (6.6)
+- **HtmlReader** (`src/components/ArtifactReader/capabilities/html/HtmlReader.tsx`): New capability for the ArtifactReaderLayer. Renders `.html`/`.htm` files directly in a sandboxed `<iframe srcDoc>`. Renders `.jsx`/`.tsx` by building a self-contained HTML document that loads React 18 + Babel Standalone + Tailwind CSS from pinned CDN versions inside the iframe, transpiles at runtime, and auto-mounts an `App` component if defined.
+- **Source/Preview Toggle**: Tab bar inside HtmlReader — "Preview" (default, rendered iframe) and "Source" (raw code in `<pre>`). Resets to Preview on artifact switch.
+- **Module Statement Stripping**: `stripModuleStatements()` removes ES `import`/`export` statements before transpiling JSX (no bundler/module system inside iframe; React loaded as UMD global).
+- **Script Tag Escaping**: `escapeScriptTags()` replaces `</script>` with `<\\/script>` in user code to prevent breaking out of the `<script>` context.
+- **Dispatcher Routing** (`ArtifactReaderLayer.tsx`): `isHtml` check for `['html', 'htm', 'jsx', 'tsx']` + `text/html` mime, placed BEFORE `isText`. HTML/JSX/TSX no longer route to TextReader (raw source). `html` and `tsx` removed from `isText` extension list.
+- **CSP Update** (`index.html`): `script-src` now includes `https://unpkg.com` (React/Babel), `https://cdn.tailwindcss.com` (Tailwind), and `'unsafe-eval'` (Babel transpilation). `style-src` includes `https://cdn.tailwindcss.com` and `https://fonts.googleapis.com`. `font-src` includes `https://fonts.gstatic.com`. Required because `srcDoc` iframes inherit the parent page's CSP.
+- **Security**: `sandbox="allow-scripts"` (without `allow-same-origin`) — scripts execute but iframe is same-origin isolated. Cannot access parent DOM, cookies, localStorage, or IndexedDB.
+- **CDN Versions Pinned**: React 18.3.1, React-DOM 18.3.1, Babel Standalone 7.24.7, Tailwind CSS (latest via cdn.tailwindcss.com).
+- **Component Scope Exposure**: `new Function(transpiledCode)` creates an isolated function scope — `function`/`const`/`let` declarations inside it are NOT properties of `window`, even with `fn.call(window)`. Fix: append an expose-statement (`';try{if(typeof ComponentName!=="undefined"){window.__renderComponent=ComponentName;}}catch(e){}'`) to the transpiled code before passing to `new Function`. The expose code runs in the same scope as the transpiled code, captures the component, and assigns it to `window.__renderComponent`. After execution, read `window.__renderComponent` and `delete` it to clean up.
+- **Deferred**: JSX rendering still has issues with certain artifacts that reference external libraries (e.g., `lucide`) as globals without loading them. HTML rendering validated by user as fully working.
+
+### Verified State Invariants (6.5 — UI Cleanup)
+- **Explanation Bubbles Removed**: The informational banner divs above list/grid views in SkillArchive, WorkflowArchive, and AgentArchive have been removed. All three pages now start directly with their list/grid content, mirroring other archive pages (Chats, Memories, Prompts). Zero blast radius — self-contained presentational elements with no state/logic/refs.
+
+## Previous Phase: Phase 6.5 — Full Application Export ("Noosphere Takeout")
 
 ### Verified State Invariants (6.5)
 - **FullExportService** (`src/components/exports/services/FullExportService.ts`): Exports the entire IndexedDB archive as Markdown. Batching = **50 items per volume per category** (`ceil(n/50)` zips). Empty categories are skipped. Structure mirrors the UI taxonomy: `Category/<item-folder>/<file>.md` + `artifacts/` + `manifest.json` + root `export-metadata.json` (category, vol X of Y, counts, failedItems).
