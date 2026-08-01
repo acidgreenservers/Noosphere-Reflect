@@ -7,6 +7,7 @@
 - **Truthful Action Feedback**: Copy + Save buttons under user AND AI messages (`UnifiedChatInterface.tsx` ChatMessageBubble) flash green ✓ for 2s (codebase convention) **only on confirmed success**. `handleCopyText` returns the real `copyToClipboard()` boolean; `handleSaveAs*` return `Promise<boolean>`. Cancel/failure paths never flash. Timer refs cleaned up on unmount.
 - **MessageSaveModal** (`src/components/chat-ui/MessageSaveModal.tsx`): Replaces browser `prompt()` for Save-As titles. Per-type accents matching Save menu colors (Memory→purple, Prompt→indigo, Skill→blue, Workflow→orange). Save handlers receive `(msg, title)`; `chatTitle` prop feeds the Memory default title. Modal closes only on success (stay-open-retry on failure); Escape/backdrop/✕/Cancel = no save, no ✓; Save disabled on blank title; double-submit guarded via `isSaving`.
 - **Deferred**: `handleLoadShortcut` still uses browser `prompt()` for numbered selection — different UX shape, intentionally out of scope.
+- **HashRouter Navigation**: App uses `HashRouter` (`App.tsx`) — all programmatic external navigation (`window.open`, new tabs) MUST target hash URLs (`${origin}${pathname}#/route`). Path URLs silently fall through to the default route.
 
 ### Verified State Invariants (6.3)
 - **Chat Send Shortcut**: Global `chatSendShortcut` setting (`'enter'` | `'ctrl-enter'`) stored in `AppSettings` via `SettingsStore` (IndexedDB)
@@ -97,3 +98,7 @@
 **ArtifactReaderLayer — PNG reader not appearing in chat**
 - **Root cause**: `ArtifactReaderLayer` was imported and `viewingArtifact` state was set, but the component was **never rendered** in the JSX
 - **Fix**: Added `<ArtifactReaderLayer artifact={viewingArtifact} onClose={() => setViewingArtifact(null)} ... />` to the render tree
+
+**Chat Fork — new tab opened empty New Chat view instead of the forked session**
+- **Root cause**: `handleForkChat` opened `/chat/{id}` as a *path* URL, but the app uses `HashRouter` — the new tab's empty hash fell through to the default route (`/` → NewChatView). The forked session was always saved correctly (forked message as first message); navigation never reached it
+- **Fix**: `window.open` now targets `${window.location.origin}${window.location.pathname}#/chat/${newSessionId}` (preserves origin + base path, hits the hash route). Swept `src/` — was the only hardcoded path navigation. Validated by user: fork of user + AI messages opens correct forked chat in new tab

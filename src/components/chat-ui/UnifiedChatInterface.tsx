@@ -925,7 +925,7 @@ export default function UnifiedChatInterface() {
         await storageService.saveSession(forkedSession);
         window.dispatchEvent(new Event('chatSaved'));
 
-        window.open(`/chat/${newSessionId}`, '_blank');
+        window.open(`${window.location.origin}${window.location.pathname}#/chat/${newSessionId}`, '_blank');
         showToast('✓ Chat forked in new tab', 'success');
     }, [session, messages]);
 
