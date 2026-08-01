@@ -1,66 +1,55 @@
 # Security Policy 🔐
 
-## Security Posture
+## Security Posture & Sovereignty
 
-Noosphere Reflect is built on the principle of **Data Sovereignty**. All your
-chat logs, memories, and artifacts are stored locally in your browser's
-IndexedDB. No data is sent to external servers unless you explicitly enable and
-use the Google Drive export feature.
+Noosphere Reflect is built around **Data Sovereignty**. By operating entirely client-side, the system eliminates traditional cloud threat vectors. Your chat logs, custom prompts, memories, and file attachments never touch a remote backend; they are held securely inside your browser's sandboxed IndexedDB storage.
+
+---
+
+## Secure Persistence Boundaries
+
+### 1. Sanitization Symmetry (Inward & Outward)
+
+Security constraints are strictly enforced at all system boundaries:
+
+- **Ingestion (Parser)**: Platform parsers strip third-party tracking scripts, absolute stylesheets, and invalid scripts from imported JSON and HTML logs.
+- **Persistence (StorageService)**: Before any message or metadata is committed to IndexedDB, it is sanitized using `DOMPurify` via `sanitizeMessageContent` inside the `StorageService`. This guarantees zero database corruption or stored XSS payloads.
+- **Rendering (MarkdownRenderer)**: Real-time rendering checks restrict elements to a strict custom tag list. Links targeting malicious URI schemes (e.g. `javascript:`, `data:`, `vbscript:`) are automatically intercepted and blocked.
+
+### 2. Sandbox UI Isolation (`MessageSaveModal`)
+
+The introduction of the `MessageSaveModal` replaces legacy browser native `prompt()` calls for saving assets (Memories, Prompts, Skills, Workflows):
+
+- Prevents injection of arbitrary HTML/script characters into database indices.
+- Enforces strict character limits and validates blank strings before dispatching save transactions.
+- Provides strict type-accent mapping to prevent entity category pollution.
+
+---
 
 ## Supported Versions
 
-| Version | Supported |
+| Version | Status |
 | :--- | :--- |
-| main | ✅ Security updates |
-| < 0.5.x | ⚠️ Best-effort |
+| `main` / `>=0.6.0` | ✅ Active security updates |
+| `< 0.6.0` | ⚠️ Best-effort support |
+
+---
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please do not disclose it publicly.
+If you identify any security issue, please refrain from public disclosure until we can deploy an update.
 
-- **GitHub**: Open a "Security Advisory" on the repository.
-- **Response target**: We aim to acknowledge all reports within **48 hours**.
+- **GitHub Advisory**: Please use the **GitHub Security Advisories** feature on our repository to submit a private report.
+- **Response SLA**: Our team will acknowledge and review all advisory drafts within **48 hours**.
 
-## Security Hardening
-
-The following measures are implemented to protect your data:
-
-### 1. Data Sovereignty & Privacy
-
-- **Local-First**: All data stays in your browser's IndexedDB.
-- **No Analytics**: We do not track your usage or collect any telemetry.
-- **OAuth Scope**: Google Drive integration uses the `drive.file` scope,
-  meaning the app can only access files it creates.
-
-### 2. XSS & Injection Prevention
-
-- **Sanitization**: All Markdown and HTML rendering goes through `DOMPurify`
-  with a strict custom schema.
-- **Protocol Validation**: Dangerous URL schemes (e.g., `javascript:`, `data:`)
-  are blocked at the renderer level.
-- **Sanitization Symmetry**: Security checks are enforced both at the point of
-  ingestion (Parser) and the point of persistence (StorageService).
-
-### 3. Input Validation
-
-- **Schema Enforcement**: All imported data is validated against strict Zod
-  schemas (`importValidator.ts`).
-- **File Limits**: Artifact uploads are capped to prevent browser memory
-  exhaustion.
-- **Type Checking**: TypeScript is used throughout the codebase to ensure type
-  safety and prevent runtime errors.
-
-### 4. Supply Chain Security
-
-- **Pinned Dependencies**: Critical packages are pinned to known-good versions.
-- **Freshness Gate**: New dependencies are vetted for age and reputation before
-  being introduced.
+---
 
 ## Hardening Checklist for Developers
 
-- [ ] Always use `sanitizeMessageContent` when rendering user-provided text.
-- [ ] Validate all new entity types with a Zod schema.
-- [ ] Ensure sensitive logic remains off-thread (e.g., in `SearchWorker`) where
-  appropriate.
-- [ ] Maintain the `package-lock.json` and keep dependencies updated via
-  `npm audit`.
+To maintain our strict security baseline, all developers contributing to this codebase must adhere to the following checklist:
+
+- [ ] **Enforce Sanitization**: Always route raw or untrusted markdown text through `sanitizeMessageContent` before saving or rendering.
+- [ ] **Type Validation (Zod)**: Ensure any new database schemas are backed by Zod structure schemas in `src/utils/importValidator.ts` to prevent payload pollution.
+- [ ] **XSS Isolation**: Keep custom elements scoped. Ensure raw HTML injection features (such as custom `<collapsible>` tags or model thoughts) are processed using safe, React-purified components.
+- [ ] **OAuth Client Integrity**: Keep Google Drive OAuth credentials out of git commits. Use `.env` variables injected exclusively during Vite deployment.
+- [ ] **Zero-Dependency Aging Gate**: Verify any newly introduced package in `package.json` meets the **7-day age gate** requirement to prevent package-hijacking supply-chain attacks.
