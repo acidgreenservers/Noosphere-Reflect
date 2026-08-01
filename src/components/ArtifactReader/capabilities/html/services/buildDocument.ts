@@ -1,7 +1,7 @@
 // Assembles the iframe srcDoc document for HTML and JSX/TSX artifacts.
 // Uses cdn.ts for sources and transform.ts for code preparation.
 
-import { REACT_CDN, REACT_DOM_CDN, BABEL_CDN, TAILWIND_CDN } from './cdn';
+import { REACT_CDN, REACT_DOM_CDN, BABEL_CDN, TAILWIND_CDN, LUCIDE_REACT_CDN } from './cdn';
 import { transformModuleStatements, escapeScriptTags } from './transform';
 
 /**
@@ -23,6 +23,12 @@ const buildJsxDocument = (userCode: string, isTsx: boolean): string => {
   <script src="${REACT_DOM_CDN}"></script>
   <script src="${BABEL_CDN}"></script>
   <script src="${TAILWIND_CDN}"></script>
+  <script>
+    // Bridge: lucide-react UMD expects global.react (lowercase),
+    // but React UMD sets window.React (capitalized).
+    window.react = window.React;
+  </script>
+  <script src="${LUCIDE_REACT_CDN}"></script>
   <style>
     *{box-sizing:border-box;}
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:#1a1a1a;}
@@ -34,9 +40,13 @@ const buildJsxDocument = (userCode: string, isTsx: boolean): string => {
 <body>
   <div id="root"><div id="__loading">Rendering...</div></div>
   <script>
+    // Escape HTML in error messages to prevent injection via error.stack
+    function escapeHtml(s){
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
     function showError(msg){
       var root=document.getElementById('root');
-      root.innerHTML='<div id="__error">'+msg+'</div>';
+      root.innerHTML='<div id="__error">'+escapeHtml(msg)+'</div>';
     }
     window.onerror=function(msg,src,line,col,err){
       showError(err&&err.stack?err.stack:msg);
