@@ -1,8 +1,44 @@
 # STATE.md — Project State & Invariant Ledger
 
-## Current Phase: Phase 6.4 — Sidebar & Message Action UX
+## Current Phase: Phase 6.6 — Real-Time Artifact Rendering (HTML/JSX/TSX)
 
-### Verified State Invariants (6.4)
+### Verified State Invariants (6.6)
+- **HtmlReader** (`src/components/ArtifactReader/capabilities/html/HtmlReader.tsx`): New capability for the ArtifactReaderLayer. Renders `.html`/`.htm` files directly in a sandboxed `<iframe srcDoc>`. Renders `.jsx`/`.tsx` by building a self-contained HTML document that loads React 18 + Babel Standalone + Tailwind CSS from pinned CDN versions inside the iframe, transpiles at runtime, and auto-mounts an `App` component if defined.
+- **Source/Preview Toggle**: Tab bar inside HtmlReader — "Preview" (default, rendered iframe) and "Source" (raw code in `<pre>`). Resets to Preview on artifact switch.
+- **Module Statement Stripping**: `stripModuleStatements()` removes ES `import`/`export` statements before transpiling JSX (no bundler/module system inside iframe; React loaded as UMD global).
+- **Script Tag Escaping**: `escapeScriptTags()` replaces `</script>` with `<\\/script>` in user code to prevent breaking out of the `<script>` context.
+- **Dispatcher Routing** (`ArtifactReaderLayer.tsx`): `isHtml` check for `['html', 'htm', 'jsx', 'tsx']` + `text/html` mime, placed BEFORE `isText`. HTML/JSX/TSX no longer route to TextReader (raw source). `html` and `tsx` removed from `isText` extension list.
+- **CSP Update** (`index.html`): `script-src` now includes `https://unpkg.com` (React/Babel/Lucide), `https://cdn.tailwindcss.com` (Tailwind), and `'unsafe-eval'` (Babel transpilation). `style-src` includes `https://cdn.tailwindcss.com` and `https://fonts.googleapis.com`. `font-src` includes `https://fonts.gstatic.com`. Required because `srcDoc` iframes inherit the parent page's CSP.
+- **Security**: `sandbox="allow-scripts"` (without `allow-same-origin`) — scripts execute but iframe is same-origin isolated. Cannot access parent DOM, cookies, localStorage, or IndexedDB.
+- **CDN Versions Pinned**: React 18.3.1, React-DOM 18.3.1, Babel Standalone 7.24.7, Tailwind CSS (latest via cdn.tailwindcss.com), Lucide React 0.544.0 (UMD build, `window.LucideReact`).
+- **Lucide React Support**: `import { Moon, Sun, User } from 'lucide-react'` remapped to `const { Moon, Sun, User } = window.LucideReact;` by `transformModuleStatements`. UMD build loaded via `LUCIDE_REACT_CDN` in `cdn.ts`. A `window.react = window.React` bridge is injected before the lucide-react script because its UMD wrapper expects `global.react` (lowercase) while React UMD sets `window.React` (capitalized).
+- **Component Scope Exposure**: `new Function(transpiledCode)` creates an isolated function scope — `function`/`const`/`let` declarations inside it are NOT properties of `window`, even with `fn.call(window)`. Fix: append an expose-statement (`';try{if(typeof ComponentName!=="undefined"){window.__renderComponent=ComponentName;}}catch(e){}'`) to the transpiled code before passing to `new Function`. The expose code runs in the same scope as the transpiled code, captures the component, and assigns it to `window.__renderComponent`. After execution, read `window.__renderComponent` and `delete` it to clean up.
+- **Data-Driven UMD Registry**: `transform.ts` uses a `UMD_GLOBALS` record mapping module specifiers to window globals. Adding a new supported library = one line in the map. Currently: `react`→`window.React`, `react-dom`→`window.ReactDOM`, `lucide-react`→`window.LucideReact`.
+- **Namespace Import Support**: `import * as React from 'react'` → `const React = window.React;` — handled before default/named import patterns.
+- **Silent Removal Patterns**: `react/jsx-runtime` and `react/jsx-dev-runtime` imports are silently removed (not needed with classic JSX runtime + Babel). `import type` statements are removed entirely (no runtime code).
+- **Class Export Extraction**: `extractDefaultExportName` now detects `export default class Foo` in addition to `export default function Foo` and `export default Foo`.
+- **Error Message Escaping**: `showError()` in the iframe bootstrap uses `escapeHtml()` to prevent XSS injection via `error.stack` content that may contain HTML from user code.
+- **Deferred**: JSX rendering still has issues with artifacts that reference external libraries beyond React, react-dom, and lucide-react (e.g., `framer-motion`, `recharts`) as globals without loading them. HTML rendering validated by user as fully working.
+
+### Verified State Invariants (6.5 — UI Cleanup)
+- **Explanation Bubbles Removed**: The informational banner divs above list/grid views in SkillArchive, WorkflowArchive, and AgentArchive have been removed. All three pages now start directly with their list/grid content, mirroring other archive pages (Chats, Memories, Prompts). Zero blast radius — self-contained presentational elements with no state/logic/refs.
+
+## Previous Phase: Phase 6.5 — Full Application Export ("Noosphere Takeout")
+
+### Verified State Invariants (6.5)
+- **FullExportService** (`src/components/exports/services/FullExportService.ts`): Exports the entire IndexedDB archive as Markdown. Batching = **50 items per volume per category** (`ceil(n/50)` zips). Empty categories are skipped. Structure mirrors the UI taxonomy: `Category/<item-folder>/<file>.md` + `artifacts/` + `manifest.json` + root `export-metadata.json` (category, vol X of Y, counts, failedItems).
+- **Dual-encoding artifact decoding**: The DB holds BOTH base64 and raw-text artifact payloads. `artifactToBlob` sniffs per artifact via the `useArtifactBlobs` round-trip convention (`btoa(atob(s)) === s`) — can never throw. Artifacts are written as Blobs (JSZip's most reliable payload).
+- **Per-item resilience**: A corrupt record writes `_EXPORT-ERROR.txt` into its folder and the export continues; `failedItems` counted in volume metadata + summaries. One bad record can never kill a Takeout.
+- **The Seam**: `settings.profile` IS exported (`Profile/profile.md`); `settings.preferences` (UI theme/shortcut/naming) NEVER is. Enforced by test.
+- **One payload, two writers**: `buildItemFiles` builds each item's complete file set; ZIP mode and Folder mode share it — the modes cannot drift apart.
+- **Delivery modes** (Settings → 💾 Backup / Import → 📦 Full Application Export):
+  - **📂 Export to Folder** — File System Access API (`showDirectoryPicker`); writes `Noosphere-Export_YYYY-MM-DD/` live, file by file (no zips, no batching; naming collisions reset per category). Picker-cancel (AbortError) = silent no-op. Hidden when API unsupported.
+  - **⬇ Download ZIPs** — full multi-volume Takeout via `downloadVolumes` (300ms-spaced sequential anchors).
+  - **Granular exports** — per-category buttons (`onlyCategory` filter), rendered only for categories with items (counts from panel state). Batching still applies per category.
+- **EntityMarkdownSerializer** (`src/components/exports/services/EntityMarkdownSerializer.ts`): Markdown templates for Prompts/Skills/Workflows/Agents/Projects/Profile. Chats reuse `exportService.generate('markdown', …)`; Memories reuse `MemoryExportService.generateMemoryMarkdown`.
+- **Tests**: `tests/exports/FullExport.test.ts` — 16 tests (batching math, ZIP structure, seam, dual-encoding content fidelity, per-item resilience, folder-mode mock-handle tree, granular filter isolation).
+
+### Verified State Invariants (6.4 — Sidebar & Message Action UX)
 - **Sidebar Collapse**: Divider + entire Recent Chats section render only when `!isCollapsed` (`src/components/layout/Sidebar.tsx`). Collapsed sidebar = logo, New Chat, nav icons (New Chat → Agent Forge), profile block. `loadRecentChats` continues in background (event-driven refresh untouched); zero blast radius.
 - **Truthful Action Feedback**: Copy + Save buttons under user AND AI messages (`UnifiedChatInterface.tsx` ChatMessageBubble) flash green ✓ for 2s (codebase convention) **only on confirmed success**. `handleCopyText` returns the real `copyToClipboard()` boolean; `handleSaveAs*` return `Promise<boolean>`. Cancel/failure paths never flash. Timer refs cleaned up on unmount.
 - **MessageSaveModal** (`src/components/chat-ui/MessageSaveModal.tsx`): Replaces browser `prompt()` for Save-As titles. Per-type accents matching Save menu colors (Memory→purple, Prompt→indigo, Skill→blue, Workflow→orange). Save handlers receive `(msg, title)`; `chatTitle` prop feeds the Memory default title. Modal closes only on success (stay-open-retry on failure); Escape/backdrop/✕/Cancel = no save, no ✓; Save disabled on blank title; double-submit guarded via `isSaving`.
@@ -102,3 +138,7 @@
 **Chat Fork — new tab opened empty New Chat view instead of the forked session**
 - **Root cause**: `handleForkChat` opened `/chat/{id}` as a *path* URL, but the app uses `HashRouter` — the new tab's empty hash fell through to the default route (`/` → NewChatView). The forked session was always saved correctly (forked message as first message); navigation never reached it
 - **Fix**: `window.open` now targets `${window.location.origin}${window.location.pathname}#/chat/${newSessionId}` (preserves origin + base path, hits the hash route). Swept `src/` — was the only hardcoded path navigation. Validated by user: fork of user + AI messages opens correct forked chat in new tab
+
+**Full Export — `atob` InvalidCharacterError killed the entire run**
+- **Root cause**: The exporter assumed all artifact `fileData` was base64, but the DB holds BOTH base64 and raw-text payloads (legacy/text artifacts with unicode). `atob` throws on raw unicode text. The app already had the answer: `useArtifactBlobs.ts` discriminates via round-trip check
+- **Fix**: `artifactToBlob` sniffs encoding per artifact (base64 → decoded bytes; raw → UTF-8 Blob), mirroring the canonical decoder. Additionally: per-item resilience guard (`_EXPORT-ERROR.txt` placeholder + continue) so no single corrupt record can ever abort a Takeout again. Validated by user round-2 testing

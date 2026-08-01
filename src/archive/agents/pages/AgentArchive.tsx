@@ -13,9 +13,9 @@ import { formatRelativeDate } from '../../../utils/dateUtils';
 
 const MoreHorizontal = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <circle cx="12" cy="12" r="1"/>
-        <circle cx="19" cy="12" r="1"/>
-        <circle cx="5" cy="12" r="1"/>
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+        <circle cx="5" cy="12" r="1" />
     </svg>
 );
 
@@ -305,25 +305,6 @@ export default function AgentArchive() {
                 ref={fileImportInputRef}
                 onChange={handleZipImportChange}
             />
-
-            {/* Explanatory Bubble */}
-            <div className="mb-6 border border-gray-800 rounded-xl bg-[#111] p-5 shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#82f94b]"></div>
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="text-[#82f94b]">
-                        🤖
-                    </div>
-                    <span className="text-xs font-bold tracking-wider text-[#82f94b] uppercase">Interactive Agent Forge</span>
-                </div>
-                <p className="text-sm text-gray-400 leading-relaxed mb-4">
-                    The Agent Forge is a digital foundry where you construct autonomous persona blueprints. Define system instructions as section nodes, outline personality guidelines, and package them with attached skills, workflows, and workspace reference files into self-contained, shareable bundles.
-                </p>
-                <div className="flex gap-4">
-                    <span className="flex items-center gap-2 text-xs text-gray-500">⚙️ Structured Prompting</span>
-                    <span className="flex items-center gap-2 text-xs text-gray-500">⚡ Attached Capabilities</span>
-                    <span className="flex items-center gap-2 text-xs text-gray-500">📦 ZIP Portability</span>
-                </div>
-            </div>
 
             {/* List / Grid Renderers */}
             {filteredAgents.length === 0 ? (
