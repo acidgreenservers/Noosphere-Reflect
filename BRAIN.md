@@ -53,3 +53,5 @@ Every seed I compress must pass four invariants. If it fails any one of them, it
 ---
 
 ## Wisdom
+
+- **Feedback must be true. Never flash success on unverified completion.** — A ✓ shown for work that never happened is a lying UI; wire feedback to the actual result path, not the intent path. (2026-07-31, validated: Noosphere Reflect message action buttons)

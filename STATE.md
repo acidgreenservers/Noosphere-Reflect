@@ -1,8 +1,14 @@
 # STATE.md — Project State & Invariant Ledger
 
-## Current Phase: Phase 6.3 — Chat UX Overhaul & Document Builder
+## Current Phase: Phase 6.4 — Sidebar & Message Action UX
 
-### Verified State Invariants
+### Verified State Invariants (6.4)
+- **Sidebar Collapse**: Divider + entire Recent Chats section render only when `!isCollapsed` (`src/components/layout/Sidebar.tsx`). Collapsed sidebar = logo, New Chat, nav icons (New Chat → Agent Forge), profile block. `loadRecentChats` continues in background (event-driven refresh untouched); zero blast radius.
+- **Truthful Action Feedback**: Copy + Save buttons under user AND AI messages (`UnifiedChatInterface.tsx` ChatMessageBubble) flash green ✓ for 2s (codebase convention) **only on confirmed success**. `handleCopyText` returns the real `copyToClipboard()` boolean; `handleSaveAs*` return `Promise<boolean>`. Cancel/failure paths never flash. Timer refs cleaned up on unmount.
+- **MessageSaveModal** (`src/components/chat-ui/MessageSaveModal.tsx`): Replaces browser `prompt()` for Save-As titles. Per-type accents matching Save menu colors (Memory→purple, Prompt→indigo, Skill→blue, Workflow→orange). Save handlers receive `(msg, title)`; `chatTitle` prop feeds the Memory default title. Modal closes only on success (stay-open-retry on failure); Escape/backdrop/✕/Cancel = no save, no ✓; Save disabled on blank title; double-submit guarded via `isSaving`.
+- **Deferred**: `handleLoadShortcut` still uses browser `prompt()` for numbered selection — different UX shape, intentionally out of scope.
+
+### Verified State Invariants (6.3)
 - **Chat Send Shortcut**: Global `chatSendShortcut` setting (`'enter'` | `'ctrl-enter'`) stored in `AppSettings` via `SettingsStore` (IndexedDB)
 - **Persistence**: Settings saved via `storageService.saveSettings()`, loaded via `storageService.getSettings()` with `DEFAULT_SETTINGS` fallback
 - **Event Sync**: `window.dispatchEvent(new Event('settingsUpdated'))` dispatched on save in both `Sidebar.tsx` and `ArchiveHub.tsx`; all chat input surfaces listen for this event
@@ -78,6 +84,7 @@
 - `ArchiveHub.tsx` — Missing `Folder` export, type mismatch on format strings
 - `UnifiedChatInterface.tsx` — Type mismatches on artifact/export types (pre-existing)
 - `SettingsMenu.tsx` — Missing `ParsedContent` export (pre-existing)
+- `Sidebar.tsx` — Missing `ParsedContent` export (L11); `updateExportStatus` arity mismatch (L174) — surfaced during 6.4 verification, in untouched code
 - `WorkflowArchive.tsx` — Missing `Folder` export, missing `category`/`description` workflow properties (pre-existing)
 - Various other files — Unrelated pre-existing type errors
 
