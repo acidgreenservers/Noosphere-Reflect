@@ -9,18 +9,29 @@ export class PromptStore extends BaseStore<Prompt, typeof STORES.PROMPTS> {
         super(STORES.PROMPTS);
     }
 
-    async save(prompt: Prompt): Promise<void> {
-        // Sanitize content and metadata
-        if (prompt.metadata?.title) {
-            prompt.metadata.title = sanitizeMessageContent(prompt.metadata.title);
+    private sanitizeEntity(prompt: Prompt): Prompt {
+        const sanitized = { ...prompt };
+        if (sanitized.metadata) {
+            sanitized.metadata = { ...sanitized.metadata };
+            if (sanitized.metadata.title) {
+                sanitized.metadata.title = sanitizeMessageContent(sanitized.metadata.title);
+            }
         }
+        if (sanitized.tags) {
+            sanitized.tags = sanitized.tags.map(t => sanitizeMessageContent(t));
+        }
+        return sanitized;
+    }
+
+    async save(prompt: Prompt): Promise<void> {
+        const sanitizedPrompt = this.sanitizeEntity(prompt);
 
         const db = await this.getDB();
-        await db.put(this.storeName, prompt);
+        await db.put(this.storeName, sanitizedPrompt);
 
         try {
             await searchService.init();
-            await searchService.indexPrompt(prompt);
+            await searchService.indexPrompt(sanitizedPrompt);
         } catch (e) {
             console.warn('Failed to index prompt for search:', e);
         }
@@ -30,7 +41,8 @@ export class PromptStore extends BaseStore<Prompt, typeof STORES.PROMPTS> {
         const db = await this.getDB();
         const tx = db.transaction(this.storeName, 'readwrite');
         for (const prompt of prompts) {
-            await tx.store.put(prompt);
+            const sanitizedPrompt = this.sanitizeEntity(prompt);
+            await tx.store.put(sanitizedPrompt);
         }
         await tx.done;
     }

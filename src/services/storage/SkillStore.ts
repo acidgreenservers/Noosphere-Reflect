@@ -9,17 +9,32 @@ export class SkillStore extends BaseStore<Skill, typeof STORES.SKILLS> {
         super(STORES.SKILLS);
     }
 
-    async save(skill: Skill): Promise<void> {
-        if (skill.metadata?.title) {
-            skill.metadata.title = sanitizeMessageContent(skill.metadata.title);
+    private sanitizeEntity(skill: Skill): Skill {
+        const sanitized = { ...skill };
+        if (sanitized.metadata) {
+            sanitized.metadata = { ...sanitized.metadata };
+            if (sanitized.metadata.title) {
+                sanitized.metadata.title = sanitizeMessageContent(sanitized.metadata.title);
+            }
+            if (sanitized.metadata.category) {
+                sanitized.metadata.category = sanitizeMessageContent(sanitized.metadata.category);
+            }
         }
+        if (sanitized.tags) {
+            sanitized.tags = sanitized.tags.map(t => sanitizeMessageContent(t));
+        }
+        return sanitized;
+    }
+
+    async save(skill: Skill): Promise<void> {
+        const sanitizedSkill = this.sanitizeEntity(skill);
 
         const db = await this.getDB();
-        await db.put(this.storeName, skill);
+        await db.put(this.storeName, sanitizedSkill);
 
         try {
             await searchService.init();
-            await searchService.indexSkill(skill); // We will need to add indexSkill to searchService
+            await searchService.indexSkill(sanitizedSkill);
         } catch (e) {
             console.warn('Failed to index skill for search:', e);
         }
@@ -29,7 +44,8 @@ export class SkillStore extends BaseStore<Skill, typeof STORES.SKILLS> {
         const db = await this.getDB();
         const tx = db.transaction(this.storeName, 'readwrite');
         for (const skill of skills) {
-            await tx.store.put(skill);
+            const sanitizedSkill = this.sanitizeEntity(skill);
+            await tx.store.put(sanitizedSkill);
         }
         await tx.done;
     }

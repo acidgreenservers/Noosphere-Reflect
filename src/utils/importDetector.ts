@@ -170,7 +170,7 @@ export const detectImportSource = (content: string, filename: string): ImportDet
   if (type === 'json') {
     try {
       const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) || parsed.messages || parsed.chatData) {
+      if (Array.isArray(parsed) || parsed.messages || parsed.chatData || parsed.aiModel || (parsed.content && !parsed.messages)) {
         return {
           isSupported: true,
           source: '3rd-party',

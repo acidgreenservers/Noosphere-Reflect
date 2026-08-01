@@ -8,14 +8,31 @@ export class ProjectStore extends BaseStore<Project, typeof STORES.PROJECTS> {
         super(STORES.PROJECTS);
     }
 
-    async save(project: Project): Promise<void> {
-        // Sanitize metadata titles and strings if necessary
-        if (project.metadata?.title) {
-            project.metadata.title = sanitizeMessageContent(project.metadata.title);
+    private sanitizeEntity(project: Project): Project {
+        const sanitized = { ...project };
+        if (sanitized.metadata) {
+            sanitized.metadata = { ...sanitized.metadata };
+            if (sanitized.metadata.title) {
+                sanitized.metadata.title = sanitizeMessageContent(sanitized.metadata.title);
+            }
+            if (sanitized.metadata.description) {
+                sanitized.metadata.description = sanitizeMessageContent(sanitized.metadata.description);
+            }
+            if (sanitized.metadata.memory) {
+                sanitized.metadata.memory = sanitizeMessageContent(sanitized.metadata.memory);
+            }
+            if (sanitized.metadata.instructions) {
+                sanitized.metadata.instructions = sanitizeMessageContent(sanitized.metadata.instructions);
+            }
         }
+        return sanitized;
+    }
+
+    async save(project: Project): Promise<void> {
+        const sanitizedProject = this.sanitizeEntity(project);
 
         const db = await this.getDB();
-        await db.put(this.storeName, project);
+        await db.put(this.storeName, sanitizedProject);
     }
 
     async getAllSorted(): Promise<Project[]> {

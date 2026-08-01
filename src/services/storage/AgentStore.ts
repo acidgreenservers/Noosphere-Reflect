@@ -9,20 +9,26 @@ export class AgentStore extends BaseStore<Agent, typeof STORES.AGENTS> {
         super(STORES.AGENTS);
     }
 
+    private sanitizeEntity(agent: Agent): Agent {
+        const sanitized = { ...agent };
+        if (sanitized.name) {
+            sanitized.name = sanitizeMessageContent(sanitized.name);
+        }
+        if (sanitized.description) {
+            sanitized.description = sanitizeMessageContent(sanitized.description);
+        }
+        return sanitized;
+    }
+
     async save(agent: Agent): Promise<void> {
-        if (agent.name) {
-            agent.name = sanitizeMessageContent(agent.name);
-        }
-        if (agent.description) {
-            agent.description = sanitizeMessageContent(agent.description);
-        }
+        const sanitizedAgent = this.sanitizeEntity(agent);
 
         const db = await this.getDB();
-        await db.put(this.storeName, agent);
+        await db.put(this.storeName, sanitizedAgent);
 
         try {
             await searchService.init();
-            await searchService.indexAgent(agent);
+            await searchService.indexAgent(sanitizedAgent);
         } catch (e) {
             console.warn('Failed to index agent for search:', e);
         }
@@ -32,7 +38,8 @@ export class AgentStore extends BaseStore<Agent, typeof STORES.AGENTS> {
         const db = await this.getDB();
         const tx = db.transaction(this.storeName, 'readwrite');
         for (const agent of agents) {
-            await tx.store.put(agent);
+            const sanitizedAgent = this.sanitizeEntity(agent);
+            await tx.store.put(sanitizedAgent);
         }
         await tx.done;
     }

@@ -9,18 +9,29 @@ export class MemoryStore extends BaseStore<Memory, typeof STORES.MEMORIES> {
         super(STORES.MEMORIES);
     }
 
-    async save(memory: Memory): Promise<void> {
-        // Sanitize content and metadata
-        if (memory.metadata?.title) {
-            memory.metadata.title = sanitizeMessageContent(memory.metadata.title);
+    private sanitizeEntity(memory: Memory): Memory {
+        const sanitized = { ...memory };
+        if (sanitized.metadata) {
+            sanitized.metadata = { ...sanitized.metadata };
+            if (sanitized.metadata.title) {
+                sanitized.metadata.title = sanitizeMessageContent(sanitized.metadata.title);
+            }
         }
+        if (sanitized.tags) {
+            sanitized.tags = sanitized.tags.map(t => sanitizeMessageContent(t));
+        }
+        return sanitized;
+    }
+
+    async save(memory: Memory): Promise<void> {
+        const sanitizedMemory = this.sanitizeEntity(memory);
 
         const db = await this.getDB();
-        await db.put(this.storeName, memory);
+        await db.put(this.storeName, sanitizedMemory);
 
         try {
             await searchService.init();
-            await searchService.indexMemory(memory);
+            await searchService.indexMemory(sanitizedMemory);
         } catch (e) {
             console.warn('Failed to index memory for search:', e);
         }
@@ -30,7 +41,8 @@ export class MemoryStore extends BaseStore<Memory, typeof STORES.MEMORIES> {
         const db = await this.getDB();
         const tx = db.transaction(this.storeName, 'readwrite');
         for (const memory of memories) {
-            await tx.store.put(memory);
+            const sanitizedMemory = this.sanitizeEntity(memory);
+            await tx.store.put(sanitizedMemory);
         }
         await tx.done;
     }

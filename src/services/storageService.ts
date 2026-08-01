@@ -383,22 +383,24 @@ class StorageService {
                 if (detection.type === 'json') {
                     const parsed = JSON.parse(content);
 
+                    // Ensure format/platform isolation for ALL non-native JSON imports (chats, memories, prompts, etc.)
+                    if (detection.source !== 'noosphere') {
+                        if (parsed.metadata) {
+                            delete parsed.metadata.exportedBy;
+                            delete parsed.metadata.exportedAt;
+                            delete parsed.metadata.lastExportDate;
+                            delete parsed.metadata.exportCount;
+                            delete parsed.metadata.exportFormats;
+                            parsed.metadata.exportStatus = 'not_exported';
+                        }
+                        if ('exportStatus' in parsed) {
+                            parsed.exportStatus = 'not_exported';
+                        }
+                    }
+
                     if (parsed.chatData || parsed.messages) {
                         let session: SavedChatSession;
                         if (parsed.id && parsed.chatData) {
-                            // Guard Noosphere attribution: Only allow it if detection confirmed it
-                            if (detection.source !== 'noosphere') {
-                                if (parsed.metadata) {
-                                    delete parsed.metadata.exportedBy;
-                                    delete parsed.metadata.exportedAt;
-                                    delete parsed.metadata.lastExportDate;
-                                    delete parsed.metadata.exportCount;
-                                    delete parsed.metadata.exportFormats;
-                                }
-                                if (parsed.exportStatus) {
-                                    parsed.exportStatus = 'not_exported';
-                                }
-                            }
                             session = SavedChatSessionSchema.parse(parsed) as SavedChatSession;
                         } else {
                             const sessionData = {
@@ -449,8 +451,18 @@ class StorageService {
                         selectedTheme: ChatTheme.DarkDefault,
                         parserMode: detection.source === 'noosphere' ? ParserMode.Noosphere : ParserMode.Basic,
                         chatData,
-                        metadata: chatData.metadata
+                        metadata: chatData.metadata,
+                        exportStatus: 'not_exported' as const
                     };
+
+                    if (detection.source !== 'noosphere' && sessionData.metadata) {
+                        delete sessionData.metadata.exportedBy;
+                        delete sessionData.metadata.exportedAt;
+                        delete sessionData.metadata.lastExportDate;
+                        delete sessionData.metadata.exportCount;
+                        delete sessionData.metadata.exportFormats;
+                        sessionData.metadata.exportStatus = 'not_exported';
+                    }
 
                     const session = SavedChatSessionSchema.parse(sessionData) as SavedChatSession;
                     await this.saveSession(session);
@@ -473,8 +485,18 @@ class StorageService {
                                 selectedTheme: ChatTheme.DarkDefault,
                                 parserMode: platformMode,
                                 chatData,
-                                metadata: chatData.metadata
+                                metadata: chatData.metadata,
+                                exportStatus: 'not_exported' as const
                             };
+
+                            if (sessionData.metadata) {
+                                delete sessionData.metadata.exportedBy;
+                                delete sessionData.metadata.exportedAt;
+                                delete sessionData.metadata.lastExportDate;
+                                delete sessionData.metadata.exportCount;
+                                delete sessionData.metadata.exportFormats;
+                                sessionData.metadata.exportStatus = 'not_exported';
+                            }
 
                             const session = SavedChatSessionSchema.parse(sessionData) as SavedChatSession;
                             await this.saveSession(session);

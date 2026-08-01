@@ -9,17 +9,32 @@ export class WorkflowStore extends BaseStore<Workflow, typeof STORES.WORKFLOWS> 
         super(STORES.WORKFLOWS);
     }
 
-    async save(workflow: Workflow): Promise<void> {
-        if (workflow.metadata?.title) {
-            workflow.metadata.title = sanitizeMessageContent(workflow.metadata.title);
+    private sanitizeEntity(workflow: Workflow): Workflow {
+        const sanitized = { ...workflow };
+        if (sanitized.metadata) {
+            sanitized.metadata = { ...sanitized.metadata };
+            if (sanitized.metadata.title) {
+                sanitized.metadata.title = sanitizeMessageContent(sanitized.metadata.title);
+            }
+            if (sanitized.metadata.triggerWord) {
+                sanitized.metadata.triggerWord = sanitizeMessageContent(sanitized.metadata.triggerWord);
+            }
         }
+        if (sanitized.tags) {
+            sanitized.tags = sanitized.tags.map(t => sanitizeMessageContent(t));
+        }
+        return sanitized;
+    }
+
+    async save(workflow: Workflow): Promise<void> {
+        const sanitizedWorkflow = this.sanitizeEntity(workflow);
 
         const db = await this.getDB();
-        await db.put(this.storeName, workflow);
+        await db.put(this.storeName, sanitizedWorkflow);
 
         try {
             await searchService.init();
-            await searchService.indexWorkflow(workflow);
+            await searchService.indexWorkflow(sanitizedWorkflow);
         } catch (e) {
             console.warn('Failed to index workflow for search:', e);
         }
@@ -29,7 +44,8 @@ export class WorkflowStore extends BaseStore<Workflow, typeof STORES.WORKFLOWS> 
         const db = await this.getDB();
         const tx = db.transaction(this.storeName, 'readwrite');
         for (const workflow of workflows) {
-            await tx.store.put(workflow);
+            const sanitizedWorkflow = this.sanitizeEntity(workflow);
+            await tx.store.put(sanitizedWorkflow);
         }
         await tx.done;
     }
