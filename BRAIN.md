@@ -55,3 +55,4 @@ Every seed I compress must pass four invariants. If it fails any one of them, it
 ## Wisdom
 
 - **Feedback must be true. Never flash success on unverified completion.** — A ✓ shown for work that never happened is a lying UI; wire feedback to the actual result path, not the intent path. (2026-07-31, validated: Noosphere Reflect message action buttons)
+- **Sniff the data; never trust the encoding contract.** — Storage outlives the code that wrote it; assuming one encoding crashes on the oldest record. Decode by evidence, not by schema. (2026-08-01, validated: Noosphere Takeout dual-encoding artifact fix)

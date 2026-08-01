@@ -1,8 +1,21 @@
 # STATE.md — Project State & Invariant Ledger
 
-## Current Phase: Phase 6.4 — Sidebar & Message Action UX
+## Current Phase: Phase 6.5 — Full Application Export ("Noosphere Takeout")
 
-### Verified State Invariants (6.4)
+### Verified State Invariants (6.5)
+- **FullExportService** (`src/components/exports/services/FullExportService.ts`): Exports the entire IndexedDB archive as Markdown. Batching = **50 items per volume per category** (`ceil(n/50)` zips). Empty categories are skipped. Structure mirrors the UI taxonomy: `Category/<item-folder>/<file>.md` + `artifacts/` + `manifest.json` + root `export-metadata.json` (category, vol X of Y, counts, failedItems).
+- **Dual-encoding artifact decoding**: The DB holds BOTH base64 and raw-text artifact payloads. `artifactToBlob` sniffs per artifact via the `useArtifactBlobs` round-trip convention (`btoa(atob(s)) === s`) — can never throw. Artifacts are written as Blobs (JSZip's most reliable payload).
+- **Per-item resilience**: A corrupt record writes `_EXPORT-ERROR.txt` into its folder and the export continues; `failedItems` counted in volume metadata + summaries. One bad record can never kill a Takeout.
+- **The Seam**: `settings.profile` IS exported (`Profile/profile.md`); `settings.preferences` (UI theme/shortcut/naming) NEVER is. Enforced by test.
+- **One payload, two writers**: `buildItemFiles` builds each item's complete file set; ZIP mode and Folder mode share it — the modes cannot drift apart.
+- **Delivery modes** (Settings → 💾 Backup / Import → 📦 Full Application Export):
+  - **📂 Export to Folder** — File System Access API (`showDirectoryPicker`); writes `Noosphere-Export_YYYY-MM-DD/` live, file by file (no zips, no batching; naming collisions reset per category). Picker-cancel (AbortError) = silent no-op. Hidden when API unsupported.
+  - **⬇ Download ZIPs** — full multi-volume Takeout via `downloadVolumes` (300ms-spaced sequential anchors).
+  - **Granular exports** — per-category buttons (`onlyCategory` filter), rendered only for categories with items (counts from panel state). Batching still applies per category.
+- **EntityMarkdownSerializer** (`src/components/exports/services/EntityMarkdownSerializer.ts`): Markdown templates for Prompts/Skills/Workflows/Agents/Projects/Profile. Chats reuse `exportService.generate('markdown', …)`; Memories reuse `MemoryExportService.generateMemoryMarkdown`.
+- **Tests**: `tests/exports/FullExport.test.ts` — 16 tests (batching math, ZIP structure, seam, dual-encoding content fidelity, per-item resilience, folder-mode mock-handle tree, granular filter isolation).
+
+### Verified State Invariants (6.4 — Sidebar & Message Action UX)
 - **Sidebar Collapse**: Divider + entire Recent Chats section render only when `!isCollapsed` (`src/components/layout/Sidebar.tsx`). Collapsed sidebar = logo, New Chat, nav icons (New Chat → Agent Forge), profile block. `loadRecentChats` continues in background (event-driven refresh untouched); zero blast radius.
 - **Truthful Action Feedback**: Copy + Save buttons under user AND AI messages (`UnifiedChatInterface.tsx` ChatMessageBubble) flash green ✓ for 2s (codebase convention) **only on confirmed success**. `handleCopyText` returns the real `copyToClipboard()` boolean; `handleSaveAs*` return `Promise<boolean>`. Cancel/failure paths never flash. Timer refs cleaned up on unmount.
 - **MessageSaveModal** (`src/components/chat-ui/MessageSaveModal.tsx`): Replaces browser `prompt()` for Save-As titles. Per-type accents matching Save menu colors (Memory→purple, Prompt→indigo, Skill→blue, Workflow→orange). Save handlers receive `(msg, title)`; `chatTitle` prop feeds the Memory default title. Modal closes only on success (stay-open-retry on failure); Escape/backdrop/✕/Cancel = no save, no ✓; Save disabled on blank title; double-submit guarded via `isSaving`.
@@ -102,3 +115,7 @@
 **Chat Fork — new tab opened empty New Chat view instead of the forked session**
 - **Root cause**: `handleForkChat` opened `/chat/{id}` as a *path* URL, but the app uses `HashRouter` — the new tab's empty hash fell through to the default route (`/` → NewChatView). The forked session was always saved correctly (forked message as first message); navigation never reached it
 - **Fix**: `window.open` now targets `${window.location.origin}${window.location.pathname}#/chat/${newSessionId}` (preserves origin + base path, hits the hash route). Swept `src/` — was the only hardcoded path navigation. Validated by user: fork of user + AI messages opens correct forked chat in new tab
+
+**Full Export — `atob` InvalidCharacterError killed the entire run**
+- **Root cause**: The exporter assumed all artifact `fileData` was base64, but the DB holds BOTH base64 and raw-text payloads (legacy/text artifacts with unicode). `atob` throws on raw unicode text. The app already had the answer: `useArtifactBlobs.ts` discriminates via round-trip check
+- **Fix**: `artifactToBlob` sniffs encoding per artifact (base64 → decoded bytes; raw → UTF-8 Blob), mirroring the canonical decoder. Additionally: per-item resilience guard (`_EXPORT-ERROR.txt` placeholder + continue) so no single corrupt record can ever abort a Takeout again. Validated by user round-2 testing
