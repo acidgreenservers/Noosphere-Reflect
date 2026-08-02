@@ -227,21 +227,6 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
                                         <h2 className={`text-2xl font-bold ${currentCatDetails.textColor}`}>{selectedItem.metadata?.title || selectedItem.title}</h2>
                                         <p className="text-sm text-gray-500 mt-1">Local • {selectedItem.content ? (selectedItem.content.length / 1024).toFixed(1) : 0}KB</p>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {activeCategory !== 'agent' && (
-                                            <>
-                                                <button className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-200 border border-gray-700 rounded-lg">
-                                                    🔗
-                                                </button>
-                                                <button 
-                                                    onClick={() => setShowDeleteModal(true)}
-                                                    className="px-3 py-1.5 bg-[#2a2a2a] text-red-400/80 hover:bg-[#333] hover:text-red-400 border border-gray-700 rounded-lg text-sm font-medium transition-colors"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
                                 </div>
                             </div>
                             <div className="flex-1 flex overflow-hidden">
