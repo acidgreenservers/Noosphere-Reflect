@@ -21,6 +21,7 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
     // Edit mode state
     const [editContent, setEditContent] = useState('');
     const [showCode, setShowCode] = useState(false);
+    const [activeFilePath, setActiveFilePath] = useState('');
     
     // Copy state
     const [copied, setCopied] = useState(false);
@@ -32,6 +33,10 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
     // Action menu state
     const [showActionMenu, setShowActionMenu] = useState(false);
     const actionMenuRef = useRef<HTMLDivElement>(null);
+
+    // File Dropdown state
+    const [showFileDropdown, setShowFileDropdown] = useState(false);
+    const fileDropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -48,6 +53,20 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
     }, [showActionMenu]);
 
     useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (fileDropdownRef.current && !fileDropdownRef.current.contains(event.target as Node)) {
+                setShowFileDropdown(false);
+            }
+        };
+        if (showFileDropdown) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFileDropdown]);
+
+    useEffect(() => {
         if (isOpen) {
             setActiveCategory(initialCategory);
             loadItems(initialCategory);
@@ -55,6 +74,49 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
             setIsEditMode(false);
         }
     }, [isOpen, initialCategory]);
+
+    useEffect(() => {
+        if (selectedItem) {
+            setActiveFilePath(`${activeCategory.toUpperCase()}.md`);
+            setEditContent(selectedItem.content || '');
+        }
+    }, [selectedItem, activeCategory]);
+
+    const saveCurrentContentToSelectedItem = () => {
+        if (!selectedItem) return;
+        
+        const rootFileName = `${activeCategory.toUpperCase()}.md`;
+        if (activeFilePath === rootFileName) {
+            setSelectedItem({
+                ...selectedItem,
+                content: editContent
+            });
+        } else {
+            const updatedFiles = (selectedItem.files || []).map((f: any) => 
+                f.path === activeFilePath ? { ...f, content: editContent } : f
+            );
+            setSelectedItem({
+                ...selectedItem,
+                files: updatedFiles
+            });
+        }
+    };
+
+    const handleFileSelect = (path: string) => {
+        if (isEditMode) {
+            saveCurrentContentToSelectedItem();
+        }
+        setActiveFilePath(path);
+        setShowFileDropdown(false);
+        
+        const rootFileName = `${activeCategory.toUpperCase()}.md`;
+        if (path === rootFileName) {
+            setEditContent(selectedItem?.content || '');
+        } else {
+            const file = selectedItem?.files?.find((f: any) => f.path === path);
+            setEditContent(file?.content || '');
+        }
+    };
 
     const loadItems = async (category: ArchiveType) => {
         let loaded: any[] = [];
@@ -81,6 +143,29 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
             console.error('Failed to load items', e);
             setItems([]);
         }
+    };
+
+    const handleCreateFile = () => {
+        const path = window.prompt('Enter file path (e.g. assets/style.css):');
+        if (!path || !path.trim()) return;
+        
+        if (!selectedItem) return;
+        
+        const newFile = {
+            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 9),
+            path: path.trim(),
+            content: ''
+        };
+        
+        const updatedFiles = [...(selectedItem.files || []), newFile];
+        setSelectedItem({
+            ...selectedItem,
+            files: updatedFiles
+        });
+        
+        setActiveFilePath(path.trim());
+        setEditContent('');
+        setShowFileDropdown(false);
     };
 
     const handleCategoryChange = (category: ArchiveType) => {
@@ -128,16 +213,24 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
     const handleSaveItem = async () => {
         if (!selectedItem || activeCategory === 'agent') return;
         
+        const rootFileName = `${activeCategory.toUpperCase()}.md`;
         const updatedItem = {
             ...selectedItem,
-            content: editContent,
             updatedAt: new Date().toISOString(),
-            metadata: {
-                ...selectedItem.metadata,
+        };
+        
+        if (activeFilePath === rootFileName) {
+            updatedItem.content = editContent;
+            updatedItem.metadata = {
+                ...updatedItem.metadata,
                 wordCount: editContent.split(/\s+/).length,
                 characterCount: editContent.length
-            }
-        };
+            };
+        } else {
+            updatedItem.files = (updatedItem.files || []).map((f: any) => 
+                f.path === activeFilePath ? { ...f, content: editContent } : f
+            );
+        }
         
         switch (activeCategory) {
             case 'memory': await storageService.saveMemory(updatedItem); break;
@@ -251,16 +344,54 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
                             <div className="flex-1 flex overflow-hidden">
                                 {/* File Tree Mock */}
                                 <div className="w-64 border-r border-gray-800 p-4 overflow-y-auto hidden lg:block">
-                                    <div className={`text-gray-300 text-sm px-3 py-1.5 rounded-md font-medium cursor-pointer ${currentCatDetails.activeBg} ${currentCatDetails.textColor}`}>
-                                        {activeCategory.toUpperCase()}.md
+                                    <div className="space-y-1">
+                                        <div 
+                                            onClick={() => handleFileSelect(`${activeCategory.toUpperCase()}.md`)}
+                                            className={`text-sm px-3 py-1.5 rounded-md font-medium cursor-pointer transition-colors ${activeFilePath === `${activeCategory.toUpperCase()}.md` ? `${currentCatDetails.activeBg} ${currentCatDetails.textColor}` : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}`}
+                                        >
+                                            {activeCategory.toUpperCase()}.md
+                                        </div>
+                                        {selectedItem?.files?.map((file: any) => (
+                                            <div 
+                                                key={file.id}
+                                                onClick={() => handleFileSelect(file.path)}
+                                                className={`text-sm px-3 py-1.5 rounded-md font-medium cursor-pointer transition-colors ${activeFilePath === file.path ? `${currentCatDetails.activeBg} ${currentCatDetails.textColor}` : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}`}
+                                            >
+                                                {file.path}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                                 {/* Markdown Preview */}
                                 <div className="flex-1 overflow-y-auto p-6 bg-[#0e0e0e]">
                                     <div className="max-w-3xl mx-auto border border-gray-800 rounded-xl overflow-hidden bg-[#121212]">
                                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#1a1a1a]">
-                                            <div className={`flex items-center gap-2 text-sm ${currentCatDetails.textColor}`}>
-                                                <span>{currentCatDetails.icon} Description ⓘ</span>
+                                            <div className="relative" ref={fileDropdownRef}>
+                                                <button 
+                                                    onClick={() => setShowFileDropdown(!showFileDropdown)}
+                                                    className={`flex items-center gap-2 text-sm text-gray-300 hover:text-white bg-[#222] px-3 py-1.5 rounded-lg border border-gray-700 ${currentCatDetails.textColor}`}
+                                                >
+                                                    {activeFilePath || `${activeCategory.toUpperCase()}.md`} <span className="text-[10px]">▼</span>
+                                                </button>
+                                                {showFileDropdown && (
+                                                    <div className="absolute left-0 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl py-1 z-50">
+                                                        <button 
+                                                            onClick={() => handleFileSelect(`${activeCategory.toUpperCase()}.md`)}
+                                                            className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
+                                                        >
+                                                            {activeCategory.toUpperCase()}.md
+                                                        </button>
+                                                        {selectedItem?.files?.map((file: any) => (
+                                                            <button 
+                                                                key={file.id}
+                                                                onClick={() => handleFileSelect(file.path)}
+                                                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
+                                                            >
+                                                                {file.path}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-2 bg-[#222] p-1 rounded-lg border border-gray-700">
                                                 <button 
@@ -368,10 +499,43 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
                             <div className="flex-1 overflow-y-auto p-6">
                                 <div className="max-w-4xl mx-auto border border-gray-800 rounded-xl overflow-hidden bg-[#0e0e0e] flex flex-col h-[600px] max-h-full">
                                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#1a1a1a]">
-                                        <div className="relative group/dropdown">
-                                            <button className={`flex items-center gap-2 text-sm text-gray-300 hover:text-white bg-[#222] px-3 py-1.5 rounded-lg border border-gray-700 ${currentCatDetails.textColor}`}>
-                                                {activeCategory.toUpperCase()}.md <span className="text-[10px]">▼</span>
+                                        <div className="relative" ref={fileDropdownRef}>
+                                            <button 
+                                                onClick={() => setShowFileDropdown(!showFileDropdown)}
+                                                className={`flex items-center gap-2 text-sm text-gray-300 hover:text-white bg-[#222] px-3 py-1.5 rounded-lg border border-gray-700 ${currentCatDetails.textColor}`}
+                                            >
+                                                {activeFilePath || `${activeCategory.toUpperCase()}.md`} <span className="text-[10px]">▼</span>
                                             </button>
+                                            {showFileDropdown && (
+                                                <div className="absolute left-0 mt-1 w-56 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl py-1 z-50">
+                                                    <button 
+                                                        onClick={() => handleFileSelect(`${activeCategory.toUpperCase()}.md`)}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
+                                                    >
+                                                        {activeCategory.toUpperCase()}.md
+                                                    </button>
+                                                    {selectedItem?.files?.map((file: any) => (
+                                                        <button 
+                                                            key={file.id}
+                                                            onClick={() => handleFileSelect(file.path)}
+                                                            className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
+                                                        >
+                                                            {file.path}
+                                                        </button>
+                                                    ))}
+                                                    {activeCategory === 'skill' && (
+                                                        <>
+                                                            <div className="h-px bg-gray-700 my-1"></div>
+                                                            <button 
+                                                                onClick={handleCreateFile}
+                                                                className="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-gray-800 flex items-center gap-2"
+                                                            >
+                                                                <span className="text-lg leading-none">+</span> Create File
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-2 bg-[#121212] p-1 rounded-lg border border-gray-800">
                                             <button 

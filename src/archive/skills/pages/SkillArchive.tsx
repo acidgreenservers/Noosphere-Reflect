@@ -12,6 +12,7 @@ import {
     generateMemoryBatchZipExport,
     generateMemoryBatchDirectoryExportWithPicker
 } from '../../../services/converterService';
+import { SkillExportService } from '../../../services/skillExportService';
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { ArchiveItemModal, ArchiveItemField } from '../../../components/layout/ArchiveItemModal';
 import SkillList from '../components/SkillList';
@@ -192,45 +193,30 @@ export default function SkillArchive() {
         setDeleteModalOpen(false);
         setDeletingSkillId(null);
         await loadSkills();
+        
     };
 
     const handleExport = async (skill: Skill, format: 'html' | 'markdown' | 'json' | 'text', toClipboard: boolean = false) => {
         setIsExporting(true);
         try {
-            const memoryLike = {
-                ...skill,
-                content: skill.description,
-                metadata: {
-                    title: skill.metadata.title,
-                    wordCount: skill.metadata.wordCount,
-                    characterCount: skill.metadata.characterCount,
-                    exportStatus: skill.metadata.exportStatus || 'not_exported'
-                }
-            };
-
-            let content = '';
-            let extension = '';
-            let mimeType = '';
-
-            if (format === 'html') {
-                content = generateMemoryHtml(memoryLike as any);
-                extension = 'html';
-                mimeType = 'text/html';
-            } else if (format === 'markdown') {
-                content = generateMemoryMarkdown(memoryLike as any);
-                extension = 'md';
-                mimeType = 'text/markdown';
-            } else if (format === 'text') {
-                content = generateMemoryMarkdown(memoryLike as any);
-                extension = 'txt';
-                mimeType = 'text/plain';
-            } else {
-                content = generateMemoryJson(memoryLike as any);
-                extension = 'json';
-                mimeType = 'application/json';
-            }
-
             if (toClipboard) {
+                // Clipboard still uses single file format based on `format`
+                const memoryLike = {
+                    ...skill,
+                    content: skill.content,
+                    metadata: {
+                        title: skill.metadata.title,
+                        wordCount: skill.metadata.wordCount,
+                        characterCount: skill.metadata.characterCount,
+                        exportStatus: skill.metadata.exportStatus || 'not_exported'
+                    }
+                };
+
+                let content = '';
+                if (format === 'html') content = generateMemoryHtml(memoryLike as any);
+                else if (format === 'markdown' || format === 'text') content = generateMemoryMarkdown(memoryLike as any);
+                else content = generateMemoryJson(memoryLike as any);
+
                 if (format === 'html') {
                     const clipboardItem = new ClipboardItem({
                         'text/html': new Blob([content], { type: 'text/html' }),
@@ -244,24 +230,27 @@ export default function SkillArchive() {
                 return;
             }
 
-            const blob = new Blob([content], { type: mimeType });
+            // Always export ZIP for file downloads
+            const blob = await SkillExportService.exportSkillToZip(skill);
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${sanitizeFilename(skill.metadata.title, appSettings.preferences.fileNamingCase)}.${extension}`;
+            const now = new Date();
+            const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = `${sanitizeFilename(skill.metadata.title || 'skill')}-${timestamp}.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            const currentCount = skill.metadata?.exportCount || 0;
-            await storageService.updateExportStatus('skills', skill.id, 'exported', format, currentCount + 1);
-            const updated = {
-                ...skill,
-                metadata: { ...skill.metadata, exportStatus: 'exported' as const }
-            };
-            await storageService.updateSkill(updated);
-            await loadSkills();
+            const currentCount = skill.metadata.exportCount || 0;
+            await storageService.updateExportStatus('skills', skill.id, 'exported', 'zip', currentCount + 1);
+
+            const updatedSkill = await storageService.getSkillById(skill.id);
+            if (updatedSkill) {
+                setSkills(prev => prev.map(s => s.id === skill.id ? updatedSkill : s));
+            }
+
         } catch (error) {
             console.error('Export failed:', error);
             alert('Failed to export skill.');

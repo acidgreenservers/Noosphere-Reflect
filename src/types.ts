@@ -272,9 +272,18 @@ export interface SkillMetadata {
   exportCount?: number;
 }
 
+export interface SkillFile {
+  id: string;                    // UUID
+  path: string;                  // e.g. "assets/image.png" or "references/doc.md"
+  content?: string;              // Text content
+  fileData?: string;             // Base64 data for binary files
+  mimeType?: string;
+}
+
 export interface Skill {
   id: string;                    // UUID
   content: string;               // Raw skill text
+  files?: SkillFile[];           // Additional directories/files
   tags: string[];                // User-defined tags
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp (for edits)

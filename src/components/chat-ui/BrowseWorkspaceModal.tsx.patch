@@ -1,0 +1,122 @@
+--- src/components/chat-ui/BrowseWorkspaceModal.tsx
++++ src/components/chat-ui/BrowseWorkspaceModal.tsx
+@@ -21,6 +21,7 @@
+     // Edit mode state
+     const [editContent, setEditContent] = useState('');
+     const [showCode, setShowCode] = useState(false);
++    const [activeFilePath, setActiveFilePath] = useState('');
+     
+     // Copy state
+     const [copied, setCopied] = useState(false);
+@@ -34,6 +35,10 @@
+     const [showActionMenu, setShowActionMenu] = useState(false);
+     const actionMenuRef = useRef<HTMLDivElement>(null);
+ 
++    // File Dropdown state
++    const [showFileDropdown, setShowFileDropdown] = useState(false);
++    const fileDropdownRef = useRef<HTMLDivElement>(null);
++
+     useEffect(() => {
+         const handleClickOutside = (event: MouseEvent) => {
+             if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+@@ -49,6 +54,20 @@
+         };
+     }, [showActionMenu]);
+ 
++    useEffect(() => {
++        const handleClickOutside = (event: MouseEvent) => {
++            if (fileDropdownRef.current && !fileDropdownRef.current.contains(event.target as Node)) {
++                setShowFileDropdown(false);
++            }
++        };
++        if (showFileDropdown) {
++            document.addEventListener('mousedown', handleClickOutside);
++        }
++        return () => {
++            document.removeEventListener('mousedown', handleClickOutside);
++        };
++    }, [showFileDropdown]);
++
+     useEffect(() => {
+         if (isOpen) {
+             setActiveCategory(initialCategory);
+@@ -57,6 +76,32 @@
+             setIsEditMode(false);
+         }
+     }, [isOpen, initialCategory]);
++
++    useEffect(() => {
++        if (selectedItem) {
++            setActiveFilePath(`${activeCategory.toUpperCase()}.md`);
++            setEditContent(selectedItem.content || '');
++        }
++    }, [selectedItem, activeCategory]);
++
++    const saveCurrentContentToSelectedItem = () => {
++        if (!selectedItem) return;
++        
++        const rootFileName = `${activeCategory.toUpperCase()}.md`;
++        if (activeFilePath === rootFileName) {
++            setSelectedItem({
++                ...selectedItem,
++                content: editContent
++            });
++        } else {
++            const updatedFiles = (selectedItem.files || []).map((f: any) => 
++                f.path === activeFilePath ? { ...f, content: editContent } : f
++            );
++            setSelectedItem({
++                ...selectedItem,
++                files: updatedFiles
++            });
++        }
++    };
++
++    const handleFileSelect = (path: string) => {
++        if (isEditMode) {
++            saveCurrentContentToSelectedItem();
++        }
++        setActiveFilePath(path);
++        setShowFileDropdown(false);
++        
++        const rootFileName = `${activeCategory.toUpperCase()}.md`;
++        if (path === rootFileName) {
++            setEditContent(selectedItem?.content || '');
++        } else {
++            const file = selectedItem?.files?.find((f: any) => f.path === path);
++            setEditContent(file?.content || '');
++        }
++    };
+ 
+     const loadItems = async (category: ArchiveType) => {
+@@ -128,14 +173,19 @@
+ 
+     const handleSaveItem = async () => {
+         if (!selectedItem || activeCategory === 'agent') return;
+         
++        const rootFileName = `${activeCategory.toUpperCase()}.md`;
+         const updatedItem = {
+             ...selectedItem,
+-            content: editContent,
+             updatedAt: new Date().toISOString(),
+-            metadata: {
+-                ...selectedItem.metadata,
+-                wordCount: editContent.split(/\s+/).length,
+-                characterCount: editContent.length
+-            }
+         };
++        
++        if (activeFilePath === rootFileName) {
++            updatedItem.content = editContent;
++            updatedItem.metadata = {
++                ...updatedItem.metadata,
++                wordCount: editContent.split(/\s+/).length,
++                characterCount: editContent.length
++            };
++        } else {
++            updatedItem.files = (updatedItem.files || []).map((f: any) => 
++                f.path === activeFilePath ? { ...f, content: editContent } : f
++            );
++        }
+         
+         switch (activeCategory) {

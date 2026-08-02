@@ -177,9 +177,18 @@ const SkillMetadataSchema = z.object({
 });
 
 // Skill Schema - matching Skill interface
+const SkillFileSchema = z.object({
+    id: z.string(),
+    path: z.string().max(500),
+    content: z.string().max(1_000_000).optional(),
+    fileData: z.string().optional(),
+    mimeType: z.string().max(100).optional()
+});
+
 export const SkillSchema = z.object({
     id: z.string(),
     content: z.string().max(1_000_000), // Raw content preserved
+    files: z.array(SkillFileSchema).optional(),
     tags: z.array(z.string().max(50)).max(20),
     createdAt: z.string(),
     updatedAt: z.string(),
