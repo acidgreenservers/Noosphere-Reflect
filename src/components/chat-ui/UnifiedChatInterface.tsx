@@ -1527,7 +1527,7 @@ export default function UnifiedChatInterface() {
                                                 <span>📤 Export</span>
                                                 <span className="text-[10px]">▶</span>
                                             </button>
-                                            <div className="absolute left-full top-0 ml-1 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-xs">
+                                            <div className="absolute left-full top-0 w-40 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-xs before:absolute before:inset-y-0 before:-left-2 before:w-2 before:bg-transparent">
 
                                                 {/* Clipboard Submenu */}
                                                 <div className="relative group/clipboard">
@@ -1535,7 +1535,7 @@ export default function UnifiedChatInterface() {
                                                         <span>📋 Clipboard</span>
                                                         <span className="text-[10px]">▶</span>
                                                     </button>
-                                                    <div className="absolute left-full top-0 ml-1 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
+                                                    <div className="absolute left-full top-0 w-32 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1 before:absolute before:inset-y-0 before:-left-2 before:w-2 before:bg-transparent">
                                                         <button onClick={() => { handleExport('text', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Text</button>
                                                         <button onClick={() => { handleExport('markdown', true); setShowChatActionsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 hover:text-green-400">📝 Markdown</button>
                                                     </div>

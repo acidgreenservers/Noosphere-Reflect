@@ -1,9 +1,9 @@
 import { ChatTheme, ChatStyle } from '../../../types';
 import { ThemeRegistry as IThemeRegistry, PlatformTheme, ThemeRenderer, PlatformThemeClasses } from './base/ThemeTypes';
-import { ClaudeThemeRendererInstance, ClaudeThemeClasses } from './platforms/ClaudeTheme';
+import { ClaudeThemeRendererInstance, ClaudeThemeClasses } from './platforms/claude';
 import { ChatGPTThemeRendererInstance, ChatGPTThemeClasses } from './platforms/ChatGPTTheme';
 import { GrokThemeRendererInstance, GrokThemeClasses } from './platforms/GrokTheme';
-import { GeminiThemeRendererInstance, GeminiThemeClasses } from './platforms/GeminiTheme';
+import { GeminiThemeRendererInstance, GeminiThemeClasses } from './platforms/gemini';
 import { LeChatThemeRendererInstance, LeChatThemeClasses } from './platforms/LeChatTheme';
 import { LeoAiThemeRendererInstance, LeoAiThemeClasses } from './platforms/LeoAiTheme';
 
