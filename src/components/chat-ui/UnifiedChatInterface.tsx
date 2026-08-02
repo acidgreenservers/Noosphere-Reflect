@@ -168,7 +168,7 @@ const ChatMessageBubble = React.memo(({
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} group`}>
             {/* Render associated artifacts/attachments ABOVE the bubble */}
             {msg.artifacts && msg.artifacts.length > 0 && (
-                <div className="w-full max-w-xl flex flex-wrap gap-2 mb-2">
+                <div className={`w-fit max-w-xl flex flex-wrap gap-2 mb-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
                     {msg.artifacts.map((art) => (
                         <div
                             key={art.id}
@@ -185,17 +185,20 @@ const ChatMessageBubble = React.memo(({
             )}
 
             {/* Message Bubble Header (Meta) */}
-            <div className="flex items-center gap-2 mb-1.5 text-[10px] font-mono text-gray-500">
-                <span>{isUser ? '👤 You' : `🤖 ${aiName}`}</span>
-                {timestampStr && (
-                    <span className="text-gray-600">· {timestampStr}</span>
-                )}
-            </div>
+            {(displayContent || isEditing) && (
+                <div className="flex items-center gap-2 mb-1.5 text-[10px] font-mono text-gray-500">
+                    <span>{isUser ? '👤 You' : `🤖 ${aiName}`}</span>
+                    {timestampStr && (
+                        <span className="text-gray-600">· {timestampStr}</span>
+                    )}
+                </div>
+            )}
 
             {/* User Message: Tight Blue Bubble */}
             {isUser ? (
                 <div className="w-fit" style={{ maxWidth: 'min(100%, 65ch)' }}>
-                    <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words">
+                    {(displayContent || isEditing) && (
+                        <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words">
                         {isEditing ? (
                             <div className="flex flex-col gap-3">
                                 <div
@@ -259,6 +262,7 @@ const ChatMessageBubble = React.memo(({
                             </div>
                         )}
                     </div>
+                    )}
 
                     {/* Actions — always visible on last message, hover on others */}
                     {!isEditing && (
@@ -351,7 +355,7 @@ const ChatMessageBubble = React.memo(({
             ) : (
                 /* AI Message: No Bubble, Raw Text */
                 <div className="w-[65ch] max-w-full break-words">
-                    {isEditing ? (
+                    {(displayContent || isEditing) && (isEditing ? (
                         <div className="flex flex-col gap-3">
                             <div
                                 key={`edit-${isEditing}`}
@@ -398,7 +402,7 @@ const ChatMessageBubble = React.memo(({
                         <div className="text-sm leading-relaxed text-gray-100">
                             <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
                         </div>
-                    )}
+                    ))}
 
                     {/* Actions — always visible on last message, hover on others */}
                     {!isEditing && (
