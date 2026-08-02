@@ -492,8 +492,19 @@ export const NewChatView: React.FC = () => {
             {isPasteModalOpen && pendingPasteText && (
                 <div className="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center p-4">
                     <div className="bg-[#0c1410] border border-green-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-4 animate-fade-in">
-                        <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-                            <span>📋</span> Large Text Detected
+                        <h3 className="text-lg font-bold text-gray-100 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <span>📋</span> Large Text Detected
+                            </div>
+                            <button 
+                                onClick={() => { setIsPasteModalOpen(false); setPendingPasteText(null); }}
+                                className="text-gray-400 hover:text-gray-200 transition-colors p-1"
+                                title="Dismiss"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </h3>
                         <p className="text-sm text-gray-300">
                             You're pasting a large amount of text ({pendingPasteText.length.toLocaleString()} characters). How would you like to add this?
