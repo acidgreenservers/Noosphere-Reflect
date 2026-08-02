@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { storageService } from '../../services/storageService';
 import { ArchiveType } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
@@ -26,7 +26,26 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
     const [copied, setCopied] = useState(false);
     
     // Delete state
+    // Delete state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+    // Action menu state
+    const [showActionMenu, setShowActionMenu] = useState(false);
+    const actionMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+                setShowActionMenu(false);
+            }
+        };
+        if (showActionMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showActionMenu]);
 
     useEffect(() => {
         if (isOpen) {
@@ -311,27 +330,36 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
                                         <p className="text-sm text-gray-500 mt-1">Local {currentCatDetails.label}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <div className="relative group">
-                                            <button className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded-lg">
+                                        <div className="relative" ref={actionMenuRef}>
+                                            <button 
+                                                onClick={() => setShowActionMenu(!showActionMenu)}
+                                                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded-lg"
+                                            >
                                                 ⋮
                                             </button>
-                                            <div className="absolute right-0 mt-1 w-40 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
-                                                <button 
-                                                    onClick={() => {
-                                                        onInsertItem(selectedItem, activeCategory);
-                                                        onClose();
-                                                    }}
-                                                    className={`w-full text-left px-4 py-2 text-sm text-gray-300 ${currentCatDetails.hoverBg} flex items-center gap-2`}
-                                                >
-                                                    💬 Insert Into Chat
-                                                </button>
-                                                <button 
-                                                    onClick={() => setShowDeleteModal(true)}
-                                                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800 flex items-center gap-2"
-                                                >
-                                                    🗑️ Delete
-                                                </button>
-                                            </div>
+                                            {showActionMenu && (
+                                                <div className="absolute right-0 mt-1 w-40 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl transition-all z-50 py-1">
+                                                    <button 
+                                                        onClick={() => {
+                                                            onInsertItem(selectedItem, activeCategory);
+                                                            setShowActionMenu(false);
+                                                            onClose();
+                                                        }}
+                                                        className={`w-full text-left px-4 py-2 text-sm text-gray-300 ${currentCatDetails.hoverBg} flex items-center gap-2`}
+                                                    >
+                                                        💬 Insert Into Chat
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setShowActionMenu(false);
+                                                            setShowDeleteModal(true);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800 flex items-center gap-2"
+                                                    >
+                                                        🗑️ Delete
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

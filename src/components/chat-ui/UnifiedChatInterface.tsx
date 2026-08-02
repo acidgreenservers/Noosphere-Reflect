@@ -910,6 +910,8 @@ export default function UnifiedChatInterface() {
     const sendingRef = useRef(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const submenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const itemsMenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [showItemsSubmenu, setShowItemsSubmenu] = useState(false);
     const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
     const [artifactListWidth, setArtifactListWidth] = useState<number>(40);
 
@@ -1416,6 +1418,18 @@ export default function UnifiedChatInterface() {
 
     const handleLeaveSubmenu = () => {
         submenuTimeoutRef.current = setTimeout(() => {
+            setActiveSubmenu(null);
+        }, 150);
+    };
+
+    const handleEnterItemsMenu = () => {
+        if (itemsMenuTimeoutRef.current) clearTimeout(itemsMenuTimeoutRef.current);
+        setShowItemsSubmenu(true);
+    };
+
+    const handleLeaveItemsMenu = () => {
+        itemsMenuTimeoutRef.current = setTimeout(() => {
+            setShowItemsSubmenu(false);
             setActiveSubmenu(null);
         }, 150);
     };
@@ -2171,230 +2185,276 @@ export default function UnifiedChatInterface() {
                                         </button>
                                         <div className="border-t border-green-500/10 my-1"></div>
 
-                                        {/* Memory Submenu Trigger */}
+                                        {/* Items Submenu Trigger */}
                                         <div 
                                             className="relative"
-                                            onMouseEnter={() => handleLoadSubmenu('memory')}
-                                            onMouseLeave={handleLeaveSubmenu}
+                                            onMouseEnter={handleEnterItemsMenu}
+                                            onMouseLeave={handleLeaveItemsMenu}
                                         >
                                             <button 
-                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-purple-500/10 hover:text-purple-400 text-gray-300 transition-colors group"
+                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-green-500/10 hover:text-green-400 text-gray-300 transition-colors group"
                                             >
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm">🧠</span>
-                                                    <span className="text-xs">Insert Saved Memory</span>
+                                                    <span className="text-sm">📦</span>
+                                                    <span className="text-xs">Items</span>
                                                 </div>
-                                                <span className="text-gray-500 group-hover:text-purple-400">▶</span>
+                                                <span className="text-gray-500 group-hover:text-green-400">▶</span>
                                             </button>
                                             
-                                            {activeSubmenu === 'memory' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
-                                                    <div className="py-2">
-                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                                            Recent Memories
-                                                        </div>
-                                                        {recentItems.length > 0 ? (
-                                                            recentItems.map(item => (
-                                                                <button
-                                                                    key={item.id}
-                                                                    onClick={() => {
-                                                                        handleInsertItemToChat(item, 'memory');
-                                                                        setShowAttachMenu(false);
-                                                                        setActiveSubmenu(null);
-                                                                    }}
-                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-purple-500/10 hover:text-purple-400 transition-colors truncate"
-                                                                >
-                                                                    {item.metadata?.title || item.title}
-                                                                </button>
-                                                            ))
-                                                        ) : (
-                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent memories</div>
+                                            {showItemsSubmenu && (
+                                                <div className="absolute left-full bottom-0 ml-1 w-56 bg-[#0e1511] border border-green-500/20 rounded-xl shadow-2xl animate-fade-in z-[90] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent py-1.5">
+                                                    
+                                                    {/* Memory Submenu Trigger */}
+                                                    <div 
+                                                        className="relative"
+                                                        onMouseEnter={() => handleLoadSubmenu('memory')}
+                                                        onMouseLeave={handleLeaveSubmenu}
+                                                    >
+                                                        <button 
+                                                            className="w-full flex items-center justify-between px-4 py-2 hover:bg-purple-500/10 hover:text-purple-400 text-gray-300 transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm">🧠</span>
+                                                                <span className="text-xs">Saved Memory</span>
+                                                            </div>
+                                                            <span className="text-gray-500 group-hover:text-purple-400">▶</span>
+                                                        </button>
+                                                        
+                                                        {activeSubmenu === 'memory' && (
+                                                            <div className="absolute left-full bottom-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
+                                                                <div className="py-2">
+                                                                    <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                                        Recent Memories
+                                                                    </div>
+                                                                    {recentItems.length > 0 ? (
+                                                                        recentItems.map(item => (
+                                                                            <button
+                                                                                key={item.id}
+                                                                                onClick={() => {
+                                                                                    handleInsertItemToChat(item, 'memory');
+                                                                                    setShowAttachMenu(false);
+                                                                                    setShowItemsSubmenu(false);
+                                                                                    setActiveSubmenu(null);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-purple-500/10 hover:text-purple-400 transition-colors truncate"
+                                                                            >
+                                                                                {item.metadata?.title || item.title}
+                                                                            </button>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="px-4 py-2 text-sm text-gray-500 italic">No recent memories</div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="border-t border-gray-800 p-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setBrowseInitialCategory('memory');
+                                                                            setIsBrowseWorkspaceOpen(true);
+                                                                            setShowAttachMenu(false);
+                                                                            setShowItemsSubmenu(false);
+                                                                            setActiveSubmenu(null);
+                                                                        }}
+                                                                        className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-purple-500/20 hover:text-purple-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                                    >
+                                                                        <span>🔍</span> Browse Memories
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    <div className="border-t border-gray-800 p-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setBrowseInitialCategory('memory');
-                                                                setIsBrowseWorkspaceOpen(true);
-                                                                setShowAttachMenu(false);
-                                                                setActiveSubmenu(null);
-                                                            }}
-                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-purple-500/20 hover:text-purple-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
-                                                        >
-                                                            <span>🔍</span> Browse Memories
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {/* Prompt Submenu Trigger */}
-                                        <div 
-                                            className="relative"
-                                            onMouseEnter={() => handleLoadSubmenu('prompt')}
-                                            onMouseLeave={handleLeaveSubmenu}
-                                        >
-                                            <button 
-                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-yellow-500/10 hover:text-yellow-400 text-gray-300 transition-colors group"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm">💡</span>
-                                                    <span className="text-xs">Insert Saved Prompt</span>
-                                                </div>
-                                                <span className="text-gray-500 group-hover:text-yellow-400">▶</span>
-                                            </button>
-                                            
-                                            {activeSubmenu === 'prompt' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
-                                                    <div className="py-2">
-                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                                            Recent Prompts
-                                                        </div>
-                                                        {recentItems.length > 0 ? (
-                                                            recentItems.map(item => (
-                                                                <button
-                                                                    key={item.id}
-                                                                    onClick={() => {
-                                                                        handleInsertItemToChat(item, 'prompt');
-                                                                        setShowAttachMenu(false);
-                                                                        setActiveSubmenu(null);
-                                                                    }}
-                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-colors truncate"
-                                                                >
-                                                                    {item.metadata?.title || item.title}
-                                                                </button>
-                                                            ))
-                                                        ) : (
-                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent prompts</div>
+                                                    {/* Prompt Submenu Trigger */}
+                                                    <div 
+                                                        className="relative"
+                                                        onMouseEnter={() => handleLoadSubmenu('prompt')}
+                                                        onMouseLeave={handleLeaveSubmenu}
+                                                    >
+                                                        <button 
+                                                            className="w-full flex items-center justify-between px-4 py-2 hover:bg-yellow-500/10 hover:text-yellow-400 text-gray-300 transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm">💡</span>
+                                                                <span className="text-xs">Saved Prompt</span>
+                                                            </div>
+                                                            <span className="text-gray-500 group-hover:text-yellow-400">▶</span>
+                                                        </button>
+                                                        
+                                                        {activeSubmenu === 'prompt' && (
+                                                            <div className="absolute left-full bottom-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
+                                                                <div className="py-2">
+                                                                    <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                                        Recent Prompts
+                                                                    </div>
+                                                                    {recentItems.length > 0 ? (
+                                                                        recentItems.map(item => (
+                                                                            <button
+                                                                                key={item.id}
+                                                                                onClick={() => {
+                                                                                    handleInsertItemToChat(item, 'prompt');
+                                                                                    setShowAttachMenu(false);
+                                                                                    setShowItemsSubmenu(false);
+                                                                                    setActiveSubmenu(null);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-colors truncate"
+                                                                            >
+                                                                                {item.metadata?.title || item.title}
+                                                                            </button>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="px-4 py-2 text-sm text-gray-500 italic">No recent prompts</div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="border-t border-gray-800 p-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setBrowseInitialCategory('prompt');
+                                                                            setIsBrowseWorkspaceOpen(true);
+                                                                            setShowAttachMenu(false);
+                                                                            setShowItemsSubmenu(false);
+                                                                            setActiveSubmenu(null);
+                                                                        }}
+                                                                        className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-yellow-500/20 hover:text-yellow-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                                    >
+                                                                        <span>🔍</span> Browse Prompts
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    <div className="border-t border-gray-800 p-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setBrowseInitialCategory('prompt');
-                                                                setIsBrowseWorkspaceOpen(true);
-                                                                setShowAttachMenu(false);
-                                                                setActiveSubmenu(null);
-                                                            }}
-                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-yellow-500/20 hover:text-yellow-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
-                                                        >
-                                                            <span>🔍</span> Browse Prompts
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {/* Skill Submenu Trigger */}
-                                        <div 
-                                            className="relative"
-                                            onMouseEnter={() => handleLoadSubmenu('skill')}
-                                            onMouseLeave={handleLeaveSubmenu}
-                                        >
-                                            <button 
-                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-blue-500/10 hover:text-blue-400 text-gray-300 transition-colors group"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm">⚡</span>
-                                                    <span className="text-xs">Insert Saved Skill</span>
-                                                </div>
-                                                <span className="text-gray-500 group-hover:text-blue-400">▶</span>
-                                            </button>
-                                            
-                                            {activeSubmenu === 'skill' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
-                                                    <div className="py-2">
-                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                                            Recent Skills
-                                                        </div>
-                                                        {recentItems.length > 0 ? (
-                                                            recentItems.map(item => (
-                                                                <button
-                                                                    key={item.id}
-                                                                    onClick={() => {
-                                                                        handleInsertItemToChat(item, 'skill');
-                                                                        setShowAttachMenu(false);
-                                                                        setActiveSubmenu(null);
-                                                                    }}
-                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 transition-colors truncate"
-                                                                >
-                                                                    {item.metadata?.title || item.title}
-                                                                </button>
-                                                            ))
-                                                        ) : (
-                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent skills</div>
+                                                    {/* Skill Submenu Trigger */}
+                                                    <div 
+                                                        className="relative"
+                                                        onMouseEnter={() => handleLoadSubmenu('skill')}
+                                                        onMouseLeave={handleLeaveSubmenu}
+                                                    >
+                                                        <button 
+                                                            className="w-full flex items-center justify-between px-4 py-2 hover:bg-blue-500/10 hover:text-blue-400 text-gray-300 transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm">⚡</span>
+                                                                <span className="text-xs">Saved Skill</span>
+                                                            </div>
+                                                            <span className="text-gray-500 group-hover:text-blue-400">▶</span>
+                                                        </button>
+                                                        
+                                                        {activeSubmenu === 'skill' && (
+                                                            <div className="absolute left-full bottom-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
+                                                                <div className="py-2">
+                                                                    <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                                        Recent Skills
+                                                                    </div>
+                                                                    {recentItems.length > 0 ? (
+                                                                        recentItems.map(item => (
+                                                                            <button
+                                                                                key={item.id}
+                                                                                onClick={() => {
+                                                                                    handleInsertItemToChat(item, 'skill');
+                                                                                    setShowAttachMenu(false);
+                                                                                    setShowItemsSubmenu(false);
+                                                                                    setActiveSubmenu(null);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 transition-colors truncate"
+                                                                            >
+                                                                                {item.metadata?.title || item.title}
+                                                                            </button>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="px-4 py-2 text-sm text-gray-500 italic">No recent skills</div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="border-t border-gray-800 p-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setBrowseInitialCategory('skill');
+                                                                            setIsBrowseWorkspaceOpen(true);
+                                                                            setShowAttachMenu(false);
+                                                                            setShowItemsSubmenu(false);
+                                                                            setActiveSubmenu(null);
+                                                                        }}
+                                                                        className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-blue-500/20 hover:text-blue-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                                    >
+                                                                        <span>🔍</span> Browse Skills
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    <div className="border-t border-gray-800 p-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setBrowseInitialCategory('skill');
-                                                                setIsBrowseWorkspaceOpen(true);
-                                                                setShowAttachMenu(false);
-                                                                setActiveSubmenu(null);
-                                                            }}
-                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-blue-500/20 hover:text-blue-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
-                                                        >
-                                                            <span>🔍</span> Browse Skills
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {/* Workflow Submenu Trigger */}
-                                        <div 
-                                            className="relative"
-                                            onMouseEnter={() => handleLoadSubmenu('workflow')}
-                                            onMouseLeave={handleLeaveSubmenu}
-                                        >
-                                            <button 
-                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-cyan-500/10 hover:text-cyan-400 text-gray-300 transition-colors group"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm">🌊</span>
-                                                    <span className="text-xs">Insert Saved Workflow</span>
-                                                </div>
-                                                <span className="text-gray-500 group-hover:text-cyan-400">▶</span>
-                                            </button>
-                                            
-                                            {activeSubmenu === 'workflow' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
-                                                    <div className="py-2">
-                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                                            Recent Workflows
-                                                        </div>
-                                                        {recentItems.length > 0 ? (
-                                                            recentItems.map(item => (
-                                                                <button
-                                                                    key={item.id}
-                                                                    onClick={() => {
-                                                                        handleInsertItemToChat(item, 'workflow');
-                                                                        setShowAttachMenu(false);
-                                                                        setActiveSubmenu(null);
-                                                                    }}
-                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors truncate"
-                                                                >
-                                                                    {item.metadata?.title || item.title}
-                                                                </button>
-                                                            ))
-                                                        ) : (
-                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent workflows</div>
+                                                    {/* Workflow Submenu Trigger */}
+                                                    <div 
+                                                        className="relative"
+                                                        onMouseEnter={() => handleLoadSubmenu('workflow')}
+                                                        onMouseLeave={handleLeaveSubmenu}
+                                                    >
+                                                        <button 
+                                                            className="w-full flex items-center justify-between px-4 py-2 hover:bg-cyan-500/10 hover:text-cyan-400 text-gray-300 transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm">🌊</span>
+                                                                <span className="text-xs">Saved Workflow</span>
+                                                            </div>
+                                                            <span className="text-gray-500 group-hover:text-cyan-400">▶</span>
+                                                        </button>
+                                                        
+                                                        {activeSubmenu === 'workflow' && (
+                                                            <div className="absolute left-full bottom-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
+                                                                <div className="py-2">
+                                                                    <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                                        Recent Workflows
+                                                                    </div>
+                                                                    {recentItems.length > 0 ? (
+                                                                        recentItems.map(item => (
+                                                                            <button
+                                                                                key={item.id}
+                                                                                onClick={() => {
+                                                                                    handleInsertItemToChat(item, 'workflow');
+                                                                                    setShowAttachMenu(false);
+                                                                                    setShowItemsSubmenu(false);
+                                                                                    setActiveSubmenu(null);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors truncate"
+                                                                            >
+                                                                                {item.metadata?.title || item.title}
+                                                                            </button>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="px-4 py-2 text-sm text-gray-500 italic">No recent workflows</div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="border-t border-gray-800 p-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setBrowseInitialCategory('workflow');
+                                                                            setIsBrowseWorkspaceOpen(true);
+                                                                            setShowAttachMenu(false);
+                                                                            setShowItemsSubmenu(false);
+                                                                            setActiveSubmenu(null);
+                                                                        }}
+                                                                        className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-cyan-500/20 hover:text-cyan-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                                    >
+                                                                        <span>🔍</span> Browse Workflows
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    <div className="border-t border-gray-800 p-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setBrowseInitialCategory('workflow');
-                                                                setIsBrowseWorkspaceOpen(true);
-                                                                setShowAttachMenu(false);
-                                                                setActiveSubmenu(null);
-                                                            }}
-                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-cyan-500/20 hover:text-cyan-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
-                                                        >
-                                                            <span>🔍</span> Browse Workflows
-                                                        </button>
-                                                    </div>
+                                                    
+                                                    <div className="border-t border-green-500/10 my-1"></div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setBrowseInitialCategory('memory');
+                                                            setIsBrowseWorkspaceOpen(true);
+                                                            setShowAttachMenu(false);
+                                                            setShowItemsSubmenu(false);
+                                                            setActiveSubmenu(null);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-400 hover:text-green-400 flex items-center gap-2 transition-colors text-sm"
+                                                    >
+                                                        <span>🔍</span> Browse Items
+                                                    </button>
+
                                                 </div>
                                             )}
                                         </div>
