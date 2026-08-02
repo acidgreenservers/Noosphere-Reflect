@@ -117,6 +117,7 @@ const ChatMessageBubble = React.memo(({
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     }, []);
     const [isMessageExpanded, setIsMessageExpanded] = useState(false);
+    const [isThoughtExpanded, setIsThoughtExpanded] = useState(false);
     const editRef = useRef<HTMLDivElement>(null);
 
     // Detect and extract Exporter Attribution
@@ -244,8 +245,48 @@ const ChatMessageBubble = React.memo(({
                 );
             })() : isUser ? (
                 <div className="w-fit" style={{ maxWidth: 'min(100%, 65ch)' }}>
+                    {msg.thought && (
+                        <div className="mb-5 w-full">
+                            {/* Header Toggle */}
+                            <button
+                                onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
+                                className="flex items-center space-x-2 text-stone-400 hover:text-stone-300 transition-colors focus:outline-none w-full text-left"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3.5 h-3.5 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                                <span className="font-semibold text-[13px] tracking-wide">Thought Process</span>
+                            </button>
+                            
+                            {/* Collapsible Content */}
+                            {isThoughtExpanded && (
+                                <div className="relative pl-6 ml-1.5 mt-4 border-l-[3px] border-[#333333] animate-fade-in">
+                                    {/* Clock Top Icon */}
+                                    <div className="absolute -left-[11.5px] -top-3 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                    </div>
+                                    
+                                    <div className="text-stone-400 text-[13.5px] leading-relaxed font-sans pb-4 pr-2 overflow-hidden">
+                                        <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
+                                            <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Checkmark Bottom Icon */}
+                                    <div className="absolute -left-[11.5px] -bottom-2 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {(displayContent || isEditing) && (
-                        <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words">
+                        <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words mt-1">
                         {isEditing ? (
                             <div className="flex flex-col gap-3">
                                 <div
@@ -402,6 +443,46 @@ const ChatMessageBubble = React.memo(({
             ) : (
                 /* AI Message: No Bubble, Raw Text */
                 <div className="w-[65ch] max-w-full break-words">
+                    {msg.thought && (
+                        <div className="mb-5 w-full">
+                            {/* Header Toggle */}
+                            <button
+                                onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
+                                className="flex items-center space-x-2 text-stone-400 hover:text-stone-300 transition-colors focus:outline-none w-full text-left"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3.5 h-3.5 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                                <span className="font-semibold text-[13px] tracking-wide">Thought Process</span>
+                            </button>
+                            
+                            {/* Collapsible Content */}
+                            {isThoughtExpanded && (
+                                <div className="relative pl-6 ml-1.5 mt-4 border-l-[3px] border-[#333333] animate-fade-in">
+                                    {/* Clock Top Icon */}
+                                    <div className="absolute -left-[11.5px] -top-3 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                    </div>
+                                    
+                                    <div className="text-stone-400 text-[13.5px] leading-relaxed font-sans pb-4 pr-2 overflow-hidden">
+                                        <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
+                                            <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Checkmark Bottom Icon */}
+                                    <div className="absolute -left-[11.5px] -bottom-2 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {(displayContent || isEditing) && (isEditing ? (
                         <div className="flex flex-col gap-3">
                             <div
@@ -629,6 +710,10 @@ export default function UnifiedChatInterface() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [pendingPasteText, setPendingPasteText] = useState<string | null>(null);
     const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+    
+    // Thinking block state
+    const [showThinkingInput, setShowThinkingInput] = useState(false);
+    const [thinkingValue, setThinkingValue] = useState('');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -729,10 +814,15 @@ export default function UnifiedChatInterface() {
             content: text,
             isEdited: false,
             createdAt: new Date().toISOString(),
-            artifacts: [...attachedFiles]
+            artifacts: [...attachedFiles],
+            thought: thinkingValue.trim() || undefined
         };
 
         const updatedMessages = [...messages, newMessage];
+
+        // Reset thinking block state
+        setShowThinkingInput(false);
+        setThinkingValue('');
 
         const updatedSession: SavedChatSession = {
             ...session,
@@ -1715,6 +1805,29 @@ export default function UnifiedChatInterface() {
                                         )}
                                     </div>
 
+                                    {/* Thinking Block Input */}
+                                    {showThinkingInput && (
+                                        <div className="w-full bg-[#1e1436]/40 border border-purple-500/30 focus-within:border-purple-500 shadow-purple-900/10 rounded-3xl p-3 flex flex-col gap-2.5 transition-all mb-2 relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setShowThinkingInput(false);
+                                                    setThinkingValue('');
+                                                }}
+                                                className="absolute top-2 right-3 text-purple-500/50 hover:text-purple-400 transition-colors p-1"
+                                                title="Remove Thinking Block"
+                                            >
+                                                ×
+                                            </button>
+                                            <textarea
+                                                value={thinkingValue}
+                                                onChange={(e) => setThinkingValue(e.target.value)}
+                                                placeholder="Enter your thought process..."
+                                                className="w-full bg-transparent resize-none outline-none border-none text-xs text-purple-100 placeholder-purple-500/50 scrollbar-none min-h-[80px] pr-6"
+                                            />
+                                        </div>
+                                    )}
+
                                     {/* Input box styled according to active turn */}
                                     <div
                                         className={`w-full bg-[#122622]/40 border rounded-3xl p-3 flex flex-col gap-2.5 focus-within:shadow-md transition-all relative ${currentRole === 'prompt'
@@ -1795,6 +1908,16 @@ export default function UnifiedChatInterface() {
                                             className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
                                         >
                                             <span>📎</span> Attach File / Picture
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowAttachMenu(false);
+                                                setShowThinkingInput(prev => !prev);
+                                            }}
+                                            className="w-full text-left px-4 py-2 hover:bg-purple-500/10 text-purple-300 flex items-center gap-2 transition-colors"
+                                        >
+                                            <span>🧠</span> {showThinkingInput ? 'Remove Thinking Block' : 'Add Thinking Block'}
                                         </button>
                                         <div className="border-t border-green-500/10 my-1"></div>
 

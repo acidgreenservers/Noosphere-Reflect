@@ -61,6 +61,7 @@ export interface ChatMessage {
   createdAt?: string; // ISO timestamp for temporal context
   artifacts?: ConversationArtifact[]; // Per-message artifacts
   role?: 'prompt' | 'response'; // Explicit role (overrides type-based defaults)
+  thought?: string; // Thought process or raw thinking block
 }
 
 export interface ChatData {
