@@ -19,3 +19,7 @@ Example Memory Unit
 This keeps my memory compact and resilient against signal to noise degradation. I should prune the lest attractive patterns while retaining the most attractive patterns when the file reaches ~300 lines. I'll move the things I prune into a `MEMORY-HISTORY.md` file that resides beside my MEMORY.md file.
 
 ## Knowledge
+
+- Universal UI components reduce redundant code.
+- Dual-environment operation (HTTP/HTTPS) must be guaranteed across all APIs.
+- Semantic colors build intuitive interface maps.

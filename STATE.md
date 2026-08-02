@@ -23,6 +23,12 @@
   - `NewChatView` now supports full file attachments (via the `+` menu), shortcut insertion (memories, prompts, skills), and inline image pasting (`onPaste` intercepts clipboard images, converts to base64, and mounts as `ConversationArtifact`).
   - `UnifiedChatInterface` now also supports inline image pasting directly into the chat text area.
 
+### Verified State Invariants (6.6 — Workspace Universal UI Refactoring)
+- **BrowseWorkspaceModal**: Consolidated previous `BrowseSkillsModal` into a universal browser. Supports Memories, Prompts, Skills, Workflows, and Agents via dynamic `activeCategory`.
+- **Semantic Chat Rendering**: Chat bubbles dynamically reflect the inserted artifact type (🧠 Purple/Memory, 💡 Yellow/Prompt, ⚡ Blue/Skill, 🌊 Cyan/Workflow).
+- **Universal Attachment Menu**: `UnifiedChatInterface` and `NewChatView` utilize generalized hover submenus to load specific categories dynamically from `storageService`, reducing hardcoded category menus.
+- **Copy to Clipboard Fallback**: `handleCopy` implements a graceful fallback utilizing `document.execCommand('copy')` to guarantee clipboard access across both HTTPS (GitHub Pages) and local HTTP development environments.
+
 ### Verified State Invariants (6.5 — UI Cleanup)
 - **Explanation Bubbles Removed**: The informational banner divs above list/grid views in SkillArchive, WorkflowArchive, and AgentArchive have been removed. All three pages now start directly with their list/grid content, mirroring other archive pages (Chats, Memories, Prompts). Zero blast radius — self-contained presentational elements with no state/logic/refs.
 
