@@ -574,9 +574,12 @@ export default function UnifiedChatInterface() {
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
     const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [pendingPasteText, setPendingPasteText] = useState<string | null>(null);
+    const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -1099,6 +1102,14 @@ export default function UnifiedChatInterface() {
     };
 
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const pastedText = e.clipboardData?.getData('text/plain');
+        if (pastedText && pastedText.length >= 500) {
+            e.preventDefault();
+            setPendingPasteText(pastedText);
+            setIsPasteModalOpen(true);
+            return;
+        }
+
         const items = e.clipboardData?.items;
         if (!items) return;
 
@@ -1124,6 +1135,45 @@ export default function UnifiedChatInterface() {
                 }
             }
         }
+    };
+
+    const handlePasteAsText = () => {
+        if (!pendingPasteText) return;
+        const textarea = textareaRef.current;
+        if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const newValue = inputValue.substring(0, start) + pendingPasteText + inputValue.substring(end);
+            setInputValue(newValue);
+            setTimeout(() => {
+                textarea.selectionStart = textarea.selectionEnd = start + pendingPasteText.length;
+                textarea.focus();
+            }, 0);
+        } else {
+            setInputValue(prev => prev + pendingPasteText);
+        }
+        setIsPasteModalOpen(false);
+        setPendingPasteText(null);
+    };
+
+    const handlePasteAsAttachment = () => {
+        if (!pendingPasteText) return;
+        
+        const base64Data = btoa(unescape(encodeURIComponent(pendingPasteText)));
+        
+        const newArtifact: ConversationArtifact = {
+            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
+            fileName: 'Pasted Text.txt',
+            fileSize: new Blob([pendingPasteText]).size,
+            mimeType: 'text/plain',
+            fileData: base64Data,
+            uploadedAt: new Date().toISOString()
+        };
+        
+        setAttachedFiles(prev => [...prev, newArtifact]);
+        showToast('📎 Text pasted as attachment', 'info');
+        setIsPasteModalOpen(false);
+        setPendingPasteText(null);
     };
 
     const handleModelChange = async (modelName: string) => {
@@ -1634,6 +1684,7 @@ export default function UnifiedChatInterface() {
                                             )}
                                         </button>
                                         <textarea
+                                            ref={textareaRef}
                                             value={inputValue}
                                             onChange={(e) => setInputValue(e.target.value)}
                                             onPaste={handlePaste}
@@ -1856,6 +1907,34 @@ export default function UnifiedChatInterface() {
                     onConfirm={handleConfirmDelete}
                     onCancel={() => setShowDeleteConfirm(false)}
                 />
+            )}
+
+            {/* Paste Modal */}
+            {isPasteModalOpen && pendingPasteText && (
+                <div className="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center p-4">
+                    <div className="bg-[#0c1410] border border-green-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-4 animate-fade-in">
+                        <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
+                            <span>📋</span> Large Text Detected
+                        </h3>
+                        <p className="text-sm text-gray-300">
+                            You're pasting a large amount of text ({pendingPasteText.length.toLocaleString()} characters). How would you like to add this?
+                        </p>
+                        <div className="flex gap-3 mt-2">
+                            <button
+                                onClick={handlePasteAsText}
+                                className="flex-1 py-2 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm font-medium transition-colors"
+                            >
+                                Paste as Text
+                            </button>
+                            <button
+                                onClick={handlePasteAsAttachment}
+                                className="flex-1 py-2 px-4 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-colors"
+                            >
+                                Paste as Attachment
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
