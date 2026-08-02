@@ -100,7 +100,11 @@ export class MarkdownGenerator {
 
     // Messages
     chatData.messages.forEach((message, index) => {
-      if (layout === 'fancy') {
+      const isInsertedItem = [ChatMessageType.Skill, ChatMessageType.Memory, ChatMessageType.PromptShortcut, ChatMessageType.Workflow, 'agent'].includes(message.type);
+
+      if (isInsertedItem) {
+        this.renderInsertedItem(message, lines);
+      } else if (layout === 'fancy') {
         this.renderFancyMessage(message, userName, aiName, lines, index, chatData.messages.length);
       } else {
         this.renderUniversalMessage(message, userName, aiName, lines);
@@ -122,6 +126,30 @@ export class MarkdownGenerator {
     }
 
     return lines.join('\n');
+  }
+
+  private renderInsertedItem(message: ChatMessage, lines: string[]): void {
+    let itemTypeName = 'Item';
+    switch (message.type) {
+      case ChatMessageType.Memory: itemTypeName = 'Memory'; break;
+      case ChatMessageType.PromptShortcut: itemTypeName = 'Prompt'; break;
+      case ChatMessageType.Skill: itemTypeName = 'Skill'; break;
+      case ChatMessageType.Workflow: itemTypeName = 'Workflow'; break;
+      case 'agent' as any: itemTypeName = 'Agent'; break;
+    }
+
+    lines.push('---');
+    lines.push('');
+    lines.push(`## Inserted [${itemTypeName}]`);
+    lines.push('');
+
+    // Blockquote the content
+    const contentLines = message.content.split('\n');
+    contentLines.forEach(line => {
+      lines.push(`> ${line}`);
+    });
+
+    lines.push('');
   }
 
   private renderUniversalMessage(
