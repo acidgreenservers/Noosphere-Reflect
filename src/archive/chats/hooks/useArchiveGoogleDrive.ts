@@ -79,7 +79,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
         accessToken: string,
         chatsFolderId: string
     ) => {
-        const theme = session.selectedTheme || ChatTheme.DarkDefault;
+        const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
         const userName = session.userName || 'User';
         const aiName = session.aiName || 'AI';
         const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
@@ -299,7 +299,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                 if (!session) continue;
 
                 const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.preferences.fileNamingCase);
-                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
@@ -346,7 +346,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                 alert(`✅ Exported to Google Drive folder:\n- ${result.folderName}/\n  - ${result.mainFile}\n  - artifacts/ (${result.artifactsUploaded} files)\n  - export-metadata.json`);
             } else {
                 const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.preferences.fileNamingCase);
-                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
@@ -398,7 +398,7 @@ export function useArchiveGoogleDrive(): UseArchiveGoogleDriveReturn {
                 if (!session) continue;
 
                 const filename = sanitizeFilename(session.metadata?.title || session.chatTitle, appSettings.preferences.fileNamingCase);
-                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';

@@ -175,14 +175,14 @@ export const StepContentInput: React.FC<StepContentInputProps> = ({
                                     type="file"
                                     ref={fileInputRef}
                                     className="hidden"
-                                    accept=".json,.html,.txt,.md"
+                                    accept=".json,.txt,.md"
                                     onChange={onFileUpload}
                                 />
                                 <div className="w-20 h-20 bg-gray-800 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-xl border border-gray-700 group-hover:border-blue-500/30">
                                     <span className="text-4xl group-hover:rotate-12 transition-transform">📂</span>
                                 </div>
                                 <p className="text-gray-200 font-bold text-xl mb-2">Drop export file here</p>
-                                <p className="text-gray-500 text-sm font-medium tracking-wide">SUPPORTED: JSON, HTML, TXT, MD</p>
+                                <p className="text-gray-500 text-sm font-medium tracking-wide">SUPPORTED: JSON, TXT, MD</p>
                             </div>
                         ) : (
                             <div className="relative group flex-1 min-h-0">
@@ -191,7 +191,7 @@ export const StepContentInput: React.FC<StepContentInputProps> = ({
                                     onChange={(e) => onContentChange(e.target.value)}
                                     placeholder={selectedPlatform === ParserMode.ThirdPartyMarkdown
                                         ? "# Conversation Title\n**Model:** Claude 3.5 Sonnet\n**User:** Lucas\n\n## Prompt:\nHow do I..."
-                                        : "Paste your raw HTML, JSON, or Markdown export here..."
+                                        : "Paste your raw JSON or Markdown export here..."
                                     }
                                     className="w-full h-full bg-gray-900/60 border border-gray-700 rounded-2xl p-6 font-mono text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all duration-300 outline-none resize-none shadow-inner leading-relaxed"
                                     autoFocus

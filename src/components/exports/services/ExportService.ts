@@ -78,9 +78,27 @@ export class ExportService {
     // Call the generator with format-appropriate parameters
     switch (format) {
       case 'html':
-        // If a style is provided, use the style's renderer instead of the default HtmlGenerator
-        if (style && style !== ChatStyle.Default) {
-          const styleConfig = themeRegistry.getStyle(style);
+        // Determine style automatically based on parserMode or model if not explicitly set
+        let effectiveStyle = style;
+        if (!effectiveStyle || effectiveStyle === ChatStyle.Default) {
+          const modelString = (metadata?.model || aiName || '').toLowerCase();
+          
+          if (parserMode === ParserMode.ClaudeHtml || modelString.includes('claude')) {
+            effectiveStyle = ChatStyle.Claude;
+          } else if (parserMode === ParserMode.ChatGptHtml || modelString.includes('gpt') || modelString.includes('openai')) {
+            effectiveStyle = ChatStyle.ChatGPT;
+          } else if (parserMode === ParserMode.GeminiHtml || modelString.includes('gemini')) {
+            effectiveStyle = ChatStyle.Gemini;
+          } else if (parserMode === ParserMode.GrokHtml || modelString.includes('grok')) {
+            effectiveStyle = ChatStyle.Grok;
+          } else if (parserMode === ParserMode.LeChatHtml || modelString.includes('mistral') || modelString.includes('lechat')) {
+            effectiveStyle = ChatStyle.LeChat;
+          }
+        }
+
+        // If a style is provided or deduced, use the style's renderer instead of the default HtmlGenerator
+        if (effectiveStyle && effectiveStyle !== ChatStyle.Default) {
+          const styleConfig = themeRegistry.getStyle(effectiveStyle);
           if (styleConfig) {
             return styleConfig.renderer.generateHtml(
               chatData,

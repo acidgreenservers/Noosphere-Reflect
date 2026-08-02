@@ -10,11 +10,11 @@ export interface PlatformOption {
     icon: string;
     color: string;
     category: string;
-    format: 'markdown' | 'html' | 'json' | 'noosphere';
+    format: 'markdown' | 'json' | 'noosphere';
 }
 
 export interface ContentImportWizardProps {
     isOpen: boolean;
     onClose: () => void;
-    onImport: (content: string, type: 'html' | 'json' | 'markdown', mode: ParserMode, attachments?: File[]) => void;
+    onImport: (content: string, type: 'json' | 'markdown', mode: ParserMode, attachments?: File[]) => void;
 }

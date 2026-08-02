@@ -80,7 +80,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         onClose();
     };
 
-    const handleWizardImport = async (content: string, type: 'html' | 'json' | 'markdown', mode: ParserMode, attachments?: File[]) => {
+    const handleWizardImport = async (content: string, type: 'json' | 'markdown', mode: ParserMode, attachments?: File[]) => {
         try {
             const metadata = {
                 title: 'Imported Chat',

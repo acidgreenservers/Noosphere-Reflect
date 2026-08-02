@@ -3,7 +3,7 @@ import { ParserMode } from '../../../types';
 import { PLATFORM_OPTIONS } from '../constants';
 
 interface StepPlatformSelectionProps {
-    selectedFormat: 'markdown' | 'html' | 'json' | 'noosphere' | null;
+    selectedFormat: 'markdown' | 'json' | 'noosphere' | null;
     selectedPlatform: ParserMode | null;
     onSelect: (platform: ParserMode) => void;
 }

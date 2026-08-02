@@ -317,7 +317,7 @@ const ArchiveHub: React.FC = () => {
                         'html',
                         session.chatData!,
                         session.metadata?.title || session.chatTitle,
-                        session.selectedTheme || ChatTheme.DarkDefault,
+                        session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault,
                         session.userName || 'User',
                         session.aiName || 'AI',
                         session.parserMode || ParserMode.Basic,
@@ -428,7 +428,7 @@ const ArchiveHub: React.FC = () => {
                         startIn: 'downloads'
                     });
 
-                    const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                    const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
                     const userName = session.userName || 'User';
                     const aiName = session.aiName || 'AI';
                     const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
@@ -576,7 +576,7 @@ const ArchiveHub: React.FC = () => {
 
 
     const handleDirectoryExportToDrive = async (session: SavedChatSession, format: 'html' | 'markdown' | 'json' | 'text', appSettings: AppSettings, accessToken: string, chatsFolderId: string) => {
-        const theme = session.selectedTheme || ChatTheme.DarkDefault;
+        const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
         const userName = session.userName || 'User';
         const aiName = session.aiName || 'AI';
         const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
@@ -775,7 +775,7 @@ const ArchiveHub: React.FC = () => {
 
             } else {
                 // Single file export (existing logic)
-                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
@@ -1031,7 +1031,7 @@ const ArchiveHub: React.FC = () => {
 
             // Upload each session to Google Drive
             for (const session of fullSessions) {
-                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';
@@ -1138,7 +1138,7 @@ const ArchiveHub: React.FC = () => {
                 );
 
                 // Generate HTML content for upload
-                const theme = session.selectedTheme || ChatTheme.DarkDefault;
+                const theme = session.selectedTheme || appSettings.preferences.export?.htmlExportTheme || ChatTheme.DarkDefault;
                 const userName = session.userName || 'User';
                 const aiName = session.aiName || 'AI';
                 const title = session.metadata?.title || session.chatTitle || 'AI Chat Export';

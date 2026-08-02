@@ -76,53 +76,6 @@ export const PLATFORM_OPTIONS: PlatformOption[] = [
         format: 'markdown'
     },
 
-    // HTML Options
-    {
-        mode: ParserMode.ClaudeHtml,
-        label: 'Claude',
-        description: 'Anthropic Claude HTML exports with thought processes',
-        icon: '🧠',
-        color: 'from-orange-600 to-red-600',
-        category: 'Claude',
-        format: 'html'
-    },
-    {
-        mode: ParserMode.GeminiHtml,
-        label: 'Gemini',
-        description: 'Google Gemini HTML exports with thinking blocks',
-        icon: '✨',
-        color: 'from-blue-600 to-purple-600',
-        category: 'Gemini',
-        format: 'html'
-    },
-    {
-        mode: ParserMode.ChatGptHtml,
-        label: 'ChatGPT',
-        description: 'OpenAI ChatGPT conversation exports',
-        icon: '🤖',
-        color: 'from-teal-600 to-emerald-600',
-        category: 'ChatGPT',
-        format: 'html'
-    },
-    {
-        mode: ParserMode.LeChatHtml,
-        label: 'LeChat',
-        description: 'Mistral AI LeChat HTML exports',
-        icon: '🌊',
-        color: 'from-yellow-600 to-amber-600',
-        category: 'LeChat',
-        format: 'html'
-    },
-    {
-        mode: ParserMode.GrokHtml,
-        label: 'Grok',
-        description: 'xAI Grok conversation exports',
-        icon: '🚀',
-        color: 'from-gray-700 to-black',
-        category: 'Grok',
-        format: 'html'
-    },
-
     // JSON Options
     {
         mode: ParserMode.ThirdPartyJson,

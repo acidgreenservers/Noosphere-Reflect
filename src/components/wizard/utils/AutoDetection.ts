@@ -5,7 +5,7 @@ export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 export interface DetectionResult {
     signal: ImportSignal | null;
-    method: 'markdown' | 'json' | 'html' | 'auto';
+    method: 'markdown' | 'json' | 'auto';
     confidence: ConfidenceLevel;
     reason?: string;
 }
@@ -42,22 +42,7 @@ export const detectImportSignal = (content: string): DetectionResult => {
         };
     }
 
-    // 2. Check for HTML structure
-    if (content.trim().toLowerCase().startsWith('<!doctype html') || content.trim().toLowerCase().startsWith('<html')) {
-        return {
-            signal: {
-                id: 'html-auto',
-                name: 'HTML Source',
-                icon: '🌐',
-                mode: ParserMode.Basic,
-                description: 'Raw HTML structure detected.',
-                detect: () => true
-            },
-            method: 'html',
-            confidence: 'high',
-            reason: 'HTML document structure detected'
-        };
-    }
+
 
     // 3. Platform detection for non-standard markdown formats (Leo, Kimi)
 

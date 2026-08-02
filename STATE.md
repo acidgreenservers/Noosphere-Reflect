@@ -151,3 +151,14 @@
 **Full Export — `atob` InvalidCharacterError killed the entire run**
 - **Root cause**: The exporter assumed all artifact `fileData` was base64, but the DB holds BOTH base64 and raw-text payloads (legacy/text artifacts with unicode). `atob` throws on raw unicode text. The app already had the answer: `useArtifactBlobs.ts` discriminates via round-trip check
 - **Fix**: `artifactToBlob` sniffs encoding per artifact (base64 → decoded bytes; raw → UTF-8 Blob), mirroring the canonical decoder. Additionally: per-item resilience guard (`_EXPORT-ERROR.txt` placeholder + continue) so no single corrupt record can ever abort a Takeout again. Validated by user round-2 testing
+
+### HTML Export Architecture — Claude UI Theme (Phase 6.5)
+- **Automatic Style Detection**: `ExportService.ts` automatically maps exported chats to specific HTML styles by sniffing `parserMode` (e.g., `ParserMode.ClaudeHtml`) or parsing `metadata.model`/`aiName` for keywords (e.g. `claude`, `gpt`, `gemini`).
+- **Claude Theme Implementation**: Implemented a pixel-perfect Claude UI replica via `ClaudeTheme.ts`.
+  - Accurately renders AI responses inside `.claude-prose` with exact typography, letter-spacing, and line-heights.
+  - User messages render in exact dark-mode bubble containers, including smooth CSS transitions for expanding/collapsing content (`max-h-[140px]`).
+  - Added full text overflow handling (`word-break: break-word`, `overflow-wrap: break-word`) to gracefully handle long URLs or uninterrupted strings without breaking horizontal layout.
+  - Implemented exact code block styling (`pre` and `code`), wrapping with `overflow-x: auto` for internal code block horizontal scrolling.
+- **Context Banner**: The Claude HTML export seamlessly injects a top metadata banner showing the Noosphere Reflect front-matter (Title, Date, Model, Tags, Source URL) fully integrated into the theme design.
+- **Import Method Lockout**: Removed HTML import support across the app (in `StepFormatSelection.tsx`, `AutoDetection.ts`, `StepPlatformSelection.tsx`, etc.). Only Markdown and JSON are allowed for imports to maintain strict data integrity.
+- **Removed UX Clutter**: Automatically resolving the HTML export layout based on the model removes the need for explicit "Export Layout Style" UI settings in the AppSettings modal, streamlining the export workflow.

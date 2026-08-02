@@ -30,7 +30,7 @@ export const StepMethodSelection: React.FC<StepMethodSelectionProps> = ({ onSele
                     📋
                 </div>
                 <h3 className="text-2xl font-bold text-gray-100 mb-4 tracking-tight">Paste Content</h3>
-                <p className="text-xs text-gray-500 leading-relaxed font-medium">Import by choosing format (Markdown, HTML, JSON) and platform. Best for snippets.</p>
+                <p className="text-xs text-gray-500 leading-relaxed font-medium">Import by choosing format (Markdown, JSON) and platform. Best for snippets.</p>
                 <div className="mt-auto pt-8 flex items-center gap-2 text-[10px] font-black text-blue-400 group-hover:translate-x-1 transition-transform tracking-widest uppercase">
                     Open Intake <span>→</span>
                 </div>
@@ -44,7 +44,7 @@ export const StepMethodSelection: React.FC<StepMethodSelectionProps> = ({ onSele
                     📂
                 </div>
                 <h3 className="text-2xl font-bold text-gray-100 mb-4 tracking-tight">Upload File</h3>
-                <p className="text-xs text-gray-500 leading-relaxed font-medium">Select .md, .json, or .html files from your machine for deep processing.</p>
+                <p className="text-xs text-gray-500 leading-relaxed font-medium">Select .md or .json files from your machine for deep processing.</p>
                 <div className="mt-auto pt-8 flex items-center gap-2 text-[10px] font-black text-emerald-400 group-hover:translate-x-1 transition-transform tracking-widest uppercase">
                     Scan Drive <span>→</span>
                 </div>

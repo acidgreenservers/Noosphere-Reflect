@@ -203,10 +203,28 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
         }
     };
 
-    const handleWizardImport = async (parsedData: ParsedContent) => {
+    const handleWizardImport = async (content: string, type: 'json' | 'markdown', mode: any, attachments?: File[]) => {
         try {
-            await storageService.saveSession(parsedData.session);
-            alert(`✅ Successfully imported "${parsedData.session.chatTitle}"!`);
+            const { parseChat } = await import('../../services/converterService');
+            const data = await parseChat(content, type, mode);
+            
+            const newSession: any = {
+                id: crypto.randomUUID(),
+                chatTitle: data.metadata?.title || 'Imported Chat',
+                date: data.metadata?.date || new Date().toISOString(),
+                chatData: data,
+                metadata: {
+                    title: data.metadata?.title || 'Imported Chat',
+                    model: data.metadata?.model || mode || 'Unknown',
+                    date: data.metadata?.date || new Date().toISOString(),
+                    tags: data.metadata?.tags || [],
+                    updatedAt: new Date().toISOString()
+                },
+                parserMode: mode
+            };
+
+            await storageService.saveSession(newSession);
+            alert(`✅ Successfully imported "${newSession.chatTitle}"!`);
             window.location.reload();
         } catch (error) {
             console.error('Failed to save imported chat:', error);
