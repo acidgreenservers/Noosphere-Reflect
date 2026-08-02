@@ -28,6 +28,241 @@ const formatTimestamp = (isoString?: string): string | null => {
     return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
 };
 
+const ThoughtBlock = ({
+    msg,
+    index,
+    isThoughtExpanded,
+    setIsThoughtExpanded,
+    onEditMessage,
+    displayContent,
+    onImageClick,
+    onCopyText,
+    flashFeedback,
+    isUser
+}: {
+    msg: ChatMessage;
+    index: number;
+    isThoughtExpanded: boolean;
+    setIsThoughtExpanded: (b: boolean) => void;
+    onEditMessage: (index: number, content: string, thought?: string) => void;
+    displayContent: string;
+    onImageClick: (url: string) => void;
+    onCopyText: (text: string) => boolean;
+    flashFeedback: (setter: React.Dispatch<React.SetStateAction<boolean>>, ref: React.MutableRefObject<NodeJS.Timeout | null>) => void;
+    isUser?: boolean;
+}) => {
+    const [isEditingThought, setIsEditingThought] = useState(false);
+    const [editThoughtContent, setEditThoughtContent] = useState(msg.thought || '');
+    const editThoughtRef = useRef<HTMLDivElement>(null);
+    const [copiedThought, setCopiedThought] = useState(false);
+    const copyThoughtTimerRef = useRef<NodeJS.Timeout | null>(null);
+    
+    const [isThoughtTextExpanded, setIsThoughtTextExpanded] = useState(false);
+    const [needsShowMore, setNeedsShowMore] = useState(false);
+    const thoughtContentRef = useRef<HTMLDivElement>(null);
+
+    const handleCopyThoughtClick = () => {
+        if (msg.thought && onCopyText(msg.thought)) flashFeedback(setCopiedThought, copyThoughtTimerRef);
+    };
+
+    useEffect(() => {
+        setEditThoughtContent(msg.thought || '');
+    }, [msg.thought]);
+
+    useEffect(() => {
+        if (isEditingThought && editThoughtRef.current) {
+            editThoughtRef.current.textContent = editThoughtContent;
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(editThoughtRef.current);
+            range.collapse(false);
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+    }, [isEditingThought]);
+
+    useEffect(() => {
+        if (!isThoughtExpanded || !thoughtContentRef.current) return;
+        
+        const el = thoughtContentRef.current;
+        
+        const checkHeight = () => {
+            const child = el.firstElementChild;
+            // Measure actual content height
+            const height = child ? child.scrollHeight : el.scrollHeight;
+            if (height > 250) {
+                setNeedsShowMore(true);
+            } else {
+                setNeedsShowMore(false);
+            }
+        };
+
+        checkHeight();
+        
+        const resizeObserver = new ResizeObserver(() => checkHeight());
+        const child = el.firstElementChild;
+        if (child) resizeObserver.observe(child);
+        resizeObserver.observe(el);
+
+        return () => resizeObserver.disconnect();
+    }, [isThoughtExpanded, msg.thought, isEditingThought]);
+
+    const handleEditInput = () => {
+        if (editThoughtRef.current) {
+            setEditThoughtContent(editThoughtRef.current.textContent || '');
+        }
+    };
+
+    useEffect(() => () => {
+        if (copyThoughtTimerRef.current) clearTimeout(copyThoughtTimerRef.current);
+    }, []);
+
+    return (
+        <div className="mb-5 w-full">
+            <button
+                onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
+                className={`flex items-center space-x-2 text-stone-400 hover:text-stone-300 transition-colors focus:outline-none w-full ${isUser ? 'justify-end' : 'justify-start text-left'}`}
+            >
+                {isUser ? (
+                    <>
+                        <span className="font-semibold text-[13px] tracking-wide">Thought Process</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3.5 h-3.5 transition-transform duration-200 transform ${isThoughtExpanded ? '-rotate-90' : 'rotate-0'}`}>
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </>
+                ) : (
+                    <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3.5 h-3.5 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                        <span className="font-semibold text-[13px] tracking-wide">Thought Process</span>
+                    </>
+                )}
+            </button>
+            
+            {isThoughtExpanded && (
+                <div className={`relative mt-4 animate-fade-in border-[#333333] ${isUser ? 'pr-6 mr-1.5 border-r-[3px]' : 'pl-6 ml-1.5 border-l-[3px]'}`}>
+                    <div className={`absolute -top-3 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10 ${isUser ? '-right-[11.5px]' : '-left-[11.5px]'}`}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    
+                    <div className="relative">
+                        <div 
+                            ref={thoughtContentRef}
+                            className={`text-stone-400 text-[13.5px] leading-relaxed font-sans overflow-hidden transition-all duration-300 ${isUser ? 'pl-2 text-left' : 'pr-2 text-left'} ${needsShowMore && !isThoughtTextExpanded && !isEditingThought ? 'max-h-[250px]' : ''}`}
+                        >
+                            {isEditingThought ? (
+                                <div className="flex flex-col gap-3 pb-4">
+                                    <div
+                                        key={`edit-thought-${isEditingThought}`}
+                                        ref={editThoughtRef}
+                                        contentEditable
+                                        onInput={handleEditInput}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Escape') {
+                                                setIsEditingThought(false);
+                                                setEditThoughtContent(msg.thought || '');
+                                            }
+                                        }}
+                                        className="w-full bg-[#09100c]/50 border border-[#333333] rounded-xl p-3 text-[13px] text-stone-300 focus:outline-none focus:border-stone-500 min-h-[60px] font-mono whitespace-pre-wrap break-words"
+                                        suppressContentEditableWarning
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsEditingThought(false);
+                                                setEditThoughtContent(msg.thought || '');
+                                            }}
+                                            className="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onEditMessage(index, displayContent, editThoughtContent);
+                                                setIsEditingThought(false);
+                                            }}
+                                            className="px-3 py-1.5 text-xs text-[#09100c] bg-stone-300 hover:bg-stone-200 rounded-lg transition-colors font-medium cursor-pointer"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2 pb-2">
+                                    <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
+                                </div>
+                            )}
+                        </div>
+
+                        {needsShowMore && !isThoughtTextExpanded && !isEditingThought && (
+                            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#09100c] via-[#09100c]/90 to-transparent flex items-end justify-center pb-2 z-20">
+                                <button 
+                                    onClick={() => setIsThoughtTextExpanded(true)}
+                                    className="text-stone-300 hover:text-white bg-[#1e2321] hover:bg-[#2a302d] px-4 py-1.5 rounded-full text-xs font-medium transition-colors border border-stone-700/50"
+                                >
+                                    Show More
+                                </button>
+                            </div>
+                        )}
+                        
+                        <div className={`mt-2 flex items-center relative pb-4 ${isUser ? 'pr-2 justify-end' : 'pl-2 justify-start'} ${needsShowMore && !isThoughtTextExpanded && !isEditingThought ? 'invisible' : ''}`}>
+                            {!isEditingThought && (
+                                <div className="flex gap-2 relative z-30">
+                                    <button 
+                                        onClick={() => setIsEditingThought(true)}
+                                        className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                        title="Edit Thought Process"
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit
+                                    </button>
+                                    <button 
+                                        onClick={handleCopyThoughtClick}
+                                        className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                        title="Copy Thought Process"
+                                    >
+                                        {copiedThought ? (
+                                            <>✓ Copied</>
+                                        ) : (
+                                            <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+
+                            {needsShowMore && isThoughtTextExpanded && !isEditingThought && (
+                                <div className="absolute left-0 right-0 flex justify-center pointer-events-none">
+                                    <button 
+                                        onClick={() => setIsThoughtTextExpanded(false)}
+                                        className="text-stone-500 hover:text-stone-300 transition-colors text-xs font-medium pointer-events-auto"
+                                    >
+                                        Show Less
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className={`absolute -bottom-2 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10 ${isUser ? '-right-[11.5px]' : '-left-[11.5px]'}`}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ChatMessageBubble = React.memo(({
     msg,
     index,
@@ -78,8 +313,6 @@ const ChatMessageBubble = React.memo(({
         ref.current = setTimeout(() => set(false), 2000);
     };
 
-    const [copiedThought, setCopiedThought] = useState(false);
-    const copyThoughtTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [isCopyMenuOpen, setIsCopyMenuOpen] = useState(false);
 
     const handleCopyClick = () => {
@@ -87,7 +320,7 @@ const ChatMessageBubble = React.memo(({
     };
 
     const handleCopyThoughtClick = () => {
-        if (msg.thought && onCopyText(msg.thought)) flashFeedback(setCopiedThought, copyThoughtTimerRef);
+        if (msg.thought && onCopyText(msg.thought)) flashFeedback(setCopied, copyTimerRef);
     };
 
     const handleCopyTurnClick = () => {
@@ -128,14 +361,10 @@ const ChatMessageBubble = React.memo(({
     useEffect(() => () => {
         if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        if (copyThoughtTimerRef.current) clearTimeout(copyThoughtTimerRef.current);
     }, []);
     const [isMessageExpanded, setIsMessageExpanded] = useState(false);
     const [isThoughtExpanded, setIsThoughtExpanded] = useState(false);
-    const [isEditingThought, setIsEditingThought] = useState(false);
-    const [editThoughtContent, setEditThoughtContent] = useState(msg.thought || '');
     const editRef = useRef<HTMLDivElement>(null);
-    const editThoughtRef = useRef<HTMLDivElement>(null);
 
     // Detect and extract Exporter Attribution
     let displayContent = msg.content;
@@ -159,9 +388,8 @@ const ChatMessageBubble = React.memo(({
 
     useEffect(() => {
         setEditContent(displayContent);
-        setEditThoughtContent(msg.thought || '');
         setIsMessageExpanded(false);
-    }, [displayContent, msg.thought]);
+    }, [displayContent]);
 
     useEffect(() => {
         if (isEditing && editRef.current) {
@@ -175,27 +403,9 @@ const ChatMessageBubble = React.memo(({
         }
     }, [isEditing]);
 
-    useEffect(() => {
-        if (isEditingThought && editThoughtRef.current) {
-            editThoughtRef.current.textContent = editThoughtContent;
-            const sel = window.getSelection();
-            const range = document.createRange();
-            range.selectNodeContents(editThoughtRef.current);
-            range.collapse(false);
-            sel?.removeAllRanges();
-            sel?.addRange(range);
-        }
-    }, [isEditingThought]);
-
     const handleEditInput = () => {
         if (editRef.current) {
             setEditContent(editRef.current.textContent || '');
-        }
-    };
-
-    const handleEditThoughtInput = () => {
-        if (editThoughtRef.current) {
-            setEditThoughtContent(editThoughtRef.current.textContent || '');
         }
     };
 
@@ -282,112 +492,18 @@ const ChatMessageBubble = React.memo(({
             })() : isUser ? (
                 <div className="w-fit" style={{ maxWidth: 'min(100%, 65ch)' }}>
                     {msg.thought && (
-                        <div className="mb-5 w-full">
-                            {/* Header Toggle */}
-                            <button
-                                onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
-                                className="flex items-center space-x-2 text-stone-400 hover:text-stone-300 transition-colors focus:outline-none w-full text-left"
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3.5 h-3.5 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                </svg>
-                                <span className="font-semibold text-[13px] tracking-wide">Thought Process</span>
-                            </button>
-                            
-                            {/* Collapsible Content */}
-                            {isThoughtExpanded && (
-                                <div className="relative pl-6 ml-1.5 mt-4 border-l-[3px] border-[#333333] animate-fade-in">
-                                    {/* Clock Top Icon */}
-                                    <div className="absolute -left-[11.5px] -top-3 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <polyline points="12 6 12 12 16 14"></polyline>
-                                        </svg>
-                                    </div>
-                                    
-                                    <div className="text-stone-400 text-[13.5px] leading-relaxed font-sans pb-4 pr-2 overflow-hidden">
-                                        {isEditingThought ? (
-                                            <div className="flex flex-col gap-3">
-                                                <div
-                                                    key={`edit-thought-${isEditingThought}`}
-                                                    ref={editThoughtRef}
-                                                    contentEditable
-                                                    onInput={handleEditThoughtInput}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Escape') {
-                                                            setIsEditingThought(false);
-                                                            setEditThoughtContent(msg.thought || '');
-                                                        }
-                                                    }}
-                                                    className="w-full bg-[#09100c]/50 border border-[#333333] rounded-xl p-3 text-[13px] text-stone-300 focus:outline-none focus:border-stone-500 min-h-[60px] font-mono whitespace-pre-wrap break-words"
-                                                    suppressContentEditableWarning
-                                                />
-                                                <div className="flex justify-end gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setIsEditingThought(false);
-                                                            setEditThoughtContent(msg.thought || '');
-                                                        }}
-                                                        className="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            onEditMessage(index, displayContent, editThoughtContent);
-                                                            setIsEditingThought(false);
-                                                        }}
-                                                        className="px-3 py-1.5 text-xs text-[#09100c] bg-stone-300 hover:bg-stone-200 rounded-lg transition-colors font-medium cursor-pointer"
-                                                    >
-                                                        Save
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
-                                                <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
-                                            </div>
-                                        )}
-                                        {/* Actions Button Row */}
-                                        {!isEditingThought && (
-                                            <div className="mt-2 flex justify-end gap-2">
-                                                <button 
-                                                    onClick={() => setIsEditingThought(true)}
-                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
-                                                    title="Edit Thought Process"
-                                                >
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit
-                                                </button>
-                                                <button 
-                                                    onClick={handleCopyThoughtClick}
-                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
-                                                    title="Copy Thought Process"
-                                                >
-                                                    {copiedThought ? (
-                                                        <>✓ Copied</>
-                                                    ) : (
-                                                        <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Checkmark Bottom Icon */}
-                                    <div className="absolute -left-[11.5px] -bottom-2 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                        </svg>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <ThoughtBlock
+                            msg={msg}
+                            index={index}
+                            isThoughtExpanded={isThoughtExpanded}
+                            setIsThoughtExpanded={setIsThoughtExpanded}
+                            onEditMessage={onEditMessage}
+                            displayContent={displayContent}
+                            onImageClick={onImageClick}
+                            onCopyText={onCopyText}
+                            flashFeedback={flashFeedback}
+                            isUser={isUser}
+                        />
                     )}
                     {(displayContent || isEditing) && (
                         <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words mt-1">
@@ -548,112 +664,17 @@ const ChatMessageBubble = React.memo(({
                 /* AI Message: No Bubble, Raw Text */
                 <div className="w-[65ch] max-w-full break-words">
                     {msg.thought && (
-                        <div className="mb-5 w-full">
-                            {/* Header Toggle */}
-                            <button
-                                onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
-                                className="flex items-center space-x-2 text-stone-400 hover:text-stone-300 transition-colors focus:outline-none w-full text-left"
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3.5 h-3.5 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                </svg>
-                                <span className="font-semibold text-[13px] tracking-wide">Thought Process</span>
-                            </button>
-                            
-                            {/* Collapsible Content */}
-                            {isThoughtExpanded && (
-                                <div className="relative pl-6 ml-1.5 mt-4 border-l-[3px] border-[#333333] animate-fade-in">
-                                    {/* Clock Top Icon */}
-                                    <div className="absolute -left-[11.5px] -top-3 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <polyline points="12 6 12 12 16 14"></polyline>
-                                        </svg>
-                                    </div>
-                                    
-                                    <div className="text-stone-400 text-[13.5px] leading-relaxed font-sans pb-4 pr-2 overflow-hidden">
-                                        {isEditingThought ? (
-                                            <div className="flex flex-col gap-3">
-                                                <div
-                                                    key={`edit-thought-${isEditingThought}`}
-                                                    ref={editThoughtRef}
-                                                    contentEditable
-                                                    onInput={handleEditThoughtInput}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Escape') {
-                                                            setIsEditingThought(false);
-                                                            setEditThoughtContent(msg.thought || '');
-                                                        }
-                                                    }}
-                                                    className="w-full bg-[#09100c]/50 border border-[#333333] rounded-xl p-3 text-[13px] text-stone-300 focus:outline-none focus:border-stone-500 min-h-[60px] font-mono whitespace-pre-wrap break-words"
-                                                    suppressContentEditableWarning
-                                                />
-                                                <div className="flex justify-end gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setIsEditingThought(false);
-                                                            setEditThoughtContent(msg.thought || '');
-                                                        }}
-                                                        className="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            onEditMessage(index, displayContent, editThoughtContent);
-                                                            setIsEditingThought(false);
-                                                        }}
-                                                        className="px-3 py-1.5 text-xs text-[#09100c] bg-stone-300 hover:bg-stone-200 rounded-lg transition-colors font-medium cursor-pointer"
-                                                    >
-                                                        Save
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
-                                                <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
-                                            </div>
-                                        )}
-                                        {/* Actions Button Row */}
-                                        {!isEditingThought && (
-                                            <div className="mt-2 flex justify-end gap-2">
-                                                <button 
-                                                    onClick={() => setIsEditingThought(true)}
-                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
-                                                    title="Edit Thought Process"
-                                                >
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit
-                                                </button>
-                                                <button 
-                                                    onClick={handleCopyThoughtClick}
-                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
-                                                    title="Copy Thought Process"
-                                                >
-                                                    {copiedThought ? (
-                                                        <>✓ Copied</>
-                                                    ) : (
-                                                        <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Checkmark Bottom Icon */}
-                                    <div className="absolute -left-[11.5px] -bottom-2 w-5 h-5 bg-[#09100c] rounded-full border-[3px] border-[#333333] flex items-center justify-center z-10">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-stone-400">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                        </svg>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <ThoughtBlock
+                            msg={msg}
+                            index={index}
+                            isThoughtExpanded={isThoughtExpanded}
+                            setIsThoughtExpanded={setIsThoughtExpanded}
+                            onEditMessage={onEditMessage}
+                            displayContent={displayContent}
+                            onImageClick={onImageClick}
+                            onCopyText={onCopyText}
+                            flashFeedback={flashFeedback}
+                        />
                     )}
                     {(displayContent || isEditing) && (isEditing ? (
                         <div className="flex flex-col gap-3">
