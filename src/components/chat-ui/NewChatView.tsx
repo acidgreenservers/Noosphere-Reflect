@@ -143,7 +143,7 @@ export const NewChatView: React.FC = () => {
         if (!inputValue.trim() && attachedFiles.length === 0) return;
 
         const text = inputValue.trim();
-        const autoTitle = text.substring(0, 45) + (text.length > 45 ? '...' : '');
+        const autoTitle = text ? (text.substring(0, 45) + (text.length > 45 ? '...' : '')) : 'Image Chat';
 
         const newSessionId = (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
 
@@ -401,7 +401,7 @@ export const NewChatView: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => handleSubmit()}
-                            disabled={!inputValue.trim()}
+                            disabled={!inputValue.trim() && attachedFiles.length === 0}
                             className="w-9 h-9 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all shadow-md active:scale-95 shrink-0"
                             title="Start New Chat Session"
                         >
