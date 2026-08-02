@@ -61,7 +61,7 @@ const ChatMessageBubble = React.memo(({
     onArtifactClick?: (art: ConversationArtifact) => void;
     onImageClick?: (src: string, alt?: string) => void;
 }) => {
-    const isUser = msg.type === ChatMessageType.Prompt;
+    const isUser = msg.role ? msg.role === 'prompt' : msg.type === ChatMessageType.Prompt;
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(msg.content);
     const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
@@ -206,7 +206,7 @@ const ChatMessageBubble = React.memo(({
                 }[msg.type as any] || { bg: 'bg-[#081018]', border: 'border-gray-500/30', headerBg: 'bg-[#0c1622]', headerBorder: 'border-gray-500/20', hover: 'hover:bg-[#111f2e]', icon: '📄', iconColor: 'text-gray-400', titleColor: 'text-gray-100', shadow: 'hover:shadow-gray-900/20', label: 'Inserted Item', toggleBtn: 'text-gray-400/70 hover:text-gray-300' };
 
                 return (
-                    <div className="w-full max-w-3xl mx-auto my-4 group/archive">
+                    <div className="w-full max-w-3xl my-4 group/archive">
                         <div className={`border ${colors.border} rounded-xl overflow-hidden ${colors.bg} shadow-sm ${colors.shadow} transition-all`}>
                             <div 
                                 className={`flex items-center justify-between p-3 ${colors.headerBg} border-b ${colors.headerBorder} cursor-pointer ${colors.hover} transition-colors`}
@@ -1116,7 +1116,8 @@ export default function UnifiedChatInterface() {
             id: `msg-${Date.now()}`,
             type: msgType,
             content: item.content,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            role: currentRole
         };
         const updatedMessages = [...messages, newMsg];
         setMessages(updatedMessages);

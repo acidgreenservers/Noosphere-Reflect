@@ -60,6 +60,7 @@ export interface ChatMessage {
   isEdited?: boolean;
   createdAt?: string; // ISO timestamp for temporal context
   artifacts?: ConversationArtifact[]; // Per-message artifacts
+  role?: 'prompt' | 'response'; // Explicit role (overrides type-based defaults)
 }
 
 export interface ChatData {
