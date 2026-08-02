@@ -1,9 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Skill, DEFAULT_SETTINGS, AppSettings } from '../../../types';
+import { Skill, SkillFile, DEFAULT_SETTINGS, AppSettings } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 
+const Folder = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+);
+const FileText = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+);
+const Image = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+);
+const Upload = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+);
+const X = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+);
 const ChevronLeft = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>
 );
@@ -72,6 +87,7 @@ interface WorkshopState {
     description: string;
     mainInstructions: string;
     sections: SkillSection[];
+    files: SkillFile[];
     customFrontmatter: { key: string, value: string }[];
     openclaw: OpenClawMetadata;
 }
@@ -83,6 +99,7 @@ const DEFAULT_SKILL: WorkshopState = {
     description: '',
     mainInstructions: '',
     sections: [],
+    files: [],
     customFrontmatter: [],
     openclaw: {
         includeUserInvocable: false,
@@ -111,6 +128,7 @@ function parseSkillContent(content: string, defaultName: string = '', defaultCat
         description: '',
         mainInstructions: '',
         sections: [],
+        files: [],
         customFrontmatter: [],
         openclaw: {
             includeUserInvocable: false,
@@ -380,6 +398,11 @@ export default function SkillWorkshop() {
         setTimeout(() => setToast(null), 3000);
     };
 
+    const [activeTab, setActiveTab] = useState<string>('preview');
+    const [openTabs, setOpenTabs] = useState<string[]>(['preview']);
+    const [isCreateFileModalOpen, setIsCreateFileModalOpen] = useState(false);
+    const [createFilePath, setCreateFilePath] = useState('');
+
     const [ws, setWs] = useState<WorkshopState>({
         name: '',
         category: '',
@@ -387,6 +410,7 @@ export default function SkillWorkshop() {
         description: '',
         mainInstructions: '',
         sections: [],
+        files: [],
         customFrontmatter: [],
         openclaw: {
             includeUserInvocable: false,
@@ -414,12 +438,14 @@ export default function SkillWorkshop() {
                 const found = skills.find(s => s.id === skillId);
                 if (found) {
                     setExistingSkill(found);
-                    setWs(parseSkillContent(
+                    const parsed = parseSkillContent(
                         found.content, 
                         found.metadata.title, 
                         found.metadata.category, 
                         found.tags
-                    ));
+                    );
+                    parsed.files = found.files || [];
+                    setWs(parsed);
                 }
             }
             setIsLoading(false);
@@ -439,6 +465,7 @@ export default function SkillWorkshop() {
                 const updated: Skill = {
                     ...existingSkill,
                     content,
+                    files: ws.files,
                     tags: tagsArray,
                     updatedAt: new Date().toISOString(),
                     metadata: {
@@ -454,6 +481,7 @@ export default function SkillWorkshop() {
                 const skill: Skill = {
                     id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                     content,
+                    files: ws.files,
                     tags: tagsArray,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
@@ -503,6 +531,7 @@ export default function SkillWorkshop() {
             description: '',
             mainInstructions: '',
             sections: [],
+            files: [],
             customFrontmatter: [],
             openclaw: {
                 includeUserInvocable: false,
@@ -522,6 +551,146 @@ export default function SkillWorkshop() {
             }
         });
         setShowClearModal(false);
+    };
+
+    const handleCreateFile = () => {
+        setCreateFilePath('');
+        setIsCreateFileModalOpen(true);
+    };
+
+    const confirmCreateFile = () => {
+        const path = createFilePath;
+        if (!path) {
+            setIsCreateFileModalOpen(false);
+            return;
+        }
+
+        const cleanPath = path.trim().replace(/^[\\/]+/, '');
+        if (!cleanPath) {
+            setIsCreateFileModalOpen(false);
+            return;
+        }
+
+        if (ws.files.some(f => f.path === cleanPath)) {
+            showToast('A file with this path already exists.', 'error');
+            return;
+        }
+
+        const newFile: SkillFile = {
+            id: Date.now().toString(36),
+            path: cleanPath,
+            type: 'text',
+            content: ''
+        };
+
+        setWs(prev => ({ ...prev, files: [...prev.files, newFile] }));
+        if (!openTabs.includes(newFile.path)) {
+            setOpenTabs(prev => [...prev, newFile.path]);
+        }
+        setActiveTab(newFile.path);
+        setIsCreateFileModalOpen(false);
+    };
+
+    const handleUploadFile = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.onchange = async (e) => {
+            const files = (e.target as HTMLInputElement).files;
+            if (!files) return;
+
+            const newSkillFiles: SkillFile[] = [];
+            const newOpenTabs: string[] = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                let fileType: 'text' | 'image' | 'video' | 'pdf' | 'audio' | 'unknown' = 'unknown';
+                if (file.type.startsWith('image/')) fileType = 'image';
+                else if (file.type.startsWith('video/')) fileType = 'video';
+                else if (file.type.startsWith('audio/')) fileType = 'audio';
+                else if (file.type === 'application/pdf') fileType = 'pdf';
+                else if (file.type.startsWith('text/') || file.type === 'application/json' || file.name.endsWith('.md') || file.name.endsWith('.js') || file.name.endsWith('.ts') || file.name.endsWith('.css')) {
+                    fileType = 'text';
+                }
+
+                // Default upload directory choice
+                const directory = fileType === 'image' || fileType === 'video' || fileType === 'audio' ? 'assets/' : 'references/';
+                const path = directory + file.name;
+
+                if (ws.files.some(f => f.path === path)) {
+                    showToast(`File ${path} already exists. Skipping.`, 'error');
+                    continue;
+                }
+
+                if (fileType === 'text') {
+                    const content = await file.text();
+                    newSkillFiles.push({
+                        id: Date.now().toString(36) + i,
+                        path,
+                        type: 'text',
+                        content
+                    });
+                } else {
+                    const base64 = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target?.result as string);
+                        reader.readAsDataURL(file);
+                    });
+                    newSkillFiles.push({
+                        id: Date.now().toString(36) + i,
+                        path,
+                        type: fileType,
+                        fileData: base64
+                    });
+                }
+                newOpenTabs.push(path);
+            }
+
+            if (newSkillFiles.length > 0) {
+                setWs(prev => ({ ...prev, files: [...prev.files, ...newSkillFiles] }));
+                
+                const uniqueNewTabs = newOpenTabs.filter(t => !openTabs.includes(t));
+                if (uniqueNewTabs.length > 0) {
+                    setOpenTabs(prev => [...prev, ...uniqueNewTabs]);
+                }
+                setActiveTab(newOpenTabs[newOpenTabs.length - 1]);
+                showToast(`Successfully uploaded ${newSkillFiles.length} file(s)`, 'success');
+            }
+        };
+        input.click();
+    };
+
+    const handleDeleteFile = (path: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (window.confirm(`Are you sure you want to delete ${path}?`)) {
+            setWs(prev => ({
+                ...prev,
+                files: prev.files.filter(f => f.path !== path)
+            }));
+            
+            if (openTabs.includes(path)) {
+                handleTabClose(path, e as any);
+            }
+        }
+    };
+
+    const handleTabClose = (path: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setOpenTabs(prev => {
+            const next = prev.filter(t => t !== path);
+            if (activeTab === path) {
+                // If closing active tab, switch to preview
+                setActiveTab('preview');
+            }
+            return next;
+        });
+    };
+
+    const openFile = (path: string) => {
+        if (!openTabs.includes(path)) {
+            setOpenTabs(prev => [...prev, path]);
+        }
+        setActiveTab(path);
     };
 
     const addSection = () => {
@@ -883,6 +1052,105 @@ export default function SkillWorkshop() {
                         )}
                     </div>
 
+                    {/* Workspace Files Section */}
+                    <div className="mb-8 border border-gray-800 rounded-lg bg-[#111] overflow-hidden flex-shrink-0">
+                        <div className="flex items-center justify-between p-4 bg-[#141414] border-b border-gray-800">
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full px-3 py-1.5">
+                                <Folder size={14} /> Workspace Files
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleUploadFile}
+                                    className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                                    title="Upload File"
+                                >
+                                    <Upload size={14} />
+                                </button>
+                                <button
+                                    onClick={handleCreateFile}
+                                    className="p-1.5 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded transition-colors"
+                                    title="Create New File"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-4 space-y-3">
+                            {['assets', 'references'].map(dir => {
+                                const dirFiles = ws.files.filter(f => f.path.startsWith(`${dir}/`));
+                                return (
+                                    <div key={dir} className="flex flex-col">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                                            <Folder size={14} className="text-cyan-500" />
+                                            {dir}/
+                                        </div>
+                                        {dirFiles.length === 0 ? (
+                                            <div className="pl-6 text-xs text-gray-600 italic">Empty directory</div>
+                                        ) : (
+                                            <div className="pl-6 flex flex-col gap-1">
+                                                {dirFiles.map(file => (
+                                                    <div 
+                                                        key={file.id} 
+                                                        className={`group flex items-center justify-between py-1.5 px-2 rounded cursor-pointer transition-colors ${activeTab === file.path ? 'bg-cyan-500/10 text-cyan-400' : 'hover:bg-[#1a1a1a] text-gray-400'}`}
+                                                        onClick={() => openFile(file.path)}
+                                                    >
+                                                        <div className="flex items-center gap-2 text-sm truncate">
+                                                            {file.type === 'image' ? <Image size={12} className="opacity-70" /> : <FileText size={12} className="opacity-70" />}
+                                                            <span className="truncate">{file.path.replace(`${dir}/`, '')}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={(e) => handleDeleteFile(file.path, e)}
+                                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 rounded hover:bg-gray-800 transition-all"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* Render any other custom directories or root files */}
+                            {(() => {
+                                const otherFiles = ws.files.filter(f => !f.path.startsWith('assets/') && !f.path.startsWith('references/'));
+                                if (otherFiles.length > 0) {
+                                    return (
+                                        <div className="flex flex-col mt-4 pt-4 border-t border-gray-800">
+                                            <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                                                <Folder size={14} className="text-gray-500" />
+                                                Other Files
+                                            </div>
+                                            <div className="pl-6 flex flex-col gap-1">
+                                                {otherFiles.map(file => (
+                                                    <div 
+                                                        key={file.id} 
+                                                        className={`group flex items-center justify-between py-1.5 px-2 rounded cursor-pointer transition-colors ${activeTab === file.path ? 'bg-cyan-500/10 text-cyan-400' : 'hover:bg-[#1a1a1a] text-gray-400'}`}
+                                                        onClick={() => openFile(file.path)}
+                                                    >
+                                                        <div className="flex items-center gap-2 text-sm truncate">
+                                                            {file.type === 'image' ? <Image size={12} className="opacity-70" /> : <FileText size={12} className="opacity-70" />}
+                                                            <span className="truncate">{file.path}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={(e) => handleDeleteFile(file.path, e)}
+                                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 rounded hover:bg-gray-800 transition-all"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+                        </div>
+                    </div>
+
                     {/* Main Instructions Section */}
                     <div className="mb-8 flex-shrink-0">
                         <div className="flex items-center mb-5">
@@ -957,29 +1225,95 @@ export default function SkillWorkshop() {
 
                 </div>
 
-                {/* Right Column - Compiler Preview */}
+                {/* Right Column - Compiler Preview / Editor */}
                 <div className="w-1/2 flex flex-col overflow-hidden bg-[#0d0d0d]">
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-[#111]">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-[#82f94b]"></div>
-                            <span className="text-xs font-bold tracking-widest text-[#82f94b] uppercase">Compiled Preview</span>
-                        </div>
-                        <button 
-                            onClick={copyToClipboard}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 text-gray-300 hover:text-white rounded text-xs transition-colors"
+                    <div className="flex items-center px-2 pt-2 border-b border-gray-800 bg-[#111] overflow-x-auto custom-scrollbar">
+                        <button
+                            onClick={() => setActiveTab('preview')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-t-md border-b-2 text-sm font-medium transition-colors ${
+                                activeTab === 'preview' 
+                                    ? 'border-[#82f94b] text-[#82f94b] bg-[#1a1a1a]' 
+                                    : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#141414]'
+                            }`}
                         >
-                            <Copy size={14} />
-                            Copy Markdown
+                            <div className={`w-2 h-2 rounded-full ${activeTab === 'preview' ? 'bg-[#82f94b]' : 'bg-gray-500'}`}></div>
+                            SKILL.md Preview
                         </button>
+                        {openTabs.filter(t => t !== 'preview').map(tab => (
+                            <div
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-t-md border-b-2 text-sm font-medium cursor-pointer transition-colors ${
+                                    activeTab === tab
+                                        ? 'border-cyan-400 text-cyan-400 bg-[#1a1a1a]'
+                                        : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#141414]'
+                                }`}
+                            >
+                                <span className="truncate max-w-[150px]">{tab}</span>
+                                <button 
+                                    onClick={(e) => handleTabClose(tab, e)}
+                                    className="ml-2 text-gray-500 hover:text-red-400 transition-colors"
+                                    title="Close Tab"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ))}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                        <div className="text-xs text-gray-500 mb-4 font-mono">
-                            Live preview of the SKILL.md file this workshop compiles into.
-                        </div>
-                        <pre className="font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                            {compiledOutput}
-                        </pre>
+                    <div className="flex-1 overflow-hidden flex flex-col relative">
+                        {activeTab === 'preview' ? (
+                            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative">
+                                <button
+                                    onClick={copyToClipboard}
+                                    className="absolute top-4 right-6 flex items-center gap-2 px-3 py-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white rounded text-xs transition-colors backdrop-blur-sm z-10"
+                                >
+                                    <Copy size={14} />
+                                    Copy
+                                </button>
+                                <div className="text-xs text-gray-500 mb-4 font-mono">
+                                    Live preview of the SKILL.md file this workshop compiles into.
+                                </div>
+                                <pre className="font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                    {compiledOutput}
+                                </pre>
+                            </div>
+                        ) : (
+                            <div className="flex-1 overflow-hidden flex flex-col relative">
+                                {(() => {
+                                    const file = ws.files.find(f => f.path === activeTab);
+                                    if (!file) return <div className="p-6 text-gray-500 text-center flex-1 flex items-center justify-center">File not found.</div>;
+                                    
+                                    if (file.type === 'image') {
+                                        return (
+                                            <div className="flex-1 flex items-center justify-center p-6 bg-[#0a0a0a]">
+                                                {file.fileData ? (
+                                                    <img src={file.fileData} alt={file.path} className="max-w-full max-h-full object-contain rounded-md shadow-lg" />
+                                                ) : (
+                                                    <div className="text-gray-500">Image data unavailable</div>
+                                                )}
+                                            </div>
+                                        );
+                                    } else {
+                                        return (
+                                            <textarea
+                                                className="w-full h-full bg-[#0d0d0d] text-gray-300 font-mono text-sm p-6 focus:outline-none resize-none custom-scrollbar"
+                                                value={file.content || ''}
+                                                onChange={e => {
+                                                    const newContent = e.target.value;
+                                                    setWs(prev => ({
+                                                        ...prev,
+                                                        files: prev.files.map(f => f.path === activeTab ? { ...f, content: newContent } : f)
+                                                    }));
+                                                }}
+                                                spellCheck={false}
+                                                placeholder="Start typing..."
+                                            />
+                                        );
+                                    }
+                                })()}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -993,6 +1327,50 @@ export default function SkillWorkshop() {
                 onConfirm={confirmClear}
                 onCancel={() => setShowClearModal(false)}
             />
+
+            {/* Custom Create File Modal */}
+            {isCreateFileModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-[#111] border border-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-slide-up">
+                        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-800 bg-[#161616]">
+                            <Plus size={18} className="text-cyan-400" />
+                            <h3 className="text-lg font-semibold text-gray-100">Create New File</h3>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-sm text-gray-400 mb-4">
+                                Enter the path for your new file. You can include directories (e.g., <code className="text-gray-300 bg-gray-800 px-1 py-0.5 rounded">assets/script.js</code>).
+                            </p>
+                            <input
+                                type="text"
+                                value={createFilePath}
+                                onChange={(e) => setCreateFilePath(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') confirmCreateFile();
+                                    if (e.key === 'Escape') setIsCreateFileModalOpen(false);
+                                }}
+                                placeholder="assets/script.js"
+                                autoFocus
+                                className="w-full bg-[#0a0a0a] border border-gray-700 text-gray-200 rounded-md px-4 py-2.5 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-800 bg-[#161616]">
+                            <button
+                                onClick={() => setIsCreateFileModalOpen(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmCreateFile}
+                                disabled={!createFilePath.trim()}
+                                className="px-4 py-2 text-sm font-medium bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Custom Toast Notification */}
             {toast && (
