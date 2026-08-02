@@ -78,8 +78,21 @@ const ChatMessageBubble = React.memo(({
         ref.current = setTimeout(() => set(false), 2000);
     };
 
+    const [copiedThought, setCopiedThought] = useState(false);
+    const copyThoughtTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [isCopyMenuOpen, setIsCopyMenuOpen] = useState(false);
+
     const handleCopyClick = () => {
         if (onCopyText(displayContent)) flashFeedback(setCopied, copyTimerRef);
+    };
+
+    const handleCopyThoughtClick = () => {
+        if (msg.thought && onCopyText(msg.thought)) flashFeedback(setCopiedThought, copyThoughtTimerRef);
+    };
+
+    const handleCopyTurnClick = () => {
+        const turnText = (msg.thought ? `[Thought Process]\n${msg.thought}\n\n` : '') + displayContent;
+        if (onCopyText(turnText)) flashFeedback(setCopied, copyTimerRef);
     };
 
     const [saveModalType, setSaveModalType] = useState<MessageSaveType | null>(null);
@@ -115,10 +128,14 @@ const ChatMessageBubble = React.memo(({
     useEffect(() => () => {
         if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        if (copyThoughtTimerRef.current) clearTimeout(copyThoughtTimerRef.current);
     }, []);
     const [isMessageExpanded, setIsMessageExpanded] = useState(false);
     const [isThoughtExpanded, setIsThoughtExpanded] = useState(false);
+    const [isEditingThought, setIsEditingThought] = useState(false);
+    const [editThoughtContent, setEditThoughtContent] = useState(msg.thought || '');
     const editRef = useRef<HTMLDivElement>(null);
+    const editThoughtRef = useRef<HTMLDivElement>(null);
 
     // Detect and extract Exporter Attribution
     let displayContent = msg.content;
@@ -142,8 +159,9 @@ const ChatMessageBubble = React.memo(({
 
     useEffect(() => {
         setEditContent(displayContent);
+        setEditThoughtContent(msg.thought || '');
         setIsMessageExpanded(false);
-    }, [displayContent]);
+    }, [displayContent, msg.thought]);
 
     useEffect(() => {
         if (isEditing && editRef.current) {
@@ -157,9 +175,27 @@ const ChatMessageBubble = React.memo(({
         }
     }, [isEditing]);
 
+    useEffect(() => {
+        if (isEditingThought && editThoughtRef.current) {
+            editThoughtRef.current.textContent = editThoughtContent;
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(editThoughtRef.current);
+            range.collapse(false);
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+    }, [isEditingThought]);
+
     const handleEditInput = () => {
         if (editRef.current) {
             setEditContent(editRef.current.textContent || '');
+        }
+    };
+
+    const handleEditThoughtInput = () => {
+        if (editThoughtRef.current) {
+            setEditThoughtContent(editThoughtRef.current.textContent || '');
         }
     };
 
@@ -270,9 +306,77 @@ const ChatMessageBubble = React.memo(({
                                     </div>
                                     
                                     <div className="text-stone-400 text-[13.5px] leading-relaxed font-sans pb-4 pr-2 overflow-hidden">
-                                        <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
-                                            <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
-                                        </div>
+                                        {isEditingThought ? (
+                                            <div className="flex flex-col gap-3">
+                                                <div
+                                                    key={`edit-thought-${isEditingThought}`}
+                                                    ref={editThoughtRef}
+                                                    contentEditable
+                                                    onInput={handleEditThoughtInput}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Escape') {
+                                                            setIsEditingThought(false);
+                                                            setEditThoughtContent(msg.thought || '');
+                                                        }
+                                                    }}
+                                                    className="w-full bg-[#09100c]/50 border border-[#333333] rounded-xl p-3 text-[13px] text-stone-300 focus:outline-none focus:border-stone-500 min-h-[60px] font-mono whitespace-pre-wrap break-words"
+                                                    suppressContentEditableWarning
+                                                />
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setIsEditingThought(false);
+                                                            setEditThoughtContent(msg.thought || '');
+                                                        }}
+                                                        className="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            onEditMessage(index, displayContent, editThoughtContent);
+                                                            setIsEditingThought(false);
+                                                        }}
+                                                        className="px-3 py-1.5 text-xs text-[#09100c] bg-stone-300 hover:bg-stone-200 rounded-lg transition-colors font-medium cursor-pointer"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
+                                                <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
+                                            </div>
+                                        )}
+                                        {/* Actions Button Row */}
+                                        {!isEditingThought && (
+                                            <div className="mt-2 flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => setIsEditingThought(true)}
+                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                                    title="Edit Thought Process"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit
+                                                </button>
+                                                <button 
+                                                    onClick={handleCopyThoughtClick}
+                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                                    title="Copy Thought Process"
+                                                >
+                                                    {copiedThought ? (
+                                                        <>✓ Copied</>
+                                                    ) : (
+                                                        <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     {/* Checkmark Bottom Icon */}
@@ -468,9 +572,77 @@ const ChatMessageBubble = React.memo(({
                                     </div>
                                     
                                     <div className="text-stone-400 text-[13.5px] leading-relaxed font-sans pb-4 pr-2 overflow-hidden">
-                                        <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
-                                            <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
-                                        </div>
+                                        {isEditingThought ? (
+                                            <div className="flex flex-col gap-3">
+                                                <div
+                                                    key={`edit-thought-${isEditingThought}`}
+                                                    ref={editThoughtRef}
+                                                    contentEditable
+                                                    onInput={handleEditThoughtInput}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Escape') {
+                                                            setIsEditingThought(false);
+                                                            setEditThoughtContent(msg.thought || '');
+                                                        }
+                                                    }}
+                                                    className="w-full bg-[#09100c]/50 border border-[#333333] rounded-xl p-3 text-[13px] text-stone-300 focus:outline-none focus:border-stone-500 min-h-[60px] font-mono whitespace-pre-wrap break-words"
+                                                    suppressContentEditableWarning
+                                                />
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setIsEditingThought(false);
+                                                            setEditThoughtContent(msg.thought || '');
+                                                        }}
+                                                        className="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            onEditMessage(index, displayContent, editThoughtContent);
+                                                            setIsEditingThought(false);
+                                                        }}
+                                                        className="px-3 py-1.5 text-xs text-[#09100c] bg-stone-300 hover:bg-stone-200 rounded-lg transition-colors font-medium cursor-pointer"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2">
+                                                <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
+                                            </div>
+                                        )}
+                                        {/* Actions Button Row */}
+                                        {!isEditingThought && (
+                                            <div className="mt-2 flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => setIsEditingThought(true)}
+                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                                    title="Edit Thought Process"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit
+                                                </button>
+                                                <button 
+                                                    onClick={handleCopyThoughtClick}
+                                                    className="text-stone-500 hover:text-stone-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                                    title="Copy Thought Process"
+                                                >
+                                                    {copiedThought ? (
+                                                        <>✓ Copied</>
+                                                    ) : (
+                                                        <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     {/* Checkmark Bottom Icon */}
@@ -535,11 +707,47 @@ const ChatMessageBubble = React.memo(({
                     {/* Actions — always visible on last message, hover on others */}
                     {!isEditing && (
                         <div className={`mt-1.5 flex items-center gap-1 ${isLastMessage ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity duration-150`}>
-                            <button
-                                onClick={handleCopyClick}
-                                className={`${btnBase} border ${copied ? 'bg-green-500/20 text-green-400 border-green-500/40' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 border-white/10'}`}
-                                title="Copy"
-                            >{copied ? (isShort ? '✓' : '✓ Copied') : (isShort ? '📋' : '📋 Copy')}</button>
+                            {msg.thought ? (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsCopyMenuOpen(!isCopyMenuOpen)}
+                                        className={`${btnBase} border ${copied ? 'bg-green-500/20 text-green-400 border-green-500/40' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 border-white/10'}`}
+                                        title="Copy Options"
+                                    >{copied ? (isShort ? '✓' : '✓ Copied') : (isShort ? '📋' : '📋 Copy')}</button>
+                                    
+                                    {isCopyMenuOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-[90]" onClick={() => setIsCopyMenuOpen(false)} />
+                                            <div className="absolute bottom-full mb-1 left-0 w-36 bg-black border border-green-500/30 rounded-xl shadow-2xl py-1.5 z-[100] animate-fade-in flex flex-col gap-0.5">
+                                                <button
+                                                    onClick={() => { setIsCopyMenuOpen(false); handleCopyThoughtClick(); }}
+                                                    className="w-full text-left px-3 py-1.5 text-[11px] text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy Thinking
+                                                </button>
+                                                <button
+                                                    onClick={() => { setIsCopyMenuOpen(false); handleCopyClick(); }}
+                                                    className="w-full text-left px-3 py-1.5 text-[11px] text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy Message
+                                                </button>
+                                                <button
+                                                    onClick={() => { setIsCopyMenuOpen(false); handleCopyTurnClick(); }}
+                                                    className="w-full text-left px-3 py-1.5 text-[11px] text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy Turn
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleCopyClick}
+                                    className={`${btnBase} border ${copied ? 'bg-green-500/20 text-green-400 border-green-500/40' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 border-white/10'}`}
+                                    title="Copy"
+                                >{copied ? (isShort ? '✓' : '✓ Copied') : (isShort ? '📋' : '📋 Copy')}</button>
+                            )}
                             <button
                                 onClick={() => setIsEditing(true)}
                                 className={`${btnBase} bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20`}
@@ -865,18 +1073,28 @@ export default function UnifiedChatInterface() {
         return false;
     }, []);
 
-    const handleEditMessage = useCallback(async (index: number, newContent: string) => {
+    const handleEditMessage = useCallback(async (index: number, newContent: string, newThought?: string) => {
         const updatedMessages = [...messages];
         if (index < 0 || index >= updatedMessages.length) return;
 
         const prevMessages = [...messages];
         const prevSession = session;
 
-        updatedMessages[index] = {
+        const updatedMessage = {
             ...updatedMessages[index],
             content: newContent,
             isEdited: true
         };
+
+        if (newThought !== undefined) {
+            updatedMessage.thought = newThought;
+            // if we are emptying it, remove it so it's not an empty block
+            if (newThought.trim() === '') {
+                delete updatedMessage.thought;
+            }
+        }
+
+        updatedMessages[index] = updatedMessage;
 
         setMessages(updatedMessages);
 
