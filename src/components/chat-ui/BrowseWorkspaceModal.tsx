@@ -73,14 +73,36 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
         loadItems(category);
     };
 
+    const triggerCopySuccess = () => {
+        setCopied(true);
+        setTimeout(() => {
+            setCopied(false);
+        }, 2000);
+    };
+
     const handleCopy = async () => {
         if (!selectedItem?.content) return;
         try {
             await navigator.clipboard.writeText(selectedItem.content);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            triggerCopySuccess();
         } catch (err) {
-            console.error('Failed to copy text', err);
+            console.error('Clipboard API failed, using fallback', err);
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = selectedItem.content;
+                // Avoid scrolling to bottom
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.position = "fixed";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+                triggerCopySuccess();
+            } catch (fallbackErr) {
+                console.error('Fallback copy failed', fallbackErr);
+            }
         }
     };
 
@@ -254,10 +276,14 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
                                                 <div className="w-px h-4 bg-gray-700 mx-1"></div>
                                                 <button 
                                                     onClick={handleCopy}
-                                                    className={`w-6 h-6 flex items-center justify-center transition-colors ${copied ? 'text-green-400' : 'text-gray-400 hover:text-gray-200'}`} 
+                                                    className={`h-6 flex items-center justify-center rounded transition-all duration-300 overflow-hidden ${copied ? 'bg-green-500/20 text-green-400 font-medium px-2 w-[72px]' : 'text-gray-400 hover:text-gray-200 px-1 w-6'}`} 
                                                     title="Copy"
                                                 >
-                                                    {copied ? '✓' : '📋'}
+                                                    {copied ? (
+                                                        <span className="flex items-center gap-1 text-xs whitespace-nowrap">✓ Copied</span>
+                                                    ) : (
+                                                        <span>📋</span>
+                                                    )}
                                                 </button>
                                             </div>
                                         </div>
