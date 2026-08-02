@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
+import { detectCodeLanguage } from '../../utils/fileUtils';
 import { SavedChatSession, ChatTheme, ChatStyle, ParserMode, ChatMessageType, AppSettings, DEFAULT_SETTINGS, ConversationArtifact } from '../../types';
 import logo from '../../assets/logo.png';
 
@@ -116,12 +117,14 @@ export const NewChatView: React.FC = () => {
         if (!pendingPasteText) return;
         
         const base64Data = btoa(unescape(encodeURIComponent(pendingPasteText)));
+        const languageInfo = detectCodeLanguage(pendingPasteText);
+        const fileName = languageInfo.ext === 'txt' ? 'Pasted Text.txt' : `Pasted Code.${languageInfo.ext}`;
         
         const newArtifact: ConversationArtifact = {
             id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
-            fileName: 'Pasted Text.txt',
+            fileName: fileName,
             fileSize: new Blob([pendingPasteText]).size,
-            mimeType: 'text/plain',
+            mimeType: languageInfo.mimeType,
             fileData: base64Data,
             uploadedAt: new Date().toISOString()
         };
@@ -506,7 +509,7 @@ export const NewChatView: React.FC = () => {
                                 onClick={handlePasteAsAttachment}
                                 className="flex-1 py-2 px-4 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-colors"
                             >
-                                Paste as Attachment
+                                Paste as Attachment ({detectCodeLanguage(pendingPasteText).label})
                             </button>
                         </div>
                     </div>

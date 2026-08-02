@@ -11,7 +11,7 @@ import logo from '../../assets/logo.png';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { exportService } from '../exports/services';
 import { sanitizeFilename } from '../../utils/securityUtils';
-import { copyToClipboard } from '../../utils/fileUtils';
+import { copyToClipboard, detectCodeLanguage } from '../../utils/fileUtils';
 import { MessageSaveModal } from './MessageSaveModal';
 import type { MessageSaveType } from './MessageSaveModal';
 
@@ -1160,12 +1160,14 @@ export default function UnifiedChatInterface() {
         if (!pendingPasteText) return;
         
         const base64Data = btoa(unescape(encodeURIComponent(pendingPasteText)));
+        const languageInfo = detectCodeLanguage(pendingPasteText);
+        const fileName = languageInfo.ext === 'txt' ? 'Pasted Text.txt' : `Pasted Code.${languageInfo.ext}`;
         
         const newArtifact: ConversationArtifact = {
             id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
-            fileName: 'Pasted Text.txt',
+            fileName: fileName,
             fileSize: new Blob([pendingPasteText]).size,
-            mimeType: 'text/plain',
+            mimeType: languageInfo.mimeType,
             fileData: base64Data,
             uploadedAt: new Date().toISOString()
         };
@@ -1930,7 +1932,7 @@ export default function UnifiedChatInterface() {
                                 onClick={handlePasteAsAttachment}
                                 className="flex-1 py-2 px-4 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-colors"
                             >
-                                Paste as Attachment
+                                Paste as Attachment ({detectCodeLanguage(pendingPasteText).label})
                             </button>
                         </div>
                     </div>

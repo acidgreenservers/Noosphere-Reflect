@@ -58,3 +58,23 @@ export const copyToClipboard = (text: string): boolean => {
         return false;
     }
 };
+
+export const detectCodeLanguage = (text: string): { ext: string, mimeType: string, label: string } => {
+    const t = text.trim();
+    if (t.startsWith('<!DOCTYPE html>') || t.startsWith('<html') || t.match(/^<\w+.*?>/s)) {
+        return { ext: 'html', mimeType: 'text/html', label: 'HTML' };
+    }
+    if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+        try {
+            JSON.parse(t);
+            return { ext: 'json', mimeType: 'application/json', label: 'JSON' };
+        } catch(e) {}
+    }
+    if (t.includes('import React') || (t.includes('className=') && t.includes('/>'))) {
+        return { ext: 'tsx', mimeType: 'text/typescript-jsx', label: 'React (TSX)' };
+    }
+    if (t.includes('interface ') || t.includes('type ') || t.includes('export const ') || t.includes('function ')) {
+         return { ext: 'ts', mimeType: 'text/typescript', label: 'TypeScript' };
+    }
+    return { ext: 'txt', mimeType: 'text/plain', label: 'Text' };
+};
