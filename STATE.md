@@ -18,8 +18,10 @@
 - **Silent Removal Patterns**: `react/jsx-runtime` and `react/jsx-dev-runtime` imports are silently removed (not needed with classic JSX runtime + Babel). `import type` statements are removed entirely (no runtime code).
 - **Class Export Extraction**: `extractDefaultExportName` now detects `export default class Foo` in addition to `export default function Foo` and `export default Foo`.
 - **Error Message Escaping**: `showError()` in the iframe bootstrap uses `escapeHtml()` to prevent XSS injection via `error.stack` content that may contain HTML from user code.
-- **Deferred**: JSX rendering still has issues with artifacts that reference external libraries beyond React, react-dom, and lucide-react (e.g., `framer-motion`, `recharts`) as globals without loading them. HTML rendering validated by user as fully working.
 - **Project Enhancements Restored**: Restored `ProjectDescriptionModal`, `DocumentBuilder`, and individual project deletion menu to `ProjectArchive` and `ProjectDetail` after they were unintentionally reverted during the Agent Forge refinement (commit 43684d2).
+- **Chat Box Enhancements**: 
+  - `NewChatView` now supports full file attachments (via the `+` menu), shortcut insertion (memories, prompts, skills), and inline image pasting (`onPaste` intercepts clipboard images, converts to base64, and mounts as `ConversationArtifact`).
+  - `UnifiedChatInterface` now also supports inline image pasting directly into the chat text area.
 
 ### Verified State Invariants (6.5 — UI Cleanup)
 - **Explanation Bubbles Removed**: The informational banner divs above list/grid views in SkillArchive, WorkflowArchive, and AgentArchive have been removed. All three pages now start directly with their list/grid content, mirroring other archive pages (Chats, Memories, Prompts). Zero blast radius — self-contained presentational elements with no state/logic/refs.

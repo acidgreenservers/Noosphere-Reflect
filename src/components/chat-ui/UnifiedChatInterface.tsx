@@ -1094,6 +1094,34 @@ export default function UnifiedChatInterface() {
         reader.readAsDataURL(file);
     };
 
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64Data = (reader.result as string).split(',')[1];
+                        const newArtifact: ConversationArtifact = {
+                            id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
+                            fileName: `Pasted Image - ${new Date().toLocaleTimeString()}.png`,
+                            fileSize: file.size,
+                            mimeType: file.type || 'image/png',
+                            fileData: base64Data,
+                            uploadedAt: new Date().toISOString()
+                        };
+                        setAttachedFiles(prev => [...prev, newArtifact]);
+                        showToast(`📎 Image pasted from clipboard`, 'info');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+    };
+
     const handleModelChange = async (modelName: string) => {
         if (!session) return;
         const updated = {
@@ -1604,6 +1632,7 @@ export default function UnifiedChatInterface() {
                                         <textarea
                                             value={inputValue}
                                             onChange={(e) => setInputValue(e.target.value)}
+                                            onPaste={handlePaste}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     if (appSettings.preferences.chatSendShortcut === 'ctrl-enter') {
