@@ -20,7 +20,10 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
     
     // Edit mode state
     const [editContent, setEditContent] = useState('');
-    const [showCode, setShowCode] = useState(true);
+    const [showCode, setShowCode] = useState(false);
+    
+    // Copy state
+    const [copied, setCopied] = useState(false);
     
     // Delete state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -65,7 +68,20 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
         setActiveCategory(category);
         setSelectedItem(null);
         setIsEditMode(false);
+        setShowCode(false);
+        setCopied(false);
         loadItems(category);
+    };
+
+    const handleCopy = async () => {
+        if (!selectedItem?.content) return;
+        try {
+            await navigator.clipboard.writeText(selectedItem.content);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy text', err);
+        }
     };
 
     const handleSaveItem = async () => {
@@ -220,16 +236,45 @@ export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOp
                                             <div className={`flex items-center gap-2 text-sm ${currentCatDetails.textColor}`}>
                                                 <span>{currentCatDetails.icon} Description ⓘ</span>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-200" title="Preview">👁️</button>
-                                                <button className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-200" title="Code">&lt;/&gt;</button>
-                                                <button className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-200" title="Copy">📋</button>
+                                            <div className="flex items-center gap-2 bg-[#222] p-1 rounded-lg border border-gray-700">
+                                                <button 
+                                                    onClick={() => setShowCode(false)}
+                                                    className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${!showCode ? 'bg-[#333] text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`} 
+                                                    title="Preview"
+                                                >
+                                                    👁️
+                                                </button>
+                                                <button 
+                                                    onClick={() => setShowCode(true)}
+                                                    className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${showCode ? 'bg-[#333] text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`} 
+                                                    title="Code"
+                                                >
+                                                    &lt;/&gt;
+                                                </button>
+                                                <div className="w-px h-4 bg-gray-700 mx-1"></div>
+                                                <button 
+                                                    onClick={handleCopy}
+                                                    className={`w-6 h-6 flex items-center justify-center transition-colors ${copied ? 'text-green-400' : 'text-gray-400 hover:text-gray-200'}`} 
+                                                    title="Copy"
+                                                >
+                                                    {copied ? '✓' : '📋'}
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="p-6">
-                                            <div className="prose prose-invert max-w-none prose-sm">
-                                                <MarkdownRenderer content={selectedItem.content || ''} />
-                                            </div>
+                                        <div className="p-0">
+                                            {showCode ? (
+                                                <div className="p-6 bg-[#0a0a0a] border-t border-gray-800 overflow-x-auto">
+                                                    <pre className="text-sm font-mono text-gray-300">
+                                                        <code>{selectedItem.content || ''}</code>
+                                                    </pre>
+                                                </div>
+                                            ) : (
+                                                <div className="p-6">
+                                                    <div className="prose prose-invert max-w-none prose-sm">
+                                                        <MarkdownRenderer content={selectedItem.content || ''} />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
