@@ -2,7 +2,11 @@ export enum ChatMessageType {
   Prompt = 'prompt',
   Response = 'response',
   Thought = 'thought',
+  File = 'file',
   Skill = 'skill',
+  Memory = 'memory',
+  PromptShortcut = 'prompt_shortcut',
+  Workflow = 'workflow'
 }
 
 export interface ConversationArtifact {

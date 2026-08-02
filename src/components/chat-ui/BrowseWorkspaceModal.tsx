@@ -1,60 +1,135 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from '../../services/storageService';
-import { Skill } from '../../types';
+import { ArchiveType } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
+import { ConfirmationModal } from '../ConfirmationModal';
 
-interface BrowseSkillsModalProps {
+interface BrowseWorkspaceModalProps {
     isOpen: boolean;
+    initialCategory?: ArchiveType;
     onClose: () => void;
-    onInsertSkill: (skill: Skill) => void;
+    onInsertItem: (item: any, type: ArchiveType) => void;
 }
 
-export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, onClose, onInsertSkill }) => {
-    const [skills, setSkills] = useState<Skill[]>([]);
+export const BrowseWorkspaceModal: React.FC<BrowseWorkspaceModalProps> = ({ isOpen, initialCategory = 'skill', onClose, onInsertItem }) => {
+    const [activeCategory, setActiveCategory] = useState<ArchiveType>(initialCategory);
+    const [items, setItems] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+    const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
     
     // Edit mode state
     const [editContent, setEditContent] = useState('');
     const [showCode, setShowCode] = useState(true);
+    
+    // Delete state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            loadSkills();
-            setSelectedSkill(null);
+            setActiveCategory(initialCategory);
+            loadItems(initialCategory);
+            setSelectedItem(null);
             setIsEditMode(false);
         }
-    }, [isOpen]);
+    }, [isOpen, initialCategory]);
 
-    const loadSkills = async () => {
-        const loaded = await storageService.getAllSkills();
-        setSkills(loaded.sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()));
+    const loadItems = async (category: ArchiveType) => {
+        let loaded: any[] = [];
+        try {
+            switch (category) {
+                case 'memory':
+                    loaded = await storageService.getAllMemories();
+                    break;
+                case 'prompt':
+                    loaded = await storageService.getAllPrompts();
+                    break;
+                case 'skill':
+                    loaded = await storageService.getAllSkills();
+                    break;
+                case 'workflow':
+                    loaded = await storageService.getAllWorkflows();
+                    break;
+                case 'agent':
+                    loaded = await storageService.getAllAgents();
+                    break;
+            }
+            setItems(loaded.sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()));
+        } catch (e) {
+            console.error('Failed to load items', e);
+            setItems([]);
+        }
     };
 
-    const handleSaveSkill = async () => {
-        if (!selectedSkill) return;
+    const handleCategoryChange = (category: ArchiveType) => {
+        setActiveCategory(category);
+        setSelectedItem(null);
+        setIsEditMode(false);
+        loadItems(category);
+    };
+
+    const handleSaveItem = async () => {
+        if (!selectedItem || activeCategory === 'agent') return;
         
-        const updatedSkill = {
-            ...selectedSkill,
+        const updatedItem = {
+            ...selectedItem,
             content: editContent,
             updatedAt: new Date().toISOString(),
             metadata: {
-                ...selectedSkill.metadata,
+                ...selectedItem.metadata,
                 wordCount: editContent.split(/\s+/).length,
                 characterCount: editContent.length
             }
         };
         
-        await storageService.saveSkill(updatedSkill);
-        setSelectedSkill(updatedSkill);
-        loadSkills();
+        switch (activeCategory) {
+            case 'memory': await storageService.saveMemory(updatedItem); break;
+            case 'prompt': await storageService.savePrompt(updatedItem); break;
+            case 'skill': await storageService.saveSkill(updatedItem); break;
+            case 'workflow': await storageService.saveWorkflow(updatedItem); break;
+        }
+        
+        setSelectedItem(updatedItem);
+        loadItems(activeCategory);
     };
 
-    const filteredSkills = skills.filter(skill => 
-        (skill.metadata.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (skill.content || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const handleDeleteItem = async () => {
+        if (!selectedItem || activeCategory === 'agent') return;
+
+        try {
+            switch (activeCategory) {
+                case 'memory': await storageService.deleteMemory(selectedItem.id); break;
+                case 'prompt': await storageService.deletePrompt(selectedItem.id); break;
+                case 'skill': await storageService.deleteSkill(selectedItem.id); break;
+                case 'workflow': await storageService.deleteWorkflow(selectedItem.id); break;
+            }
+            setShowDeleteModal(false);
+            setSelectedItem(null);
+            setIsEditMode(false);
+            loadItems(activeCategory);
+        } catch (e) {
+            console.error('Failed to delete item', e);
+        }
+    };
+
+    const filteredItems = items.filter(item => {
+        const titleMatch = (item.metadata?.title || item.title || '').toLowerCase().includes(searchQuery.toLowerCase());
+        const contentMatch = (item.content || '').toLowerCase().includes(searchQuery.toLowerCase());
+        return titleMatch || contentMatch;
+    });
+
+    const getCategoryDetails = (category: ArchiveType) => {
+        switch(category) {
+            case 'memory': return { label: 'Memories', icon: '🧠', color: 'purple', hoverBg: 'hover:bg-purple-500/10', activeBg: 'bg-purple-500/20', textColor: 'text-purple-400', groupHoverText: 'group-hover:text-purple-400' };
+            case 'prompt': return { label: 'Prompts', icon: '💡', color: 'yellow', hoverBg: 'hover:bg-yellow-500/10', activeBg: 'bg-yellow-500/20', textColor: 'text-yellow-400', groupHoverText: 'group-hover:text-yellow-400' };
+            case 'skill': return { label: 'Skills', icon: '⚡', color: 'blue', hoverBg: 'hover:bg-blue-500/10', activeBg: 'bg-blue-500/20', textColor: 'text-blue-400', groupHoverText: 'group-hover:text-blue-400' };
+            case 'workflow': return { label: 'Workflows', icon: '🌊', color: 'cyan', hoverBg: 'hover:bg-cyan-500/10', activeBg: 'bg-cyan-500/20', textColor: 'text-cyan-400', groupHoverText: 'group-hover:text-cyan-400' };
+            case 'agent': return { label: 'Agents', icon: '🤖', color: 'emerald', hoverBg: 'hover:bg-emerald-500/10', activeBg: 'bg-emerald-500/20', textColor: 'text-emerald-400', groupHoverText: 'group-hover:text-emerald-400' };
+            default: return { label: 'Items', icon: '🧰', color: 'gray', hoverBg: 'hover:bg-gray-500/10', activeBg: 'bg-gray-500/20', textColor: 'text-gray-400', groupHoverText: 'group-hover:text-gray-400' };
+        }
+    };
+
+    const currentCatDetails = getCategoryDetails(activeCategory);
 
     if (!isOpen) return null;
 
@@ -67,18 +142,22 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                 {/* Left Sidebar (Directory) */}
                 <div className="w-full md:w-64 bg-[#1a1a1a] border-r border-gray-800 flex flex-col hidden md:flex shrink-0">
                     <div className="p-6">
-                        <h2 className="text-xl font-serif text-gray-200">Directory</h2>
+                        <h2 className="text-xl font-serif text-gray-200">Workspace</h2>
                     </div>
                     <nav className="flex-1 px-4 space-y-1">
-                        <button className="w-full flex items-center gap-3 px-3 py-2 bg-[#2a2a2a] text-white rounded-lg text-sm font-medium">
-                            <span>🧰</span> Skills
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-gray-200 hover:bg-[#222] rounded-lg text-sm font-medium transition-colors">
-                            <span>🔌</span> Connectors
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-gray-200 hover:bg-[#222] rounded-lg text-sm font-medium transition-colors">
-                            <span>🧩</span> Plugins
-                        </button>
+                        {(['memory', 'prompt', 'skill', 'workflow', 'agent'] as ArchiveType[]).map(cat => {
+                            const details = getCategoryDetails(cat);
+                            const isActive = activeCategory === cat;
+                            return (
+                                <button 
+                                    key={cat}
+                                    onClick={() => handleCategoryChange(cat)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? `${details.activeBg} ${details.textColor}` : `text-gray-400 ${details.hoverBg} hover:text-gray-200`}`}
+                                >
+                                    <span>{details.icon}</span> {details.label}
+                                </button>
+                            );
+                        })}
                     </nav>
                 </div>
 
@@ -96,43 +175,50 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                     </button>
 
                     {/* View Mode */}
-                    {selectedSkill && !isEditMode && (
+                    {selectedItem && !isEditMode && (
                         <div className="flex-1 flex flex-col h-full overflow-hidden">
                             <div className="p-6 border-b border-gray-800">
                                 <button 
-                                    onClick={() => setSelectedSkill(null)}
+                                    onClick={() => setSelectedItem(null)}
                                     className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 mb-4"
                                 >
                                     <span>&lt; Back</span>
                                 </button>
                                 <div className="flex justify-between items-start pr-8">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-gray-100">{selectedSkill.metadata.title}</h2>
-                                        <p className="text-sm text-gray-500 mt-1">Local • {(selectedSkill.content.length / 1024).toFixed(1)}KB</p>
+                                        <h2 className={`text-2xl font-bold ${currentCatDetails.textColor}`}>{selectedItem.metadata?.title || selectedItem.title}</h2>
+                                        <p className="text-sm text-gray-500 mt-1">Local • {selectedItem.content ? (selectedItem.content.length / 1024).toFixed(1) : 0}KB</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-200 border border-gray-700 rounded-lg">
-                                            🔗
-                                        </button>
-                                        <button className="px-3 py-1.5 bg-[#2a2a2a] text-gray-300 hover:bg-[#333] hover:text-white border border-gray-700 rounded-lg text-sm font-medium transition-colors">
-                                            Uninstall
-                                        </button>
+                                        {activeCategory !== 'agent' && (
+                                            <>
+                                                <button className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-200 border border-gray-700 rounded-lg">
+                                                    🔗
+                                                </button>
+                                                <button 
+                                                    onClick={() => setShowDeleteModal(true)}
+                                                    className="px-3 py-1.5 bg-[#2a2a2a] text-red-400/80 hover:bg-[#333] hover:text-red-400 border border-gray-700 rounded-lg text-sm font-medium transition-colors"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                             <div className="flex-1 flex overflow-hidden">
                                 {/* File Tree Mock */}
                                 <div className="w-64 border-r border-gray-800 p-4 overflow-y-auto hidden lg:block">
-                                    <div className="bg-[#222] text-gray-300 text-sm px-3 py-1.5 rounded-md font-medium cursor-pointer">
-                                        SKILL.md
+                                    <div className={`text-gray-300 text-sm px-3 py-1.5 rounded-md font-medium cursor-pointer ${currentCatDetails.activeBg} ${currentCatDetails.textColor}`}>
+                                        {activeCategory.toUpperCase()}.md
                                     </div>
                                 </div>
                                 {/* Markdown Preview */}
                                 <div className="flex-1 overflow-y-auto p-6 bg-[#0e0e0e]">
                                     <div className="max-w-3xl mx-auto border border-gray-800 rounded-xl overflow-hidden bg-[#121212]">
                                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#1a1a1a]">
-                                            <div className="flex items-center gap-2 text-sm text-gray-400">
-                                                <span>Description ⓘ</span>
+                                            <div className={`flex items-center gap-2 text-sm ${currentCatDetails.textColor}`}>
+                                                <span>{currentCatDetails.icon} Description ⓘ</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <button className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-200" title="Preview">👁️</button>
@@ -142,7 +228,7 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                                         </div>
                                         <div className="p-6">
                                             <div className="prose prose-invert max-w-none prose-sm">
-                                                <MarkdownRenderer content={selectedSkill.content} />
+                                                <MarkdownRenderer content={selectedItem.content || ''} />
                                             </div>
                                         </div>
                                     </div>
@@ -152,7 +238,7 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                     )}
 
                     {/* Edit Mode */}
-                    {selectedSkill && isEditMode && (
+                    {selectedItem && isEditMode && activeCategory !== 'agent' && (
                         <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                             <div className="p-6 border-b border-gray-800">
                                 <button 
@@ -163,10 +249,10 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                                 </button>
                                 <div className="flex justify-between items-start pr-8">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
-                                            {selectedSkill.metadata.title} <span className="text-gray-500 cursor-help" title="Skill Information">ⓘ</span>
+                                        <h2 className={`text-2xl font-bold flex items-center gap-2 ${currentCatDetails.textColor}`}>
+                                            {selectedItem.metadata?.title} <span className="text-gray-500 cursor-help text-sm" title="Information">ⓘ</span>
                                         </h2>
-                                        <p className="text-sm text-gray-500 mt-1">Local Skill</p>
+                                        <p className="text-sm text-gray-500 mt-1">Local {currentCatDetails.label}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="relative group">
@@ -176,14 +262,17 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                                             <div className="absolute right-0 mt-1 w-40 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
                                                 <button 
                                                     onClick={() => {
-                                                        onInsertSkill(selectedSkill);
+                                                        onInsertItem(selectedItem, activeCategory);
                                                         onClose();
                                                     }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2"
+                                                    className={`w-full text-left px-4 py-2 text-sm text-gray-300 ${currentCatDetails.hoverBg} flex items-center gap-2`}
                                                 >
                                                     💬 Insert Into Chat
                                                 </button>
-                                                <button className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800 flex items-center gap-2">
+                                                <button 
+                                                    onClick={() => setShowDeleteModal(true)}
+                                                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800 flex items-center gap-2"
+                                                >
                                                     🗑️ Delete
                                                 </button>
                                             </div>
@@ -196,8 +285,8 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                                 <div className="max-w-4xl mx-auto border border-gray-800 rounded-xl overflow-hidden bg-[#0e0e0e] flex flex-col h-[600px] max-h-full">
                                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#1a1a1a]">
                                         <div className="relative group/dropdown">
-                                            <button className="flex items-center gap-2 text-sm text-gray-300 hover:text-white bg-[#222] px-3 py-1.5 rounded-lg border border-gray-700">
-                                                SKILL.md <span className="text-[10px]">▼</span>
+                                            <button className={`flex items-center gap-2 text-sm text-gray-300 hover:text-white bg-[#222] px-3 py-1.5 rounded-lg border border-gray-700 ${currentCatDetails.textColor}`}>
+                                                {activeCategory.toUpperCase()}.md <span className="text-[10px]">▼</span>
                                             </button>
                                         </div>
                                         <div className="flex items-center gap-2 bg-[#121212] p-1 rounded-lg border border-gray-800">
@@ -225,7 +314,7 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                                                 />
                                                 <div className="p-3 border-t border-gray-800 bg-[#1a1a1a] flex justify-end">
                                                     <button 
-                                                        onClick={handleSaveSkill}
+                                                        onClick={handleSaveItem}
                                                         className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
                                                     >
                                                         Save Changes
@@ -246,17 +335,17 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                     )}
 
                     {/* Grid Mode (Directory) */}
-                    {!selectedSkill && (
+                    {!selectedItem && (
                         <div className="flex-1 flex flex-col h-full overflow-hidden">
                             <div className="p-6 pb-0">
                                 <div className="relative max-w-2xl w-full">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
                                     <input 
                                         type="text" 
-                                        placeholder="Search skills..." 
+                                        placeholder={`Search ${currentCatDetails.label.toLowerCase()}...`} 
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full bg-[#1a1a1a] border border-gray-700 text-gray-200 text-sm rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                                        className={`w-full bg-[#1a1a1a] border border-gray-700 text-gray-200 text-sm rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-gray-500/50 transition-all focus:ring-1`}
                                     />
                                 </div>
                                 <div className="flex items-center gap-4 mt-6 border-b border-gray-800 pb-4">
@@ -266,39 +355,41 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                             
                             <div className="flex-1 overflow-y-auto p-6">
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                    {filteredSkills.map(skill => (
+                                    {filteredItems.map(item => (
                                         <div 
-                                            key={skill.id}
-                                            onClick={() => setSelectedSkill(skill)}
+                                            key={item.id}
+                                            onClick={() => setSelectedItem(item)}
                                             className="bg-[#1a1a1a] border border-gray-800 hover:border-gray-600 rounded-xl p-5 cursor-pointer transition-all group flex flex-col h-48 relative"
                                         >
                                             <div className="flex justify-between items-start mb-2">
-                                                <h3 className="text-base font-bold text-gray-200 group-hover:text-white transition-colors">{skill.metadata.title}</h3>
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedSkill(skill);
-                                                        setEditContent(skill.content);
-                                                        setIsEditMode(true);
-                                                    }}
-                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-800 transition-colors z-10"
-                                                    title="Edit Skill"
-                                                >
-                                                    ⚙️
-                                                </button>
+                                                <h3 className={`text-base font-bold text-gray-200 ${currentCatDetails.groupHoverText} transition-colors`}>{item.metadata?.title || item.title}</h3>
+                                                {activeCategory !== 'agent' && (
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedItem(item);
+                                                            setEditContent(item.content || '');
+                                                            setIsEditMode(true);
+                                                        }}
+                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white ${currentCatDetails.hoverBg} transition-colors z-10`}
+                                                        title="Edit Item"
+                                                    >
+                                                        ⚙️
+                                                    </button>
+                                                )}
                                             </div>
                                             <div className="text-xs text-gray-500 mb-4 font-mono">
-                                                Local • {skill.metadata.wordCount || 0} words
+                                                Local • {item.metadata?.wordCount || 0} words
                                             </div>
                                             <div className="text-sm text-gray-400 line-clamp-3 leading-relaxed flex-1">
-                                                {skill.content.slice(0, 150).replace(/#/g, '').trim()}...
+                                                {(item.content || '').slice(0, 150).replace(/#/g, '').trim()}...
                                             </div>
                                         </div>
                                     ))}
                                     
-                                    {filteredSkills.length === 0 && (
+                                    {filteredItems.length === 0 && (
                                         <div className="col-span-full py-12 text-center text-gray-500">
-                                            No skills found.
+                                            No {currentCatDetails.label.toLowerCase()} found.
                                         </div>
                                     )}
                                 </div>
@@ -307,8 +398,20 @@ export const BrowseSkillsModal: React.FC<BrowseSkillsModalProps> = ({ isOpen, on
                     )}
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteModal}
+                title={`Delete ${currentCatDetails.label.slice(0, -1)}`}
+                message={`Are you sure you want to delete the ${currentCatDetails.label.slice(0, -1).toLowerCase()} "${selectedItem?.metadata?.title || selectedItem?.title}"? This action cannot be undone.`}
+                confirmLabel="Delete"
+                cancelLabel="Cancel"
+                onConfirm={handleDeleteItem}
+                onCancel={() => setShowDeleteModal(false)}
+                type="danger"
+            />
         </div>
     );
 };
 
-export default BrowseSkillsModal;
+export default BrowseWorkspaceModal;

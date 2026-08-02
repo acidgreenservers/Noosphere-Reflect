@@ -14,7 +14,8 @@ import { sanitizeFilename } from '../../utils/securityUtils';
 import { copyToClipboard, detectCodeLanguage } from '../../utils/fileUtils';
 import { MessageSaveModal } from './MessageSaveModal';
 import type { MessageSaveType } from './MessageSaveModal';
-import BrowseSkillsModal from './BrowseSkillsModal';
+import { BrowseWorkspaceModal } from './BrowseWorkspaceModal';
+import { ArchiveType } from '../../types';
 
 const formatTimestamp = (isoString?: string): string | null => {
     if (!isoString) return null;
@@ -195,44 +196,53 @@ const ChatMessageBubble = React.memo(({
                 </div>
             )}
 
-            {/* Skill Message: Expandable Blue Element */}
-            {msg.type === ChatMessageType.Skill ? (
-                <div className="w-full max-w-3xl mx-auto my-4 group/skill">
-                    <div className="border border-blue-500/30 rounded-xl overflow-hidden bg-[#081018] shadow-sm hover:shadow-blue-900/20 transition-all">
-                        <div 
-                            className="flex items-center justify-between p-3 bg-[#0c1622] border-b border-blue-500/20 cursor-pointer hover:bg-[#111f2e] transition-colors"
-                            onClick={() => setIsMessageExpanded(!isMessageExpanded)}
-                        >
-                            <div className="flex items-center gap-3">
-                                <span className="text-blue-400 text-lg">⚡</span>
-                                <span className="text-blue-100 font-medium text-sm">Inserted Skill</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onDeleteMessage(index);
-                                    }}
-                                    className="w-6 h-6 flex items-center justify-center text-red-500/50 hover:text-red-400 opacity-0 group-hover/skill:opacity-100 transition-opacity"
-                                    title="Remove Skill"
-                                >
-                                    🗑️
-                                </button>
-                                <button className="text-blue-400/70 hover:text-blue-300 w-6 h-6 flex items-center justify-center transition-transform duration-200" style={{ transform: isMessageExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                                    ▼
-                                </button>
-                            </div>
-                        </div>
-                        {isMessageExpanded && (
-                            <div className="p-5 bg-[#081018] text-sm">
-                                <div className="prose prose-invert max-w-none prose-sm">
-                                    <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
+            {/* Archive Item Message: Expandable Element for Skills, Memories, Prompts, Workflows */}
+            {[ChatMessageType.Skill, ChatMessageType.Memory, ChatMessageType.PromptShortcut, ChatMessageType.Workflow].includes(msg.type) ? (() => {
+                const colors = {
+                    [ChatMessageType.Skill]: { bg: 'bg-[#081018]', border: 'border-blue-500/30', headerBg: 'bg-[#0c1622]', headerBorder: 'border-blue-500/20', hover: 'hover:bg-[#111f2e]', icon: '⚡', iconColor: 'text-blue-400', titleColor: 'text-blue-100', shadow: 'hover:shadow-blue-900/20', label: 'Inserted Skill', toggleBtn: 'text-blue-400/70 hover:text-blue-300' },
+                    [ChatMessageType.Memory]: { bg: 'bg-[#120a18]', border: 'border-purple-500/30', headerBg: 'bg-[#180e22]', headerBorder: 'border-purple-500/20', hover: 'hover:bg-[#201530]', icon: '🧠', iconColor: 'text-purple-400', titleColor: 'text-purple-100', shadow: 'hover:shadow-purple-900/20', label: 'Inserted Memory', toggleBtn: 'text-purple-400/70 hover:text-purple-300' },
+                    [ChatMessageType.PromptShortcut]: { bg: 'bg-[#181608]', border: 'border-yellow-500/30', headerBg: 'bg-[#221f0c]', headerBorder: 'border-yellow-500/20', hover: 'hover:bg-[#302d15]', icon: '💡', iconColor: 'text-yellow-400', titleColor: 'text-yellow-100', shadow: 'hover:shadow-yellow-900/20', label: 'Inserted Prompt', toggleBtn: 'text-yellow-400/70 hover:text-yellow-300' },
+                    [ChatMessageType.Workflow]: { bg: 'bg-[#081418]', border: 'border-cyan-500/30', headerBg: 'bg-[#0c1d22]', headerBorder: 'border-cyan-500/20', hover: 'hover:bg-[#112930]', icon: '🌊', iconColor: 'text-cyan-400', titleColor: 'text-cyan-100', shadow: 'hover:shadow-cyan-900/20', label: 'Inserted Workflow', toggleBtn: 'text-cyan-400/70 hover:text-cyan-300' }
+                }[msg.type as any] || { bg: 'bg-[#081018]', border: 'border-gray-500/30', headerBg: 'bg-[#0c1622]', headerBorder: 'border-gray-500/20', hover: 'hover:bg-[#111f2e]', icon: '📄', iconColor: 'text-gray-400', titleColor: 'text-gray-100', shadow: 'hover:shadow-gray-900/20', label: 'Inserted Item', toggleBtn: 'text-gray-400/70 hover:text-gray-300' };
+
+                return (
+                    <div className="w-full max-w-3xl mx-auto my-4 group/archive">
+                        <div className={`border ${colors.border} rounded-xl overflow-hidden ${colors.bg} shadow-sm ${colors.shadow} transition-all`}>
+                            <div 
+                                className={`flex items-center justify-between p-3 ${colors.headerBg} border-b ${colors.headerBorder} cursor-pointer ${colors.hover} transition-colors`}
+                                onClick={() => setIsMessageExpanded(!isMessageExpanded)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className={`${colors.iconColor} text-lg`}>{colors.icon}</span>
+                                    <span className={`${colors.titleColor} font-medium text-sm`}>{colors.label}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDeleteMessage(index);
+                                        }}
+                                        className="w-6 h-6 flex items-center justify-center text-red-500/50 hover:text-red-400 opacity-0 group-hover/archive:opacity-100 transition-opacity"
+                                        title={`Remove ${colors.label.split(' ')[1]}`}
+                                    >
+                                        🗑️
+                                    </button>
+                                    <button className={`${colors.toggleBtn} w-6 h-6 flex items-center justify-center transition-transform duration-200`} style={{ transform: isMessageExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                        ▼
+                                    </button>
                                 </div>
                             </div>
-                        )}
+                            {isMessageExpanded && (
+                                <div className={`p-5 ${colors.bg} text-sm`}>
+                                    <div className="prose prose-invert max-w-none prose-sm">
+                                        <MarkdownRenderer content={displayContent} onImageClick={onImageClick} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            ) : isUser ? (
+                );
+            })() : isUser ? (
                 <div className="w-fit" style={{ maxWidth: 'min(100%, 65ch)' }}>
                     {(displayContent || isEditing) && (
                         <div className="px-4 py-3 rounded-2xl border bg-blue-950/30 border-blue-500/20 text-blue-100 text-sm leading-relaxed shadow-sm break-words">
@@ -579,9 +589,12 @@ export default function UnifiedChatInterface() {
     const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
     const [showArtifactList, setShowArtifactList] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [isBrowseSkillsOpen, setIsBrowseSkillsOpen] = useState(false);
-    const [showSkillsSubmenu, setShowSkillsSubmenu] = useState(false);
-    const [recentSkills, setRecentSkills] = useState<Skill[]>([]);
+    const [isBrowseWorkspaceOpen, setIsBrowseWorkspaceOpen] = useState(false);
+    const [browseInitialCategory, setBrowseInitialCategory] = useState<ArchiveType>('skill');
+    
+    // Submenu states
+    const [activeSubmenu, setActiveSubmenu] = useState<ArchiveType | null>(null);
+    const [recentItems, setRecentItems] = useState<any[]>([]);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editingTitle, setEditingTitle] = useState('');
     const sendingRef = useRef(false);
@@ -1071,55 +1084,38 @@ export default function UnifiedChatInterface() {
         }
     };
 
-    // Load shortcuts into draft
-    const handleLoadShortcut = async (type: 'memory' | 'prompt' | 'skill') => {
-        setShowAttachMenu(false);
+    const handleLoadSubmenu = async (type: ArchiveType) => {
         try {
-            if (type === 'memory') {
-                const list = await storageService.getAllMemories();
-                if (list.length === 0) return alert('No memories found in archive');
-                const titles = list.map((m, idx) => `${idx + 1}. ${m.metadata.title}`).join('\n');
-                const selection = prompt(`Select a Memory to load (Enter number 1-${list.length}):\n\n${titles}`);
-                if (selection) {
-                    const idx = parseInt(selection) - 1;
-                    if (list[idx]) {
-                        setInputValue(prev => prev + '\n' + list[idx].content);
-                    }
-                }
-            } else if (type === 'prompt') {
-                const list = await storageService.getAllPrompts();
-                if (list.length === 0) return alert('No prompts found in archive');
-                const titles = list.map((p, idx) => `${idx + 1}. ${p.metadata.title}`).join('\n');
-                const selection = prompt(`Select a Prompt to load (Enter number 1-${list.length}):\n\n${titles}`);
-                if (selection) {
-                    const idx = parseInt(selection) - 1;
-                    if (list[idx]) {
-                        setInputValue(prev => prev + '\n' + list[idx].content);
-                    }
-                }
+            let list: any[] = [];
+            switch (type) {
+                case 'memory': list = await storageService.getAllMemories(); break;
+                case 'prompt': list = await storageService.getAllPrompts(); break;
+                case 'skill': list = await storageService.getAllSkills(); break;
+                case 'workflow': list = await storageService.getAllWorkflows(); break;
             }
-        } catch (e) {
-            console.error('Failed to load shortcut', e);
-        }
-    };
-
-    const handleLoadSkillsMenu = async () => {
-        try {
-            const list = await storageService.getAllSkills();
             const sorted = list.sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
-            setRecentSkills(sorted.slice(0, 5));
-            setShowSkillsSubmenu(true);
+            setRecentItems(sorted.slice(0, 5));
+            setActiveSubmenu(type);
         } catch (e) {
-            console.error('Failed to load skills for menu', e);
+            console.error(`Failed to load ${type}s for menu`, e);
         }
     };
 
-    const handleInsertSkillToChat = async (skill: Skill) => {
+    const handleInsertItemToChat = async (item: any, type: ArchiveType) => {
         if (!session) return;
+        
+        let msgType = ChatMessageType.Skill;
+        switch (type) {
+            case 'memory': msgType = ChatMessageType.Memory; break;
+            case 'prompt': msgType = ChatMessageType.PromptShortcut; break;
+            case 'skill': msgType = ChatMessageType.Skill; break;
+            case 'workflow': msgType = ChatMessageType.Workflow; break;
+        }
+
         const newMsg: ChatMessage = {
             id: `msg-${Date.now()}`,
-            type: ChatMessageType.Skill,
-            content: skill.content,
+            type: msgType,
+            content: item.content,
             createdAt: new Date().toISOString()
         };
         const updatedMessages = [...messages, newMsg];
@@ -1789,89 +1785,257 @@ export default function UnifiedChatInterface() {
                                                     <>
                                                         <div className="fixed inset-0 z-40" onClick={() => setShowAttachMenu(false)} />
                                                         <div className="absolute left-0 bottom-9 w-52 bg-[#0e1511] border border-green-500/20 rounded-2xl shadow-2xl py-1.5 z-50 animate-fade-in text-xs">
-                                                            {showSkillsSubmenu ? (
-                                                                <div className="flex flex-col max-h-[300px]">
-                                                                    <div className="flex items-center gap-2 px-3 py-2 border-b border-green-500/10 text-gray-400 font-medium">
-                                                                        <button onClick={() => setShowSkillsSubmenu(false)} className="hover:text-white">◀</button>
-                                                                        <span>Saved Skills</span>
-                                                                    </div>
-                                                                    <div className="overflow-y-auto overflow-x-hidden custom-scrollbar">
-                                                                        {recentSkills.map(skill => (
-                                                                            <button
-                                                                                key={skill.id}
-                                                                                type="button"
-                                                                                onClick={() => {
-                                                                                    handleInsertSkillToChat(skill);
-                                                                                    setShowAttachMenu(false);
-                                                                                    setShowSkillsSubmenu(false);
-                                                                                }}
-                                                                                className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 truncate"
-                                                                            >
-                                                                                {skill.metadata.title}
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
-                                                                    <div className="border-t border-green-500/10 my-1"></div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setIsBrowseSkillsOpen(true);
-                                                                            setShowAttachMenu(false);
-                                                                            setShowSkillsSubmenu(false);
-                                                                        }}
-                                                                        className="w-full text-left px-4 py-2 hover:bg-blue-500/10 text-blue-400 flex items-center gap-2 font-medium"
-                                                                    >
-                                                                        <span>🔍</span> Browse Skills
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setShowAttachMenu(false);
-                                                                            handleFileAttachClick();
-                                                                        }}
-                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
-                                                                    >
-                                                                        <span>📎</span> Attach File / Picture
-                                                                    </button>
-                                                                    <div className="border-t border-green-500/10 my-1"></div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleLoadShortcut('memory')}
-                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
-                                                                    >
-                                                                        <span>🧠</span> Insert Saved Memory
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleLoadShortcut('prompt')}
-                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
-                                                                    >
-                                                                        <span>💡</span> Insert Saved Prompt
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleLoadSkillsMenu()}
-                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center justify-between gap-2"
-                                                                    >
-                                                                        <div className="flex items-center gap-2"><span>⚡</span> Insert Saved Skill</div>
-                                                                        <span className="text-[10px] text-gray-500">▶</span>
-                                                                    </button>
-                                                                    <div className="border-t border-green-500/10 my-1"></div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setCurrentRole(currentRole === 'prompt' ? 'response' : 'prompt');
-                                                                            setShowAttachMenu(false);
-                                                                        }}
-                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-amber-400 flex items-center gap-2"
-                                                                    >
-                                                                        <span>🔄</span> Force Role Switch
-                                                                    </button>
-                                                                </>
-                                                            )}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowAttachMenu(false);
+                                                handleFileAttachClick();
+                                            }}
+                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
+                                        >
+                                            <span>📎</span> Attach File / Picture
+                                        </button>
+                                        <div className="border-t border-green-500/10 my-1"></div>
+
+                                        {/* Memory Submenu Trigger */}
+                                        <div 
+                                            className="relative"
+                                            onMouseEnter={() => handleLoadSubmenu('memory')}
+                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                        >
+                                            <button 
+                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-purple-500/10 hover:text-purple-400 text-gray-300 transition-colors group"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm">🧠</span>
+                                                    <span className="text-xs">Insert Saved Memory</span>
+                                                </div>
+                                                <span className="text-gray-500 group-hover:text-purple-400">▶</span>
+                                            </button>
+                                            
+                                            {activeSubmenu === 'memory' && (
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                    <div className="py-2">
+                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                            Recent Memories
+                                                        </div>
+                                                        {recentItems.length > 0 ? (
+                                                            recentItems.map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    onClick={() => {
+                                                                        handleInsertItemToChat(item, 'memory');
+                                                                        setShowAttachMenu(false);
+                                                                        setActiveSubmenu(null);
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-purple-500/10 hover:text-purple-400 transition-colors truncate"
+                                                                >
+                                                                    {item.metadata?.title || item.title}
+                                                                </button>
+                                                            ))
+                                                        ) : (
+                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent memories</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="border-t border-gray-800 p-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setBrowseInitialCategory('memory');
+                                                                setIsBrowseWorkspaceOpen(true);
+                                                                setShowAttachMenu(false);
+                                                                setActiveSubmenu(null);
+                                                            }}
+                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-purple-500/20 hover:text-purple-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                        >
+                                                            <span>🔍</span> Browse Memories
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Prompt Submenu Trigger */}
+                                        <div 
+                                            className="relative"
+                                            onMouseEnter={() => handleLoadSubmenu('prompt')}
+                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                        >
+                                            <button 
+                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-yellow-500/10 hover:text-yellow-400 text-gray-300 transition-colors group"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm">💡</span>
+                                                    <span className="text-xs">Insert Saved Prompt</span>
+                                                </div>
+                                                <span className="text-gray-500 group-hover:text-yellow-400">▶</span>
+                                            </button>
+                                            
+                                            {activeSubmenu === 'prompt' && (
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                    <div className="py-2">
+                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                            Recent Prompts
+                                                        </div>
+                                                        {recentItems.length > 0 ? (
+                                                            recentItems.map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    onClick={() => {
+                                                                        handleInsertItemToChat(item, 'prompt');
+                                                                        setShowAttachMenu(false);
+                                                                        setActiveSubmenu(null);
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-colors truncate"
+                                                                >
+                                                                    {item.metadata?.title || item.title}
+                                                                </button>
+                                                            ))
+                                                        ) : (
+                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent prompts</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="border-t border-gray-800 p-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setBrowseInitialCategory('prompt');
+                                                                setIsBrowseWorkspaceOpen(true);
+                                                                setShowAttachMenu(false);
+                                                                setActiveSubmenu(null);
+                                                            }}
+                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-yellow-500/20 hover:text-yellow-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                        >
+                                                            <span>🔍</span> Browse Prompts
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Skill Submenu Trigger */}
+                                        <div 
+                                            className="relative"
+                                            onMouseEnter={() => handleLoadSubmenu('skill')}
+                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                        >
+                                            <button 
+                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-blue-500/10 hover:text-blue-400 text-gray-300 transition-colors group"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm">⚡</span>
+                                                    <span className="text-xs">Insert Saved Skill</span>
+                                                </div>
+                                                <span className="text-gray-500 group-hover:text-blue-400">▶</span>
+                                            </button>
+                                            
+                                            {activeSubmenu === 'skill' && (
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                    <div className="py-2">
+                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                            Recent Skills
+                                                        </div>
+                                                        {recentItems.length > 0 ? (
+                                                            recentItems.map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    onClick={() => {
+                                                                        handleInsertItemToChat(item, 'skill');
+                                                                        setShowAttachMenu(false);
+                                                                        setActiveSubmenu(null);
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 transition-colors truncate"
+                                                                >
+                                                                    {item.metadata?.title || item.title}
+                                                                </button>
+                                                            ))
+                                                        ) : (
+                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent skills</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="border-t border-gray-800 p-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setBrowseInitialCategory('skill');
+                                                                setIsBrowseWorkspaceOpen(true);
+                                                                setShowAttachMenu(false);
+                                                                setActiveSubmenu(null);
+                                                            }}
+                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-blue-500/20 hover:text-blue-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                        >
+                                                            <span>🔍</span> Browse Skills
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Workflow Submenu Trigger */}
+                                        <div 
+                                            className="relative"
+                                            onMouseEnter={() => handleLoadSubmenu('workflow')}
+                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                        >
+                                            <button 
+                                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-cyan-500/10 hover:text-cyan-400 text-gray-300 transition-colors group"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm">🌊</span>
+                                                    <span className="text-xs">Insert Saved Workflow</span>
+                                                </div>
+                                                <span className="text-gray-500 group-hover:text-cyan-400">▶</span>
+                                            </button>
+                                            
+                                            {activeSubmenu === 'workflow' && (
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                    <div className="py-2">
+                                                        <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                            Recent Workflows
+                                                        </div>
+                                                        {recentItems.length > 0 ? (
+                                                            recentItems.map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    onClick={() => {
+                                                                        handleInsertItemToChat(item, 'workflow');
+                                                                        setShowAttachMenu(false);
+                                                                        setActiveSubmenu(null);
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors truncate"
+                                                                >
+                                                                    {item.metadata?.title || item.title}
+                                                                </button>
+                                                            ))
+                                                        ) : (
+                                                            <div className="px-4 py-2 text-sm text-gray-500 italic">No recent workflows</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="border-t border-gray-800 p-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setBrowseInitialCategory('workflow');
+                                                                setIsBrowseWorkspaceOpen(true);
+                                                                setShowAttachMenu(false);
+                                                                setActiveSubmenu(null);
+                                                            }}
+                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-cyan-500/20 hover:text-cyan-400 text-gray-400 rounded-lg text-sm font-medium transition-colors"
+                                                        >
+                                                            <span>🔍</span> Browse Workflows
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="border-t border-green-500/10 my-1"></div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setCurrentRole(currentRole === 'prompt' ? 'response' : 'prompt');
+                                                setShowAttachMenu(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-amber-400 flex items-center gap-2"
+                                        >
+                                            <span>🔄</span> Force Role Switch
+                                        </button>
                                                         </div>
                                                     </>
                                                 )}
@@ -2045,12 +2209,11 @@ export default function UnifiedChatInterface() {
                     </div>
                 </div>
             )}
-
-            {/* Browse Skills Modal */}
-            <BrowseSkillsModal 
-                isOpen={isBrowseSkillsOpen}
-                onClose={() => setIsBrowseSkillsOpen(false)}
-                onInsertSkill={handleInsertSkillToChat}
+            <BrowseWorkspaceModal
+                isOpen={isBrowseWorkspaceOpen}
+                initialCategory={browseInitialCategory}
+                onClose={() => setIsBrowseWorkspaceOpen(false)}
+                onInsertItem={handleInsertItemToChat}
             />
         </div>
     );
