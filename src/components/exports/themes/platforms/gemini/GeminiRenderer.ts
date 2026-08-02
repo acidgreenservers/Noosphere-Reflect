@@ -1,6 +1,6 @@
 import { ChatData, ChatMessage, ChatTheme, ChatMetadata, ParserMode } from '../../../../../types';
 import { PlatformThemeClasses, ThemeRenderer } from '../../base/ThemeTypes';
-import { sanitizeUrl } from '../../../../../utils/securityUtils';
+import { MarkdownProcessor } from '../../../services/MarkdownProcessor';
 import {
     getGeminiBaseHtml,
     getGeminiUserMessageHtml,
@@ -93,35 +93,6 @@ export class GeminiThemeRenderer implements ThemeRenderer {
 
   private convertMarkdownToHtml(markdown: string, enableThoughts: boolean): string {
     if (!markdown) return '';
-    let html = markdown.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    
-    // Bold
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Italic
-    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-    // Code blocks
-    html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
-      const language = lang || 'plaintext';
-      return `<div class="relative group my-2">
-        <button onclick="copyCodeBlock(this)" class="absolute top-2 right-2 p-1.5 text-xs font-medium text-gray-200 bg-gray-700/80 hover:bg-gray-600 rounded opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none z-10">Copy</button>
-        <pre><code class="language-${language}">${code}</code></pre>
-      </div>`;
-    });
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-      const safeUrl = sanitizeUrl(url);
-      return safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-gemini-accent hover:underline">${text}</a>` : text;
-    });
-
-    // Paragraphs - preserving newlines appropriately
-    html = html.split('\n\n').map(p => {
-        if (p.trim() === '') return '';
-        if (p.startsWith('<div') || p.startsWith('<pre')) return p; // Don't wrap divs or pres
-        return `<p>${p.replace(/\n/g, '<br/>')}</p>`;
-    }).join('\n');
-
-    return html;
+    return MarkdownProcessor.convertMarkdownToHtml(markdown, enableThoughts).replace(/copyToClipboard\(/g, 'copyCodeBlock(');
   }
 }
