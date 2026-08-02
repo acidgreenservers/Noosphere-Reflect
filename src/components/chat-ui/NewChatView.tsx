@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
 import { detectCodeLanguage } from '../../utils/fileUtils';
-import { SavedChatSession, ChatTheme, ChatStyle, ParserMode, ChatMessageType, AppSettings, DEFAULT_SETTINGS, ConversationArtifact } from '../../types';
+import { SavedChatSession, ChatTheme, ChatStyle, ParserMode, ChatMessageType, AppSettings, DEFAULT_SETTINGS, ConversationArtifact, Skill } from '../../types';
 import logo from '../../assets/logo.png';
+import BrowseSkillsModal from './BrowseSkillsModal';
 
 export const NewChatView: React.FC = () => {
     const navigate = useNavigate();
@@ -19,6 +20,9 @@ export const NewChatView: React.FC = () => {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [pendingPasteText, setPendingPasteText] = useState<string | null>(null);
     const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+    const [isBrowseSkillsOpen, setIsBrowseSkillsOpen] = useState(false);
+    const [showSkillsSubmenu, setShowSkillsSubmenu] = useState(false);
+    const [recentSkills, setRecentSkills] = useState<Skill[]>([]);
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -159,21 +163,25 @@ export const NewChatView: React.FC = () => {
                         setInputValue(prev => prev + '\n' + list[idx].content);
                     }
                 }
-            } else {
-                const list = await storageService.getAllSkills();
-                if (list.length === 0) return alert('No skills found in archive');
-                const titles = list.map((s, idx) => `${idx + 1}. ${s.metadata.title}`).join('\n');
-                const selection = prompt(`Select a Skill to load (Enter number 1-${list.length}):\n\n${titles}`);
-                if (selection) {
-                    const idx = parseInt(selection) - 1;
-                    if (list[idx]) {
-                        setInputValue(prev => prev + '\n' + list[idx].content);
-                    }
-                }
             }
         } catch (e) {
             console.error('Failed to load shortcut', e);
         }
+    };
+
+    const handleLoadSkillsMenu = async () => {
+        try {
+            const list = await storageService.getAllSkills();
+            const sorted = list.sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+            setRecentSkills(sorted.slice(0, 5));
+            setShowSkillsSubmenu(true);
+        } catch (e) {
+            console.error('Failed to load skills for menu', e);
+        }
+    };
+
+    const handleInsertSkill = (skill: Skill) => {
+        setInputValue(prev => prev + (prev ? '\n' : '') + skill.content);
     };
 
     const models = [
@@ -362,38 +370,78 @@ export const NewChatView: React.FC = () => {
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowAttachMenu(false)} />
                                     <div className="absolute left-0 bottom-9 w-52 bg-[#0e1511] border border-green-500/20 rounded-2xl shadow-2xl py-1.5 z-50 animate-fade-in text-xs">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShowAttachMenu(false);
-                                                handleFileAttachClick();
-                                            }}
-                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
-                                        >
-                                            <span>📎</span> Attach File / Picture
-                                        </button>
-                                        <div className="border-t border-green-500/10 my-1"></div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLoadShortcut('memory')}
-                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
-                                        >
-                                            <span>🧠</span> Insert Saved Memory
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLoadShortcut('prompt')}
-                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
-                                        >
-                                            <span>💡</span> Insert Saved Prompt
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLoadShortcut('skill')}
-                                            className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
-                                        >
-                                            <span>⚡</span> Insert Saved Skill
-                                        </button>
+                                                            {showSkillsSubmenu ? (
+                                                                <div className="flex flex-col max-h-[300px]">
+                                                                    <div className="flex items-center gap-2 px-3 py-2 border-b border-green-500/10 text-gray-400 font-medium">
+                                                                        <button onClick={() => setShowSkillsSubmenu(false)} className="hover:text-white">◀</button>
+                                                                        <span>Saved Skills</span>
+                                                                    </div>
+                                                                    <div className="overflow-y-auto overflow-x-hidden custom-scrollbar">
+                                                                        {recentSkills.map(skill => (
+                                                                            <button
+                                                                                key={skill.id}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    handleInsertSkill(skill);
+                                                                                    setShowAttachMenu(false);
+                                                                                    setShowSkillsSubmenu(false);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 truncate"
+                                                                            >
+                                                                                {skill.metadata.title}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                    <div className="border-t border-green-500/10 my-1"></div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setIsBrowseSkillsOpen(true);
+                                                                            setShowAttachMenu(false);
+                                                                            setShowSkillsSubmenu(false);
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2 hover:bg-blue-500/10 text-blue-400 flex items-center gap-2 font-medium"
+                                                                    >
+                                                                        <span>🔍</span> Browse Skills
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setShowAttachMenu(false);
+                                                                            handleFileAttachClick();
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
+                                                                    >
+                                                                        <span>📎</span> Attach File / Picture
+                                                                    </button>
+                                                                    <div className="border-t border-green-500/10 my-1"></div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleLoadShortcut('memory')}
+                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
+                                                                    >
+                                                                        <span>🧠</span> Insert Saved Memory
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleLoadShortcut('prompt')}
+                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center gap-2"
+                                                                    >
+                                                                        <span>💡</span> Insert Saved Prompt
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleLoadSkillsMenu()}
+                                                                        className="w-full text-left px-4 py-2 hover:bg-green-500/10 text-gray-300 flex items-center justify-between gap-2"
+                                                                    >
+                                                                        <div className="flex items-center gap-2"><span>⚡</span> Insert Saved Skill</div>
+                                                                        <span className="text-[10px] text-gray-500">▶</span>
+                                                                    </button>
+                                                                </>
+                                                            )}
                                     </div>
                                 </>
                             )}
@@ -526,6 +574,12 @@ export const NewChatView: React.FC = () => {
                     </div>
                 </div>
             )}
+            {/* Browse Skills Modal */}
+            <BrowseSkillsModal 
+                isOpen={isBrowseSkillsOpen}
+                onClose={() => setIsBrowseSkillsOpen(false)}
+                onInsertSkill={handleInsertSkill}
+            />
         </div>
     );
 };
