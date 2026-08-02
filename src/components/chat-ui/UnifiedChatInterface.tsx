@@ -909,6 +909,7 @@ export default function UnifiedChatInterface() {
     const [editingTitle, setEditingTitle] = useState('');
     const sendingRef = useRef(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const submenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
     const [artifactListWidth, setArtifactListWidth] = useState<number>(40);
 
@@ -1413,7 +1414,17 @@ export default function UnifiedChatInterface() {
         }
     };
 
+    const handleLeaveSubmenu = () => {
+        submenuTimeoutRef.current = setTimeout(() => {
+            setActiveSubmenu(null);
+        }, 150);
+    };
+
     const handleLoadSubmenu = async (type: ArchiveType) => {
+        if (submenuTimeoutRef.current) {
+            clearTimeout(submenuTimeoutRef.current);
+            submenuTimeoutRef.current = null;
+        }
         try {
             let list: any[] = [];
             switch (type) {
@@ -2164,7 +2175,7 @@ export default function UnifiedChatInterface() {
                                         <div 
                                             className="relative"
                                             onMouseEnter={() => handleLoadSubmenu('memory')}
-                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                            onMouseLeave={handleLeaveSubmenu}
                                         >
                                             <button 
                                                 className="w-full flex items-center justify-between px-4 py-2 hover:bg-purple-500/10 hover:text-purple-400 text-gray-300 transition-colors group"
@@ -2177,7 +2188,7 @@ export default function UnifiedChatInterface() {
                                             </button>
                                             
                                             {activeSubmenu === 'memory' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
                                                     <div className="py-2">
                                                         <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                                             Recent Memories
@@ -2221,7 +2232,7 @@ export default function UnifiedChatInterface() {
                                         <div 
                                             className="relative"
                                             onMouseEnter={() => handleLoadSubmenu('prompt')}
-                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                            onMouseLeave={handleLeaveSubmenu}
                                         >
                                             <button 
                                                 className="w-full flex items-center justify-between px-4 py-2 hover:bg-yellow-500/10 hover:text-yellow-400 text-gray-300 transition-colors group"
@@ -2234,7 +2245,7 @@ export default function UnifiedChatInterface() {
                                             </button>
                                             
                                             {activeSubmenu === 'prompt' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
                                                     <div className="py-2">
                                                         <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                                             Recent Prompts
@@ -2278,7 +2289,7 @@ export default function UnifiedChatInterface() {
                                         <div 
                                             className="relative"
                                             onMouseEnter={() => handleLoadSubmenu('skill')}
-                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                            onMouseLeave={handleLeaveSubmenu}
                                         >
                                             <button 
                                                 className="w-full flex items-center justify-between px-4 py-2 hover:bg-blue-500/10 hover:text-blue-400 text-gray-300 transition-colors group"
@@ -2291,7 +2302,7 @@ export default function UnifiedChatInterface() {
                                             </button>
                                             
                                             {activeSubmenu === 'skill' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
                                                     <div className="py-2">
                                                         <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                                             Recent Skills
@@ -2335,7 +2346,7 @@ export default function UnifiedChatInterface() {
                                         <div 
                                             className="relative"
                                             onMouseEnter={() => handleLoadSubmenu('workflow')}
-                                            onMouseLeave={() => setActiveSubmenu(null)}
+                                            onMouseLeave={handleLeaveSubmenu}
                                         >
                                             <button 
                                                 className="w-full flex items-center justify-between px-4 py-2 hover:bg-cyan-500/10 hover:text-cyan-400 text-gray-300 transition-colors group"
@@ -2348,7 +2359,7 @@ export default function UnifiedChatInterface() {
                                             </button>
                                             
                                             {activeSubmenu === 'workflow' && (
-                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100]">
+                                                <div className="absolute left-full top-0 ml-1 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-[100] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:bg-transparent">
                                                     <div className="py-2">
                                                         <div className="px-3 pb-2 mb-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                                             Recent Workflows
