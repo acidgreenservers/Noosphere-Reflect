@@ -306,8 +306,34 @@ export const NewChatView: React.FC = () => {
             </div>
 
             {/* Glowing Input Box Container */}
-            <div className="w-full max-w-2xl relative">
+            <div className="w-full max-w-2xl relative flex flex-col gap-3">
 
+                {/* Thinking Block Input */}
+                {showThinkingInput && (
+                    <div className="w-full bg-[#1e1436]/40 border border-purple-500/30 focus-within:border-purple-500 shadow-[0_0_25px_rgba(168,85,247,0.15)] rounded-3xl p-4 flex flex-col gap-2.5 transition-all relative">
+                        <div className="flex items-center gap-2 mb-1 pl-1">
+                             <span className="text-purple-400 text-sm">🧠</span>
+                             <span className="text-purple-300/70 text-[10px] font-bold uppercase tracking-wider">Thought Process</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowThinkingInput(false);
+                                setThinkingValue('');
+                            }}
+                            className="absolute top-4 right-4 text-purple-500/50 hover:text-purple-400 transition-colors p-1 bg-[#120a21] rounded-full"
+                            title="Remove Thinking Block"
+                        >
+                            ×
+                        </button>
+                        <textarea
+                            value={thinkingValue}
+                            onChange={(e) => setThinkingValue(e.target.value)}
+                            placeholder="Enter your thought process..."
+                            className={`w-full bg-transparent resize-none outline-none border-none text-sm text-purple-100 placeholder-purple-500/50 scrollbar-none pr-6 transition-all duration-300 ${isExpanded ? "min-h-[25vh]" : "min-h-[80px]"}`}
+                        />
+                    </div>
+                )}
 
                 {/* Main Prominent Chatbox */}
                 <div
@@ -353,29 +379,6 @@ export const NewChatView: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Thinking Block Input */}
-                    {showThinkingInput && (
-                        <div className="w-full bg-[#1e1436]/40 border border-purple-500/30 focus-within:border-purple-500 shadow-purple-900/10 rounded-3xl p-3 flex flex-col gap-2.5 transition-all mb-2 relative">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowThinkingInput(false);
-                                    setThinkingValue('');
-                                }}
-                                className="absolute top-2 right-3 text-purple-500/50 hover:text-purple-400 transition-colors p-1"
-                                title="Remove Thinking Block"
-                            >
-                                ×
-                            </button>
-                            <textarea
-                                value={thinkingValue}
-                                onChange={(e) => setThinkingValue(e.target.value)}
-                                placeholder="Enter your thought process..."
-                                className="w-full bg-transparent resize-none outline-none border-none text-xs text-purple-100 placeholder-purple-500/50 scrollbar-none min-h-[80px] pr-6"
-                            />
-                        </div>
-                    )}
-
                     <textarea
                         ref={textareaRef}
                         value={inputValue}
@@ -384,7 +387,9 @@ export const NewChatView: React.FC = () => {
                         onPaste={handlePaste}
                         placeholder={`Type user message and start real-time proxy turn...`}
                         className={`w-full bg-transparent resize-none outline-none border-none text-sm text-gray-100 placeholder-gray-500 transition-all duration-300 pr-8 ${
-                            isExpanded ? "min-h-[50vh]" : "min-h-[80px]"
+                            isExpanded 
+                                ? (showThinkingInput ? "min-h-[25vh]" : "min-h-[50vh]") 
+                                : "min-h-[80px]"
                         }`}
                         autoFocus
                     />
