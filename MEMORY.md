@@ -23,3 +23,6 @@ This keeps my memory compact and resilient against signal to noise degradation. 
 - Universal UI components reduce redundant code.
 - Dual-environment operation (HTTP/HTTPS) must be guaranteed across all APIs.
 - Semantic colors build intuitive interface maps.
+- Unescaped runtime templates shatter AST bounds.
+- Dynamic metadata overrides static state routing.
+- Unconstrained text breaks flex block boundaries.
