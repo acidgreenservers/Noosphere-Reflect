@@ -1,6 +1,7 @@
-import { escapeHtml, sanitizeUrl } from '../../../../../utils/securityUtils';
+import { escapeHtml, sanitizeUrl } from '@/utils/securityUtils';
+import { INTERACTIVE_SCRIPTS } from '@/components/exports/services/ClientScripts';
 import { getGeminiHeadContent } from './GeminiStyles';
-import { ChatMetadata } from '../../../../../types';
+import { ChatMetadata } from '@/types';
 
 export function getGeminiBaseHtml(title: string, userName: string, aiName: string, chatMessagesHtml: string, metadata?: ChatMetadata, includeFooter: boolean = true): string {
     const safeUrl = metadata?.sourceUrl ? sanitizeUrl(metadata.sourceUrl) : '';
@@ -100,134 +101,7 @@ export function getGeminiBaseHtml(title: string, userName: string, aiName: strin
     </main>
 
     <!-- Scripts for Interactivity -->
-    <script>
-        // Initialize Lucide Icons
-        document.addEventListener("DOMContentLoaded", () => {
-            if (window.lucide) {
-                lucide.createIcons();
-            }
-        });
-
-        // Toggle User Prompt Bubble Expansion
-        function toggleUserPrompt(index) {
-            const container = document.getElementById('userPromptText_' + index);
-            const chevron = document.getElementById('toggleChevron_' + index);
-
-            if (!container || !chevron) return;
-
-            if (container.classList.contains('max-h-[110px]')) {
-                container.classList.remove('max-h-[110px]');
-                container.classList.add('max-h-[2500px]');
-                chevron.style.transform = 'rotate(180deg)';
-            } else {
-                container.classList.remove('max-h-[2500px]');
-                container.classList.add('max-h-[110px]');
-                chevron.style.transform = 'rotate(0deg)';
-            }
-        }
-
-        // Toggle Thought Block Expansion
-        function toggleThoughtBlock(idSuffix) {
-            const container = document.getElementById('thoughtContent_' + idSuffix);
-            const checkIcon = document.getElementById('thoughtCheck_' + idSuffix);
-            const chevron = document.getElementById('thoughtChevron_' + idSuffix);
-            
-            if (!container) return;
-            
-            const isClosed = container.classList.contains('max-h-[0px]');
-            
-            if (isClosed) {
-                container.classList.remove('max-h-[0px]', 'opacity-0', 'mb-0');
-                container.classList.add('max-h-[10000px]', 'opacity-100', 'mb-4');
-                if (checkIcon) checkIcon.classList.remove('hidden');
-                if (chevron) {
-                    chevron.classList.remove('rotate-0');
-                    chevron.classList.add('rotate-90');
-                }
-            } else {
-                container.classList.remove('max-h-[10000px]', 'opacity-100', 'mb-4');
-                container.classList.add('max-h-[0px]', 'opacity-0', 'mb-0');
-                if (checkIcon) checkIcon.classList.add('hidden');
-                if (chevron) {
-                    chevron.classList.remove('rotate-90');
-                    chevron.classList.add('rotate-0');
-                }
-            }
-        }
-
-        // Copy icon feedback animation helper
-        function triggerCopyFeedback(iconContainerId, sizeClass = 'w-3.5 h-3.5') {
-            const container = document.getElementById(iconContainerId);
-            if (!container) return;
-
-            container.innerHTML = \`<i data-lucide="check" class="\${sizeClass} text-green-400"></i>\`;
-            if (window.lucide) lucide.createIcons();
-
-            setTimeout(() => {
-                container.innerHTML = \`<i data-lucide="copy" class="\${sizeClass}"></i>\`;
-                if (window.lucide) lucide.createIcons();
-            }, 2000);
-        }
-
-        // Copy Public Link
-        function copyPublicLink(url) {
-            const temp = document.createElement('textarea');
-            temp.value = url;
-            document.body.appendChild(temp);
-            temp.select();
-            document.execCommand('copy');
-            document.body.removeChild(temp);
-
-            triggerCopyFeedback('linkCopyIcon', 'w-3.5 h-3.5');
-        }
-
-        // Copy Prompt Text
-        function copyPromptText(index) {
-            const container = document.getElementById('userPromptText_' + index);
-            if (!container) return;
-            const text = container.innerText;
-            const temp = document.createElement('textarea');
-            temp.value = text;
-            document.body.appendChild(temp);
-            temp.select();
-            document.execCommand('copy');
-            document.body.removeChild(temp);
-
-            triggerCopyFeedback('promptCopyIcon_' + index, 'w-3.5 h-3.5');
-        }
-
-        // Copy AI Response Text
-        function copyResponseText(index) {
-            const container = document.getElementById('aiMessageBody_' + index);
-            if (!container) return;
-            const text = container.innerText;
-            const temp = document.createElement('textarea');
-            temp.value = text;
-            document.body.appendChild(temp);
-            temp.select();
-            document.execCommand('copy');
-            document.body.removeChild(temp);
-
-            triggerCopyFeedback('responseCopyIcon_' + index, 'w-4 h-4');
-        }
-
-        function copyCodeBlock(btn) {
-            const pre = btn.nextElementSibling;
-            if (pre) {
-                const text = pre.innerText;
-                const tempTextArea = document.createElement('textarea');
-                tempTextArea.value = text;
-                document.body.appendChild(tempTextArea);
-                tempTextArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(tempTextArea);
-                
-                const originalText = btn.innerText;
-                btn.innerText = 'Copied!';
-                setTimeout(() => { btn.innerText = originalText; }, 2000);
-            }
-        }
-    </script>
+    ${INTERACTIVE_SCRIPTS}
 </body>
 </html>`;
 }
@@ -255,12 +129,11 @@ export function getGeminiUserMessageHtml(index: number, contentHtml: string): st
                 </div>
             </div>
 
-            <!-- Copy Prompt Button Below User Message -->
             <div class="mt-2 flex items-center justify-end">
-                <button onclick="copyPromptText(${index})"
+                <button onclick="copyPromptText(${index}, 'text-green-400')"
                     class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs text-gemini-subtle hover:text-stone-200 hover:bg-gemini-card transition-colors group"
                     title="Copy prompt">
-                    <span id="promptCopyIcon_${index}" class="inline-flex items-center justify-center">
+                    <span id="userCopyIcon_${index}" class="inline-flex items-center justify-center">
                         <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                     </span>
                     <span class="text-[11px] font-medium">Copy prompt</span>
@@ -277,13 +150,12 @@ export function getGeminiAiMessageHtml(index: number, contentHtml: string): stri
             ${contentHtml}
         </article>
 
-        <!-- AI Response Action Bar -->
         <div class="mt-8 mb-8 flex items-center justify-between border-t border-gemini-border/40 pt-4 text-gemini-subtle">
             <div class="flex items-center space-x-2">
-                <button onclick="copyResponseText(${index})"
+                <button onclick="copyMessageText(${index}, 'text-green-400')"
                     class="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg hover:bg-gemini-card hover:text-stone-200 transition-colors text-xs font-medium"
                     title="Copy response">
-                    <span id="responseCopyIcon_${index}" class="inline-flex items-center justify-center">
+                    <span id="msgCopyIcon_${index}" class="inline-flex items-center justify-center">
                         <i data-lucide="copy" class="w-4 h-4"></i>
                     </span>
                     <span>Copy</span>

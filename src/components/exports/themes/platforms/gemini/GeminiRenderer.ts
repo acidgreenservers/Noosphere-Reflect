@@ -1,6 +1,6 @@
-import { ChatData, ChatMessage, ChatTheme, ChatMetadata, ParserMode } from '../../../../../types';
+import { ChatData, ChatMessage, ChatTheme, ChatMetadata, ParserMode } from '@/types';
 import { PlatformThemeClasses, ThemeRenderer } from '../../base/ThemeTypes';
-import { MarkdownProcessor } from '../../../services/MarkdownProcessor';
+import { MarkdownProcessor } from '@/components/exports/services/MarkdownProcessor';
 import {
     getGeminiBaseHtml,
     getGeminiUserMessageHtml,

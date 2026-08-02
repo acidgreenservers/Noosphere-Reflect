@@ -2,6 +2,7 @@ import { ChatData, ChatMessageType, ChatTheme, ThemeClasses, ParserMode, ChatMet
 import { escapeHtml, sanitizeUrl } from '../../../utils/securityUtils';
 import { themeRegistry } from '../themes';
 import { MarkdownProcessor } from './MarkdownProcessor';
+import { PREVIEW_DOWNLOAD_SCRIPT, MATHJAX_SCRIPT, INTERACTIVE_SCRIPTS } from './ClientScripts';
 
 // Define theme classes (moved from converterService.ts)
 const themeMap: Record<ChatTheme, ThemeClasses> = {
@@ -136,52 +137,7 @@ export class HtmlGenerator {
 
     const enableThoughts = [ParserMode.ClaudeHtml, ParserMode.LeChatHtml, ParserMode.LlamacoderHtml, ParserMode.ChatGptHtml, ParserMode.GeminiHtml].includes(parserMode);
 
-    const previewScript = isPreview ? `
-      <script>
-        function downloadArtifact(e) {
-          e.preventDefault();
-          const link = e.currentTarget;
-          const id = link.getAttribute('data-id');
-          
-          // Try to open in the parent's immersive reader first
-          if (window.parent !== window) {
-              window.parent.postMessage({ type: 'open_artifact', artifactId: id }, '*');
-              return;
-          }
-
-          // Fallback to direct download if not in iframe or parent doesn't intercept
-          const b64 = link.getAttribute('data-b64');
-          const mime = link.getAttribute('data-mime');
-          const filename = link.getAttribute('download');
-
-          try {
-              const byteCharacters = atob(b64);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) {
-                  byteNumbers[i] = byteCharacters.charCodeAt(i);
-              }
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], {type: mime});
-              const url = URL.createObjectURL(blob);
-
-              const a = document.createElement('a');
-              a.style.display = 'none';
-              a.href = url;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-
-              setTimeout(() => {
-                  document.body.removeChild(a);
-                  window.URL.revokeObjectURL(url);
-              }, 100);
-          } catch (err) {
-              console.error('Download failed', err);
-              alert('Download failed: ' + err.message);
-          }
-        }
-      </script>
-    ` : '';
+    const previewScript = isPreview ? PREVIEW_DOWNLOAD_SCRIPT : '';
 
     const chatMessagesHtml = chatData.messages
       .map((message, index) => {
@@ -420,32 +376,8 @@ export class HtmlGenerator {
         border-radius: 4px;
       }
     </style>
-    <!-- MathJax for rendering equations -->
-    <script>
-      window.MathJax = {
-        tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
-        svg: { fontCache: 'global' },
-        startup: {
-            typeset: false // We will typeset manually if needed, or rely on auto - auto is default actually
-        }
-      };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>
-    function copyToClipboard(btn) {
-      const container = btn.parentElement;
-      const pre = container.querySelector('pre');
-      const code = pre.innerText;
-      navigator.clipboard.writeText(code).then(() => {
-         const originalText = btn.innerText;
-         btn.innerText = 'Copied!';
-         setTimeout(() => { btn.innerText = originalText; }, 2000);
-      }).catch(err => {
-         console.error('Failed to copy:', err);
-         btn.innerText = 'Error';
-      });
-    }
-    </script>
+    ${MATHJAX_SCRIPT}
+    ${INTERACTIVE_SCRIPTS}
 </head>
 <body class="p-8">
     <div class="max-w-4xl mx-auto my-8 p-6 ${containerBg} rounded-lg shadow-xl">

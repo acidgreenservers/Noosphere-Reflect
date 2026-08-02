@@ -1,4 +1,4 @@
-import { ChatTheme, ChatStyle } from '../../../types';
+import { ChatTheme, ChatStyle, ChatMetadata, ParserMode } from '../../../types';
 import { ThemeRegistry as IThemeRegistry, PlatformTheme, ThemeRenderer, PlatformThemeClasses } from './base/ThemeTypes';
 import { ClaudeThemeRendererInstance, ClaudeThemeClasses } from './platforms/claude';
 import { ChatGPTThemeRendererInstance, ChatGPTThemeClasses } from './platforms/ChatGPTTheme';
@@ -77,6 +77,70 @@ export class ThemeRegistry implements IThemeRegistry {
       return firstStyle;
     }
     throw new Error('No styles registered');
+  }
+
+  resolveStyle(params: {
+    metadata?: ChatMetadata;
+    aiName?: string;
+    style?: ChatStyle;
+    parserMode?: ParserMode;
+  }): ChatStyle | undefined {
+    const { metadata, aiName, style, parserMode } = params;
+    let effectiveStyle: ChatStyle | undefined = undefined;
+    const modelString = (metadata?.model || aiName || '').toLowerCase();
+    
+    // 1. First prioritize explicit user tags
+    if (metadata?.tags && Array.isArray(metadata.tags)) {
+      const lowerTags = metadata.tags.map(t => t.toLowerCase());
+      if (lowerTags.includes('claude')) {
+        effectiveStyle = ChatStyle.Claude;
+      } else if (lowerTags.includes('gemini')) {
+        effectiveStyle = ChatStyle.Gemini;
+      } else if (lowerTags.includes('chatgpt') || lowerTags.includes('gpt')) {
+        effectiveStyle = ChatStyle.ChatGPT;
+      } else if (lowerTags.includes('grok')) {
+        effectiveStyle = ChatStyle.Grok;
+      } else if (lowerTags.includes('lechat') || lowerTags.includes('mistral')) {
+        effectiveStyle = ChatStyle.LeChat;
+      }
+    }
+    
+    // 2. Next prioritize active model string
+    if (!effectiveStyle) {
+      if (modelString.includes('claude')) {
+        effectiveStyle = ChatStyle.Claude;
+      } else if (modelString.includes('gpt') || modelString.includes('openai')) {
+        effectiveStyle = ChatStyle.ChatGPT;
+      } else if (modelString.includes('gemini')) {
+        effectiveStyle = ChatStyle.Gemini;
+      } else if (modelString.includes('grok')) {
+        effectiveStyle = ChatStyle.Grok;
+      } else if (modelString.includes('mistral') || modelString.includes('lechat')) {
+        effectiveStyle = ChatStyle.LeChat;
+      } 
+    }
+    
+    // 3. Fallback to passed style if it's explicitly set (and not Default)
+    if (!effectiveStyle && style && style !== ChatStyle.Default) {
+      effectiveStyle = style;
+    }
+    
+    // 4. Fallback to parser mode if nothing else matches
+    if (!effectiveStyle) {
+      if (parserMode === ParserMode.ClaudeHtml) {
+        effectiveStyle = ChatStyle.Claude;
+      } else if (parserMode === ParserMode.ChatGptHtml) {
+        effectiveStyle = ChatStyle.ChatGPT;
+      } else if (parserMode === ParserMode.GeminiHtml) {
+        effectiveStyle = ChatStyle.Gemini;
+      } else if (parserMode === ParserMode.GrokHtml) {
+        effectiveStyle = ChatStyle.Grok;
+      } else if (parserMode === ParserMode.LeChatHtml) {
+        effectiveStyle = ChatStyle.LeChat;
+      }
+    }
+
+    return effectiveStyle;
   }
 
   private registerThemes(): void {

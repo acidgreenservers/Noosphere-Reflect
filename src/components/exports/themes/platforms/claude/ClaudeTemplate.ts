@@ -1,6 +1,7 @@
-import { escapeHtml, sanitizeUrl } from '../../../../../utils/securityUtils';
+import { escapeHtml, sanitizeUrl } from '@/utils/securityUtils';
+import { INTERACTIVE_SCRIPTS } from '@/components/exports/services/ClientScripts';
 import { getClaudeHeadContent } from './ClaudeStyles';
-import { ChatMetadata } from '../../../../../types';
+import { ChatMetadata } from '@/types';
 
 export function getClaudeBaseHtml(title: string, userName: string, aiName: string, chatMessagesHtml: string, metadata?: ChatMetadata, includeFooter: boolean = true): string {
     const safeUrl = metadata?.sourceUrl ? sanitizeUrl(metadata.sourceUrl) : '';
@@ -76,121 +77,7 @@ export function getClaudeBaseHtml(title: string, userName: string, aiName: strin
     </main>
 
     <!-- Scripts for Interactivity -->
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            if (window.lucide) {
-                lucide.createIcons();
-            }
-        });
-
-        function toggleUserMessage(index) {
-            const container = document.getElementById('userTextContainer_' + index);
-            const btnText = document.getElementById('toggleUserText_' + index);
-            const overlay = document.getElementById('gradientOverlay_' + index);
-
-            if (!container) return;
-
-            if (container.classList.contains('max-h-[140px]')) {
-                container.classList.remove('max-h-[140px]');
-                container.classList.add('max-h-[10000px]');
-                if (overlay) overlay.classList.add('opacity-0');
-                if (btnText) btnText.innerText = 'Show less';
-            } else {
-                container.classList.remove('max-h-[10000px]');
-                container.classList.add('max-h-[140px]');
-                if (overlay) overlay.classList.remove('opacity-0');
-                if (btnText) btnText.innerText = 'Show more';
-            }
-        }
-        
-        function toggleThoughtBlock(index) {
-            const container = document.getElementById('thoughtContent_' + index);
-            const checkIcon = document.getElementById('thoughtCheck_' + index);
-            const chevron = document.getElementById('thoughtChevron_' + index);
-            
-            if (!container) return;
-            
-            const isClosed = container.classList.contains('max-h-[0px]');
-            
-            if (isClosed) {
-                container.classList.remove('max-h-[0px]', 'opacity-0', 'mb-0');
-                container.classList.add('max-h-[10000px]', 'opacity-100', 'mb-4');
-                if (checkIcon) checkIcon.classList.remove('hidden');
-                if (chevron) {
-                    chevron.classList.remove('rotate-0');
-                    chevron.classList.add('rotate-90');
-                }
-            } else {
-                container.classList.remove('max-h-[10000px]', 'opacity-100', 'mb-4');
-                container.classList.add('max-h-[0px]', 'opacity-0', 'mb-0');
-                if (checkIcon) checkIcon.classList.add('hidden');
-                if (chevron) {
-                    chevron.classList.remove('rotate-90');
-                    chevron.classList.add('rotate-0');
-                }
-            }
-        }
-
-        function triggerCopyFeedback(iconContainerId, sizeClass) {
-            const container = document.getElementById(iconContainerId);
-            if (!container) return;
-            
-            const originalHtml = container.innerHTML;
-
-            container.innerHTML = \`<i data-lucide="check" class="\${sizeClass} text-stone-300"></i>\`;
-            if (window.lucide) lucide.createIcons();
-
-            setTimeout(() => {
-                container.innerHTML = originalHtml;
-                if (window.lucide) lucide.createIcons();
-            }, 2000);
-        }
-
-        function copyPromptText(index) {
-            const container = document.getElementById('userTextContainer_' + index);
-            if (!container) return;
-            const promptContent = container.innerText;
-            const tempTextArea = document.createElement('textarea');
-            tempTextArea.value = promptContent;
-            document.body.appendChild(tempTextArea);
-            tempTextArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempTextArea);
-
-            triggerCopyFeedback('userCopyIcon_' + index, 'w-3.5 h-3.5');
-        }
-
-        function copyMessageText(index) {
-            const container = document.getElementById('aiMessageBody_' + index);
-            if (!container) return;
-            const text = container.innerText;
-            const tempTextArea = document.createElement('textarea');
-            tempTextArea.value = text;
-            document.body.appendChild(tempTextArea);
-            tempTextArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempTextArea);
-
-            triggerCopyFeedback('msgCopyIcon_' + index, 'w-4 h-4');
-        }
-        
-        function copyCodeBlock(btn) {
-            const pre = btn.nextElementSibling;
-            if (pre) {
-                const text = pre.innerText;
-                const tempTextArea = document.createElement('textarea');
-                tempTextArea.value = text;
-                document.body.appendChild(tempTextArea);
-                tempTextArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(tempTextArea);
-                
-                const originalText = btn.innerText;
-                btn.innerText = 'Copied!';
-                setTimeout(() => { btn.innerText = originalText; }, 2000);
-            }
-        }
-    </script>
+    ${INTERACTIVE_SCRIPTS}
 </body>
 </html>`;
 }
