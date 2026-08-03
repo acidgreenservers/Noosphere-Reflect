@@ -16,6 +16,22 @@ export class PromptStore extends BaseStore<Prompt, typeof STORES.PROMPTS> {
             if (sanitized.metadata.title) {
                 sanitized.metadata.title = sanitizeMessageContent(sanitized.metadata.title);
             }
+            if (sanitized.metadata.mainContent) {
+                sanitized.metadata.mainContent = sanitizeMessageContent(sanitized.metadata.mainContent);
+            }
+            if (sanitized.metadata.sections) {
+                sanitized.metadata.sections = sanitized.metadata.sections.map(sec => ({
+                    ...sec,
+                    title: sanitizeMessageContent(sec.title),
+                    content: sanitizeMessageContent(sec.content)
+                }));
+            }
+            if (sanitized.metadata.constraints) {
+                sanitized.metadata.constraints = sanitized.metadata.constraints.map(c => ({
+                    ...c,
+                    text: sanitizeMessageContent(c.text)
+                }));
+            }
         }
         if (sanitized.tags) {
             sanitized.tags = sanitized.tags.map(t => sanitizeMessageContent(t));

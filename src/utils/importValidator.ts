@@ -144,13 +144,30 @@ export const MemorySchema = z.object({
     folderId: z.string().nullable().optional()
 });
 
+const PromptSectionSchema = z.object({
+    id: z.string(),
+    title: z.string().max(200),
+    content: z.string().max(100000)
+});
+
+const PromptConstraintSchema = z.object({
+    id: z.string(),
+    text: z.string().max(1000)
+});
+
 // Prompt Metadata Schema - matching PromptMetadata interface
 const PromptMetadataSchema = z.object({
     title: z.string().max(200),
     category: z.string().max(100).optional(),
     wordCount: z.number(),
     characterCount: z.number(),
-    exportStatus: z.enum(['exported', 'not_exported']).optional()
+    exportStatus: z.enum(['exported', 'not_exported', 'modified']).optional(),
+    lastExportDate: z.string().optional(),
+    exportFormats: z.array(z.string()).optional(),
+    exportCount: z.number().optional(),
+    sections: z.array(PromptSectionSchema).optional(),
+    constraints: z.array(PromptConstraintSchema).optional(),
+    mainContent: z.string().max(1000000).optional()
 });
 
 // Prompt Schema - matching Prompt interface

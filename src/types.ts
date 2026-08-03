@@ -239,6 +239,17 @@ export interface Memory {
 }
 
 // Prompt Archive Types
+export interface PromptSection {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface PromptConstraint {
+  id: string;
+  text: string;
+}
+
 export interface PromptMetadata {
   title: string;                 // User-defined prompt title
   category?: string;             // Category/purpose (e.g., "Coding", "Writing", "Analysis")
@@ -248,6 +259,9 @@ export interface PromptMetadata {
   lastExportDate?: string;
   exportFormats?: string[];
   exportCount?: number;
+  sections?: PromptSection[];
+  constraints?: PromptConstraint[];
+  mainContent?: string;
 }
 
 export interface Prompt {

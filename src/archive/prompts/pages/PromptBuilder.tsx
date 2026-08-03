@@ -35,17 +35,6 @@ const RotateCcw = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
 );
 
-interface PromptSection {
-    id: string;
-    title: string;
-    content: string;
-}
-
-interface PromptConstraint {
-    id: string;
-    text: string;
-}
-
 interface BuilderState {
     id: string;
     title: string;
@@ -83,7 +72,7 @@ export default function PromptBuilder() {
                 title: editingPrompt.metadata.title || '',
                 category: editingPrompt.metadata.category || 'General',
                 tags: editingPrompt.tags.join(', '),
-                content: editingPrompt.content,
+                content: editingPrompt.metadata.mainContent || editingPrompt.content,
                 sections: editingPrompt.metadata.sections || [],
                 constraints: editingPrompt.metadata.constraints || []
             });
@@ -162,8 +151,8 @@ export default function PromptBuilder() {
                 // store the raw chunks so we can re-load them:
                 sections: state.sections,
                 constraints: state.constraints,
-            } as any;
-            (updatedPrompt.metadata as any).mainContent = state.content;
+                mainContent: state.content
+            };
 
             await storageService.updatePrompt(updatedPrompt);
         } else {
@@ -180,9 +169,9 @@ export default function PromptBuilder() {
                     characterCount: compiled.length,
                     sections: state.sections,
                     constraints: state.constraints,
-                } as any
+                    mainContent: state.content
+                }
             };
-            (newPrompt.metadata as any).mainContent = state.content;
             
             await storageService.savePrompt(newPrompt);
         }

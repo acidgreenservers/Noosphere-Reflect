@@ -86,4 +86,53 @@ describe('PromptBuilder', () => {
         expect(alertMock).toHaveBeenCalledWith('Prompt must have at least a title or some content.');
         alertMock.mockRestore();
     });
+
+    it('loads an existing prompt correctly and does not duplicate custom sections/constraints on save', async () => {
+        const mockPrompt = {
+            id: 'p1',
+            content: 'This is the main prompt content.\n\n### Custom Sec\nSome section content\n\n### Constraints\n- [ ] Constraint one\n',
+            tags: ['tag1'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            metadata: {
+                title: 'Existing Prompt',
+                category: 'General',
+                wordCount: 100,
+                characterCount: 500,
+                sections: [
+                    { id: 'sec1', title: 'Custom Sec', content: 'Some section content' }
+                ],
+                constraints: [
+                    { id: 'c1', text: 'Constraint one' }
+                ],
+                mainContent: 'This is the main prompt content.'
+            }
+        };
+
+        renderWithRouter({ editingPrompt: mockPrompt });
+
+        // The main prompt content input should have the raw main content, NOT the compiled one!
+        const mainContentTextarea = screen.getByPlaceholderText('The core system prompt and overarching instructions...');
+        expect(mainContentTextarea).toHaveValue('This is the main prompt content.');
+
+        // Custom sections should be populated
+        expect(screen.getByDisplayValue('Custom Sec')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Some section content')).toBeInTheDocument();
+
+        // Constraints should be populated
+        expect(screen.getByDisplayValue('Constraint one')).toBeInTheDocument();
+
+        // Let's trigger save and verify the saved object matches
+        const saveBtn = screen.getByText('Save Prompt');
+        fireEvent.click(saveBtn);
+
+        await waitFor(() => {
+            expect(storageService.updatePrompt).toHaveBeenCalledTimes(1);
+            const savedArg = vi.mocked(storageService.updatePrompt).mock.calls[0][0];
+            // The saved content should be identical to the original compiled content
+            expect(savedArg.content.trim()).toBe(mockPrompt.content.trim());
+            // The saved metadata should have the correct mainContent (no duplication!)
+            expect(savedArg.metadata.mainContent).toBe('This is the main prompt content.');
+        });
+    });
 });
