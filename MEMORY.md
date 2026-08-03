@@ -29,3 +29,6 @@ This keeps my memory compact and resilient against signal to noise degradation. 
 - Greedy regex on ASTs swallows sibling boundaries.
 - Precise indexing prevents structural collapse.
 - State hooks must map outside the render target.
+- Absolute aliases shatter test module chains.
+- Mock schema drift violates strict validation.
+- Defensive fallback defeats intentional error tests.
