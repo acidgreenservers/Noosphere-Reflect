@@ -359,7 +359,7 @@ export interface Agent {
   personalityTraits: AgentPersonalityTrait[];
   skills: string[]; // Skill IDs
   workflows: string[]; // Workflow IDs
-  files: ConversationArtifact[]; // Agent-specific files
+  files: SkillFile[]; // Agent-specific files
   skillOverrides?: Record<string, string>; // Skill ID -> Custom Path
   workflowOverrides?: Record<string, string>; // Workflow ID -> Custom Path
   customFrontmatter?: { key: string; value: string }[];

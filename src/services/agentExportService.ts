@@ -156,9 +156,12 @@ ${sec.content.trim()}
             if (workflow) workflows.push(workflow);
         }
 
+        const safeAgentName = sanitizeFilename(agent.name || 'agent');
+        const rootFolder = zip.folder(safeAgentName)!;
+
         // 3. AGENTS.md
         const agentsMd = this.compileAgentMarkdown(agent, skills, workflows);
-        zip.file('AGENTS.md', agentsMd);
+        rootFolder.file('AGENTS.md', agentsMd);
 
         // 4. metadata.json (embedded full raw data of agent, skills, and workflows)
         const payload: AgentBackupPayload = {
@@ -168,11 +171,11 @@ ${sec.content.trim()}
             skills,
             workflows
         };
-        zip.file('metadata.json', JSON.stringify(payload, null, 2));
+        rootFolder.file('metadata.json', JSON.stringify(payload, null, 2));
 
         // 5. skills/ folder
         if (skills.length > 0) {
-            const skillsFolder = zip.folder('skills')!;
+            const skillsFolder = rootFolder.folder('skills')!;
             skills.forEach(skill => {
                 const safeName = neutralizeDangerousExtension(sanitizeFilename(skill.metadata.title)) || 'skill';
                 skillsFolder.file(`${safeName}.md`, skill.content);
@@ -181,24 +184,29 @@ ${sec.content.trim()}
 
         // 6. workflows/ folder
         if (workflows.length > 0) {
-            const workflowsFolder = zip.folder('workflows')!;
+            const workflowsFolder = rootFolder.folder('workflows')!;
             workflows.forEach(workflow => {
                 const safeName = neutralizeDangerousExtension(sanitizeFilename(workflow.metadata.title)) || 'workflow';
                 workflowsFolder.file(`${safeName}.md`, workflow.content);
             });
         }
 
-        // 7. files/ folder
-        if (agent.files.length > 0) {
-            const filesFolder = zip.folder('files')!;
+        // 7. Custom files and directories (hierarchical)
+        if (agent.files && agent.files.length > 0) {
             agent.files.forEach(file => {
-                const safeName = neutralizeDangerousExtension(sanitizeFilename(file.fileName));
-                const binaryString = atob(file.fileData);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
+                // Backward compatibility if path is missing but fileName is present
+                const rawPath = (file as any).path || (file as any).fileName;
+                if (rawPath) {
+                    const safePath = rawPath.split('/').map(p => sanitizeFilename(p)).join('/');
+                    if (file.fileData) {
+                        const base64Data = file.fileData.includes('base64,')
+                            ? file.fileData.split('base64,')[1]
+                            : file.fileData;
+                        rootFolder.file(safePath, base64Data, { base64: true });
+                    } else if ((file as any).content !== undefined) {
+                        rootFolder.file(safePath, (file as any).content);
+                    }
                 }
-                filesFolder.file(safeName, bytes);
             });
         }
 
@@ -211,9 +219,14 @@ ${sec.content.trim()}
     static async importAgentFromZip(file: File): Promise<Agent> {
         const zip = await JSZip.loadAsync(file);
 
-        // Check for required root files
-        const metadataFile = zip.file('metadata.json');
-        const agentsMdFile = zip.file('AGENTS.md');
+        // Find the root folder (usually there is just one folder at the root)
+        const rootFolders = Object.keys(zip.files).filter(path => path.endsWith('/') && path.split('/').length === 2);
+
+        // If there's a root folder, use it as a prefix, otherwise look in the root of the zip
+        const rootPrefix = rootFolders.length === 1 ? rootFolders[0] : '';
+
+        const metadataFile = zip.file(`${rootPrefix}metadata.json`);
+        const agentsMdFile = zip.file(`${rootPrefix}AGENTS.md`);
 
         if (!metadataFile || !agentsMdFile) {
             throw new Error('Invalid Agent ZIP bundle. Missing AGENTS.md or metadata.json at root.');

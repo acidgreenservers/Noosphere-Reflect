@@ -257,7 +257,7 @@ export const AgentSchema = z.object({
     personalityTraits: z.array(AgentPersonalityTraitSchema).max(100),
     skills: z.array(z.string()).max(100),
     workflows: z.array(z.string()).max(100),
-    files: z.array(ConversationArtifactSchema).max(100),
+    files: z.array(SkillFileSchema).max(100),
     skillOverrides: z.record(z.string()).optional(),
     workflowOverrides: z.record(z.string()).optional(),
     customFrontmatter: z.array(z.object({ key: z.string().max(100), value: z.string().max(1000) })).optional(),

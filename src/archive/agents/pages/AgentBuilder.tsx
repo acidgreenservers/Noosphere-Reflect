@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Agent, Skill, Workflow, ConversationArtifact, DEFAULT_SETTINGS, AppSettings } from '../../../types';
+import { Agent, Skill, Workflow, SkillFile, ConversationArtifact, DEFAULT_SETTINGS, AppSettings } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { AgentExportService } from '../../../services/agentExportService';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
@@ -47,6 +47,29 @@ const RotateCcw = ({ size = 16, className = "" }) => (
 const FileUp = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
 );
+
+const Folder = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+);
+const FileText = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+);
+const Image = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+);
+const X = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+);
+const FolderPlus = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" x2="12" y1="10" y2="16"/><line x1="9" x2="15" y1="13" y2="13"/></svg>
+);
+const FilePlus = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><line x1="12" x2="12" y1="10" y2="16"/><line x1="9" x2="15" y1="13" y2="13"/></svg>
+);
+const Upload = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+);
+
 const ZipIcon = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.5 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 12 12 16.5 14.6 16.5 19.79"/><polyline points="12 22 12 12"/><line x1="12" y1="6.5" x2="12" y2="12"/></svg>
 );
@@ -69,7 +92,28 @@ export default function AgentBuilder() {
     const [personalityTraits, setPersonalityTraits] = useState<Array<{ id: string; trait: string; value: string }>>([]);
     const [attachedSkills, setAttachedSkills] = useState<Set<string>>(new Set());
     const [attachedWorkflows, setAttachedWorkflows] = useState<Set<string>>(new Set());
-    const [attachedFiles, setAttachedFiles] = useState<ConversationArtifact[]>([]);
+    const [attachedFiles, setAttachedFiles] = useState<SkillFile[]>([]);
+    const [activeTab, setActiveTab] = useState<string>('preview');
+    const [openTabs, setOpenTabs] = useState<string[]>(['preview']);
+
+    const openFile = (path: string) => {
+        if (!openTabs.includes(path)) {
+            setOpenTabs(prev => [...prev, path]);
+        }
+        setActiveTab(path);
+    };
+
+    const handleTabClose = (path: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setOpenTabs(prev => {
+            const next = prev.filter(t => t !== path);
+            if (activeTab === path) {
+                setActiveTab('preview');
+            }
+            return next;
+        });
+    };
+    const [customModal, setCustomModal] = useState<{isOpen: boolean; type: 'file' | 'dir'; path: string; basePath: string} | null>(null);
     const [customFrontmatter, setCustomFrontmatter] = useState<{ key: string; value: string }[]>([]);
     const [avatarEmoji, setAvatarEmoji] = useState('🤖');
     const [isCopied, setIsCopied] = useState(false);
@@ -120,6 +164,7 @@ export default function AgentBuilder() {
         }
     };
     const [showClearModal, setShowClearModal] = useState(false);
+    const [fileToDelete, setFileToDelete] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +197,17 @@ export default function AgentBuilder() {
                         setPersonalityTraits(agent.personalityTraits || []);
                         setAttachedSkills(new Set(agent.skills || []));
                         setAttachedWorkflows(new Set(agent.workflows || []));
-                        setAttachedFiles(agent.files || []);
+                        setAttachedFiles((agent.files || []).map(f => {
+                            if (!('path' in f) && 'fileName' in f) {
+                                return {
+                                    id: f.id,
+                                    path: f.fileName,
+                                    fileData: f.fileData,
+                                    mimeType: f.mimeType
+                                } as any;
+                            }
+                            return f as any;
+                        }));
                         setSkillOverrides(agent.skillOverrides || {});
                         setWorkflowOverrides(agent.workflowOverrides || {});
                         setCustomFrontmatter(agent.customFrontmatter || []);
@@ -359,15 +414,16 @@ export default function AgentBuilder() {
         setAttachedWorkflows(next);
     };
 
-    // File Upload Pool (Agent Specific files)
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+    // File/Directory Management
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, basePath: string) => {
         const files = e.target.files;
         if (!files) return;
 
-        const newFiles: ConversationArtifact[] = [];
+        const newAgentFiles: SkillFile[] = [];
 
         Array.from(files).forEach(file => {
-            const isText = file.name.endsWith('.md') || file.name.endsWith('.txt') || file.name.endsWith('.json') || file.name.endsWith('.js') || file.name.endsWith('.ts') || file.type.startsWith('text/');
+            const isText = file.name.endsWith('.md') || file.name.endsWith('.txt') || file.name.endsWith('.json') || file.name.endsWith('.js') || file.name.endsWith('.ts') || file.name.endsWith('.css') || file.type.startsWith('text/');
             const reader = new FileReader();
 
             reader.onload = (event) => {
@@ -375,22 +431,33 @@ export default function AgentBuilder() {
                 if (typeof result !== 'string') return;
 
                 let fileData = result;
-                if (!isText && result.startsWith('data:')) {
+                let content = undefined;
+
+                if (isText) {
+                    content = result;
+                } else if (result.startsWith('data:')) {
                     fileData = result.split(',')[1];
                 }
 
-                newFiles.push({
-                    id: `artifact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    fileName: file.name,
-                    fileSize: file.size,
+                const path = basePath === '' ? file.name : `${basePath}/${file.name}`;
+
+                if (attachedFiles.some(f => f.path === path)) {
+                    showToast(`File ${path} already exists. Skipping.`, 'error');
+                    return;
+                }
+
+                newAgentFiles.push({
+                    id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    path,
+                    content,
+                    fileData: isText ? undefined : fileData,
                     mimeType: file.type || (isText ? 'text/plain' : 'application/octet-stream'),
-                    fileData,
-                    uploadedAt: new Date().toISOString()
                 });
 
-                if (newFiles.length === files.length) {
-                    setAttachedFiles(prev => [...prev, ...newFiles]);
+                if (newAgentFiles.length === files.length) {
+                    setAttachedFiles(prev => [...prev, ...newAgentFiles]);
                     if (fileInputRef.current) fileInputRef.current.value = '';
+                    showToast(`Successfully uploaded ${newAgentFiles.length} file(s)`, 'success');
                 }
             };
 
@@ -402,11 +469,66 @@ export default function AgentBuilder() {
         });
     };
 
-    const removeAttachedFile = (id: string) => {
-        setAttachedFiles(prev => prev.filter(f => f.id !== id));
+    const handleCreateCustom = (type: 'file' | 'dir', name: string, basePath: string) => {
+        if (!name) return;
+        
+        const cleanName = name.trim().replace(/^\/+/, '');
+        if (!cleanName) return;
+
+        const path = basePath === '' ? cleanName : `${basePath}/${cleanName}`;
+
+        if (attachedFiles.some(f => f.path === path)) {
+            showToast(`${type === 'dir' ? 'Directory' : 'File'} ${path} already exists. Skipping.`, 'error');
+            return;
+        }
+
+        const newFile: SkillFile = {
+            id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            path: type === 'dir' ? `${path}/` : path,
+            content: type === 'dir' ? undefined : '',
+            mimeType: type === 'dir' ? 'inode/directory' : 'text/plain'
+        };
+
+        setAttachedFiles(prev => [...prev, newFile]);
+        setCustomModal(null);
+        showToast(`Created ${type === 'dir' ? 'directory' : 'file'} ${path}`, 'success');
     };
 
+    const removeFileOrDir = (path: string) => {
+        setAttachedFiles(prev => prev.filter(f => !f.path.startsWith(path)));
+        setOpenTabs(prev => {
+            const next = prev.filter(t => !t.startsWith(path));
+            if (activeTab.startsWith(path)) {
+                setActiveTab('preview');
+            }
+            return next;
+        });
+    };
+
+    // Derived file tree
+    const directories = useMemo(() => {
+        const dirs = new Set<string>();
+        dirs.add('assets');
+        dirs.add('references');
+        
+        attachedFiles.forEach(f => {
+            const parts = f.path.split('/');
+            if (parts.length > 1) {
+                let currentPath = parts[0];
+                dirs.add(currentPath);
+                for (let i = 1; i < parts.length - (f.path.endsWith('/') ? 0 : 1); i++) {
+                    currentPath += '/' + parts[i];
+                    dirs.add(currentPath);
+                }
+            } else if (f.path.endsWith('/')) {
+                dirs.add(f.path.replace(/\/$/, ''));
+            }
+        });
+        return Array.from(dirs).sort();
+    }, [attachedFiles]);
+
     if (isLoading) return null;
+
 
     return (
         <div
@@ -816,95 +938,205 @@ export default function AgentBuilder() {
                         )}
                     </div>
 
-                    {/* File Attachment Pool Card */}
+                    {/* Attached Workspace Files */}
                     <div className="border border-gray-800 rounded-lg p-5 bg-[#111] flex-shrink-0">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="text-xs font-bold text-gray-400 tracking-wider uppercase">📁 Agent Specific Attachments Pool</div>
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex items-center gap-1.5 px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-md transition-colors"
-                            >
-                                <FileUp size={12} /> Upload File
-                            </button>
-                            <input
-                                type="file"
-                                multiple
-                                className="hidden"
-                                ref={fileInputRef}
-                                onChange={handleFileUpload}
-                            />
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full px-3 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                                <Folder size={14} /> Agent Workspace Files
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setCustomModal({ isOpen: true, type: 'dir', path: '', basePath: '' })}
+                                    className="p-1.5 text-cyan-500/70 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-md transition-colors"
+                                    title="New root directory"
+                                >
+                                    <FolderPlus size={14} />
+                                </button>
+                                <button
+                                    onClick={() => setCustomModal({ isOpen: true, type: 'file', path: '', basePath: '' })}
+                                    className="p-1.5 text-cyan-500/70 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-md transition-colors"
+                                    title="New root file"
+                                >
+                                    <FilePlus size={14} />
+                                </button>
+                            </div>
                         </div>
 
-                        {attachedFiles.length === 0 ? (
-                            <div className="text-center py-6 bg-[#1a1a1a]/50 border border-gray-800 border-dashed rounded-xl">
-                                <span className="text-xs text-gray-500 font-medium">No files attached to this agent.</span>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {attachedFiles.map(file => (
+                        <div className="bg-[#1a1a1a] rounded-lg border border-gray-800 p-2 space-y-1">
+                            {directories.map(dir => (
+                                <div key={dir} className="group">
+                                    <div className="flex items-center justify-between py-1.5 px-2 hover:bg-[#222] rounded-md transition-colors">
+                                        <div className="flex items-center gap-2 text-sm text-cyan-500 font-medium font-mono">
+                                            <Folder size={14} />
+                                            {dir}/
+                                        </div>
+                                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                                            <button
+                                                onClick={() => setCustomModal({ isOpen: true, type: 'dir', path: '', basePath: dir })}
+                                                className="p-1 text-gray-500 hover:text-cyan-400"
+                                                title="New directory here"
+                                            >
+                                                <FolderPlus size={12} />
+                                            </button>
+                                            <button
+                                                onClick={() => setCustomModal({ isOpen: true, type: 'file', path: '', basePath: dir })}
+                                                className="p-1 text-gray-500 hover:text-cyan-400"
+                                                title="New file here"
+                                            >
+                                                <FilePlus size={12} />
+                                            </button>
+                                            <label className="p-1 text-gray-500 hover:text-cyan-400 cursor-pointer" title="Upload file here">
+                                                <Upload size={12} />
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    className="hidden"
+                                                    onChange={(e) => handleFileUpload(e, dir)}
+                                                />
+                                            </label>
+                                            {dir !== 'assets' && dir !== 'references' && (
+                                                <button
+                                                    onClick={() => setFileToDelete(dir + '/')}
+                                                    className="p-1 text-gray-500 hover:text-red-400 ml-1"
+                                                    title="Delete directory"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="pl-6 space-y-0.5">
+                                        {attachedFiles.filter(f => f.path.startsWith(dir + '/') && f.path.split('/').length === dir.split('/').length + 1 && !f.path.endsWith('/')).map(file => (
+                                            <div
+                                                key={file.id}
+                                                className={`flex items-center justify-between py-1 px-2 rounded-md transition-colors cursor-pointer ${activeTab === file.path ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-[#222] text-gray-400'}`}
+                                                onClick={() => openFile(file.path)}
+                                            >
+                                                <div className="flex items-center gap-2 text-xs font-mono truncate">
+                                                    {file.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileText size={12} />}
+                                                    {file.path.split('/').pop()}
+                                                </div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setFileToDelete(file.path); }}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-opacity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Root files */}
+                            <div className="pt-2 mt-2 border-t border-gray-800 space-y-0.5">
+                                {attachedFiles.filter(f => !f.path.includes('/') && !f.path.endsWith('/')).map(file => (
                                     <div
                                         key={file.id}
-                                        onClick={() => handleReadFile(file)}
-                                        className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-800 p-2.5 rounded-xl group cursor-pointer hover:border-[#82f94b]/30 transition-all"
+                                        className={`flex items-center justify-between py-1 px-2 rounded-md transition-colors cursor-pointer group ${activeTab === file.path ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-[#222] text-gray-400'}`}
+                                        onClick={() => openFile(file.path)}
                                     >
-                                        <div className="text-xl shrink-0">{getFileIcon(file.mimeType)}</div>
-                                        <div className="flex-1 min-w-0">
-                                            <h5 className="text-xs font-bold text-gray-300 truncate group-hover:text-[#82f94b] transition-colors">
-                                                {file.fileName}
-                                            </h5>
-                                            <p className="text-[10px] text-gray-600 font-mono">
-                                                {(file.fileSize / 1024).toFixed(1)} KB
-                                            </p>
+                                        <div className="flex items-center gap-2 text-xs font-mono truncate">
+                                            {file.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileText size={12} />}
+                                            {file.path}
                                         </div>
                                         <button
-                                            onClick={() => removeAttachedFile(file.id)}
-                                            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                            title="Remove File"
+                                            onClick={(e) => { e.stopPropagation(); setFileToDelete(file.path); }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-opacity"
                                         >
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
+                                            <X size={12} />
                                         </button>
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
-
-                </div>
-
-                {/* Right Panel: Live Compiled Markdown Preview */}
-                <div className="w-1/2 flex flex-col overflow-hidden bg-[#0d0d0d]">
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-[#111]">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-[#82f94b]"></div>
-                            <span className="text-xs font-bold tracking-widest text-[#82f94b] uppercase">Live Compiled Preview (AGENTS.md)</span>
                         </div>
+                    </div>                </div>
+
+                {/* Right Panel: Agent Preview / Editor */}
+                <div className="w-1/2 flex flex-col bg-[#161616] relative min-w-[300px]">
+                    <div className="flex bg-[#111] border-b border-gray-800 overflow-x-auto custom-scrollbar shrink-0 pt-2 px-2">
                         <button
-                            onClick={() => {
-                                copyToClipboard(compiledMarkdownPreview);
-                            }}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors font-semibold ${
-                                isCopied
-                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                    : 'bg-gray-800 text-gray-300 hover:text-white'
+                            onClick={() => setActiveTab('preview')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-t-md border-b-2 text-sm font-medium transition-colors ${
+                                activeTab === 'preview'
+                                    ? 'border-[#82f94b] text-[#82f94b] bg-[#1a1a1a]'
+                                    : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#141414]'
                             }`}
                         >
-                            <Copy size={14} />
-                            {isCopied ? 'Copied!' : 'Copy Markdown'}
+                            <div className={`w-2 h-2 rounded-full ${activeTab === 'preview' ? 'bg-[#82f94b]' : 'bg-gray-500'}`}></div>
+                            AGENTS.md Preview
                         </button>
+                        {openTabs.filter(t => t !== 'preview').map(tab => (
+                            <div
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-t-md border-b-2 text-sm font-medium cursor-pointer transition-colors ${
+                                    activeTab === tab
+                                        ? 'border-cyan-400 text-cyan-400 bg-[#1a1a1a]'
+                                        : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#141414]'
+                                }`}
+                            >
+                                <span className="truncate max-w-[150px]">{tab.split('/').pop()}</span>
+                                <button
+                                    onClick={(e) => handleTabClose(tab, e)}
+                                    className="ml-2 text-gray-500 hover:text-red-400 transition-colors"
+                                    title="Close Tab"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ))}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                        <div className="text-xs text-gray-500 mb-4 font-mono">
-                            The visual nodes on the left are livecompiled into the structured markdown format displayed below:
-                        </div>
-                        <pre className="font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed select-all">
-                            {compiledMarkdownPreview}
-                        </pre>
+                    <div className="flex-1 relative overflow-hidden flex flex-col">
+                        {activeTab === 'preview' ? (
+                            <div className="absolute inset-0 custom-scrollbar overflow-y-auto p-6">
+                                <button
+                                    onClick={() => copyToClipboard(compiledMarkdownPreview)}
+                                    className="absolute top-4 right-6 flex items-center gap-2 px-3 py-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white rounded text-xs transition-colors backdrop-blur-sm z-10"
+                                    title="Copy raw markdown"
+                                >
+                                    {isCopied ? <span className="text-xs font-bold px-1 text-green-400">COPIED!</span> : <><Copy size={14} /> Copy</>}
+                                </button>
+                                <div className="text-xs text-gray-500 mb-4 font-mono">
+                                    Live preview of the AGENTS.md file this workspace compiles into.
+                                </div>
+                                <pre className="font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed select-all">
+                                    {compiledMarkdownPreview}
+                                </pre>
+                            </div>
+                        ) : (
+                            (() => {
+                                const activeFile = attachedFiles.find(f => f.path === activeTab);
+                                if (!activeFile) return <div className="p-6 text-gray-500 text-center flex-1 flex items-center justify-center">File not found.</div>;
+
+                                if (activeFile.mimeType?.startsWith('image/')) {
+                                    return (
+                                        <div className="absolute inset-0 custom-scrollbar overflow-auto flex items-center justify-center p-8 bg-black/20">
+                                            <img
+                                                src={`data:${activeFile.mimeType};base64,${activeFile.fileData}`}
+                                                alt={activeFile.path}
+                                                className="max-w-full max-h-full object-contain rounded-md shadow-2xl"
+                                            />
+                                        </div>
+                                    );
+                                } else {
+                                    return (
+                                        <textarea
+                                            value={activeFile.content || ''}
+                                            onChange={e => {
+                                                const newContent = e.target.value;
+                                                setAttachedFiles(prev => prev.map(f => f.path === activeTab ? { ...f, content: newContent } : f));
+                                            }}
+                                            className="absolute inset-0 w-full h-full bg-[#1a1a1a] text-gray-300 font-mono text-sm p-6 resize-none focus:outline-none custom-scrollbar"
+                                            spellCheck={false}
+                                        />
+                                    );
+                                }
+                            })()
+                        )}
                     </div>
                 </div>
-
             </div>
 
             <ConfirmationModal
@@ -915,6 +1147,19 @@ export default function AgentBuilder() {
                 variant="danger"
                 onConfirm={confirmClear}
                 onCancel={() => setShowClearModal(false)}
+            />
+
+            <ConfirmationModal
+                isOpen={fileToDelete !== null}
+                title={fileToDelete?.endsWith('/') ? "Delete Directory?" : "Delete File?"}
+                message={`Are you sure you want to delete ${fileToDelete}? This action cannot be undone.`}
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={() => {
+                    if (fileToDelete) removeFileOrDir(fileToDelete);
+                    setFileToDelete(null);
+                }}
+                onCancel={() => setFileToDelete(null)}
             />
 
             {toast && (
@@ -936,6 +1181,51 @@ export default function AgentBuilder() {
                 onDragEnd={() => setIsDraggingReader(false)}
                 onCopyChat={() => {}}
             />
+
+            {/* Custom Modal for New File/Dir */}
+            {customModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
+                    <div className="bg-[#111] border border-cyan-500/30 rounded-xl p-6 w-[400px] shadow-2xl">
+                        <h3 className="text-lg font-bold text-gray-100 mb-2 flex items-center gap-2">
+                            {customModal.type === 'dir' ? <FolderPlus size={18} className="text-cyan-400" /> : <FilePlus size={18} className="text-cyan-400" />}
+                            Create {customModal.type === 'dir' ? 'Directory' : 'File'}
+                        </h3>
+                        <p className="text-xs text-gray-400 mb-4 font-mono">
+                            Path: <span className="text-cyan-400">{customModal.basePath ? `${customModal.basePath}/` : '/'}</span>
+                        </p>
+                        
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.currentTarget);
+                            handleCreateCustom(customModal.type, formData.get('name') as string, customModal.basePath);
+                        }}>
+                            <input
+                                autoFocus
+                                type="text"
+                                name="name"
+                                placeholder={customModal.type === 'dir' ? 'utilities' : 'config.json'}
+                                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-cyan-500 mb-4 font-mono"
+                            />
+                            
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setCustomModal(null)}
+                                    className="px-4 py-2 rounded-md bg-[#222] text-gray-300 hover:bg-[#333] transition-colors text-sm font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 rounded-md bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/50 transition-colors text-sm font-bold"
+                                >
+                                    Create
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
