@@ -214,6 +214,41 @@ ${sec.content.trim()}
     }
 
     /**
+     * Create ZIP archive containing:
+     * - SKILL.md (compiled skill markdown file)
+     * - files/ (skill-specific binary reconstructed files)
+     */
+    static async exportSkillToZip(skill: Skill): Promise<Blob> {
+        const zip = new JSZip();
+
+        const safeSkillName = sanitizeFilename(skill.metadata.title || 'skill');
+        const rootFolder = zip.folder(safeSkillName)!;
+
+        // 1. SKILL.md
+        rootFolder.file('SKILL.md', skill.content);
+
+        // 2. Custom files and directories (hierarchical)
+        if (skill.files && skill.files.length > 0) {
+            skill.files.forEach(file => {
+                const rawPath = (file as any).path || (file as any).fileName;
+                if (rawPath) {
+                    const safePath = rawPath.split('/').map(p => sanitizeFilename(p)).join('/');
+                    if (file.fileData) {
+                        const base64Data = file.fileData.includes('base64,')
+                            ? file.fileData.split('base64,')[1]
+                            : file.fileData;
+                        rootFolder.file(safePath, base64Data, { base64: true });
+                    } else if ((file as any).content !== undefined) {
+                        rootFolder.file(safePath, (file as any).content);
+                    }
+                }
+            });
+        }
+
+        return await zip.generateAsync({ type: 'blob' });
+    }
+
+    /**
      * Import Agent and attached skills/workflows from custom ZIP archive
      */
     static async importAgentFromZip(file: File): Promise<Agent> {

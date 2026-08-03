@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Skill, SkillFile, DEFAULT_SETTINGS, AppSettings } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { AgentExportService } from '../../../services/agentExportService';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
 
 const Folder = ({ size = 16, className = "" }) => (
@@ -18,6 +19,9 @@ const Upload = ({ size = 16, className = "" }) => (
 );
 const X = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+);
+const ZipIcon = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.5 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 12 12 16.5 14.6 16.5 19.79"/><polyline points="12 22 12 12"/><line x1="12" y1="6.5" x2="12" y2="12"/></svg>
 );
 const ChevronLeft = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>
@@ -455,6 +459,50 @@ export default function SkillWorkshop() {
 
     const compiledOutput = useMemo(() => compileSkillContent(ws), [ws]);
 
+    const handleExportZip = async () => {
+        if (!ws.name.trim()) {
+            showToast('Save skill first with a title before exporting ZIP.', 'error');
+            return;
+        }
+
+        try {
+            const skillData: Skill = {
+                id: existingSkill?.id || 'temp-id',
+                content: compiledOutput,
+                files: ws.files,
+                tags: ws.tags.split(',').map(t => t.trim()).filter(Boolean),
+                updatedAt: new Date().toISOString(),
+                metadata: {
+                    ...(existingSkill?.metadata || {
+                        id: 'temp-id',
+                        isCore: false,
+                        author: 'User',
+                        createdAt: new Date().toISOString(),
+                        version: '1.0.0'
+                    }),
+                    title: ws.name.trim(),
+                    category: ws.category || 'General',
+                    wordCount: compiledOutput.split(/\s+/).length,
+                    characterCount: compiledOutput.length,
+                }
+            };
+
+            const blob = await AgentExportService.exportSkillToZip(skillData);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${ws.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}-skill-bundle.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Exported ZIP successfully!', 'success');
+        } catch (error) {
+            console.error('Export failed', error);
+            showToast('Failed to export ZIP.', 'error');
+        }
+    };
+
     const handleSave = async () => {
         const content = compiledOutput;
         const tagsArray = ws.tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -749,6 +797,14 @@ export default function SkillWorkshop() {
                     >
                         <ClipboardPaste size={16} />
                         Paste
+                    </button>
+                    <button
+                        onClick={handleExportZip}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-900/40 text-emerald-400 font-medium rounded-md hover:bg-emerald-900/60 transition-colors"
+                        title="Export ZIP bundle"
+                    >
+                        <ZipIcon size={16} />
+                        Export ZIP
                     </button>
                     <button 
                         onClick={handleSave}
