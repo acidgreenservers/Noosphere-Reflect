@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Skill, SkillFile, DEFAULT_SETTINGS, AppSettings } from '../../../types';
 import { storageService } from '../../../services/storageService';
-import { AgentExportService } from '../../../services/agentExportService';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { AgentExportService } from '../../../services/agentExportService';
+
 
 const Folder = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
@@ -17,11 +18,17 @@ const Image = ({ size = 16, className = "" }) => (
 const Upload = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
 );
-const X = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+const FolderPlus = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+);
+const FilePlus = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
 );
 const ZipIcon = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.5 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 12 12 16.5 14.6 16.5 19.79"/><polyline points="12 22 12 12"/><line x1="12" y1="6.5" x2="12" y2="12"/></svg>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 8v13H3V3h13l5 5z"/><path d="M10 12v2"/><path d="M10 16v.01"/><path d="M14 8v.01"/><path d="M14 12v.01"/><path d="M14 16v.01"/><path d="M10 8v.01"/></svg>
+);
+const X = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
 );
 const ChevronLeft = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>
@@ -403,6 +410,8 @@ export default function SkillWorkshop() {
     };
 
     const [activeTab, setActiveTab] = useState<string>('preview');
+    const [customModal, setCustomModal] = useState<{isOpen: boolean; type: 'file' | 'dir'; path: string; basePath: string} | null>(null);
+    const [fileToDelete, setFileToDelete] = useState<string | null>(null);
     const [openTabs, setOpenTabs] = useState<string[]>(['preview']);
     const [isCreateFileModalOpen, setIsCreateFileModalOpen] = useState(false);
     const [createFilePath, setCreateFilePath] = useState('');
@@ -459,50 +468,6 @@ export default function SkillWorkshop() {
 
     const compiledOutput = useMemo(() => compileSkillContent(ws), [ws]);
 
-    const handleExportZip = async () => {
-        if (!ws.name.trim()) {
-            showToast('Save skill first with a title before exporting ZIP.', 'error');
-            return;
-        }
-
-        try {
-            const skillData: Skill = {
-                id: existingSkill?.id || 'temp-id',
-                content: compiledOutput,
-                files: ws.files,
-                tags: ws.tags.split(',').map(t => t.trim()).filter(Boolean),
-                updatedAt: new Date().toISOString(),
-                metadata: {
-                    ...(existingSkill?.metadata || {
-                        id: 'temp-id',
-                        isCore: false,
-                        author: 'User',
-                        createdAt: new Date().toISOString(),
-                        version: '1.0.0'
-                    }),
-                    title: ws.name.trim(),
-                    category: ws.category || 'General',
-                    wordCount: compiledOutput.split(/\s+/).length,
-                    characterCount: compiledOutput.length,
-                }
-            };
-
-            const blob = await AgentExportService.exportSkillToZip(skillData);
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${ws.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}-skill-bundle.zip`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('Exported ZIP successfully!', 'success');
-        } catch (error) {
-            console.error('Export failed', error);
-            showToast('Failed to export ZIP.', 'error');
-        }
-    };
-
     const handleSave = async () => {
         const content = compiledOutput;
         const tagsArray = ws.tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -524,6 +489,29 @@ export default function SkillWorkshop() {
                         characterCount: content.length,
                     }
                 };
+
+    const handleExportZip = async () => {
+        try {
+            if (!ws.name.trim()) {
+                showToast("Please enter a name for the skill", "error");
+                return;
+            }
+            await AgentExportService.exportSkillToZip({
+                name: ws.name,
+                description: ws.description,
+                author: ws.author,
+                version: ws.version,
+                tags: ws.tags,
+                mainInstructions: ws.mainInstructions,
+                sections: ws.sections,
+                files: ws.files
+            });
+            showToast("Skill exported successfully", "success");
+        } catch (error) {
+            console.error('Export failed:', error);
+            showToast("Failed to export skill", "error");
+        }
+    };
                 await storageService.updateSkill(updated);
             } else {
                 const skill: Skill = {
@@ -601,112 +589,118 @@ export default function SkillWorkshop() {
         setShowClearModal(false);
     };
 
-    const handleCreateFile = () => {
-        setCreateFilePath('');
-        setIsCreateFileModalOpen(true);
+    // File/Directory Management
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, basePath: string) => {
+        const files = e.target.files;
+        if (!files) return;
+
+        const newSkillFiles: SkillFile[] = [];
+
+        Array.from(files).forEach(file => {
+            const isText = file.name.endsWith('.md') || file.name.endsWith('.txt') || file.name.endsWith('.json') || file.name.endsWith('.js') || file.name.endsWith('.ts') || file.name.endsWith('.css') || file.type.startsWith('text/');
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                const result = event.target?.result;
+                if (typeof result !== 'string') return;
+
+                let fileData = result;
+                let content = undefined;
+
+                if (isText) {
+                    content = result;
+                } else if (result.startsWith('data:')) {
+                    fileData = result.split(',')[1];
+                }
+
+                const path = basePath === '' ? file.name : `${basePath}/${file.name}`;
+
+                if (ws.files.some(f => f.path === path)) {
+                    showToast(`File ${path} already exists. Skipping.`, 'error');
+                    return;
+                }
+
+                newSkillFiles.push({
+                    id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    path,
+                    type: isText ? 'text' : 'binary',
+                    content,
+                    fileData: isText ? undefined : fileData,
+                    mimeType: file.type || (isText ? 'text/plain' : 'application/octet-stream'),
+                });
+
+                if (newSkillFiles.length === files.length) {
+                    setWs(prev => ({ ...prev, files: [...prev.files, ...newSkillFiles] }));
+                    showToast(`Successfully uploaded ${newSkillFiles.length} file(s)`, 'success');
+                }
+            };
+
+            if (isText) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsDataURL(file);
+            }
+        });
     };
 
-    const confirmCreateFile = () => {
-        const path = createFilePath;
-        if (!path) {
-            setIsCreateFileModalOpen(false);
-            return;
-        }
+    const handleCreateCustom = (type: 'file' | 'dir', name: string, basePath: string) => {
+        if (!name) return;
 
-        const cleanPath = path.trim().replace(/^[\\/]+/, '');
-        if (!cleanPath) {
-            setIsCreateFileModalOpen(false);
-            return;
-        }
+        const cleanName = name.trim().replace(/^\/+/, '');
+        if (!cleanName) return;
 
-        if (ws.files.some(f => f.path === cleanPath)) {
-            showToast('A file with this path already exists.', 'error');
+        const path = basePath === '' ? cleanName : `${basePath}/${cleanName}`;
+
+        if (ws.files.some(f => f.path === path)) {
+            showToast(`${type === 'dir' ? 'Directory' : 'File'} ${path} already exists. Skipping.`, 'error');
             return;
         }
 
         const newFile: SkillFile = {
-            id: Date.now().toString(36),
-            path: cleanPath,
+            id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            path: type === 'dir' ? `${path}/` : path,
             type: 'text',
-            content: ''
+            content: type === 'dir' ? undefined : '',
+            mimeType: type === 'dir' ? 'inode/directory' : 'text/plain'
         };
 
         setWs(prev => ({ ...prev, files: [...prev.files, newFile] }));
-        if (!openTabs.includes(newFile.path)) {
-            setOpenTabs(prev => [...prev, newFile.path]);
-        }
-        setActiveTab(newFile.path);
-        setIsCreateFileModalOpen(false);
+        setCustomModal(null);
+        showToast(`Created ${type === 'dir' ? 'directory' : 'file'} ${path}`, 'success');
     };
 
-    const handleUploadFile = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.multiple = true;
-        input.onchange = async (e) => {
-            const files = (e.target as HTMLInputElement).files;
-            if (!files) return;
-
-            const newSkillFiles: SkillFile[] = [];
-            const newOpenTabs: string[] = [];
-
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                let fileType: 'text' | 'image' | 'video' | 'pdf' | 'audio' | 'unknown' = 'unknown';
-                if (file.type.startsWith('image/')) fileType = 'image';
-                else if (file.type.startsWith('video/')) fileType = 'video';
-                else if (file.type.startsWith('audio/')) fileType = 'audio';
-                else if (file.type === 'application/pdf') fileType = 'pdf';
-                else if (file.type.startsWith('text/') || file.type === 'application/json' || file.name.endsWith('.md') || file.name.endsWith('.js') || file.name.endsWith('.ts') || file.name.endsWith('.css')) {
-                    fileType = 'text';
-                }
-
-                // Default upload directory choice
-                const directory = fileType === 'image' || fileType === 'video' || fileType === 'audio' ? 'assets/' : 'references/';
-                const path = directory + file.name;
-
-                if (ws.files.some(f => f.path === path)) {
-                    showToast(`File ${path} already exists. Skipping.`, 'error');
-                    continue;
-                }
-
-                if (fileType === 'text') {
-                    const content = await file.text();
-                    newSkillFiles.push({
-                        id: Date.now().toString(36) + i,
-                        path,
-                        type: 'text',
-                        content
-                    });
-                } else {
-                    const base64 = await new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = (e) => resolve(e.target?.result as string);
-                        reader.readAsDataURL(file);
-                    });
-                    newSkillFiles.push({
-                        id: Date.now().toString(36) + i,
-                        path,
-                        type: fileType,
-                        fileData: base64
-                    });
-                }
-                newOpenTabs.push(path);
+    const removeFileOrDir = (path: string) => {
+        setWs(prev => ({ ...prev, files: prev.files.filter(f => !f.path.startsWith(path)) }));
+        setOpenTabs(prev => {
+            const next = prev.filter(t => !t.startsWith(path));
+            if (activeTab.startsWith(path)) {
+                setActiveTab('preview');
             }
-
-            if (newSkillFiles.length > 0) {
-                setWs(prev => ({ ...prev, files: [...prev.files, ...newSkillFiles] }));
-                
-                const uniqueNewTabs = newOpenTabs.filter(t => !openTabs.includes(t));
-                if (uniqueNewTabs.length > 0) {
-                    setOpenTabs(prev => [...prev, ...uniqueNewTabs]);
-                }
-                setActiveTab(newOpenTabs[newOpenTabs.length - 1]);
-                showToast(`Successfully uploaded ${newSkillFiles.length} file(s)`, 'success');
-            }
-        };
-        input.click();
+            return next;
+        });
     };
+
+    // Derived file tree
+    const directories = useMemo(() => {
+        const dirs = new Set<string>();
+        dirs.add('assets');
+        dirs.add('references');
+
+        ws.files.forEach(f => {
+            const parts = f.path.split('/');
+            if (parts.length > 1) {
+                let current = '';
+                for (let i = 0; i < parts.length - 1; i++) {
+                    current += (i === 0 ? '' : '/') + parts[i];
+                    dirs.add(current);
+                }
+            }
+            if (f.path.endsWith('/')) {
+                dirs.add(f.path.slice(0, -1));
+            }
+        });
+        return Array.from(dirs).sort();
+    }, [ws.files]);
 
     const handleDeleteFile = (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -797,14 +791,6 @@ export default function SkillWorkshop() {
                     >
                         <ClipboardPaste size={16} />
                         Paste
-                    </button>
-                    <button
-                        onClick={handleExportZip}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-900/40 text-emerald-400 font-medium rounded-md hover:bg-emerald-900/60 transition-colors"
-                        title="Export ZIP bundle"
-                    >
-                        <ZipIcon size={16} />
-                        Export ZIP
                     </button>
                     <button 
                         onClick={handleSave}
@@ -1108,102 +1094,117 @@ export default function SkillWorkshop() {
                         )}
                     </div>
 
-                    {/* Workspace Files Section */}
-                    <div className="mb-8 border border-gray-800 rounded-lg bg-[#111] overflow-hidden flex-shrink-0">
-                        <div className="flex items-center justify-between p-4 bg-[#141414] border-b border-gray-800">
-                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full px-3 py-1.5">
+                    {/* Attached Workspace Files */}
+                    <div className="mb-8 border border-gray-800 rounded-lg p-5 bg-[#111] flex-shrink-0">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full px-3 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                                 <Folder size={14} /> Workspace Files
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex gap-2">
                                 <button
-                                    onClick={handleUploadFile}
-                                    className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
-                                    title="Upload File"
+                                    onClick={() => setCustomModal({ isOpen: true, type: 'dir', path: '', basePath: '' })}
+                                    className="p-1.5 text-cyan-500/70 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-md transition-colors"
+                                    title="New root directory"
                                 >
-                                    <Upload size={14} />
+                                    <FolderPlus size={14} />
                                 </button>
                                 <button
-                                    onClick={handleCreateFile}
-                                    className="p-1.5 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded transition-colors"
-                                    title="Create New File"
+                                    onClick={() => setCustomModal({ isOpen: true, type: 'file', path: '', basePath: '' })}
+                                    className="p-1.5 text-cyan-500/70 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-md transition-colors"
+                                    title="New root file"
                                 >
-                                    <Plus size={14} />
+                                    <FilePlus size={14} />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="p-4 space-y-3">
-                            {['assets', 'references'].map(dir => {
-                                const dirFiles = ws.files.filter(f => f.path.startsWith(`${dir}/`));
-                                return (
-                                    <div key={dir} className="flex flex-col">
-                                        <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
-                                            <Folder size={14} className="text-cyan-500" />
+                        <div className="bg-[#1a1a1a] rounded-lg border border-gray-800 p-2 space-y-1">
+                            {directories.map(dir => (
+                                <div key={dir} className="group">
+                                    <div className="flex items-center justify-between py-1.5 px-2 hover:bg-[#222] rounded-md transition-colors">
+                                        <div className="flex items-center gap-2 text-sm text-cyan-500 font-medium font-mono">
+                                            <Folder size={14} />
                                             {dir}/
                                         </div>
-                                        {dirFiles.length === 0 ? (
-                                            <div className="pl-6 text-xs text-gray-600 italic">Empty directory</div>
-                                        ) : (
-                                            <div className="pl-6 flex flex-col gap-1">
-                                                {dirFiles.map(file => (
-                                                    <div 
-                                                        key={file.id} 
-                                                        className={`group flex items-center justify-between py-1.5 px-2 rounded cursor-pointer transition-colors ${activeTab === file.path ? 'bg-cyan-500/10 text-cyan-400' : 'hover:bg-[#1a1a1a] text-gray-400'}`}
-                                                        onClick={() => openFile(file.path)}
-                                                    >
-                                                        <div className="flex items-center gap-2 text-sm truncate">
-                                                            {file.type === 'image' ? <Image size={12} className="opacity-70" /> : <FileText size={12} className="opacity-70" />}
-                                                            <span className="truncate">{file.path.replace(`${dir}/`, '')}</span>
-                                                        </div>
-                                                        <button 
-                                                            onClick={(e) => handleDeleteFile(file.path, e)}
-                                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 rounded hover:bg-gray-800 transition-all"
-                                                        >
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            
-                            {/* Render any other custom directories or root files */}
-                            {(() => {
-                                const otherFiles = ws.files.filter(f => !f.path.startsWith('assets/') && !f.path.startsWith('references/'));
-                                if (otherFiles.length > 0) {
-                                    return (
-                                        <div className="flex flex-col mt-4 pt-4 border-t border-gray-800">
-                                            <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
-                                                <Folder size={14} className="text-gray-500" />
-                                                Other Files
-                                            </div>
-                                            <div className="pl-6 flex flex-col gap-1">
-                                                {otherFiles.map(file => (
-                                                    <div 
-                                                        key={file.id} 
-                                                        className={`group flex items-center justify-between py-1.5 px-2 rounded cursor-pointer transition-colors ${activeTab === file.path ? 'bg-cyan-500/10 text-cyan-400' : 'hover:bg-[#1a1a1a] text-gray-400'}`}
-                                                        onClick={() => openFile(file.path)}
-                                                    >
-                                                        <div className="flex items-center gap-2 text-sm truncate">
-                                                            {file.type === 'image' ? <Image size={12} className="opacity-70" /> : <FileText size={12} className="opacity-70" />}
-                                                            <span className="truncate">{file.path}</span>
-                                                        </div>
-                                                        <button 
-                                                            onClick={(e) => handleDeleteFile(file.path, e)}
-                                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 rounded hover:bg-gray-800 transition-all"
-                                                        >
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                                            <button
+                                                onClick={() => setCustomModal({ isOpen: true, type: 'dir', path: '', basePath: dir })}
+                                                className="p-1 text-gray-500 hover:text-cyan-400"
+                                                title="New directory here"
+                                            >
+                                                <FolderPlus size={12} />
+                                            </button>
+                                            <button
+                                                onClick={() => setCustomModal({ isOpen: true, type: 'file', path: '', basePath: dir })}
+                                                className="p-1 text-gray-500 hover:text-cyan-400"
+                                                title="New file here"
+                                            >
+                                                <FilePlus size={12} />
+                                            </button>
+                                            <label className="p-1 text-gray-500 hover:text-cyan-400 cursor-pointer" title="Upload file here">
+                                                <Upload size={12} />
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    className="hidden"
+                                                    onChange={(e) => handleFileUpload(e, dir)}
+                                                />
+                                            </label>
+                                            {dir !== 'assets' && dir !== 'references' && (
+                                                <button
+                                                    onClick={() => setFileToDelete(dir + '/')}
+                                                    className="p-1 text-gray-500 hover:text-red-400 ml-1"
+                                                    title="Delete directory"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
                                         </div>
-                                    );
-                                }
-                                return null;
-                            })()}
+                                    </div>
+                                    <div className="pl-6 space-y-0.5">
+                                        {ws.files.filter(f => f.path.startsWith(dir + '/') && f.path.split('/').length === dir.split('/').length + 1 && !f.path.endsWith('/')).map(file => (
+                                            <div
+                                                key={file.id}
+                                                className={`flex items-center justify-between py-1 px-2 rounded-md transition-colors cursor-pointer ${activeTab === file.path ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-[#222] text-gray-400'}`}
+                                                onClick={() => openFile(file.path)}
+                                            >
+                                                <div className="flex items-center gap-2 text-xs font-mono truncate">
+                                                    {file.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileText size={12} />}
+                                                    {file.path.split('/').pop()}
+                                                </div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setFileToDelete(file.path); }}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-opacity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Root files */}
+                            <div className="pt-2 mt-2 border-t border-gray-800 space-y-0.5">
+                                {ws.files.filter(f => !f.path.includes('/') && !f.path.endsWith('/')).map(file => (
+                                    <div
+                                        key={file.id}
+                                        className={`flex items-center justify-between py-1 px-2 rounded-md transition-colors cursor-pointer group ${activeTab === file.path ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-[#222] text-gray-400'}`}
+                                        onClick={() => openFile(file.path)}
+                                    >
+                                        <div className="flex items-center gap-2 text-xs font-mono truncate">
+                                            {file.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileText size={12} />}
+                                            {file.path}
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setFileToDelete(file.path); }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-opacity"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
@@ -1373,6 +1374,68 @@ export default function SkillWorkshop() {
                     </div>
                 </div>
             </div>
+
+            {customModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center animate-fade-in">
+                    <div className="bg-[#111] border border-gray-800 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#141414]">
+                            <div className="flex items-center gap-2 font-bold text-gray-200">
+                                {customModal.type === 'dir' ? <FolderPlus size={16} className="text-cyan-400" /> : <FilePlus size={16} className="text-cyan-400" />}
+                                New {customModal.type === 'dir' ? 'Directory' : 'File'}
+                            </div>
+                            <button onClick={() => setCustomModal(null)} className="text-gray-500 hover:text-gray-300 transition-colors">
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">
+                                    {customModal.basePath ? `Location: ${customModal.basePath}/` : 'Location: Root'}
+                                </label>
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder={customModal.type === 'dir' ? "e.g., scripts" : "e.g., config.json"}
+                                    className="w-full bg-[#1a1a1a] text-gray-200 border border-gray-800 rounded p-2 text-sm focus:outline-none focus:border-cyan-500/50"
+                                    value={customModal.path}
+                                    onChange={e => setCustomModal({ ...customModal, path: e.target.value })}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') handleCreateCustom(customModal.type, customModal.path, customModal.basePath);
+                                        if (e.key === 'Escape') setCustomModal(null);
+                                    }}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    onClick={() => setCustomModal(null)}
+                                    className="px-3 py-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => handleCreateCustom(customModal.type, customModal.path, customModal.basePath)}
+                                    className="px-3 py-1.5 text-sm bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30 rounded transition-colors"
+                                >
+                                    Create
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ConfirmationModal
+                isOpen={fileToDelete !== null}
+                title={fileToDelete?.endsWith('/') ? "Delete Directory?" : "Delete File?"}
+                message={`Are you sure you want to delete ${fileToDelete}? This action cannot be undone.`}
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={() => {
+                    if (fileToDelete) removeFileOrDir(fileToDelete);
+                    setFileToDelete(null);
+                }}
+                onCancel={() => setFileToDelete(null)}
+            />
 
             <ConfirmationModal
                 isOpen={showClearModal}
