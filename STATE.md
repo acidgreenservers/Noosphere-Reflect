@@ -28,6 +28,9 @@
 - **Semantic Chat Rendering**: Chat bubbles dynamically reflect the inserted artifact type (🧠 Purple/Memory, 💡 Yellow/Prompt, ⚡ Blue/Skill, 🌊 Cyan/Workflow).
 - **Universal Attachment Menu**: `UnifiedChatInterface` and `NewChatView` utilize generalized hover submenus to load specific categories dynamically from `storageService`, reducing hardcoded category menus.
 - **Copy to Clipboard Fallback**: `handleCopy` implements a graceful fallback utilizing `document.execCommand('copy')` to guarantee clipboard access across both HTTPS (GitHub Pages) and local HTTP development environments.
+- **SkillWorkshop / AgentBuilder UI Synchronization**: Synchronized the Workspace Files UI across the Agent Forge and Skill Workshop. Both now use a unified hierarchical file viewer on the left, and a tabbed IDE previewer on the right.
+- **Workspace File Management**: Both workspaces now feature unified support for file uploading, custom directory and file creation (via custom modals), and inline file deletion.
+- **Skill ZIP Export**: Added "Export Zip" functionality to `SkillWorkshop`, calling `AgentExportService.exportSkillToZip()` to bundle and download complete Skill packages (matching Agent Forge exports).
 
 ### Verified State Invariants (6.5 — UI Cleanup)
 - **Explanation Bubbles Removed**: The informational banner divs above list/grid views in SkillArchive, WorkflowArchive, and AgentArchive have been removed. All three pages now start directly with their list/grid content, mirroring other archive pages (Chats, Memories, Prompts). Zero blast radius — self-contained presentational elements with no state/logic/refs.

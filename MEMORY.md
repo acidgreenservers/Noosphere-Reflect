@@ -26,3 +26,6 @@ This keeps my memory compact and resilient against signal to noise degradation. 
 - Unescaped runtime templates shatter AST bounds.
 - Dynamic metadata overrides static state routing.
 - Unconstrained text breaks flex block boundaries.
+- Greedy regex on ASTs swallows sibling boundaries.
+- Precise indexing prevents structural collapse.
+- State hooks must map outside the render target.
