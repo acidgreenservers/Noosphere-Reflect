@@ -30,7 +30,7 @@ describe('SkillWorkshop', () => {
         expect(screen.getByText('Main Instructions')).toBeInTheDocument();
         expect(screen.getByText('Sections (Nodes)')).toBeInTheDocument();
         expect(screen.getByText('OpenClaw Integration')).toBeInTheDocument();
-        expect(screen.getByText('Compiled Preview')).toBeInTheDocument();
+        expect(screen.getByText('Workspace Files')).toBeInTheDocument();
     });
 
     it('adds dynamic sections correctly', async () => {

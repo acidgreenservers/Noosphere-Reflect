@@ -119,9 +119,9 @@ ${sec.content.trim()}
                 md += `### Files
 `;
                 agent.files.forEach(file => {
-                    const safeName = neutralizeDangerousExtension(sanitizeFilename(file.fileName));
-                    md += `- [${file.fileName}](~/files/${safeName})
-`;
+                    const rawPath = (file as any).path || (file as any).fileName || 'unnamed-file';
+                    const safeName = neutralizeDangerousExtension(sanitizeFilename(rawPath));
+                    md += `- [${rawPath}](~/files/${safeName})\n`;
                 });
                 md += `
 `;

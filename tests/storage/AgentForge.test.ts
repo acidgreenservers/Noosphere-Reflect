@@ -36,10 +36,10 @@ describe('Agent Forge CRUD & Package Integration Suite', () => {
         files: [
             {
                 id: 'file-1',
-                fileName: 'schema.json',
-                fileSize: 45,
+                path: 'schema.json',
+                size: 45,
                 mimeType: 'application/json',
-                fileData: btoa('{"test": true}'),
+                fileData: 'e30=',
                 uploadedAt: new Date().toISOString()
             }
         ],

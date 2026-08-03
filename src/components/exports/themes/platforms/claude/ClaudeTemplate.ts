@@ -1,7 +1,7 @@
-import { escapeHtml, sanitizeUrl } from '@/utils/securityUtils';
-import { INTERACTIVE_SCRIPTS } from '@/components/exports/services/ClientScripts';
+import { escapeHtml, sanitizeUrl } from '../../../../../utils/securityUtils';
+import { INTERACTIVE_SCRIPTS } from '../../../services/ClientScripts';
 import { getClaudeHeadContent } from './ClaudeStyles';
-import { ChatMetadata } from '@/types';
+import { ChatMetadata } from '../../../../../types';
 
 export function getClaudeBaseHtml(title: string, userName: string, aiName: string, chatMessagesHtml: string, metadata?: ChatMetadata, includeFooter: boolean = true): string {
     const safeUrl = metadata?.sourceUrl ? sanitizeUrl(metadata.sourceUrl) : '';

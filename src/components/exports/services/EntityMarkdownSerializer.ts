@@ -66,7 +66,7 @@ ${workflow.content}${this.footer('Workflow Archive')}`;
             : '';
 
         const traits = agent.personalityTraits.length > 0
-            ? `\n\n## Personality Traits\n\n${agent.personalityTraits.map(t => `- **${t.trait}:** ${t.value}`).join('\n')}`
+            ? `\n\n## Personality Traits\n\n${agent.personalityTraits.map(t => `\n- **${t.trait}:** ${t.value}`).join('\n')}`
             : '';
 
         const references: string[] = [];

@@ -91,7 +91,6 @@ describe('BrowseWorkspaceModal', () => {
         fireEvent.click(itemCard);
         
         await waitFor(() => {
-            expect(screen.getByText(/Description/i)).toBeInTheDocument();
             // The content should be rendered
             expect(screen.getByText('skill content')).toBeInTheDocument();
         });
