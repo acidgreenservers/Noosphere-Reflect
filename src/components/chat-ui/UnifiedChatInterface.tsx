@@ -71,7 +71,7 @@ const ThoughtBlock = ({
 
     useEffect(() => {
         if (isEditingThought && editThoughtRef.current) {
-            editThoughtRef.current.textContent = editThoughtContent;
+            editThoughtRef.current.innerText = editThoughtContent;
             const sel = window.getSelection();
             const range = document.createRange();
             range.selectNodeContents(editThoughtRef.current);
@@ -109,7 +109,7 @@ const ThoughtBlock = ({
 
     const handleEditInput = () => {
         if (editThoughtRef.current) {
-            setEditThoughtContent(editThoughtRef.current.textContent || '');
+            setEditThoughtContent(editThoughtRef.current.innerText || '');
         }
     };
 
@@ -393,7 +393,7 @@ const ChatMessageBubble = React.memo(({
 
     useEffect(() => {
         if (isEditing && editRef.current) {
-            editRef.current.textContent = editContent;
+            editRef.current.innerText = editContent;
             const sel = window.getSelection();
             const range = document.createRange();
             range.selectNodeContents(editRef.current);
@@ -405,7 +405,7 @@ const ChatMessageBubble = React.memo(({
 
     const handleEditInput = () => {
         if (editRef.current) {
-            setEditContent(editRef.current.textContent || '');
+            setEditContent(editRef.current.innerText || '');
         }
     };
 
