@@ -1771,6 +1771,7 @@ export default function UnifiedChatInterface() {
         'ChatGPT',
         'Gemini',
         'Gemini Notebook',
+        'DeepWiki',
         'Grok',
         'LeChat',
         'Leo AI',

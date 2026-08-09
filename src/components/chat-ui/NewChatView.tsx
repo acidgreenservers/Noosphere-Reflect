@@ -198,6 +198,7 @@ export const NewChatView: React.FC = () => {
         { name: 'ChatGPT', provider: 'OpenAI', icon: '🟢' },
         { name: 'Gemini', provider: 'Google', icon: '💙' },
         { name: 'Gemini Notebook', provider: 'Google', icon: '📔' },
+        { name: 'DeepWiki', provider: 'Devin', icon: '📚' },
         { name: 'Grok', provider: 'xAI', icon: '🖤' },
         { name: 'LeChat', provider: 'Mistral', icon: '💛' },
         { name: 'Leo AI', provider: 'Brave', icon: '🦁' },

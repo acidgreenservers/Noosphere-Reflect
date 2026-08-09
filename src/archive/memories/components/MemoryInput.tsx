@@ -115,6 +115,7 @@ export default function MemoryInput({ onSave, editingMemory, onCancelEdit }: Pro
                             <option value="Claude">Claude</option>
                             <option value="Gemini">Gemini</option>
                             <option value="Gemini Notebook">Gemini Notebook</option>
+                            <option value="DeepWiki">DeepWiki</option>
                             <option value="ChatGPT">ChatGPT</option>
                             <option value="LeChat">LeChat</option>
                             <option value="Llama">Llama</option>
