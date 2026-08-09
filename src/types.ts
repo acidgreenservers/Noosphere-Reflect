@@ -119,6 +119,7 @@ export enum ParserMode {
   ClaudeMarkdown = 'claude-md',
   GeminiMarkdown = 'gemini-md',
   GeminiNotebookMarkdown = 'gemini-notebook-md',
+  DeepWikiMarkdown = 'deepwiki-md',
   ChatGptMarkdown = 'gpt-md',
   GrokMarkdown = 'grok-md',
   KimiMarkdown = 'kimi-md',

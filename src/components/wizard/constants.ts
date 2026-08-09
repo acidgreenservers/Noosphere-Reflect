@@ -31,6 +31,15 @@ export const PLATFORM_OPTIONS: PlatformOption[] = [
         format: 'markdown'
     },
     {
+        mode: ParserMode.DeepWikiMarkdown,
+        label: 'DeepWiki',
+        description: 'Devin DeepWiki Markdown thread exports',
+        icon: '📚',
+        color: 'from-blue-700 to-indigo-800',
+        category: 'DeepWiki',
+        format: 'markdown'
+    },
+    {
         mode: ParserMode.ChatGptMarkdown,
         label: 'ChatGPT',
         description: 'OpenAI ChatGPT Markdown exports',

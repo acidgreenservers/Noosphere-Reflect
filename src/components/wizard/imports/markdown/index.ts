@@ -1,6 +1,7 @@
 import { ClaudeMarkdownSignal } from './ClaudeMarkdown';
 import { GeminiMarkdownSignal } from './GeminiMarkdown';
 import { GeminiNotebookMarkdownSignal } from './GeminiNotebookMarkdown';
+import { DeepWikiMarkdownSignal } from './DeepWikiMarkdown';
 import { GptMarkdownSignal } from './GptMarkdown';
 import { KimiMarkdownSignal } from './KimiMarkdown';
 import { GrokMarkdownSignal } from './GrokMarkdown';
@@ -18,6 +19,7 @@ export const MARKDOWN_SIGNALS: ImportSignal[] = [
     ClaudeMarkdownSignal,
     GeminiMarkdownSignal,
     GeminiNotebookMarkdownSignal,
+    DeepWikiMarkdownSignal,
     GptMarkdownSignal,
     KimiMarkdownSignal,
     GrokMarkdownSignal,
