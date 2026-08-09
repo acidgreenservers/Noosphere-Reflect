@@ -32,9 +32,11 @@
                 setTimeout(() => notification.remove(), 300);
             }, CONFIG.TIMING.POPUP_DURATION);
         },
+
         sanitizeFilename(text) {
             return text.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_').substring(0, 50);
         },
+
         getDateString() {
             const now = new Date();
             const pad = n => n.toString().padStart(2, '0');
@@ -44,8 +46,10 @@
 
     function injectStyles() {
         if (document.getElementById('noosphere-styles-gn')) return;
+
         const style = document.createElement('style');
         style.id = 'noosphere-styles-gn';
+
         style.textContent = `
             .ns-orb {
                 position: fixed; bottom: 25px; right: 25px; width: 56px; height: 56px;
@@ -55,7 +59,11 @@
                 transition: all 0.3s ease; border: 2px solid rgba(255,255,255,0.2);
                 font-size: 24px; font-weight: bold; color: white;
             }
-            .ns-orb:hover { transform: scale(1.1); }
+
+            .ns-orb:hover {
+                transform: scale(1.1);
+            }
+
             .ns-console {
                 position: fixed; bottom: 95px; right: 25px; width: 320px;
                 background: rgba(17, 24, 39, 0.9); backdrop-filter: blur(20px);
@@ -64,37 +72,113 @@
                 box-shadow: 0 20px 50px rgba(0,0,0,0.5); color: white;
                 font-family: system-ui;
             }
-            .ns-console-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-            .ns-console-title { font-size: 16px; font-weight: 700; margin: 0; }
-            .ns-console-content { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-            .ns-bulk-controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; }
+
+            .ns-console-header {
+                padding: 16px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+
+            .ns-console-title {
+                font-size: 16px;
+                font-weight: 700;
+                margin: 0;
+            }
+
+            .ns-console-content {
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .ns-bulk-controls {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+                margin-bottom: 8px;
+            }
+
             .ns-bulk-btn {
-                padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-                border-radius: 6px; color: rgba(255,255,255,0.7); font-size: 11px; font-weight: 600;
-                cursor: pointer; transition: all 0.2s;
+                padding: 6px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 6px;
+                color: rgba(255,255,255,0.7);
+                font-size: 11px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
             }
-            .ns-bulk-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+            .ns-bulk-btn:hover {
+                background: rgba(255,255,255,0.1);
+                color: white;
+            }
+
             .ns-btn {
-                width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.05);
-                border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;
-                font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+                width: 100%;
+                padding: 10px 12px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 8px;
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
             }
-            .ns-btn:hover { background: rgba(255,255,255,0.1); }
+
+            .ns-btn:hover {
+                background: rgba(255,255,255,0.1);
+            }
+
             .ns-btn-primary {
-                background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.3); color: #10b981;
+                background: rgba(16, 185, 129, 0.2);
+                border-color: rgba(16, 185, 129, 0.3);
+                color: #10b981;
             }
-            .ns-btn-primary:hover { background: rgba(16, 185, 129, 0.3); }
+
+            .ns-btn-primary:hover {
+                background: rgba(16, 185, 129, 0.3);
+            }
+
+            .ns-btn-artifact {
+                background: rgba(139, 92, 246, 0.15);
+                border-color: rgba(139, 92, 246, 0.35);
+                color: #c4b5fd;
+            }
+
+            .ns-btn-artifact:hover {
+                background: rgba(139, 92, 246, 0.25);
+            }
+
             .ns-checkbox {
-                appearance: none; width: 18px; height: 18px; border: 2px solid #10b981;
-                border-radius: 4px; cursor: pointer; background: rgba(0,0,0,0.3);
-                transition: all 0.2s; position: relative;
+                appearance: none;
+                width: 18px;
+                height: 18px;
+                border: 2px solid #10b981;
+                border-radius: 4px;
+                cursor: pointer;
+                background: rgba(0,0,0,0.3);
+                transition: all 0.2s;
+                position: relative;
             }
-            .ns-checkbox:checked { background: #10b981; }
+
+            .ns-checkbox:checked {
+                background: #10b981;
+            }
+
             .ns-checkbox:checked::after {
-                content: '✓'; position: absolute; color: white; font-size: 12px;
-                top: 50%; left: 50%; transform: translate(-50%, -50%);
+                content: '✓';
+                position: absolute;
+                color: white;
+                font-size: 12px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
             }
         `;
+
         document.head.appendChild(style);
     }
 
@@ -109,9 +193,11 @@
 
         const header = document.createElement('div');
         header.className = 'ns-console-header';
+
         const title = document.createElement('div');
         title.className = 'ns-console-title';
         title.textContent = 'Noosphere Reflect Export';
+
         header.appendChild(title);
         consoleEl.appendChild(header);
 
@@ -120,6 +206,7 @@
 
         const bulkControls = document.createElement('div');
         bulkControls.className = 'ns-bulk-controls';
+
         ['All', 'User', 'AI', 'None'].forEach(label => {
             const btn = document.createElement('div');
             btn.className = 'ns-bulk-btn';
@@ -127,6 +214,7 @@
             btn.textContent = label;
             bulkControls.appendChild(btn);
         });
+
         content.appendChild(bulkControls);
 
         const copyBtn = document.createElement('button');
@@ -141,12 +229,25 @@
         dlBtn.textContent = '⬇️ Download .md';
         content.appendChild(dlBtn);
 
+        const artifactCopyBtn = document.createElement('button');
+        artifactCopyBtn.className = 'ns-btn ns-btn-artifact';
+        artifactCopyBtn.id = 'ns-copy-artifact';
+        artifactCopyBtn.textContent = '🧩 Copy Open Artifact';
+        content.appendChild(artifactCopyBtn);
+
+        const artifactDlBtn = document.createElement('button');
+        artifactDlBtn.className = 'ns-btn ns-btn-artifact';
+        artifactDlBtn.id = 'ns-dl-artifact';
+        artifactDlBtn.textContent = '🧩 Download Open Artifact';
+        content.appendChild(artifactDlBtn);
+
         consoleEl.appendChild(content);
         document.body.appendChild(consoleEl);
 
         orb.onclick = (e) => {
             e.stopPropagation();
-            consoleEl.style.display = consoleEl.style.display === 'flex' ? 'none' : 'flex';
+            consoleEl.style.display =
+                consoleEl.style.display === 'flex' ? 'none' : 'flex';
         };
 
         document.addEventListener('click', (e) => {
@@ -159,15 +260,18 @@
     function injectCheckboxes() {
         const createCheckbox = (type, container) => {
             if (container.querySelector('.ns-checkbox')) return;
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.className = 'ns-checkbox';
+
             // FIX: type is now passed correctly ('user' vs 'assistant') per container
             checkbox.dataset.type = type;
             checkbox.checked = true;
             checkbox.style.position = 'absolute';
             checkbox.style.left = '-30px';
             checkbox.style.top = '8px';
+
             container.style.position = 'relative';
             container.prepend(checkbox);
         };
@@ -176,6 +280,7 @@
         document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE).forEach(el => {
             createCheckbox('user', el);
         });
+
         document.querySelectorAll(CONFIG.SELECTORS.AI_MESSAGE).forEach(el => {
             createCheckbox('assistant', el);
         });
@@ -183,43 +288,273 @@
 
     function setupObserver() {
         const observer = new MutationObserver(() => injectCheckboxes());
-        observer.observe(document.body, { childList: true, subtree: true });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
     }
 
     // FIX: parseNode no longer recurses on the same node for b/strong/i/em
     function parseNode(node) {
         if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+
         if (node.nodeType === Node.ELEMENT_NODE) {
             const tag = node.tagName.toLowerCase();
-            const inner = () => Array.from(node.childNodes).map(parseNode).join('');
-            if (tag === 'b' || tag === 'strong') return `**${inner()}**`;
-            if (tag === 'i' || tag === 'em') return `*${inner()}*`;
-            if (tag === 'p') return '\n\n' + inner();
+
+            const inner = () =>
+                Array.from(node.childNodes)
+                    .map(parseNode)
+                    .join('');
+
+            if (tag === 'b' || tag === 'strong') {
+                return `**${inner()}**`;
+            }
+
+            if (tag === 'i' || tag === 'em') {
+                return `*${inner()}*`;
+            }
+
+            if (tag === 'p') {
+                return '\n\n' + inner();
+            }
+
             return inner();
         }
+
         return '';
+    }
+
+    function htmlToMarkdown(root) {
+        if (!root) return '';
+
+        const clean = root.cloneNode(true);
+
+        // Remove UI/chrome that is not part of the artifact document.
+        clean.querySelectorAll(
+            'button, mat-icon, [role="button"], [aria-hidden="true"]'
+        ).forEach(n => n.remove());
+
+        const render = (node, context = {}) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.textContent.replace(/\u00a0/g, ' ');
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return '';
+            }
+
+            const tag = node.tagName.toLowerCase();
+
+            const inner = () =>
+                Array.from(node.childNodes)
+                    .map(child => render(child, context))
+                    .join('');
+
+            // Headings
+            if (/^h[1-6]$/.test(tag)) {
+                const level = Number(tag.substring(1));
+
+                return `\n\n${'#'.repeat(level)} ${inner().trim()}\n\n`;
+            }
+
+            // Line breaks
+            if (tag === 'br') {
+                return '\n';
+            }
+
+            // Bold
+            if (tag === 'strong' || tag === 'b') {
+                const value = inner().trim();
+
+                return value ? `**${value}**` : '';
+            }
+
+            // Italic
+            if (tag === 'em' || tag === 'i') {
+                const value = inner().trim();
+
+                return value ? `*${value}*` : '';
+            }
+
+            // Strikethrough
+            if (tag === 'del' || tag === 's' || tag === 'strike') {
+                const value = inner().trim();
+
+                return value ? `~~${value}~~` : '';
+            }
+
+            // Inline code
+            if (
+                tag === 'code' &&
+                node.parentElement?.tagName.toLowerCase() !== 'pre'
+            ) {
+                return `\`${node.textContent
+                    .replace(/\u00a0/g, ' ')
+                    .trim()}\``;
+            }
+
+            // Fenced code block
+            if (tag === 'pre') {
+                const code = node.querySelector('code');
+
+                const value = (code ? code.textContent : node.textContent)
+                    .replace(/\u00a0/g, ' ')
+                    .replace(/\n+$/, '');
+
+                return `\n\n\`\`\`\n${value}\n\`\`\`\n\n`;
+            }
+
+            // Horizontal rule
+            if (tag === 'hr') {
+                return '\n\n---\n\n';
+            }
+
+            // Links
+            if (tag === 'a') {
+                const label = inner().trim();
+                const href = node.getAttribute('href') || '';
+
+                return href
+                    ? `[${label || href}](${href})`
+                    : label;
+            }
+
+            // Images
+            if (tag === 'img') {
+                const alt = node.getAttribute('alt') || '';
+                const src = node.getAttribute('src') || '';
+
+                return src
+                    ? `![${alt}](${src})`
+                    : '';
+            }
+
+            // Unordered / ordered lists
+            if (tag === 'ul' || tag === 'ol') {
+                const ordered = tag === 'ol';
+
+                const items = Array.from(node.children)
+                    .filter(child =>
+                        child.tagName.toLowerCase() === 'li'
+                    )
+                    .map((li, index) => {
+                        const body = Array.from(li.childNodes)
+                            .map(child =>
+                                render(child, { listItem: true })
+                            )
+                            .join('')
+                            .trim();
+
+                        return `${ordered ? `${index + 1}.` : '-'} ${body}`;
+                    });
+
+                return `\n\n${items.join('\n')}\n\n`;
+            }
+
+            // List item
+            if (tag === 'li') {
+                return inner();
+            }
+
+            // Blockquote
+            if (tag === 'blockquote') {
+                const value = inner().trim();
+
+                return `\n\n${value
+                    .split('\n')
+                    .map(line => `> ${line}`.trimEnd())
+                    .join('\n')}\n\n`;
+            }
+
+            // Block-level text containers
+            if (
+                tag === 'p' ||
+                tag === 'div' ||
+                tag === 'section' ||
+                tag === 'article'
+            ) {
+                const value = inner().trim();
+
+                return value
+                    ? `\n\n${value}\n\n`
+                    : '';
+            }
+
+            // Default: preserve descendants.
+            return inner();
+        };
+
+        return render(clean)
+            // Remove NotebookLM inline source citation markers such as [4] or [3, 13].
+            // Keep legitimate Markdown links like [text](https://example.com) intact.
+            .replace(/\s*\[\d+(?:,\s*\d+)*\]/g, '')
+            .replace(/[ \t]+\n/g, '\n')
+            .replace(/\n[ \t]+/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+
+    function getOpenArtifact() {
+        const viewer = document.querySelector('artifact-viewer');
+
+        if (!viewer) return null;
+
+        const titleInput = viewer.querySelector('input.artifact-title');
+        const content =
+            viewer.querySelector('.text-file-markdown-wrapper');
+
+        if (!content) return null;
+
+        return {
+            title: titleInput?.value?.trim() || 'artifact',
+            content
+        };
+    }
+
+    function extractOpenArtifact() {
+        const artifact = getOpenArtifact();
+
+        if (!artifact) return null;
+
+        return {
+            title: artifact.title,
+            markdown: htmlToMarkdown(artifact.content)
+        };
     }
 
     function extractUserMessage(element) {
         if (!element) return '';
+
         const clone = element.cloneNode(true);
+
         // Remove injected checkbox before parsing
         clone.querySelectorAll('.ns-checkbox').forEach(n => n.remove());
-        return parseNode(clone).replace(/\n{3,}/g, '\n\n').trim();
+
+        return parseNode(clone)
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
     }
 
     function extractAIMessage(element) {
         if (!element) return '';
-        const contentDiv = element.querySelector(CONFIG.SELECTORS.AI_CONTENT);
+
+        const contentDiv =
+            element.querySelector(CONFIG.SELECTORS.AI_CONTENT);
+
         if (!contentDiv) return '';
+
         const clone = contentDiv.cloneNode(true);
 
         // Strip citation markers, lock icons, and any non-text chrome
-        clone.querySelectorAll('[class*="citation"], .citation-marker, button, [role="img"], mat-icon').forEach(n => n.remove());
+        clone.querySelectorAll(
+            '[class*="citation"], .citation-marker, button, [role="img"], mat-icon'
+        ).forEach(n => n.remove());
 
         // NotebookLM AI uses div.paragraph.normal (Angular custom renderer),
         // not <p> tags — target those explicitly for paragraph separation
         const paragraphs = clone.querySelectorAll('div.paragraph');
+
         if (paragraphs.length > 0) {
             return Array.from(paragraphs)
                 .map(p => parseNode(p).trim())
@@ -228,39 +563,70 @@
         }
 
         // Fallback: plain parseNode walk if structure ever changes
-        return parseNode(clone).replace(/\n{3,}/g, '\n\n').trim();
+        return parseNode(clone)
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
     }
 
     const ExportService = {
         getConversationTitle() {
-            const titleEl = document.querySelector(CONFIG.SELECTORS.TITLE);
+            const titleEl =
+                document.querySelector(CONFIG.SELECTORS.TITLE);
+
             return titleEl?.innerText.trim() || 'Google_Notebook_Chat';
         },
 
         buildMarkdown() {
             const title = this.getConversationTitle();
-            const sources = document.querySelector(CONFIG.SELECTORS.META_SOURCES)?.innerText.trim() || '';
-            const date = document.querySelector(CONFIG.SELECTORS.META_DATE)?.innerText.trim() || '';
-            const introEl = document.querySelector(CONFIG.SELECTORS.INTRO);
-            const intro = introEl ? parseNode(introEl) : '';
+
+            const sources =
+                document.querySelector(CONFIG.SELECTORS.META_SOURCES)
+                    ?.innerText.trim() || '';
+
+            const date =
+                document.querySelector(CONFIG.SELECTORS.META_DATE)
+                    ?.innerText.trim() || '';
+
+            const introEl =
+                document.querySelector(CONFIG.SELECTORS.INTRO);
+
+            const intro = introEl
+                ? parseNode(introEl)
+                : '';
+
             const sourceUrl = window.location.href;
             const exportedAt = new Date().toLocaleString();
 
-            const userMessages = Array.from(document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE))
-                .filter(el => el.querySelector('.ns-checkbox')?.checked)
-                .map(el => extractUserMessage(el))
-                .filter(Boolean);
+            const userMessages =
+                Array.from(
+                    document.querySelectorAll(
+                        CONFIG.SELECTORS.USER_MESSAGE
+                    )
+                )
+                    .filter(el =>
+                        el.querySelector('.ns-checkbox')?.checked
+                    )
+                    .map(el => extractUserMessage(el))
+                    .filter(Boolean);
 
-            const aiMessages = Array.from(document.querySelectorAll(CONFIG.SELECTORS.AI_MESSAGE))
-                .filter(el => el.querySelector('.ns-checkbox')?.checked)
-                .map(el => extractAIMessage(el))
-                .filter(Boolean);
+            const aiMessages =
+                Array.from(
+                    document.querySelectorAll(
+                        CONFIG.SELECTORS.AI_MESSAGE
+                    )
+                )
+                    .filter(el =>
+                        el.querySelector('.ns-checkbox')?.checked
+                    )
+                    .map(el => extractAIMessage(el))
+                    .filter(Boolean);
 
             const userCount = userMessages.length;
             const aiCount = aiMessages.length;
             const exchanges = Math.min(userCount, aiCount);
 
             let md = `---\n`;
+
             md += `> **🤖 Model:** Google NotebookLM\n>\n`;
             md += `> **🌐 Date:** ${exportedAt}\n>\n`;
             md += `> **🌐 Source:** [Google NotebookLM](${sourceUrl})\n>\n`;
@@ -270,18 +636,38 @@
             md += `>> **Total Exchanges:** ${exchanges}\n>>\n`;
             md += `>> **Total User Messages:** ${userCount}\n>>\n`;
             md += `>> **Total AI Messages:** ${aiCount}\n`;
-            if (sources) md += `>>\n>> **📚 Notebook Sources:** ${sources}\n`;
-            if (date)    md += `>>\n>> **📅 Notebook Date:** ${date}\n`;
+
+            if (sources) {
+                md += `>>\n>> **📚 Notebook Sources:** ${sources}\n`;
+            }
+
+            if (date) {
+                md += `>>\n>> **📅 Notebook Date:** ${date}\n`;
+            }
+
             md += `---\n\n`;
 
             md += `# ${title}\n\n`;
-            if (intro) md += `${intro.trim()}\n\n---\n\n`;
 
-            const maxLen = Math.max(userCount, aiCount);
+            if (intro) {
+                md += `${intro.trim()}\n\n---\n\n`;
+            }
+
+            const maxLen =
+                Math.max(userCount, aiCount);
+
             for (let i = 0; i < maxLen; i++) {
-                if (userMessages[i]) md += `#### Prompt - User 👤:\n\n${userMessages[i]}\n\n`;
-                if (aiMessages[i])   md += `#### Response - NotebookLM 🤖:\n\n${aiMessages[i]}\n\n`;
-                if (i < maxLen - 1)  md += `---\n\n`;
+                if (userMessages[i]) {
+                    md += `#### Prompt - User 👤:\n\n${userMessages[i]}\n\n`;
+                }
+
+                if (aiMessages[i]) {
+                    md += `#### Response - NotebookLM 🤖:\n\n${aiMessages[i]}\n\n`;
+                }
+
+                if (i < maxLen - 1) {
+                    md += `---\n\n`;
+                }
             }
 
             md += `\n---\n\n`;
@@ -293,64 +679,180 @@
         },
 
         exportToClipboard(content) {
-            navigator.clipboard.writeText(content).then(() => {
-                Utils.createNotification('✅ Copied to clipboard');
-            }).catch(() => Utils.createNotification('❌ Clipboard write failed — try Download instead'));
+            navigator.clipboard.writeText(content)
+                .then(() => {
+                    Utils.createNotification(
+                        '✅ Copied to clipboard'
+                    );
+                })
+                .catch(() => {
+                    Utils.createNotification(
+                        '❌ Clipboard write failed — try Download instead'
+                    );
+                });
         },
 
         exportToFile(content) {
-            const title = this.getConversationTitle();
-            const filename = `${Utils.sanitizeFilename(title)}_${Utils.getDateString()}.md`;
-            const blob = new Blob([content], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            const title =
+                this.getConversationTitle();
+
+            const filename =
+                `${Utils.sanitizeFilename(title)}_${Utils.getDateString()}.md`;
+
+            const blob =
+                new Blob([content], {
+                    type: 'text/markdown'
+                });
+
+            const url =
+                URL.createObjectURL(blob);
+
+            const a =
+                document.createElement('a');
+
             a.href = url;
             a.download = filename;
             a.click();
+
             URL.revokeObjectURL(url);
-            Utils.createNotification(`✅ Downloaded: ${filename}`);
+
+            Utils.createNotification(
+                `✅ Downloaded: ${filename}`
+            );
+        },
+
+        executeArtifact(mode) {
+            const artifact = extractOpenArtifact();
+
+            if (!artifact) {
+                Utils.createNotification(
+                    '❌ No open artifact found'
+                );
+                return;
+            }
+
+            if (!artifact.markdown) {
+                Utils.createNotification(
+                    '❌ Open artifact contains no readable Markdown'
+                );
+                return;
+            }
+
+            if (mode === 'clipboard') {
+                this.exportToClipboard(
+                    artifact.markdown
+                );
+            } else {
+                const filename =
+                    `${Utils.sanitizeFilename(artifact.title)}_${Utils.getDateString()}.md`;
+
+                const blob =
+                    new Blob([artifact.markdown], {
+                        type: 'text/markdown'
+                    });
+
+                const url =
+                    URL.createObjectURL(blob);
+
+                const a =
+                    document.createElement('a');
+
+                a.href = url;
+                a.download = filename;
+                a.click();
+
+                URL.revokeObjectURL(url);
+
+                Utils.createNotification(
+                    `✅ Downloaded: ${filename}`
+                );
+            }
         },
 
         execute(mode) {
-            const userCount = document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE).length;
-            const aiCount   = document.querySelectorAll(CONFIG.SELECTORS.AI_MESSAGE).length;
+            const userCount =
+                document.querySelectorAll(
+                    CONFIG.SELECTORS.USER_MESSAGE
+                ).length;
+
+            const aiCount =
+                document.querySelectorAll(
+                    CONFIG.SELECTORS.AI_MESSAGE
+                ).length;
+
             if (!userCount && !aiCount) {
-                Utils.createNotification('❌ No messages found — check selectors');
+                Utils.createNotification(
+                    '❌ No messages found — check selectors'
+                );
                 return;
             }
-            const content = this.buildMarkdown();
-            mode === 'clipboard' ? this.exportToClipboard(content) : this.exportToFile(content);
+
+            const content =
+                this.buildMarkdown();
+
+            mode === 'clipboard'
+                ? this.exportToClipboard(content)
+                : this.exportToFile(content);
         }
     };
 
     function init() {
-        console.log('🚀 Noosphere Reflect Exporter ready');
+        console.log(
+            '🚀 Noosphere Reflect Exporter ready'
+        );
+
         injectStyles();
         createMenu();
         injectCheckboxes();
         setupObserver();
 
-        document.getElementById('ns-copy-md').onclick = () => ExportService.execute('clipboard');
-        document.getElementById('ns-dl-md').onclick  = () => ExportService.execute('file');
+        document.getElementById('ns-copy-md').onclick =
+            () => ExportService.execute('clipboard');
+
+        document.getElementById('ns-dl-md').onclick =
+            () => ExportService.execute('file');
+
+        document.getElementById('ns-copy-artifact').onclick =
+            () => ExportService.executeArtifact('clipboard');
+
+        document.getElementById('ns-dl-artifact').onclick =
+            () => ExportService.executeArtifact('file');
 
         const bulkSelect = (type) => {
-            document.querySelectorAll('.ns-checkbox').forEach(cb => {
-                cb.checked = (
-                    type === 'all' ||
-                    (type === 'user'      && cb.dataset.type === 'user') ||
-                    (type === 'ai'        && cb.dataset.type === 'assistant')
-                );
-            });
+            document.querySelectorAll('.ns-checkbox')
+                .forEach(cb => {
+                    cb.checked = (
+                        type === 'all' ||
+                        (
+                            type === 'user' &&
+                            cb.dataset.type === 'user'
+                        ) ||
+                        (
+                            type === 'ai' &&
+                            cb.dataset.type === 'assistant'
+                        )
+                    );
+                });
         };
 
-        document.getElementById('ns-select-all').onclick  = () => bulkSelect('all');
-        document.getElementById('ns-select-user').onclick = () => bulkSelect('user');
-        document.getElementById('ns-select-ai').onclick   = () => bulkSelect('ai');
-        document.getElementById('ns-select-none').onclick = () => bulkSelect('none');
+        document.getElementById('ns-select-all').onclick =
+            () => bulkSelect('all');
+
+        document.getElementById('ns-select-user').onclick =
+            () => bulkSelect('user');
+
+        document.getElementById('ns-select-ai').onclick =
+            () => bulkSelect('ai');
+
+        document.getElementById('ns-select-none').onclick =
+            () => bulkSelect('none');
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener(
+            'DOMContentLoaded',
+            init
+        );
     } else {
         init();
     }
