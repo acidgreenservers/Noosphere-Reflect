@@ -202,10 +202,10 @@
 
     function extractUserMessage(element) {
         if (!element) return '';
-        return Array.from(element.querySelectorAll('p'))
-            .map(p => p.innerText.trim())
-            .filter(Boolean)
-            .join('\n\n');
+        const clone = element.cloneNode(true);
+        // Remove injected checkbox before parsing
+        clone.querySelectorAll('.ns-checkbox').forEach(n => n.remove());
+        return parseNode(clone).replace(/\n{3,}/g, '\n\n').trim();
     }
 
     function extractAIMessage(element) {
@@ -213,7 +213,21 @@
         const contentDiv = element.querySelector(CONFIG.SELECTORS.AI_CONTENT);
         if (!contentDiv) return '';
         const clone = contentDiv.cloneNode(true);
-        clone.querySelectorAll('[class*="citation"], button, [role="img"], mat-icon').forEach(n => n.remove());
+
+        // Strip citation markers, lock icons, and any non-text chrome
+        clone.querySelectorAll('[class*="citation"], .citation-marker, button, [role="img"], mat-icon').forEach(n => n.remove());
+
+        // NotebookLM AI uses div.paragraph.normal (Angular custom renderer),
+        // not <p> tags — target those explicitly for paragraph separation
+        const paragraphs = clone.querySelectorAll('div.paragraph');
+        if (paragraphs.length > 0) {
+            return Array.from(paragraphs)
+                .map(p => parseNode(p).trim())
+                .filter(Boolean)
+                .join('\n\n');
+        }
+
+        // Fallback: plain parseNode walk if structure ever changes
         return parseNode(clone).replace(/\n{3,}/g, '\n\n').trim();
     }
 
