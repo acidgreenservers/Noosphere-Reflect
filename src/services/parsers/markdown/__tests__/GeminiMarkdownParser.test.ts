@@ -24,7 +24,7 @@ Why did the chicken cross the road?`;
 
         const result = parser.parse(input);
         
-        expect(result.metadata.model).toBe('Gemini');
+        expect(result.metadata!.model).toBe('Gemini');
         expect(result.messages).toHaveLength(4);
         
         expect(result.messages[0].type).toBe(ChatMessageType.Prompt);
@@ -34,7 +34,7 @@ Why did the chicken cross the road?`;
         expect(result.messages[1].content).toBe('Hello there! How can I help?');
     });
 
-    it('should extract thinking blocks into collapsible', () => {
+    it('should extract thinking blocks into thought property', () => {
         const input = `## User:
 think about this.
 
@@ -47,9 +47,27 @@ Here is the answer.`;
         const result = parser.parse(input);
         
         expect(result.messages).toHaveLength(2);
-        expect(result.messages[1].content).toContain('<collapsible title="Thought Process">');
-        expect(result.messages[1].content).toContain('Here is my thought process...');
-        expect(result.messages[1].content).toContain('Here is the answer.');
+        expect(result.messages[1].thought).toContain('Here is my thought process...');
+        expect(result.messages[1].content).toBe('Here is the answer.');
+    });
+
+    it('should parse new consecutive blockquote thinking blocks with timestamps', () => {
+        const input = `## Gemini:
+
+> 5/17/2026 9:08:44 AM
+
+> **Thinking steps**
+>
+> **Defining the Goal**
+>
+> My primary objective is clear: to develop a versatile ROADMAP template.
+
+Here is a universal template.`;
+        const result = parser.parse(`## User:\nHello\n\n` + input);
+        expect(result.messages).toHaveLength(2);
+        expect(result.messages[1].thought).toContain("**Thinking steps**");
+        expect(result.messages[1].thought).toContain("My primary objective is clear");
+        expect(result.messages[1].content).toBe("Here is a universal template.");
     });
 
     it('should throw an error when no headers are found', () => {

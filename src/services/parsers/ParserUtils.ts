@@ -491,3 +491,136 @@ export const parseExportedJson = (exportedData: any): ChatData => {
         }
     };
 };
+
+/**
+ * Detects and extracts a thought/thinking process block from the raw content of Claude or Gemini response.
+ * Handles the consecutive blockquote pattern starting with a timestamp line.
+ * E.g.:
+ * > 8/8/2026 11:01:21 AM
+ * > Recognized structural topology...
+ * ...
+ *
+ * Returns the cleaned thought markdown (with leading > stripped and timestamp removed) and the remaining content.
+ */
+export const extractClaudeGeminiThinking = (rawContent: string): { thought?: string; content: string } => {
+    const lines = rawContent.split('\n');
+    // Find the first non-empty line
+    let firstNonEmptyIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() !== '') {
+            firstNonEmptyIdx = i;
+            break;
+        }
+    }
+
+    if (firstNonEmptyIdx === -1) {
+        return { content: rawContent };
+    }
+
+    const firstLine = lines[firstNonEmptyIdx];
+    // Check if the first line starts with > and has a timestamp/date pattern
+    const startsWithQuote = firstLine.trim().startsWith('>');
+    const hasTimestamp = startsWithQuote && (
+        /\d+[\/.-]\d+[\/.-]\d+/.test(firstLine) ||
+        /\b\d{1,2}:\d{2}(:\d{2})?\s*(AM|PM)?\b/i.test(firstLine)
+    );
+
+    if (!hasTimestamp) {
+        return { content: rawContent };
+    }
+
+    // Read consecutive lines that are blockquotes (start with >) or empty lines.
+    // The thinking block ends on the first line that has text and does not start with >.
+    let thinkingLines: string[] = [];
+    let contentStartIdx = lines.length;
+
+    for (let i = firstNonEmptyIdx; i < lines.length; i++) {
+        const line = lines[i];
+        const isBlockquote = line.trim().startsWith('>');
+        const isEmpty = line.trim() === '';
+
+        if (!isBlockquote && !isEmpty) {
+            contentStartIdx = i;
+            break;
+        }
+        thinkingLines.push(line);
+    }
+
+    // Process thinking lines: skip the first line (timestamp)
+    let cleanThoughtLines = thinkingLines.slice(1);
+
+    // Strip leading > prefix
+    cleanThoughtLines = cleanThoughtLines.map(line => {
+        return line.replace(/^\s*>\s?/, '');
+    });
+
+    const thoughtText = cleanThoughtLines.join('\n').trim();
+    const contentText = lines.slice(contentStartIdx).join('\n').trim();
+
+    return {
+        thought: thoughtText || undefined,
+        content: contentText
+    };
+};
+
+/**
+ * Extracts any thought patterns (timestamp-blockquote, <thoughts>, ```thought, etc.) from content.
+ * Returns the clean thought string and the remaining message content.
+ */
+export const extractAllThoughts = (rawContent: string): { thought?: string; content: string } => {
+    let thoughts: string | undefined;
+    let cleanContent = rawContent;
+
+    // 1. Try the timestamp-blockquote format first (Claude & Gemini new format)
+    const blockquoteResult = extractClaudeGeminiThinking(rawContent);
+    if (blockquoteResult.thought) {
+        return blockquoteResult;
+    }
+
+    // 2. Check for <collapsible title="Thought Process">...</collapsible>
+    const collapsibleMatch = cleanContent.match(/<collapsible title="Thought Process">\s*\n*```plaintext\s*\n*([\s\S]*?)\n*```\s*\n*<\/collapsible>/i) ||
+        cleanContent.match(/<collapsible title="Thought Process">\s*\n*([\s\S]*?)\n*<\/collapsible>/i);
+    if (collapsibleMatch) {
+        thoughts = collapsibleMatch[1].replace(/^\s*```plaintext\s*\n*/i, '').replace(/\n*```\s*$/i, '').trim();
+        cleanContent = cleanContent.replace(collapsibleMatch[0], '').trim();
+        return { thought: thoughts, content: cleanContent };
+    }
+
+    // 3. Check for <thoughts>...</thoughts> (standard xml tags)
+    const xmlMatch = cleanContent.match(/<thoughts>([\s\S]*?)<\/thoughts>/i);
+    if (xmlMatch) {
+        thoughts = xmlMatch[1].trim();
+        cleanContent = cleanContent.replace(xmlMatch[0], '').trim();
+        return { thought: thoughts, content: cleanContent };
+    }
+
+    // 4. Check for ```thought\n...\n``` (markdown thought block)
+    const mdMatch = cleanContent.match(/```thought\n([\s\S]*?)```/i);
+    if (mdMatch) {
+        thoughts = mdMatch[1].trim();
+        cleanContent = cleanContent.replace(mdMatch[0], '').trim();
+        return { thought: thoughts, content: cleanContent };
+    }
+
+    // 5. Check for ````plaintext\n...\n```` (Claude 4-backticks)
+    const claude4Match = cleanContent.match(/````plaintext\n([\s\S]*?)````/i);
+    if (claude4Match) {
+        thoughts = claude4Match[1].trim();
+        cleanContent = cleanContent.replace(claude4Match[0], '').trim();
+        return { thought: thoughts, content: cleanContent };
+    }
+
+    // 6. Check for > Thinking: block (Gemini legacy)
+    const geminiLegacyMatch = cleanContent.match(/> Thinking:\s*\n\s*>[\s\S]*?\n(?=>|$)/i);
+    if (geminiLegacyMatch) {
+        const matchText = geminiLegacyMatch[0];
+        const innerLines = matchText.split('\n')
+            .map(line => line.replace(/^\s*>\s?/, ''))
+            .filter(line => !line.toLowerCase().startsWith('thinking:'));
+        thoughts = innerLines.join('\n').trim();
+        cleanContent = cleanContent.replace(matchText, '').trim();
+        return { thought: thoughts, content: cleanContent };
+    }
+
+    return { content: rawContent };
+};

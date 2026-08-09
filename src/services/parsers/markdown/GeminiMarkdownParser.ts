@@ -1,5 +1,6 @@
 import { BaseMarkdownParser } from './BaseMarkdownParser';
 import { ChatData, ChatMessage, ChatMessageType } from '../../../types';
+import { extractAllThoughts } from '../ParserUtils';
 
 export class GeminiMarkdownParser extends BaseMarkdownParser {
     parse(input: string): ChatData {
@@ -214,12 +215,20 @@ export class GeminiMarkdownParser extends BaseMarkdownParser {
                 continue;
             }
 
-            // Build final content (thinking blocks already converted to <collapsible>)
-            const finalContent = rawContent;
+            // Extract thoughts if any
+            let thoughts: string | undefined;
+            let finalContent = rawContent;
+
+            if (!isPrompt) {
+                const extraction = extractAllThoughts(rawContent);
+                thoughts = extraction.thought;
+                finalContent = extraction.content;
+            }
 
             messages.push({
                 type: isPrompt ? ChatMessageType.Prompt : ChatMessageType.Response,
-                content: finalContent
+                content: finalContent,
+                thought: thoughts
             });
 
             // Toggle expected type for next exchange
