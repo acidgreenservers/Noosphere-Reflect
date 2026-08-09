@@ -24,7 +24,7 @@ Why did the chicken cross the road?`;
 
         const result = parser.parse(input);
         
-        expect(result.metadata.model).toBe('Claude');
+        expect(result.metadata!.model).toBe('Claude');
         expect(result.messages).toHaveLength(4);
         
         expect(result.messages[0].type).toBe(ChatMessageType.Prompt);
@@ -37,7 +37,7 @@ Why did the chicken cross the road?`;
         expect(result.messages[2].content).toBe('Tell me a joke.');
     });
 
-    it('should extract thought blocks into collapsible', () => {
+    it('should extract thought blocks into thought property', () => {
         const input = `## User:
 think about this.
 
@@ -49,9 +49,26 @@ Here is the answer.`;
         const result = parser.parse(input);
         
         expect(result.messages).toHaveLength(2);
-        expect(result.messages[1].content).toContain('<collapsible title="Thought Process">');
-        expect(result.messages[1].content).toContain('thinking...');
-        expect(result.messages[1].content).toContain('Here is the answer.');
+        expect(result.messages[1].thought).toBe('thinking...');
+        expect(result.messages[1].content).toBe('Here is the answer.');
+    });
+
+    it('should parse new consecutive blockquote thinking blocks with timestamps', () => {
+        const input = `## Assistant:
+
+> 8/8/2026 11:01:21 AM
+
+> Recognized structural topology as behavior's true driver, not substrate.
+>
+> - Lucas is showing me a framework
+> - **Done**
+
+The correction lands. And it's not cosmetic.`;
+        const result = parser.parse(`## User:\nHello\n\n` + input);
+        expect(result.messages).toHaveLength(2);
+        expect(result.messages[1].thought).toContain("Recognized structural topology as behavior's true driver, not substrate.");
+        expect(result.messages[1].thought).toContain("- Lucas is showing me a framework");
+        expect(result.messages[1].content).toBe("The correction lands. And it's not cosmetic.");
     });
 
     it('should throw an error when no headers are found', () => {

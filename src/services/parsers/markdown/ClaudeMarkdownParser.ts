@@ -1,5 +1,6 @@
 import { BaseMarkdownParser } from './BaseMarkdownParser';
 import { ChatData, ChatMessage, ChatMessageType } from '../../../types';
+import { extractAllThoughts } from '../ParserUtils';
 
 export class ClaudeMarkdownParser extends BaseMarkdownParser {
     parse(input: string): ChatData {
@@ -169,23 +170,20 @@ export class ClaudeMarkdownParser extends BaseMarkdownParser {
                 continue;
             }
 
-            // Extract thought blocks (````plaintext with 4 backticks)
+            // Extract thought blocks using the robust helper if it's an assistant response
             let thoughts: string | undefined;
-            const thoughtMatch = rawContent.match(/````plaintext\n([\s\S]*?)````\n/g);
-            if (thoughtMatch) {
-                thoughts = thoughtMatch[0].replace(/````plaintext\n/g, '').replace(/\n````\n/g, '').trim();
-                rawContent = rawContent.replace(thoughtMatch[0], '').trim();
-            }
-
-            // Build final content
             let finalContent = rawContent;
-            if (!isPrompt && thoughts) {
-                finalContent = `<thoughts>\n\n${thoughts}\n\n</thoughts>\n\n${rawContent}`;
+
+            if (!isPrompt) {
+                const extraction = extractAllThoughts(rawContent);
+                thoughts = extraction.thought;
+                finalContent = extraction.content;
             }
 
             messages.push({
                 type: isPrompt ? ChatMessageType.Prompt : ChatMessageType.Response,
-                content: finalContent
+                content: finalContent,
+                thought: thoughts
             });
 
             // Toggle expected type for next exchange

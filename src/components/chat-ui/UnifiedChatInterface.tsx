@@ -38,7 +38,9 @@ const ThoughtBlock = ({
     onImageClick,
     onCopyText,
     flashFeedback,
-    isUser
+    isUser,
+    isAddingThought,
+    setIsAddingThought
 }: {
     msg: ChatMessage;
     index: number;
@@ -46,13 +48,21 @@ const ThoughtBlock = ({
     setIsThoughtExpanded: (b: boolean) => void;
     onEditMessage: (index: number, content: string, thought?: string) => void;
     displayContent: string;
-    onImageClick: (url: string) => void;
+    onImageClick?: (src: string, alt?: string) => void;
     onCopyText: (text: string) => boolean;
     flashFeedback: (setter: React.Dispatch<React.SetStateAction<boolean>>, ref: React.MutableRefObject<NodeJS.Timeout | null>) => void;
     isUser?: boolean;
+    isAddingThought?: boolean;
+    setIsAddingThought?: (b: boolean) => void;
 }) => {
-    const [isEditingThought, setIsEditingThought] = useState(false);
+    const [isEditingThought, setIsEditingThought] = useState(isAddingThought || false);
     const [editThoughtContent, setEditThoughtContent] = useState(msg.thought || '');
+
+    useEffect(() => {
+        if (isAddingThought) {
+            setIsEditingThought(true);
+        }
+    }, [isAddingThought]);
     const editThoughtRef = useRef<HTMLDivElement>(null);
     const [copiedThought, setCopiedThought] = useState(false);
     const copyThoughtTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -178,6 +188,7 @@ const ThoughtBlock = ({
                                                 e.stopPropagation();
                                                 setIsEditingThought(false);
                                                 setEditThoughtContent(msg.thought || '');
+                                                if (setIsAddingThought) setIsAddingThought(false);
                                             }}
                                             className="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors font-medium cursor-pointer"
                                         >
@@ -190,6 +201,7 @@ const ThoughtBlock = ({
                                                 e.stopPropagation();
                                                 onEditMessage(index, displayContent, editThoughtContent);
                                                 setIsEditingThought(false);
+                                                if (setIsAddingThought) setIsAddingThought(false);
                                             }}
                                             className="px-3 py-1.5 text-xs text-[#09100c] bg-stone-300 hover:bg-stone-200 rounded-lg transition-colors font-medium cursor-pointer"
                                         >
@@ -199,7 +211,7 @@ const ThoughtBlock = ({
                                 </div>
                             ) : (
                                 <div className="prose prose-invert max-w-none prose-sm prose-p:my-1.5 prose-headings:my-2 pb-2">
-                                    <MarkdownRenderer content={msg.thought} onImageClick={onImageClick} />
+                                    <MarkdownRenderer content={msg.thought || ''} onImageClick={onImageClick} />
                                 </div>
                             )}
                         </div>
@@ -364,6 +376,7 @@ const ChatMessageBubble = React.memo(({
     }, []);
     const [isMessageExpanded, setIsMessageExpanded] = useState(false);
     const [isThoughtExpanded, setIsThoughtExpanded] = useState(false);
+    const [isAddingThought, setIsAddingThought] = useState(false);
     const editRef = useRef<HTMLDivElement>(null);
 
     // Detect and extract Exporter Attribution
@@ -491,7 +504,7 @@ const ChatMessageBubble = React.memo(({
                 );
             })() : isUser ? (
                 <div className="w-fit" style={{ maxWidth: 'min(100%, 65ch)' }}>
-                    {msg.thought && (
+                    {(msg.thought || isAddingThought) && (
                         <ThoughtBlock
                             msg={msg}
                             index={index}
@@ -503,6 +516,8 @@ const ChatMessageBubble = React.memo(({
                             onCopyText={onCopyText}
                             flashFeedback={flashFeedback}
                             isUser={isUser}
+                            isAddingThought={isAddingThought}
+                            setIsAddingThought={setIsAddingThought}
                         />
                     )}
                     {(displayContent || isEditing) && (
@@ -585,6 +600,16 @@ const ChatMessageBubble = React.memo(({
                                 className={`${btnBase} bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20`}
                                 title="Edit"
                             >{isShort ? '✏️' : '✏️ Edit'}</button>
+                            {!msg.thought && (
+                                <button
+                                    onClick={() => {
+                                        setIsAddingThought(true);
+                                        setIsThoughtExpanded(true);
+                                    }}
+                                    className={`${btnBase} bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20`}
+                                    title="Add Thought Process"
+                                >{isShort ? '🧠' : '🧠 Add Thought'}</button>
+                            )}
                             <button
                                 onClick={() => onForkChat(index)}
                                 className={`${btnBase} bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 border border-green-500/20`}
@@ -663,7 +688,7 @@ const ChatMessageBubble = React.memo(({
             ) : (
                 /* AI Message: No Bubble, Raw Text */
                 <div className="w-[65ch] max-w-full break-words">
-                    {msg.thought && (
+                    {(msg.thought || isAddingThought) && (
                         <ThoughtBlock
                             msg={msg}
                             index={index}
@@ -674,6 +699,8 @@ const ChatMessageBubble = React.memo(({
                             onImageClick={onImageClick}
                             onCopyText={onCopyText}
                             flashFeedback={flashFeedback}
+                            isAddingThought={isAddingThought}
+                            setIsAddingThought={setIsAddingThought}
                         />
                     )}
                     {(displayContent || isEditing) && (isEditing ? (
@@ -774,6 +801,16 @@ const ChatMessageBubble = React.memo(({
                                 className={`${btnBase} bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20`}
                                 title="Edit"
                             >{isShort ? '✏️' : '✏️ Edit'}</button>
+                            {!msg.thought && (
+                                <button
+                                    onClick={() => {
+                                        setIsAddingThought(true);
+                                        setIsThoughtExpanded(true);
+                                    }}
+                                    className={`${btnBase} bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20`}
+                                    title="Add Thought Process"
+                                >{isShort ? '🧠' : '🧠 Add Thought'}</button>
+                            )}
                             <button
                                 onClick={() => onForkChat(index)}
                                 className={`${btnBase} bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 border border-green-500/20`}
