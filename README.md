@@ -21,16 +21,16 @@
 <div align="center">
 <table>
 <tr>
-<td align="center"><a href="docs/images/chat-workspace.png"><img src="docs/images/chat-workspace.png" width="400" alt="Unified WebChat Workspace"/></a></td>
-<td align="center"><a href="docs/images/projects-hub.png"><img src="docs/images/projects-hub.png" width="400" alt="Projects & Context Hub"/></a></td>
-<td align="center"><a href="docs/images/document-builder.png"><img src="docs/images/document-builder.png" width="400" alt="In-Chat Document Builder"/></a></td>
-<td align="center"><a href="docs/images/artifact-sidebar.png"><img src="docs/images/artifact-sidebar.png" width="400" alt="Artifacts & Profiles"/></a></td>
+<td align="center"><a href="public/screenshots/new-chat.png"><img src="public/screenshots/new-chat.png" width="400" alt="Unified WebChat Workspace"/></a></td>
+<td align="center"><a href="public/screenshots/projects.png"><img src="public/screenshots/projects.png" width="400" alt="Projects & Context Hub"/></a></td>
+<td align="center"><a href="public/screenshots/document-writer.png"><img src="public/screenshots/document-writer.png" width="400" alt="In-Chat Document Builder"/></a></td>
+<td align="center"><a href="public/screenshots/artifact-list.png"><img src="public/screenshots/artifact-list.png" width="400" alt="Artifacts"/></a></td>
 </tr>
 <tr>
 <td align="center"><b>Unified WebChat Canvas</b></td>
 <td align="center"><b>Projects & Context Hub</b></td>
 <td align="center"><b>Document Builder</b></td>
-<td align="center"><b>Artifacts & Profiles</b></td>
+<td align="center"><b>Artifacts</b></td>
 </tr>
 </table>
 </div>
