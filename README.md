@@ -1,202 +1,243 @@
-# Noosphere Reflect 📘 - AI Chat Archival & Preservation System
+<p align="center">
+  <img src="public/logo.png" alt="Noosphere Reflect" width="128" height="128" />
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+# Noosphere Reflect
+
+> [!NOTE]  
+> **100% Agent-Engineered Architecture**  
+> This project was developed entirely through AI agent collaboration utilizing the [**AGENT framework**](https://gist.github.com/acidgreenservers/001185d63e5cd65f9fbe6f7a1c70a200) from **Noosphere Steward**. It stands as a real-world demonstration of autonomous agent capabilities: taking complex software specifications—from client-side storage boundaries to multi-platform Chrome Extension bridges—and executing them into production-ready software. Every parser, state transition, and security boundary in this repository was built to demonstrate that structured agent workflows can deliver robust, sovereign software without manual code authoring.
+
+<div align="center">
+
+[![License: AGPL3.0](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.6.4-green.svg)](CHANGELOG.md)
 [![Build Status](https://github.com/acidgreenservers/Noosphere-Reflect/actions/workflows/deploy.yml/badge.svg)](https://github.com/acidgreenservers/Noosphere-Reflect/actions)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.x-brightgreen.svg)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](tsconfig.json)
 
-**Preserve Meaning Through Memory** — A highly secure, client-side AI chat archival system featuring a companion Chrome Extension for high-fidelity capture from Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, Kimi, Google AI Studio, and Brave.
+</div>
+
+<div align="center">
+<table>
+<tr>
+<td align="center"><a href="docs/images/chat-workspace.png"><img src="docs/images/chat-workspace.png" width="400" alt="Unified WebChat Workspace"/></a></td>
+<td align="center"><a href="docs/images/projects-hub.png"><img src="docs/images/projects-hub.png" width="400" alt="Projects & Context Hub"/></a></td>
+<td align="center"><a href="docs/images/document-builder.png"><img src="docs/images/document-builder.png" width="400" alt="In-Chat Document Builder"/></a></td>
+<td align="center"><a href="docs/images/artifact-sidebar.png"><img src="docs/images/artifact-sidebar.png" width="400" alt="Artifacts & Profiles"/></a></td>
+</tr>
+<tr>
+<td align="center"><b>Unified WebChat Canvas</b></td>
+<td align="center"><b>Projects & Context Hub</b></td>
+<td align="center"><b>Document Builder</b></td>
+<td align="center"><b>Artifacts & Profiles</b></td>
+</tr>
+</table>
+</div>
+
+**Preserve Meaning Through Memory** — A highly secure, client-side AI chat archival and workspace system featuring a companion Chrome Extension for high-fidelity capture across Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, Kimi, Google AI Studio, and Brave.
+
+<div align="center">
+
+### [**Live Application**](https://acidgreenservers.github.io/Noosphere-Reflect/) | [**Quickstart Guide**](QUICKSTART.md) | [**Architecture**](ARCHITECTURE.md) | [**Security Policy**](SECURITY.md)
+
+</div>
 
 ---
 
-## 🚀 Getting Started
+## Why This Exists?
 
-> The commands below are verified for this repository. This application runs entirely client-side.
+The AI conversational ecosystem is highly fragmented. Power users routinely jump between Claude, ChatGPT, Gemini, and local LLMs—leaving valuable ideas, code snippets, and intellectual workflows trapped in isolated vendor silos. Traditional conversation history disappears behind platform updates, export formats change without notice, and cloud synchronization compromises privacy.
+
+**Noosphere Reflect** was created to restore total data sovereignty to personal AI interactions. Built around a familiar, webchat-native canvas, it provides a unified client-side workspace where retroactive session history, prompt templates, memories, skills, workflows, agents, artifacts, and projects are captured with high fidelity and preserved entirely locally.
+
+### Core System Mandates
+To fulfill true preservation, Noosphere Reflect adheres to four strict principles:
+- **Zero-Telemetry Client Sovereignty**: All session files, memories, and prompt artifacts remain inside local browser storage (`IndexedDB`). No external databases or analytics tracking.
+- **Universal Multi-Platform Parsing**: Modular DOM scrapers seamlessly ingest structured chats and raw thinking chains from commercial and open-weight AI web clients via a companion Chrome extension.
+- **High-Fidelity Document Synthesis**: An integrated in-chat Markdown document workspace to extract, organize, and synthesize model turns into clean deliverables.
+- **Off-Thread High-Speed Search**: Instant full-text indexing and query execution across thousands of conversations without main-thread UI lag.
+
+---
+
+## Features
+
+### 💬 Unified WebChat Canvas
+- **Familiar Chat Architecture**: Designed after modern AI interfaces for intuitive interaction, complete with retroactive conversation replay and turn-level attachments.
+- **Thinking Block Rendering**: Native support for hidden or expanded model reasoning chains ("Thinking Blocks"), preserving full execution fidelity from high-reasoning LLMs.
+- **Rich HTML & Code Rendering**: In-line sandbox supporting full HTML preview, interactive code snippets, and custom console styling locked to `65ch` reading widths.
+- **Turn Controls & Feedback**: Hover actions on every message turn for **Copy**, **Fork**, **Edit**, and **Save As** (Memory, Prompt, Skill, or Workflow) with instant visual verification cues (`✓`).
+
+### 📁 Projects & Context Hub
+- **Isolated Workspaces**: Group related chats, uploaded artifacts, static files, and prompts inside dedicated Project containers (similar to Claude Projects / GPTs).
+- **Context Injection**: Attach project-level knowledge directly into conversation turns to maintain topic alignment across long-running sessions.
+
+### 👤 Custom Profiles & Instructions
+- **Global & Local Preferences**: Define custom system instructions, user background context, and persona constraints across chats.
+- **Behavioral Profiles**: Quickly toggle instruction profiles to tailor model responses for coding, technical writing, or creative brainstorming.
+
+### 🧩 Modular Scrapers & Granular Export System
+- **Updated Extension Scrapers**: High-fidelity capture engine targeting major web interfaces with individual styling support:
+  - **Claude** (`claude.ai`) — 🟠 Orange Theme
+  - **ChatGPT** (`chatgpt.com`) — 🟢 Green Theme
+  - **Gemini** (`gemini.google.com`) — 🔵 Blue Theme
+  - **LeChat** (`chat.mistral.ai`) — 🟡 Amber Theme
+  - **Grok** (`x.ai`) — ⚫ Black Theme
+  - **Llamacoder** (`llamacoder.together.ai`) — ⚪ White Theme
+  - **Google AI Studio** (`aistudio.google.com`) — 🔵 Blue Theme
+  - **Kimi** (`kimi.moonshot.cn`) — 🟣 Purple Theme
+  - **Brave** (`brave.com`) — 🦁 Lion Theme
+- **Granular Export Utilities**: Export full sessions or specific sub-trees to JSON, Markdown, or raw database backups with full structural metadata.
+
+### 📝 In-Chat Document Builder & Artifacts
+- **Sliding Workspace Pane**: Dynamic split-screen panel (`30vw` to `90vw`) with real-time Markdown rendering.
+- **Direct Segment Insertion**: Select text snippets directly from chat responses and append them directly into your draft document.
+- **Centralized Artifact Reader**: Drawer interface to review, inspect, and download image attachments, code artifacts, and session files.
+
+### ⚡ Search Engine & Local Persistence
+- **Off-Thread MiniSearch**: Background Web Worker (`SearchWorker`) running MiniSearch for instant indexing across chats, memories, prompts, and skills.
+- **Archive Hub**: Full organization dashboard for saved sessions, project tags, search filters, and database maintenance.
+
+---
+
+## Technology Stack
+
+### Core Frontend
+- **Framework**: React 19 & TypeScript 5.8
+- **Build Tool**: Vite 6.2
+- **Styling**: Tailwind CSS v4 (Glassmorphic dark-amber design system)
+- **Icons**: Lucide React
+
+### Storage & Search Engine
+- **Persistence Layer**: `IndexedDB` wrapped via `idb` (`StorageService`)
+- **Full-Text Search**: MiniSearch off-loaded to a Web Worker (`SearchWorker`)
+- **Sanitization**: `DOMPurify` enforcing multi-tier XSS protection
+
+### Cloud Backup
+> Feature not fully finished
+
+- **Drive Sync**: Google Drive API (optional manual OAuth2 sync.)
+
+---
+
+## Project Structure
+
+
+```
+
+Noosphere-Reflect/
+├── public/                 # Static assets, logo, & icons
+├── src/
+│   ├── components/        # React UI components
+│   │   ├── artifacts/     # Artifact list drawer & visual readers
+│   │   ├── chat/          # WebChat canvas, message turns, thinking blocks, & inputs
+│   │   ├── document/      # In-chat sliding markdown document workspace
+│   │   ├── modal/         # Save Modals, Profile Editor, & Project dialogs
+│   │   ├── profile/       # User profile & system instruction managers
+│   │   ├── projects/      # Project containers & context hub views
+│   │   └── sidebar/       # Collapsible navigation & hub view
+│   ├── services/          # Core operational layer
+│   │   ├── StorageService.ts # IndexedDB interface
+│   │   └── SearchWorker.ts   # Off-thread MiniSearch worker
+│   ├── styles/            # Tailwind CSS v4 themes & styles
+│   ├── types/             # TypeScript type definitions
+│   ├── App.tsx            # Root application routing & context
+│   └── main.tsx           # Web application entry point
+├── extension/             # Companion Chrome Extension modular DOM scrapers
+├── docs/                  # Architecture & engineering guides
+├── vite.config.ts         # Vite build configuration
+├── tsconfig.json          # TypeScript project configuration
+├── package.json           # Dependencies & scripts
+└── README.md
+
+```
+
+---
+
+## Getting Started
 
 ### Prerequisites
+- **Node.js**: `20.x` or higher
+- **npm**: `10.x` or higher
+- **Browser**: Google Chrome or Chromium-based browser (for companion Chrome Extension)
 
-- **Node.js:** `20.x` or higher
-- **npm:** `10.x` or higher
-- **Browser:** Google Chrome or Chromium-based browsers (for companion Chrome Extension)
-- **Note on Python/Docker:** This repository is purely a frontend React/TypeScript web application. **It does not use, require, or contain any Python services, Docker containers, or Docker Compose configurations.**
+> **Note**: This repository is a 100% client-side web application. It does not require Python, Docker, or external backend server processes.
 
-### 1) Clone & Install
+### Quick Start
 
-Clone the repository and install dependencies using standard Node package manager:
-
+1. **Clone the repository**:
 ```bash
-git clone https://github.com/acidgreenservers/Noosphere-Reflect.git
-cd Noosphere-Reflect
+   git clone [https://github.com/acidgreenservers/Noosphere-Reflect.git](https://github.com/acidgreenservers/Noosphere-Reflect.git)
+   cd Noosphere-Reflect
+```
+
+2. **Install dependencies**:
+```bash
 npm install
 ```
 
-### 2) Environment Setup (Optional)
 
-If you plan to use **AI Studio** parsing or **Google Drive Sync** backup integrations:
-
-```bash
-cp .env.example .env
-# Edit .env to supply your GEMINI_API_KEY or Google OAuth Client credentials
-```
-
-### 3) Run Locally
-
-Start the Vite development server locally:
-
+3. **Start the development server**:
 ```bash
 npm run dev
 ```
 
-The application will be served locally at `http://localhost:3000/Noosphere-Reflect/` matching the project base path.
 
-### 4) Build & Test
+4. **Access the application**:
+Open your browser to `http://localhost:3000/Noosphere-Reflect/`
 
-Manage production compilation, test execution, and static analysis:
+### Build & Verification Commands
 
 ```bash
-# Build production bundle (outputs optimized static files to /dist)
+# Compile production bundle to /dist
 npm run build
 
-# Run unit and integration tests using Vitest
+# Execute unit and integration tests
 npm test
 
-# Run code style and syntax checks using ESLint
+# Run code style and linting checks
 npm run lint
 ```
 
 ---
 
-## ⚡ Quickstart
+## Environment Variables
 
-The absolute fastest path from **clone → running app**:
+All settings are managed within the web UI. Optional environment variables can be provided in `.env` for development integrations:
 
-```bash
-git clone https://github.com/acidgreenservers/Noosphere-Reflect.git
-cd Noosphere-Reflect && npm install && npm run dev
-```
-
-Open your browser to: **[http://localhost:3000/Noosphere-Reflect/](http://localhost:3000/Noosphere-Reflect/)**
-
-For a detailed 90-second onboarding guide, see **[QUICKSTART.md](QUICKSTART.md)**.
+| Variable | Description | Default |
+| --- | --- | --- |
+| `VITE_GOOGLE_CLIENT_ID` | OAuth 2.0 Client ID for Google Drive cloud sync | *None* |
+| `VITE_GOOGLE_CLIENT_SECRET` | OAuth 2.0 Client Secret for Google Drive cloud sync | *None* |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-Noosphere Reflect uses a **Bridge Pattern** to guarantee structural fidelity and client sovereignty across the capture and preservation lifecycle:
+Noosphere Reflect implements a **Bridge Pattern** to decouple browser extension scrapers from storage layers:
 
 ```text
-  [ AI Platforms ] --(Extension)--> [ Web UI ] --(StorageService)--> [ IndexedDB ]
-         |                              ^                                 |
-         +----(Markdown/JSON Import)----+-----(Manual Database Restore)---+
+  [ AI Web Platforms ] --(Extension Bridge)--> [ Web UI Canvas ] --(StorageService)--> [ IndexedDB ]
+                                                       |                                   |
+                                                       +----(Markdown/JSON Import)--------+
 ```
 
-Check out **[ARCHITECTURE.md](ARCHITECTURE.md)** for detailed ASCII blueprints, schema layouts, and data flow pipelines.
+For full schematics, schema configurations, and worker pipelines, refer to **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ---
 
-## 🔒 Security
+## Security Policy
 
-Security is foundational to our architecture:
+Security is enforced at the local storage boundary:
 
-- **100% Client Sovereignty**: All session files, memories, prompts, and folders are stored locally in IndexedDB. Zero analytics, telemetry, or external tracking.
-- **Sanitization Symmetry**: Multi-tiered XSS prevention enforcing `DOMPurify` filters both during data ingestion (Parser) and persistence (StorageService).
-- **Secure Persistence Boundaries**: Secure `MessageSaveModal` protects manual "Save As" actions from database poisoning.
+* **Data Isolation**: 100% of data lives locally in `IndexedDB`.
+* **XSS Prevention**: Strict `DOMPurify` filters run on data ingestion, HTML turns, and document rendering.
+* **Input Guardrails**: Dedicated modals protect against database state corruption.
 
-See **[SECURITY.md](SECURITY.md)** for our full defensive posture and vulnerability reporting protocols.
-
----
-
-## 🛠️ Tech Stack
-
-- **Core Framework**: React 19, TypeScript 5.8, Vite 6.2
-- **State & Persistence**: IndexedDB (centralized in `StorageService` using `idb`)
-- **Styling**: Tailwind CSS v4 (Glassmorphic dark-amber minimalist design system)
-- **Search Engine**: Off-thread polymorphic indexer using MiniSearch (`SearchWorker`)
-- **AI Integration**: Google Gemini 2.0 Flash (for smart unstructured parser mode)
+Review **[SECURITY.md](SECURITY.md)** for detailed security practices and vulnerability reporting protocols.
 
 ---
 
-## 🧩 Key Features
+## License
 
-- **Multi-Platform Scraping**: One-click companion Chrome Extension capture for:
-  - Claude (claude.ai) — 🟠 Orange Theme
-  - ChatGPT (chatgpt.com) — 🟢 Green Theme
-  - Gemini (gemini.google.com) — 🔵 Blue Theme
-  - LeChat (chat.mistral.ai) — 🟡 Amber Theme
-  - Grok (x.ai) — ⚫ Black Theme
-  - Llamacoder (llamacoder.together.ai) — ⚪ White Theme
-  - Google AI Studio (aistudio.google.com) — 🔵 Blue Theme
-  - Kimi (kimi.moonshot.cn) — 🟣 Purple Theme
-  - Brave (brave.com) — 🦁 Lion Theme
-- **Document Builder**: A robust sliding markdown document workspace. Resizes dynamically via a tactile drag-handle (30vw–90vw) and lets you edit with formatting helpers, toggle live rendered preview, and insert text segments from any message in the chat history.
-- **Artifact List Sidebar**: Accessible via the chat workspace. Lists session-level and message-level artifacts with instant download, removal, and quick-reader frames (including native PNG/image rendering support).
-- **Unified Chat Workspace**:
-  - User turn styled as a snug blue message bubble, limiting width to `65ch` with auto-wrapping.
-  - AI turn styled as raw text matching console aesthetics, locked at `65ch` for maximum readability.
-  - Multi-action controls (Copy, Fork, Edit, and Save As Memory/Prompt/Skill/Workflow) that appear on hover and flash verification cues (`✓`) for 2 seconds upon success.
-- **Off-Thread MiniSearch**: Automatic and incremental background search indexing across Chats, Memories, Prompts, and Skills.
-- **Collapsible Layout**: Sidebar navigation collapses cleanly, turning down visual density while keeping access to "New Chat", "Archive Hub", and developer tool "Agent Forge".
-
----
-
-## ⚙️ Configuration
-
-Additional settings are kept inside the web interface for ease of use.
-
-<details>
-<summary>Click to expand: Advanced local environment settings</summary>
-
-### Local Environment Variables
-
-You can configure persistent API and integration keys in `.env` at the project root:
-
-| Key | Purpose | Default |
-| :--- | :--- | :--- |
-| `GEMINI_API_KEY` | Powers AI Studio smart parsing and unstructured markdown imports. | `None` |
-| `VITE_GOOGLE_CLIENT_ID` | OAuth 2.0 Client ID for Google Drive cloud sync backups. | `None` |
-| `VITE_GOOGLE_CLIENT_SECRET` | OAuth 2.0 Client Secret for Google Drive cloud sync backups. | `None` |
-
-### Chat Input Preferences
-
-Located inside **Settings ⚙️ -> Chat Preferences**, you can toggle the send hotkey:
-
-- `Enter`: Sends message, `Ctrl+Enter` inserts new line.
-- `Ctrl+Enter`: Sends message, `Enter` inserts new line (designed for heavy markdown editors).
-
-</details>
-
----
-
-## 🆘 Troubleshooting
-
-### Server fails to resolve base path
-
-Because this application uses Vite Router configured for GitHub Pages, local development serves files with a path prefix. Always use the full address:
-`http://localhost:3000/Noosphere-Reflect/`
-
-### Test suite error (Vitest)
-
-Ensure you run `npm install` first. If database schemas conflict due to browser cached states in testing, clear the test environment:
-
-```bash
-npx vitest --clearCache
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions of scrapers, UI upgrades, and bug fixes! Please check out **[CONTRIBUTING.md](CONTRIBUTING.md)** for detail on our style conventions and Pull Request processes.
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
-
----
-
-**Last Updated**: July 28, 2026
-**Status**: Phase 6.4 Stable Release ✅
+This project is licensed under the **AGPL-3.0 License**. See the [LICENSE](https://www.google.com/search?q=LICENSE) file for complete details.
