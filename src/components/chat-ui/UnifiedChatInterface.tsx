@@ -1770,6 +1770,7 @@ export default function UnifiedChatInterface() {
         'Claude',
         'ChatGPT',
         'Gemini',
+        'Gemini Notebook',
         'Grok',
         'LeChat',
         'Leo AI',

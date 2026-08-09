@@ -13,6 +13,7 @@ import { KimiParser as KimiHtmlParser } from './html/KimiHtmlParser';
 
 // Markdown Parsers
 import { GeminiMarkdownParser } from './markdown/GeminiMarkdownParser';
+import { GeminiNotebookMarkdownParser } from './markdown/GeminiNotebookMarkdownParser';
 import { ClaudeMarkdownParser } from './markdown/ClaudeMarkdownParser';
 import { ChatGptMarkdownParser } from './markdown/ChatGptMarkdownParser';
 import { GrokMarkdownParser } from './markdown/GrokMarkdownParser';
@@ -52,6 +53,8 @@ export class ParserFactory {
             // Markdown Modes
             case ParserMode.GeminiMarkdown:
                 return new GeminiMarkdownParser();
+            case ParserMode.GeminiNotebookMarkdown:
+                return new GeminiNotebookMarkdownParser();
             case ParserMode.ClaudeMarkdown:
                 return new ClaudeMarkdownParser();
             case ParserMode.ChatGptMarkdown:

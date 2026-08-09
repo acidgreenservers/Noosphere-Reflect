@@ -102,6 +102,7 @@ const getModelFromMode = (mode: ParserMode): string => {
         case ParserMode.ClaudeHtml: return 'Claude';
         case ParserMode.ChatGptHtml: return 'ChatGPT';
         case ParserMode.GeminiHtml: return 'Gemini';
+        case ParserMode.GeminiNotebookMarkdown: return 'Gemini Notebook';
         case ParserMode.LeChatHtml: return 'LeChat';
         case ParserMode.GrokHtml: return 'Grok';
         case ParserMode.LlamacoderHtml: return 'Llamacoder';

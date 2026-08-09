@@ -22,6 +22,15 @@ export const PLATFORM_OPTIONS: PlatformOption[] = [
         format: 'markdown'
     },
     {
+        mode: ParserMode.GeminiNotebookMarkdown,
+        label: 'Gemini Notebook',
+        description: 'Google Gemini Notebook / NotebookLM Markdown exports',
+        icon: '📔',
+        color: 'from-blue-500 to-indigo-600',
+        category: 'Gemini Notebook',
+        format: 'markdown'
+    },
+    {
         mode: ParserMode.ChatGptMarkdown,
         label: 'ChatGPT',
         description: 'OpenAI ChatGPT Markdown exports',

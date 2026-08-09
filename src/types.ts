@@ -118,6 +118,7 @@ export enum ParserMode {
   // New Service-Specific Markdown Modes
   ClaudeMarkdown = 'claude-md',
   GeminiMarkdown = 'gemini-md',
+  GeminiNotebookMarkdown = 'gemini-notebook-md',
   ChatGptMarkdown = 'gpt-md',
   GrokMarkdown = 'grok-md',
   KimiMarkdown = 'kimi-md',
