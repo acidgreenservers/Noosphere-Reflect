@@ -34,7 +34,7 @@ function App() {
         <Route path="/projects" element={<AppShell><ProjectArchive /></AppShell>} />
         <Route path="/projects/:id" element={<AppShell><ProjectDetail /></AppShell>} />
         <Route path="/notebooks" element={<AppShell><NotebookArchive /></AppShell>} />
-        <Route path="/notebooks/:id" element={<AppShell><NotebookWorkspace /></AppShell>} />
+        <Route path="/notebooks/:id" element={<NotebookWorkspace />} />
         <Route path="/artifacts" element={<AppShell><ArtifactArchive /></AppShell>} />
         <Route path="/memories" element={<AppShell><MemoryArchive /></AppShell>} />
         <Route path="/memories/builder" element={<AppShell><MemoryBuilder /></AppShell>} />

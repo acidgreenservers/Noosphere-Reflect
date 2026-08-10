@@ -18,6 +18,10 @@ export const NotebookWorkspace: React.FC = () => {
     const [promptInput, setPromptInput] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
+    // Collapsible sidebars state
+    const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+    const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+
     // Modals
     const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
     const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
@@ -335,104 +339,141 @@ export const NotebookWorkspace: React.FC = () => {
     ];
 
     return (
-        <div className="flex h-[calc(100vh-56px)] bg-[#131314] text-[#e3e3e3] select-none font-sans overflow-hidden">
+        <div className="flex h-screen w-screen bg-[#131314] text-[#e3e3e3] select-none font-sans overflow-hidden">
             {/* Left Sidebar: Sources */}
-            <aside className="w-[300px] border-r border-[#2d2f31] flex flex-col bg-[#1e1f20] shrink-0">
-                {/* Sources Header */}
-                <div className="p-5 border-b border-[#2d2f31] flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                        <span className="text-base font-medium">Sources</span>
-                        <span className="text-xs bg-[#2d2f31] text-gray-400 px-2.5 py-1 rounded-full font-semibold">
-                            {notebook?.sources?.length || 0}
-                        </span>
-                    </div>
-
+            {isLeftCollapsed ? (
+                /* Collapsed Left Sidebar Bar */
+                <div className="w-[50px] bg-[#1e1f20] border-r border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
                     <button
-                        onClick={() => setIsAddSourceOpen(true)}
-                        className="w-full flex items-center justify-center gap-2 py-3 bg-[#a8c7fa] hover:bg-[#c2e7ff] text-[#042100] rounded-full transition-all text-sm font-semibold active:scale-95 shadow"
+                        onClick={() => setIsLeftCollapsed(false)}
+                        className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all"
+                        title="Expand Sources Sidebar"
                     >
-                        <span>➕</span> Add source
+                        ➡️
                     </button>
-                </div>
-
-                {/* Sources Checklist controller */}
-                {notebook?.sources && notebook.sources.length > 0 && (
-                    <div className="px-5 py-3 border-b border-[#2d2f31] flex items-center justify-between text-xs text-gray-400">
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                checked={selectedSourceIds.size === notebook.sources.length}
-                                onChange={handleSelectAllSources}
-                                className="w-3.5 h-3.5 rounded border-[#2d2f31] text-[#a8c7fa] focus:ring-0 bg-transparent"
-                            />
-                            <span>Select all</span>
-                        </div>
-                        <span>{selectedSourceIds.size} selected</span>
+                    <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none transform rotate-180">
+                        SOURCES ({notebook?.sources?.length || 0})
                     </div>
-                )}
-
-                {/* Sources Scroll list */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {notebook?.sources && notebook.sources.map(source => {
-                        const isSelected = selectedSourceIds.has(source.id);
-                        return (
-                            <div
-                                key={source.id}
-                                className={`group flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                                    isSelected
-                                        ? 'bg-[#2a2c2f] border-[#424549]'
-                                        : 'bg-[#1e1f20] border-[#2d2f31] hover:bg-white/[0.02]'
-                                }`}
-                                onClick={() => {
-                                    setActiveSourceToView(source);
-                                    setIsSourceViewerOpen(true);
-                                }}
+                </div>
+            ) : (
+                /* Full Left Sidebar */
+                <aside className="w-[300px] border-r border-[#2d2f31] flex flex-col bg-[#1e1f20] shrink-0 transition-all duration-300">
+                    {/* Sources Header */}
+                    <div className="p-5 border-b border-[#2d2f31] flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-base font-medium">Sources</span>
+                                <span className="text-xs bg-[#2d2f31] text-gray-400 px-2.5 py-1 rounded-full font-semibold">
+                                    {notebook?.sources?.length || 0}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setIsLeftCollapsed(true)}
+                                className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all text-xs"
+                                title="Collapse Sidebar"
                             >
+                                ⬅️
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => setIsAddSourceOpen(true)}
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-[#a8c7fa] hover:bg-[#c2e7ff] text-[#042100] rounded-full transition-all text-sm font-semibold active:scale-95 shadow"
+                        >
+                            <span>➕</span> Add source
+                        </button>
+                    </div>
+
+                    {/* Sources Checklist controller */}
+                    {notebook?.sources && notebook.sources.length > 0 && (
+                        <div className="px-5 py-3 border-b border-[#2d2f31] flex items-center justify-between text-xs text-gray-400">
+                            <div className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
-                                    checked={isSelected}
-                                    onChange={(e) => {
-                                        e.stopPropagation();
-                                        handleToggleSourceSelect(source.id);
-                                    }}
-                                    className="mt-0.5 w-3.5 h-3.5 rounded border-[#2d2f31] text-[#a8c7fa] focus:ring-0 bg-transparent"
+                                    checked={selectedSourceIds.size === notebook.sources.length}
+                                    onChange={handleSelectAllSources}
+                                    className="w-3.5 h-3.5 rounded border-[#2d2f31] text-[#a8c7fa] focus:ring-0 bg-transparent"
                                 />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold truncate text-white leading-tight">
-                                        {source.title}
-                                    </p>
-                                    <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-mono">
-                                        {source.type}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={(e) => handleDeleteSource(source.id, e)}
-                                    className="p-1 text-gray-500 hover:text-red-400 rounded-lg hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="Delete Source"
-                                >
-                                    🗑️
-                                </button>
+                                <span>Select all</span>
                             </div>
-                        );
-                    })}
-
-                    {(!notebook?.sources || notebook.sources.length === 0) && (
-                        <div className="text-center py-12 text-gray-500 text-xs">
-                            No sources added yet.<br />Click "+ Add source" to load files or links.
+                            <span>{selectedSourceIds.size} selected</span>
                         </div>
                     )}
-                </div>
-            </aside>
+
+                    {/* Sources Scroll list */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                        {notebook?.sources && notebook.sources.map(source => {
+                            const isSelected = selectedSourceIds.has(source.id);
+                            return (
+                                <div
+                                    key={source.id}
+                                    className={`group flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                                        isSelected
+                                            ? 'bg-[#2a2c2f] border-[#424549]'
+                                            : 'bg-[#1e1f20] border-[#2d2f31] hover:bg-white/[0.02]'
+                                    }`}
+                                    onClick={() => {
+                                        setActiveSourceToView(source);
+                                        setIsSourceViewerOpen(true);
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleSourceSelect(source.id);
+                                        }}
+                                        className="mt-0.5 w-3.5 h-3.5 rounded border-[#2d2f31] text-[#a8c7fa] focus:ring-0 bg-transparent"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold truncate text-white leading-tight">
+                                            {source.title}
+                                        </p>
+                                        <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-mono">
+                                            {source.type}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => handleDeleteSource(source.id, e)}
+                                        className="p-1 text-gray-500 hover:text-red-400 rounded-lg hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Delete Source"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                            );
+                        })}
+
+                        {(!notebook?.sources || notebook.sources.length === 0) && (
+                            <div className="text-center py-12 text-gray-500 text-xs">
+                                No sources added yet.<br />Click "+ Add source" to load files or links.
+                            </div>
+                        )}
+                    </div>
+                </aside>
+            )}
 
             {/* Middle Section: Chat Area */}
             <main className="flex-1 flex flex-col bg-[#131314] overflow-hidden relative">
                 {/* Main Middle Header */}
                 <div className="px-6 py-4 border-b border-[#2d2f31] flex items-center justify-between shrink-0 bg-[#131314]/80 backdrop-blur-md">
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">Notebook Chat</span>
-                        <h2 className="text-sm font-semibold truncate text-white mt-0.5">
-                            {notebook?.metadata.title}
-                        </h2>
+                    <div className="flex items-center gap-4 min-w-0">
+                        {/* Immersive Dedicated Back Link */}
+                        <button
+                            onClick={() => navigate('/notebooks')}
+                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2d2f31] hover:bg-[#3d3f42] text-gray-300 hover:text-white transition-all text-xs font-bold shrink-0 border border-[#3d4043]"
+                            title="Back to Notebooks List"
+                        >
+                            ⬅️ Notebooks
+                        </button>
+
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">Notebook Chat</span>
+                            <h2 className="text-sm font-semibold truncate text-white mt-0.5">
+                                {notebook?.metadata.title}
+                            </h2>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -574,65 +615,91 @@ export const NotebookWorkspace: React.FC = () => {
             </main>
 
             {/* Right Sidebar: Studio */}
-            <aside className="w-[300px] border-l border-[#2d2f31] flex flex-col bg-[#1e1f20] shrink-0 justify-between">
-                {/* Studio Header */}
-                <div className="p-5 border-b border-[#2d2f31] flex flex-col gap-1.5 bg-[#1e1f20]">
-                    <span className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">Workspace</span>
-                    <h3 className="text-base font-medium text-white">Studio Notes</h3>
+            {isRightCollapsed ? (
+                /* Collapsed Right Sidebar Bar */
+                <div className="w-[50px] bg-[#1e1f20] border-l border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
+                    <button
+                        onClick={() => setIsRightCollapsed(false)}
+                        className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all"
+                        title="Expand Studio Sidebar"
+                    >
+                        ⬅️
+                    </button>
+                    <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none">
+                        STUDIO NOTES ({notebook?.notes?.length || 0})
+                    </div>
                 </div>
+            ) : (
+                /* Full Right Sidebar */
+                <aside className="w-[300px] border-l border-[#2d2f31] flex flex-col bg-[#1e1f20] shrink-0 justify-between transition-all duration-300">
+                    {/* Studio Header */}
+                    <div className="p-5 border-b border-[#2d2f31] flex items-center justify-between bg-[#1e1f20]">
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">Workspace</span>
+                            <h3 className="text-sm font-medium text-white">Studio Notes</h3>
+                        </div>
+                        <button
+                            onClick={() => setIsRightCollapsed(true)}
+                            className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all text-xs"
+                            title="Collapse Sidebar"
+                        >
+                            ➡️
+                        </button>
+                    </div>
 
-                {/* Notes List Scrollbox */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
-                    {notebook?.notes && notebook.notes.map(note => (
-                        <div
-                            key={note.id}
-                            className="group p-4 bg-[#131314] hover:bg-[#202124] border border-[#2d2f31] hover:border-gray-600 rounded-2xl cursor-pointer transition-all flex flex-col gap-2 relative"
+                    {/* Notes List Scrollbox */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+                        {notebook?.notes && notebook.notes.map(note => (
+                            <div
+                                key={note.id}
+                                className="group p-4 bg-[#131314] hover:bg-[#202124] border border-[#2d2f31] hover:border-gray-600 rounded-2xl cursor-pointer transition-all flex flex-col gap-2 relative"
+                                onClick={() => {
+                                    setActiveNoteToEdit(note);
+                                    setIsNoteEditorOpen(true);
+                                }}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <h4 className="text-xs font-bold text-white truncate max-w-[180px]">
+                                        {note.title}
+                                    </h4>
+                                    <button
+                                        onClick={(e) => handleDeleteNote(note.id, e)}
+                                        className="p-1 text-gray-500 hover:text-red-400 rounded-lg hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Delete Note"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-gray-400 line-clamp-3 leading-relaxed">
+                                    {note.content}
+                                </p>
+                                <span className="text-[9px] text-gray-600 font-mono mt-1">
+                                    {new Date(note.updatedAt).toLocaleDateString()}
+                                </span>
+                            </div>
+                        ))}
+
+                        {(!notebook?.notes || notebook.notes.length === 0) && (
+                            <div className="text-center py-16 text-gray-500 text-xs">
+                                No notes saved yet.<br />Click "Add Note" below to create study guides or custom summaries.
+                            </div>
+                        )}
+                    </div>
+
+                    {/* White Add Note Button at the Bottom */}
+                    <div className="p-5 border-t border-[#2d2f31] bg-[#1e1f20]">
+                        <button
                             onClick={() => {
-                                setActiveNoteToEdit(note);
+                                setActiveNoteToEdit(null);
                                 setIsNoteEditorOpen(true);
                             }}
+                            className="w-full py-3.5 bg-white hover:bg-gray-100 text-gray-900 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-[0_4px_12px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2"
                         >
-                            <div className="flex justify-between items-start">
-                                <h4 className="text-xs font-bold text-white truncate max-w-[180px]">
-                                    {note.title}
-                                </h4>
-                                <button
-                                    onClick={(e) => handleDeleteNote(note.id, e)}
-                                    className="p-1 text-gray-500 hover:text-red-400 rounded-lg hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="Delete Note"
-                                >
-                                    🗑️
-                                </button>
-                            </div>
-                            <p className="text-[11px] text-gray-400 line-clamp-3 leading-relaxed">
-                                {note.content}
-                            </p>
-                            <span className="text-[9px] text-gray-600 font-mono mt-1">
-                                {new Date(note.updatedAt).toLocaleDateString()}
-                            </span>
-                        </div>
-                    ))}
-
-                    {(!notebook?.notes || notebook.notes.length === 0) && (
-                        <div className="text-center py-16 text-gray-500 text-xs">
-                            No notes saved yet.<br />Click "Add Note" below to create study guides or custom summaries.
-                        </div>
-                    )}
-                </div>
-
-                {/* White Add Note Button at the Bottom */}
-                <div className="p-5 border-t border-[#2d2f31] bg-[#1e1f20]">
-                    <button
-                        onClick={() => {
-                            setActiveNoteToEdit(null);
-                            setIsNoteEditorOpen(true);
-                        }}
-                        className="w-full py-3.5 bg-white hover:bg-gray-100 text-gray-900 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-[0_4px_12px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2"
-                    >
-                        <span>📝</span> Add Note
+                            <span>📝</span> Add Note
                     </button>
-                </div>
-            </aside>
+                    </div>
+                </aside>
+            )}
 
             {/* Modals */}
             <AddSourceModal
