@@ -32,7 +32,7 @@ export const NotebookWorkspace: React.FC = () => {
     const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [promptInput, setPromptInput] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [currentRole, setCurrentRole] = useState<'prompt' | 'response'>('prompt');
 
     // Collapsible sidebars state
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
@@ -81,12 +81,32 @@ export const NotebookWorkspace: React.FC = () => {
             setTitleInput(data.metadata.title);
 
             // Auto select first chat if any exists, otherwise leave it empty
+            let selectedChatId = activeChatId;
             if (data.chats && data.chats.length > 0) {
                 if (!activeChatId || !data.chats.some(c => c.id === activeChatId)) {
-                    setActiveChatId(data.chats[0].id);
+                    selectedChatId = data.chats[0].id;
+                    setActiveChatId(selectedChatId);
                 }
             } else {
+                selectedChatId = null;
                 setActiveChatId(null);
+            }
+
+            // Auto-determine next expected role turn
+            if (selectedChatId) {
+                const activeC = data.chats.find(c => c.id === selectedChatId);
+                if (activeC && activeC.messages.length > 0) {
+                    const lastMsg = activeC.messages[activeC.messages.length - 1];
+                    if (lastMsg.type === ChatMessageType.Prompt) {
+                        setCurrentRole('response');
+                    } else {
+                        setCurrentRole('prompt');
+                    }
+                } else {
+                    setCurrentRole('prompt');
+                }
+            } else {
+                setCurrentRole('prompt');
             }
 
             // Initially select all sources
@@ -105,6 +125,25 @@ export const NotebookWorkspace: React.FC = () => {
     useEffect(() => {
         if (chatEndRef.current) {
             chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [activeChatId, notebook?.chats]);
+
+    // Update role turn whenever selected chat session changes
+    useEffect(() => {
+        if (!notebook || !activeChatId) {
+            setCurrentRole('prompt');
+            return;
+        }
+        const activeC = notebook.chats.find(c => c.id === activeChatId);
+        if (activeC && activeC.messages.length > 0) {
+            const lastMsg = activeC.messages[activeC.messages.length - 1];
+            if (lastMsg.type === ChatMessageType.Prompt) {
+                setCurrentRole('response');
+            } else {
+                setCurrentRole('prompt');
+            }
+        } else {
+            setCurrentRole('prompt');
         }
     }, [activeChatId, notebook?.chats]);
 
@@ -382,8 +421,8 @@ export const NotebookWorkspace: React.FC = () => {
             setActiveChatId(currentChatId);
         }
 
-        const userMsg: ChatMessage = {
-            type: ChatMessageType.Prompt,
+        const newMsg: ChatMessage = {
+            type: currentRole === 'prompt' ? ChatMessageType.Prompt : ChatMessageType.Response,
             content: text,
             createdAt: new Date().toISOString()
         };
@@ -391,7 +430,7 @@ export const NotebookWorkspace: React.FC = () => {
         // Find active chat index and update messages
         const chatIdx = updatedChats.findIndex(c => c.id === currentChatId);
         const activeChatRef = updatedChats[chatIdx];
-        const newMessages = [...activeChatRef.messages, userMsg];
+        const newMessages = [...activeChatRef.messages, newMsg];
 
         // Update active chat title if it was a default title
         let updatedTitle = activeChatRef.title;
@@ -415,46 +454,9 @@ export const NotebookWorkspace: React.FC = () => {
         setNotebook(updatedNotebook);
         await storageService.saveNotebook(updatedNotebook);
         setPromptInput('');
-        setIsGenerating(true);
 
-        // Simulate Mock Turn-Based response based on selected sources
-        setTimeout(async () => {
-            const selectedSources = (notebook.sources || []).filter(s => selectedSourceIds.has(s.id));
-
-            let sourceResponseText = '';
-            if (selectedSources.length === 0) {
-                sourceResponseText = "I see you haven't selected any sources in the left sidebar. Please upload or select reference sources, link pages, or paste copied text to analyze them.";
-            } else {
-                sourceResponseText = `Based on the ${selectedSources.length} selected sources (${selectedSources.map(s => s.title).join(', ')}):\n\nI have summarized the core components matching your inquiry. Your sources explain key reference material. Let me know if you would like me to draft a summary note or compile a timeline.`;
-            }
-
-            const assistantMsg: ChatMessage = {
-                type: ChatMessageType.Response,
-                content: sourceResponseText,
-                createdAt: new Date().toISOString()
-            };
-
-            const latestNotebook = await storageService.getNotebookById(notebook.id);
-            if (latestNotebook) {
-                const latestChats = [...(latestNotebook.chats || [])];
-                const latestChatIdx = latestChats.findIndex(c => c.id === currentChatId);
-                if (latestChatIdx !== -1) {
-                    latestChats[latestChatIdx] = {
-                        ...latestChats[latestChatIdx],
-                        messages: [...latestChats[latestChatIdx].messages, assistantMsg],
-                        updatedAt: new Date().toISOString()
-                    };
-                    const finalNotebook = {
-                        ...latestNotebook,
-                        chats: latestChats,
-                        updatedAt: new Date().toISOString()
-                    };
-                    setNotebook(finalNotebook);
-                    await storageService.saveNotebook(finalNotebook);
-                }
-            }
-            setIsGenerating(false);
-        }, 1200);
+        // Switch role dynamically
+        setCurrentRole(currentRole === 'prompt' ? 'response' : 'prompt');
     };
 
     const handleAddThought = async (msgIndex: number, text?: string) => {
@@ -797,6 +799,14 @@ export const NotebookWorkspace: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* Proxy Turn Badge */}
+                            <div className={`px-3 py-1.5 text-[10px] font-bold font-mono tracking-wider rounded-full border transition-colors select-none ${currentRole === 'response'
+                                ? 'bg-green-900/30 text-green-400 border-green-500/30'
+                                : 'bg-blue-900/30 text-blue-400 border-blue-500/30'
+                                }`}>
+                                PROXY: {currentRole === 'response' ? 'AWAITING AI' : 'USER TURN'}
+                            </div>
+
                             {/* Selector/History for chats in the notebook */}
                             {notebook?.chats && notebook.chats.length > 1 && (
                                 <select
@@ -967,7 +977,7 @@ export const NotebookWorkspace: React.FC = () => {
                                                 className={`max-w-[85%] rounded-3xl p-4 text-sm font-medium leading-relaxed shadow ${
                                                     isUser
                                                         ? 'bg-[#1e2229] border border-[#2d3139] text-[#e3e3e3] rounded-tr-sm'
-                                                        : 'bg-[#202124] border border-[#2d2f31] text-[#e3e3e3] rounded-tl-sm'
+                                                        : 'bg-[#09100c]/40 border border-green-500/10 text-[#e3e3e3] rounded-tl-sm'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-2 mb-2 text-[10px] text-gray-400 tracking-wider uppercase font-mono border-b border-[#2d2f31] pb-1">
@@ -1067,11 +1077,19 @@ export const NotebookWorkspace: React.FC = () => {
                                 );
                             })}
 
-                            {isGenerating && (
-                                <div className="flex justify-start">
-                                    <div className="bg-[#202124] border border-[#2d2f31] rounded-3xl p-4 text-sm text-gray-400 flex items-center gap-2.5 shadow">
-                                        <span className="animate-spin text-lg">⏳</span>
-                                        <span>Analyzing sources...</span>
+                            {/* Awaiting Model Response Indicator */}
+                            {currentRole === 'response' && activeChat?.messages && activeChat.messages.length > 0 && (
+                                <div className="flex flex-col items-start animate-fade-in mt-4">
+                                    <div className="flex items-center gap-2 mb-1.5 px-2 text-[10px] font-mono text-gray-500">
+                                        <span>🤖 Assistant</span>
+                                    </div>
+                                    <div className="max-w-[85%] rounded-2xl p-4 bg-[#1a211d]/40 border border-green-500/10 text-gray-400 flex items-center gap-3 shadow-inner rounded-tl-sm">
+                                        <div className="flex gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-green-500/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <div className="w-2 h-2 rounded-full bg-green-500/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <div className="w-2 h-2 rounded-full bg-green-500/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        </div>
+                                        <span className="text-sm font-medium animate-pulse text-green-400/80">Awaiting Model Response...</span>
                                     </div>
                                 </div>
                             )}
@@ -1106,25 +1124,68 @@ export const NotebookWorkspace: React.FC = () => {
                     {/* Chat Input Prompt Box */}
                     <div className="p-6 shrink-0 bg-[#131314] border-t border-[#2d2f31]">
                         <div className="max-w-3xl mx-auto relative">
-                            <textarea
-                                value={promptInput}
-                                onChange={(e) => setPromptInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleSendPrompt();
-                                    }
-                                }}
-                                className="w-full bg-[#1e1f20] text-[#e3e3e3] border border-[#2d2f31] rounded-3xl pl-5 pr-14 py-4 text-sm focus:outline-none focus:border-[#a8c7fa] transition-colors resize-none h-[54px] overflow-hidden"
-                                placeholder="Help me understand..."
-                            />
-                            <button
-                                onClick={() => handleSendPrompt()}
-                                disabled={!promptInput.trim() || isGenerating}
-                                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#2d2f31] disabled:opacity-40 text-white rounded-full flex items-center justify-center hover:bg-[#3d3f42] transition-colors font-bold text-base"
+                            {/* Guided Turn Instructions Helper */}
+                            <div className="absolute -top-7 right-2 text-[10px] font-mono text-gray-500 select-none">
+                                {currentRole === 'prompt' ? (
+                                    <span className="text-blue-400">✨ Enter your prompt, copy it, and paste to LLM</span>
+                                ) : (
+                                    <span className="text-green-400">📥 Paste AI response to complete model turn</span>
+                                )}
+                            </div>
+
+                            {/* Main Input Wrap */}
+                            <div
+                                className={`w-full bg-[#122622]/40 border rounded-3xl p-3.5 flex flex-col gap-2.5 focus-within:shadow-md transition-all relative ${currentRole === 'prompt'
+                                    ? 'border-blue-500/30 focus-within:border-blue-500 shadow-blue-900/10'
+                                    : 'border-green-500/30 focus-within:border-green-500 shadow-green-900/10'
+                                    }`}
                             >
-                                →
-                        </button>
+                                <textarea
+                                    value={promptInput}
+                                    onChange={(e) => setPromptInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendPrompt();
+                                        }
+                                    }}
+                                    placeholder={
+                                        currentRole === 'prompt'
+                                            ? "Message Noosphere..."
+                                            : "Waiting for model response (Paste AI message here)..."
+                                    }
+                                    className="w-full bg-transparent text-[#e3e3e3] text-sm focus:outline-none transition-colors resize-none h-[64px]"
+                                />
+
+                                {/* Row for Action Switches */}
+                                <div className="flex justify-between items-center pt-2 border-t border-green-500/5">
+                                    <div className="flex items-center gap-2">
+                                        {/* Manual Role Toggle Switch */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setCurrentRole(currentRole === 'prompt' ? 'response' : 'prompt')}
+                                            className={`px-3 py-1 rounded-xl text-[9px] font-bold font-mono tracking-wider transition-all select-none border ${currentRole === 'prompt'
+                                                ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                                : 'bg-green-500/10 text-green-400 border-green-500/20'
+                                                }`}
+                                            title="Manual Role Toggle"
+                                        >
+                                            {currentRole === 'prompt' ? '👤 USER' : '🤖 AI'}
+                                        </button>
+                                    </div>
+
+                                    {/* Submit Trigger */}
+                                    <button
+                                        onClick={() => handleSendPrompt()}
+                                        disabled={!promptInput.trim()}
+                                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-white transition-all shadow-md active:scale-95 shrink-0 ${currentRole === 'prompt' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-green-600 hover:bg-green-500'}`}
+                                    >
+                                        <svg className="w-3.5 h-3.5 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19V5m0 0l-7 7m7-7l7 7" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </main>
@@ -1295,7 +1356,7 @@ export const NotebookWorkspace: React.FC = () => {
                 currentBannerImage={notebook?.metadata.bannerImage || ''}
             />
 
-            {/* Delete Note Confirmation Modal */}
+            {/* Force Role Switch Button inside Plus trigger popup, or directly near draft area */}
             {noteIdToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="w-full max-w-sm bg-[#1a1b1e] border border-[#2d2f31] rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
