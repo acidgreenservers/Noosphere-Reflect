@@ -66,6 +66,12 @@ export class ClaudeThemeRenderer implements ThemeRenderer {
       contentHtml = this.convertMarkdownToHtml(message.content, true);
     }
 
+    if (message.thought) {
+      thoughtCount++;
+      const prependHtml = this.generateThoughtBlockHtml(message.thought, index, thoughtCount);
+      contentHtml = prependHtml + contentHtml;
+    }
+
     return getClaudeAiMessageHtml(index, contentHtml);
   }
 

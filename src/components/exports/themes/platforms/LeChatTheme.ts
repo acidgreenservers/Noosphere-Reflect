@@ -134,7 +134,10 @@ export class LeChatThemeRenderer implements ThemeRenderer {
       ? this.classes.getUserMessageClasses(message, index)
       : this.classes.getAssistantMessageClasses(message, index);
 
-    const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
+    let contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
+    if (!isPrompt && message.thought) {
+      contentHtml = this.generateThoughtBlockHtml(message.thought) + contentHtml;
+    }
 
     if (isPrompt) {
       // User message - LeChat style pill on right
