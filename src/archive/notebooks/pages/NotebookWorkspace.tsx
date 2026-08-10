@@ -8,6 +8,21 @@ import { NoteEditorModal } from '../components/NoteEditorModal';
 import { SourceViewerModal } from '../components/SourceViewerModal';
 import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
 
+// Modern SVG Sidebar panel layout icons matching image.png / Gemini UI
+const SidebarLeftIcon = () => (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M9 3v18" />
+    </svg>
+);
+
+const SidebarRightIcon = () => (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M15 3v18" />
+    </svg>
+);
+
 export const NotebookWorkspace: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -28,6 +43,13 @@ export const NotebookWorkspace: React.FC = () => {
     const [isSourceViewerOpen, setIsSourceViewerOpen] = useState(false);
     const [activeNoteToEdit, setActiveNoteToEdit] = useState<NotebookNote | null>(null);
     const [activeSourceToView, setActiveSourceToView] = useState<NotebookSource | null>(null);
+
+    // Editing message state
+    const [editingMsgIdx, setEditingMsgIdx] = useState<number | null>(null);
+    const [editingMsgText, setEditingMsgText] = useState<string>('');
+
+    // Expandable thought process indices
+    const [expandedThoughts, setExpandedThoughts] = useState<Set<number>>(new Set());
 
     // Chat scroll ref
     const chatEndRef = useRef<HTMLDivElement>(null);
@@ -284,11 +306,17 @@ export const NotebookWorkspace: React.FC = () => {
         }, 1200);
     };
 
-    const handleAddThought = async (msgIndex: number) => {
+    const handleAddThought = async (msgIndex: number, text?: string) => {
         if (!notebook || !activeChatId) return;
 
-        const thoughtPrompt = prompt('Add Thought Process to this response:');
-        if (!thoughtPrompt) return;
+        let thoughtPrompt = text;
+        if (text === undefined) {
+            const currentChat = notebook.chats.find(c => c.id === activeChatId);
+            const currentMsg = currentChat?.messages[msgIndex];
+            const initial = currentMsg?.thought || '';
+            thoughtPrompt = prompt('Add/Edit Thought Process for this message:', initial) || '';
+            if (thoughtPrompt === '') return;
+        }
 
         const updatedChats = (notebook.chats || []).map(chat => {
             if (chat.id === activeChatId) {
@@ -311,6 +339,40 @@ export const NotebookWorkspace: React.FC = () => {
 
         await storageService.saveNotebook(updated);
         setNotebook(updated);
+
+        // Auto-expand thought once added
+        setExpandedThoughts(prev => {
+            const next = new Set(prev);
+            next.add(msgIndex);
+            return next;
+        });
+    };
+
+    const handleSaveEdit = async (msgIndex: number, newText: string) => {
+        if (!notebook || !activeChatId) return;
+
+        const updatedChats = (notebook.chats || []).map(chat => {
+            if (chat.id === activeChatId) {
+                const updatedMessages = chat.messages.map((m, idx) => {
+                    if (idx === msgIndex) {
+                        return { ...m, content: newText, isEdited: true };
+                    }
+                    return m;
+                });
+                return { ...chat, messages: updatedMessages };
+            }
+            return chat;
+        });
+
+        const updated = {
+            ...notebook,
+            chats: updatedChats,
+            updatedAt: new Date().toISOString()
+        };
+
+        await storageService.saveNotebook(updated);
+        setNotebook(updated);
+        setEditingMsgIdx(null);
     };
 
     const handleSelectAllSources = () => {
@@ -346,10 +408,10 @@ export const NotebookWorkspace: React.FC = () => {
                 <div className="w-[50px] bg-[#1e1f20] border-r border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
                     <button
                         onClick={() => setIsLeftCollapsed(false)}
-                        className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all"
+                        className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
                         title="Expand Sources Sidebar"
                     >
-                        ➡️
+                        <SidebarLeftIcon />
                     </button>
                     <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none transform rotate-180">
                         SOURCES ({notebook?.sources?.length || 0})
@@ -369,10 +431,10 @@ export const NotebookWorkspace: React.FC = () => {
                             </div>
                             <button
                                 onClick={() => setIsLeftCollapsed(true)}
-                                className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all text-xs"
+                                className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all flex items-center justify-center"
                                 title="Collapse Sidebar"
                             >
-                                ⬅️
+                                <SidebarLeftIcon />
                             </button>
                         </div>
 
@@ -506,8 +568,46 @@ export const NotebookWorkspace: React.FC = () => {
                     <div className="max-w-3xl mx-auto space-y-6">
                         {activeChat?.messages && activeChat.messages.map((msg, index) => {
                             const isUser = msg.type === ChatMessageType.Prompt;
+                            const isEditing = editingMsgIdx === index;
+                            const hasThought = !!msg.thought;
+                            const isThoughtExpanded = expandedThoughts.has(index);
+
                             return (
-                                <div key={index} className="flex flex-col gap-2">
+                                <div key={index} className="flex flex-col gap-1 select-text">
+
+                                    {/* Collapsible Thought Process Section ABOVE the message bubble */}
+                                    {hasThought && (
+                                        <div className="mb-2 max-w-[85%]">
+                                            <button
+                                                onClick={() => {
+                                                    setExpandedThoughts(prev => {
+                                                        const next = new Set(prev);
+                                                        if (next.has(index)) next.delete(index);
+                                                        else next.add(index);
+                                                        return next;
+                                                    });
+                                                }}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 rounded-full text-xs font-semibold transition-all"
+                                            >
+                                                <span>🧠</span>
+                                                <span>{isThoughtExpanded ? 'Hide Thought Process' : 'Show Thought Process'}</span>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3 h-3 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                                </svg>
+                                            </button>
+
+                                            {isThoughtExpanded && (
+                                                <div className="relative mt-3 ml-2 border-l-2 border-purple-500/30 pl-4 py-2 text-xs font-mono text-stone-400 leading-relaxed bg-[#1d152c]/30 rounded-r-2xl border border-purple-500/10 p-3 shadow-sm whitespace-pre-wrap animate-fade-in">
+                                                    <div className="flex justify-between items-start mb-1 text-[10px] text-purple-400 uppercase font-semibold">
+                                                        <span>🧠 Inner Thought Process</span>
+                                                    </div>
+                                                    {msg.thought}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Main Chat Bubble turn */}
                                     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                                         <div
                                             className={`max-w-[85%] rounded-3xl p-4 text-sm font-medium leading-relaxed shadow ${
@@ -518,33 +618,68 @@ export const NotebookWorkspace: React.FC = () => {
                                         >
                                             <div className="flex items-center gap-2 mb-2 text-[10px] text-gray-400 tracking-wider uppercase font-mono border-b border-[#2d2f31] pb-1">
                                                 <span>{isUser ? '👤 User' : '🤖 Assistant'}</span>
+                                                {msg.isEdited && <span className="text-[9px] bg-white/5 px-1 py-0.5 rounded text-gray-500 font-semibold lowercase">Edited</span>}
                                             </div>
-                                            <div className="prose prose-invert max-w-none text-gray-200">
-                                                <MarkdownRenderer content={msg.content} />
-                                            </div>
+
+                                            {isEditing ? (
+                                                <div className="flex flex-col gap-3 min-w-[280px]">
+                                                    <textarea
+                                                        value={editingMsgText}
+                                                        onChange={(e) => setEditingMsgText(e.target.value)}
+                                                        className="w-full bg-[#131314] text-[#e3e3e3] border border-[#2d2f31] rounded-2xl p-3 text-sm focus:outline-none focus:border-[#a8c7fa] transition-colors resize-none font-sans min-h-[80px]"
+                                                    />
+                                                    <div className="flex justify-end gap-2 shrink-0">
+                                                        <button
+                                                            onClick={() => setEditingMsgIdx(null)}
+                                                            className="px-3 py-1.5 rounded-full hover:bg-white/5 text-xs font-semibold text-gray-400 transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleSaveEdit(index, editingMsgText)}
+                                                            className="px-4 py-1.5 rounded-full bg-[#a8c7fa] hover:bg-[#c2e7ff] text-[#042100] text-xs font-semibold transition-colors shadow"
+                                                        >
+                                                            Save
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="prose prose-invert max-w-none text-gray-200">
+                                                    <MarkdownRenderer content={msg.content} />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Thinking process for response */}
-                                    {msg.thought && (
-                                        <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} ml-2`}>
-                                            <div className="bg-[#1e1f20] border border-[#2d2f31] rounded-2xl p-3 text-xs text-gray-400 max-w-xl font-mono whitespace-pre-wrap">
-                                                <span className="font-semibold text-gray-500 flex items-center gap-1.5 mb-1">
-                                                    🧠 Thought:
-                                                </span>
-                                                {msg.thought}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Add Thought action */}
-                                    {!isUser && !msg.thought && (
-                                        <div className="flex justify-start ml-2">
+                                    {/* Action Buttons underneath message bubble */}
+                                    {!isEditing && (
+                                        <div className={`flex gap-3 text-xs mt-1.5 ${isUser ? 'justify-end pr-2' : 'justify-start pl-2'}`}>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(msg.content);
+                                                    alert('📋 Message copied to clipboard!');
+                                                }}
+                                                className="text-gray-500 hover:text-gray-300 font-medium transition-colors flex items-center gap-1 hover:underline"
+                                                title="Copy Message Text"
+                                            >
+                                                📋 Copy
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingMsgIdx(index);
+                                                    setEditingMsgText(msg.content);
+                                                }}
+                                                className="text-gray-500 hover:text-gray-300 font-medium transition-colors flex items-center gap-1 hover:underline"
+                                                title="Edit Message Text"
+                                            >
+                                                ✏️ Edit
+                                            </button>
                                             <button
                                                 onClick={() => handleAddThought(index)}
-                                                className="flex items-center gap-1 px-3 py-1 hover:bg-white/5 rounded-full text-xs text-gray-500 hover:text-gray-300 font-medium transition-colors"
+                                                className="text-gray-500 hover:text-purple-400 font-medium transition-colors flex items-center gap-1 hover:underline"
+                                                title={msg.thought ? 'Edit Thought Process' : 'Add Thought Process'}
                                             >
-                                                <span>🧠</span> Add Thought
+                                                🧠 {msg.thought ? 'Edit Thought' : 'Add Thought'}
                                             </button>
                                         </div>
                                     )}
@@ -620,10 +755,10 @@ export const NotebookWorkspace: React.FC = () => {
                 <div className="w-[50px] bg-[#1e1f20] border-l border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
                     <button
                         onClick={() => setIsRightCollapsed(false)}
-                        className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all"
+                        className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
                         title="Expand Studio Sidebar"
                     >
-                        ⬅️
+                        <SidebarRightIcon />
                     </button>
                     <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none">
                         STUDIO NOTES ({notebook?.notes?.length || 0})
@@ -640,10 +775,10 @@ export const NotebookWorkspace: React.FC = () => {
                         </div>
                         <button
                             onClick={() => setIsRightCollapsed(true)}
-                            className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all text-xs"
+                            className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all flex items-center justify-center"
                             title="Collapse Sidebar"
                         >
-                            ➡️
+                            <SidebarRightIcon />
                         </button>
                     </div>
 
@@ -696,7 +831,7 @@ export const NotebookWorkspace: React.FC = () => {
                             className="w-full py-3.5 bg-white hover:bg-gray-100 text-gray-900 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-[0_4px_12px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2"
                         >
                             <span>📝</span> Add Note
-                    </button>
+                        </button>
                     </div>
                 </aside>
             )}
