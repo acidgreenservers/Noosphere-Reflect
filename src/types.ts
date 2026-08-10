@@ -403,3 +403,44 @@ export interface Project {
   metadata: ProjectMetadata;
   artifacts: ConversationArtifact[]; // Shared project attachments pool
 }
+
+// Notebook Types
+export interface NotebookSource {
+  id: string;
+  type: 'file' | 'url' | 'text';
+  title: string;
+  content: string; // Document text/markdown or copied text content
+  url?: string;
+  fileSize?: number;
+  mimeType?: string;
+  createdAt: string;
+}
+
+export interface NotebookNote {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotebookChat {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Notebook {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata: {
+    title: string;
+    description?: string;
+  };
+  sources: NotebookSource[];
+  notes: NotebookNote[];
+  chats: NotebookChat[];
+}
