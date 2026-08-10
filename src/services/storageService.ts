@@ -9,6 +9,7 @@ import { agentStore } from './storage/AgentStore';
 import { settingsStore } from './storage/SettingsStore';
 import { profileStore } from './storage/ProfileStore';
 import { projectStore } from './storage/ProjectStore';
+import { notebookStore } from './storage/NotebookStore';
 import { STORES, DB_VERSION } from './db/schema';
 import {
     SavedChatSession,
@@ -23,7 +24,8 @@ import {
     ParserMode,
     ChatTheme,
     Project,
-    Agent
+    Agent,
+    Notebook
 } from '../types';
 import { validateImportData, SavedChatSessionSchema, MemorySchema, PromptSchema } from '../utils/importValidator';
 import { detectImportSource, detectPlatformFromHTML } from '../utils/importDetector';
@@ -798,6 +800,23 @@ class StorageService {
             item.projectId = undefined;
             await this.saveAgent(item);
         }
+    }
+
+    // Notebooks
+    async saveNotebook(notebook: Notebook): Promise<void> {
+        return notebookStore.save(notebook);
+    }
+
+    async getAllNotebooks(): Promise<Notebook[]> {
+        return notebookStore.getAllSorted();
+    }
+
+    async getNotebookById(id: string): Promise<Notebook | undefined> {
+        return notebookStore.getById(id);
+    }
+
+    async deleteNotebook(id: string): Promise<void> {
+        return notebookStore.delete(id);
     }
 }
 

@@ -270,5 +270,15 @@ export const migrations: Migration[] = [
                 agentStore.createIndex('projectId', 'projectId', { unique: false });
             }
         }
+    },
+    {
+        version: 17,
+        description: 'Create notebooks store',
+        migrate: (db) => {
+            if (!db.objectStoreNames.contains(STORES.NOTEBOOKS)) {
+                const notebookStore = db.createObjectStore(STORES.NOTEBOOKS, { keyPath: 'id' });
+                notebookStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+            }
+        }
     }
 ];
