@@ -439,6 +439,8 @@ export interface Notebook {
   metadata: {
     title: string;
     description?: string;
+    summaryContent?: string;
+    bannerImage?: string;
   };
   sources: NotebookSource[];
   notes: NotebookNote[];

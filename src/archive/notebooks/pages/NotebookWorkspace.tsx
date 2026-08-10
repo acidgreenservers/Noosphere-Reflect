@@ -6,6 +6,7 @@ import { storageService } from '../../../services/storageService';
 import { AddSourceModal } from '../components/AddSourceModal';
 import { NoteEditorModal } from '../components/NoteEditorModal';
 import { SourceViewerModal } from '../components/SourceViewerModal';
+import { CustomizeNotebookModal } from '../components/CustomizeNotebookModal';
 import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
 
 // Modern SVG Sidebar panel layout icons matching image.png / Gemini UI
@@ -41,6 +42,7 @@ export const NotebookWorkspace: React.FC = () => {
     const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
     const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
     const [isSourceViewerOpen, setIsSourceViewerOpen] = useState(false);
+    const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
     const [activeNoteToEdit, setActiveNoteToEdit] = useState<NotebookNote | null>(null);
     const [activeSourceToView, setActiveSourceToView] = useState<NotebookSource | null>(null);
 
@@ -50,6 +52,10 @@ export const NotebookWorkspace: React.FC = () => {
 
     // Expandable thought process indices
     const [expandedThoughts, setExpandedThoughts] = useState<Set<number>>(new Set());
+
+    // Context menu / Dropdown / Delete Confirmations for Studio notes
+    const [openNoteMenuId, setOpenNoteMenuId] = useState<string | null>(null);
+    const [noteIdToDelete, setNoteIdToDelete] = useState<string | null>(null);
 
     // Chat scroll ref
     const chatEndRef = useRef<HTMLDivElement>(null);
@@ -92,6 +98,15 @@ export const NotebookWorkspace: React.FC = () => {
             chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [activeChatId, notebook?.chats]);
+
+    // Close any open context dropdown menu on outside click
+    useEffect(() => {
+        const handleOutsideClick = () => {
+            setOpenNoteMenuId(null);
+        };
+        window.addEventListener('click', handleOutsideClick);
+        return () => window.removeEventListener('click', handleOutsideClick);
+    }, []);
 
     const handleAddSource = async (sourceData: Omit<NotebookSource, 'id' | 'createdAt'>) => {
         if (!notebook) return;
@@ -172,13 +187,18 @@ export const NotebookWorkspace: React.FC = () => {
         setActiveNoteToEdit(null);
     };
 
-    const handleDeleteNote = async (noteId: string, e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleRenameNote = async (noteId: string, oldTitle: string) => {
         if (!notebook) return;
+        const newTitle = prompt('Rename Note Title:', oldTitle);
+        if (!newTitle || !newTitle.trim()) return;
+
+        const updatedNotes = (notebook.notes || []).map(n =>
+            n.id === noteId ? { ...n, title: newTitle.trim(), updatedAt: new Date().toISOString() } : n
+        );
 
         const updated: Notebook = {
             ...notebook,
-            notes: (notebook.notes || []).filter(n => n.id !== noteId),
+            notes: updatedNotes,
             updatedAt: new Date().toISOString()
         };
 
@@ -394,6 +414,24 @@ export const NotebookWorkspace: React.FC = () => {
         });
     };
 
+    const handleSaveCustomization = async (title: string, summary: string, bannerImage: string) => {
+        if (!notebook) return;
+
+        const updated: Notebook = {
+            ...notebook,
+            metadata: {
+                ...notebook.metadata,
+                title,
+                summaryContent: summary,
+                bannerImage
+            },
+            updatedAt: new Date().toISOString()
+        };
+
+        await storageService.saveNotebook(updated);
+        setNotebook(updated);
+    };
+
     const starterCards = [
         { label: 'Suggest some questions', prompt: 'Suggest some research questions based on my selected sources.' },
         { label: 'Help me understand', prompt: 'Summarize the core arguments and help me understand the background.' },
@@ -566,6 +604,77 @@ export const NotebookWorkspace: React.FC = () => {
                 {/* Messages Stream */}
                 <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 scrollbar-thin">
                     <div className="max-w-3xl mx-auto space-y-6">
+
+                        {/* Decorative Header Card (Google Gemini NotebookLM Similarity) */}
+                        <div
+                            className="relative p-6 rounded-3xl border border-[#2d2f31] bg-[#1e1f20] hover:bg-[#232426] hover:border-[#3a3c3e] transition-all overflow-hidden group select-text"
+                            style={notebook?.metadata.bannerImage ? {
+                                backgroundImage: `linear-gradient(to bottom, rgba(30,31,32,0.4), rgba(19,19,20,0.95)), url(${notebook.metadata.bannerImage})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                            } : {}}
+                        >
+                            {/* Book Icon & Customize button */}
+                            <div className="flex items-start justify-between mb-6">
+                                <span className="text-3xl">📖</span>
+                                <button
+                                    onClick={() => setIsCustomizeOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-[#2d2f31]/80 hover:bg-[#3d3f42] border border-[#3d4043] text-xs font-semibold rounded-full text-gray-300 hover:text-white transition-all shadow-sm active:scale-95"
+                                >
+                                    <span>🖼️</span> Customize
+                                </button>
+                            </div>
+
+                            {/* Title & Stats */}
+                            <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight mb-2">
+                                {notebook?.metadata.title}
+                            </h1>
+                            <div className="flex items-center gap-2 text-xs text-gray-400 mb-6 font-medium">
+                                <span>{notebook?.sources?.length || 0} {notebook?.sources?.length === 1 ? 'source' : 'sources'}</span>
+                                <span>•</span>
+                                <span>{notebook ? new Date(notebook.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''}</span>
+                            </div>
+
+                            {/* Creator Notes / Custom Summary Content */}
+                            <div className="mb-6 max-w-2xl bg-black/20 rounded-2xl p-4 border border-white/5">
+                                <p className="text-sm text-gray-300 leading-relaxed italic">
+                                    {notebook?.metadata.summaryContent || "Update the summary by customizing the chat"}
+                                </p>
+                                <div className="flex items-center gap-1.5 mt-3 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                    <span>👤</span> Creator Notes
+                                </div>
+                            </div>
+
+                            {/* Save to Note action button */}
+                            {notebook?.metadata.summaryContent && (
+                                <div className="flex items-center">
+                                    <button
+                                        onClick={async () => {
+                                            if (!notebook) return;
+                                            const newNote: NotebookNote = {
+                                                id: crypto.randomUUID(),
+                                                title: `Summary of ${notebook.metadata.title}`,
+                                                content: notebook.metadata.summaryContent || '',
+                                                createdAt: new Date().toISOString(),
+                                                updatedAt: new Date().toISOString()
+                                            };
+                                            const updated = {
+                                                ...notebook,
+                                                notes: [...(notebook.notes || []), newNote],
+                                                updatedAt: new Date().toISOString()
+                                            };
+                                            await storageService.saveNotebook(updated);
+                                            setNotebook(updated);
+                                            alert('📌 Saved summary to Studio Notes!');
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-[#2d2f31] hover:bg-[#3d3f42] border border-[#3d4043] text-xs font-semibold rounded-full text-gray-300 hover:text-white transition-all shadow-sm active:scale-95"
+                                    >
+                                        <span>📌</span> Save to note
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {activeChat?.messages && activeChat.messages.map((msg, index) => {
                             const isUser = msg.type === ChatMessageType.Prompt;
                             const isEditing = editingMsgIdx === index;
@@ -681,6 +790,32 @@ export const NotebookWorkspace: React.FC = () => {
                                             >
                                                 🧠 {msg.thought ? 'Edit Thought' : 'Add Thought'}
                                             </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!notebook) return;
+                                                    const words = msg.content.trim().split(/\s+/).slice(0, 5).join(' ');
+                                                    const noteTitle = `Note from Chat: ${words || 'Untitled'}...`;
+                                                    const newNote: NotebookNote = {
+                                                        id: crypto.randomUUID(),
+                                                        title: noteTitle,
+                                                        content: msg.content,
+                                                        createdAt: new Date().toISOString(),
+                                                        updatedAt: new Date().toISOString()
+                                                    };
+                                                    const updated = {
+                                                        ...notebook,
+                                                        notes: [...(notebook.notes || []), newNote],
+                                                        updatedAt: new Date().toISOString()
+                                                    };
+                                                    await storageService.saveNotebook(updated);
+                                                    setNotebook(updated);
+                                                    alert('📌 Saved chat message content as a Studio Note!');
+                                                }}
+                                                className="text-gray-500 hover:text-[#a8c7fa] font-medium transition-colors flex items-center gap-1 hover:underline"
+                                                title="Clip message and save as a Studio Note"
+                                            >
+                                                📌 Save to note
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -766,7 +901,7 @@ export const NotebookWorkspace: React.FC = () => {
                 </div>
             ) : (
                 /* Full Right Sidebar */
-                <aside className="w-[300px] border-l border-[#2d2f31] flex flex-col bg-[#1e1f20] shrink-0 justify-between transition-all duration-300">
+                <aside className="w-[300px] border-l border-[#2d2f31] flex flex-col bg-[#1e1f20] shrink-0 justify-between transition-all duration-300 relative">
                     {/* Studio Header */}
                     <div className="p-5 border-b border-[#2d2f31] flex items-center justify-between bg-[#1e1f20]">
                         <div className="flex flex-col min-w-0">
@@ -793,17 +928,60 @@ export const NotebookWorkspace: React.FC = () => {
                                     setIsNoteEditorOpen(true);
                                 }}
                             >
-                                <div className="flex justify-between items-start">
-                                    <h4 className="text-xs font-bold text-white truncate max-w-[180px]">
+                                <div className="flex justify-between items-start relative">
+                                    <h4 className="text-xs font-bold text-white truncate max-w-[150px]">
                                         {note.title}
                                     </h4>
-                                    <button
-                                        onClick={(e) => handleDeleteNote(note.id, e)}
-                                        className="p-1 text-gray-500 hover:text-red-400 rounded-lg hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Delete Note"
-                                    >
-                                        🗑️
-                                    </button>
+
+                                    <div className="relative">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenNoteMenuId(openNoteMenuId === note.id ? null : note.id);
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold text-sm"
+                                            title="Actions"
+                                        >
+                                            ⋯
+                                        </button>
+
+                                        {/* Actions Dropdown */}
+                                        {openNoteMenuId === note.id && (
+                                            <div className="absolute right-0 top-7 z-10 w-32 bg-[#1a1b1e] border border-[#2d2f31] rounded-xl py-1.5 shadow-xl flex flex-col">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setOpenNoteMenuId(null);
+                                                        setActiveNoteToEdit(note);
+                                                        setIsNoteEditorOpen(true);
+                                                    }}
+                                                    className="w-full text-left px-3 py-1.5 hover:bg-white/5 text-xs text-gray-300 hover:text-white font-medium"
+                                                >
+                                                    ✏️ Edit
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setOpenNoteMenuId(null);
+                                                        handleRenameNote(note.id, note.title);
+                                                    }}
+                                                    className="w-full text-left px-3 py-1.5 hover:bg-white/5 text-xs text-gray-300 hover:text-white font-medium"
+                                                >
+                                                    🏷️ Rename
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setOpenNoteMenuId(null);
+                                                        setNoteIdToDelete(note.id);
+                                                    }}
+                                                    className="w-full text-left px-3 py-1.5 hover:bg-white/5 text-xs text-red-400 hover:text-red-300 font-medium"
+                                                >
+                                                    🗑️ Delete
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                                 <p className="text-[11px] text-gray-400 line-clamp-3 leading-relaxed">
                                     {note.content}
@@ -861,6 +1039,51 @@ export const NotebookWorkspace: React.FC = () => {
                 }}
                 source={activeSourceToView}
             />
+
+            <CustomizeNotebookModal
+                isOpen={isCustomizeOpen}
+                onClose={() => setIsCustomizeOpen(false)}
+                onSave={handleSaveCustomization}
+                currentTitle={notebook?.metadata.title || ''}
+                currentSummary={notebook?.metadata.summaryContent || ''}
+                currentBannerImage={notebook?.metadata.bannerImage || ''}
+            />
+
+            {/* Delete Note Confirmation Modal */}
+            {noteIdToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="w-full max-w-sm bg-[#1a1b1e] border border-[#2d2f31] rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
+                        <h3 className="text-base font-bold text-white">Delete Note?</h3>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                            Are you sure you want to delete this note? This action cannot be undone.
+                        </p>
+                        <div className="flex items-center justify-end gap-2 mt-2">
+                            <button
+                                onClick={() => setNoteIdToDelete(null)}
+                                className="px-4 py-2 hover:bg-white/5 rounded-full text-xs font-semibold text-gray-400 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!notebook || !noteIdToDelete) return;
+                                    const updated: Notebook = {
+                                        ...notebook,
+                                        notes: (notebook.notes || []).filter(n => n.id !== noteIdToDelete),
+                                        updatedAt: new Date().toISOString()
+                                    };
+                                    await storageService.saveNotebook(updated);
+                                    setNotebook(updated);
+                                    setNoteIdToDelete(null);
+                                }}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-semibold transition-colors shadow"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

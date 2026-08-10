@@ -18,6 +18,9 @@ export class NotebookStore extends BaseStore<Notebook, typeof STORES.NOTEBOOKS> 
             if (sanitized.metadata.description) {
                 sanitized.metadata.description = sanitizeMessageContent(sanitized.metadata.description);
             }
+            if (sanitized.metadata.summaryContent) {
+                sanitized.metadata.summaryContent = sanitizeMessageContent(sanitized.metadata.summaryContent);
+            }
         }
         if (sanitized.sources) {
             sanitized.sources = sanitized.sources.map(source => ({
