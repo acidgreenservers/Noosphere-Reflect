@@ -1211,7 +1211,7 @@ export const NotebookWorkspace: React.FC = () => {
                             {(!activeChat?.messages || activeChat.messages.length === 0) && (
                                 <div className="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto">
                                     <span className="text-4xl mb-4">📓</span>
-                                    <h3 className="text-lg font-semibold text-white mb-2">Gemini Notebook Studio</h3>
+                                    <h3 className="text-lg font-semibold text-white mb-2">Noosphere Notebook</h3>
                                     <p className="text-xs text-gray-400 leading-relaxed">
                                         This workspace is a fully user-driven portal for archiving, organizing, and studying conversation threads from your reference materials and AI services.
                                     </p>
