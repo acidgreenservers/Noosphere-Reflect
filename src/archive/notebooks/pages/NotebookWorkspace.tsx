@@ -49,6 +49,11 @@ export const NotebookWorkspace: React.FC = () => {
     // Editing message state
     const [editingMsgIdx, setEditingMsgIdx] = useState<number | null>(null);
     const [editingMsgText, setEditingMsgText] = useState<string>('');
+    const [deleteConfirmMsgIdx, setDeleteConfirmMsgIdx] = useState<number | null>(null);
+
+    // Editing thought process state
+    const [editingThoughtIdx, setEditingThoughtIdx] = useState<number | null>(null);
+    const [editingThoughtText, setEditingThoughtText] = useState<string>('');
 
     // Expandable thought process indices
     const [expandedThoughts, setExpandedThoughts] = useState<Set<number>>(new Set());
@@ -153,6 +158,7 @@ export const NotebookWorkspace: React.FC = () => {
             setOpenNoteMenuId(null);
             setIsExportMenuOpen(false);
             setIsChatMenuOpen(false);
+            setDeleteConfirmMsgIdx(null);
         };
         window.addEventListener('click', handleOutsideClick);
         return () => window.removeEventListener('click', handleOutsideClick);
@@ -459,25 +465,20 @@ export const NotebookWorkspace: React.FC = () => {
         setCurrentRole(currentRole === 'prompt' ? 'response' : 'prompt');
     };
 
-    const handleAddThought = async (msgIndex: number, text?: string) => {
+    const handleSaveThought = async (msgIndex: number, newThought: string) => {
         if (!notebook || !activeChatId) return;
-
-        let thoughtPrompt = text;
-        if (text === undefined) {
-            const currentChat = notebook.chats.find(c => c.id === activeChatId);
-            const currentMsg = currentChat?.messages[msgIndex];
-            const initial = currentMsg?.thought || '';
-            thoughtPrompt = prompt('Add/Edit Thought Process for this message:', initial) || '';
-            if (thoughtPrompt === '') return;
-        }
 
         const updatedChats = (notebook.chats || []).map(chat => {
             if (chat.id === activeChatId) {
-                const updatedMessages = chat.messages.map((msg, idx) => {
+                const updatedMessages = chat.messages.map((m, idx) => {
                     if (idx === msgIndex) {
-                        return { ...msg, thought: thoughtPrompt };
+                        const updatedMsg = { ...m, thought: newThought.trim() };
+                        if (!newThought.trim()) {
+                            delete updatedMsg.thought;
+                        }
+                        return updatedMsg;
                     }
-                    return msg;
+                    return m;
                 });
                 return { ...chat, messages: updatedMessages };
             }
@@ -492,13 +493,16 @@ export const NotebookWorkspace: React.FC = () => {
 
         await storageService.saveNotebook(updated);
         setNotebook(updated);
+        setEditingThoughtIdx(null);
+        setEditingThoughtText('');
 
-        // Auto-expand thought once added
-        setExpandedThoughts(prev => {
-            const next = new Set(prev);
-            next.add(msgIndex);
-            return next;
-        });
+        if (newThought.trim()) {
+            setExpandedThoughts(prev => {
+                const next = new Set(prev);
+                next.add(msgIndex);
+                return next;
+            });
+        }
     };
 
     const handleSaveEdit = async (msgIndex: number, newText: string) => {
@@ -526,6 +530,27 @@ export const NotebookWorkspace: React.FC = () => {
         await storageService.saveNotebook(updated);
         setNotebook(updated);
         setEditingMsgIdx(null);
+    };
+
+    const handleDeleteMessage = async (msgIndex: number) => {
+        if (!notebook || !activeChatId) return;
+
+        const updatedChats = (notebook.chats || []).map(chat => {
+            if (chat.id === activeChatId) {
+                const updatedMessages = chat.messages.filter((_, idx) => idx !== msgIndex);
+                return { ...chat, messages: updatedMessages, updatedAt: new Date().toISOString() };
+            }
+            return chat;
+        });
+
+        const updated = {
+            ...notebook,
+            chats: updatedChats,
+            updatedAt: new Date().toISOString()
+        };
+
+        await storageService.saveNotebook(updated);
+        setNotebook(updated);
     };
 
     const handleSelectAllSources = () => {
@@ -564,12 +589,6 @@ export const NotebookWorkspace: React.FC = () => {
         await storageService.saveNotebook(updated);
         setNotebook(updated);
     };
-
-    const starterCards = [
-        { label: 'Suggest some questions', prompt: 'Suggest some research questions based on my selected sources.' },
-        { label: 'Help me understand', prompt: 'Summarize the core arguments and help me understand the background.' },
-        { label: 'Create study guide', prompt: 'Create a comprehensive study guide with key definitions and terms.' }
-    ];
 
     return (
         <div className="flex flex-col h-screen w-screen bg-[#131314] text-[#e3e3e3] select-none font-sans overflow-hidden">
@@ -940,32 +959,83 @@ export const NotebookWorkspace: React.FC = () => {
                                     <div key={index} className="flex flex-col gap-1 select-text">
 
                                         {/* Collapsible Thought Process Section ABOVE the message bubble */}
-                                        {hasThought && (
+                                        {(hasThought || editingThoughtIdx === index) && (
                                             <div className="mb-2 max-w-[85%]">
-                                                <button
-                                                    onClick={() => {
-                                                        setExpandedThoughts(prev => {
-                                                            const next = new Set(prev);
-                                                            if (next.has(index)) next.delete(index);
-                                                            else next.add(index);
-                                                            return next;
-                                                        });
-                                                    }}
-                                                    className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 rounded-full text-xs font-semibold transition-all"
-                                                >
-                                                    <span>🧠</span>
-                                                    <span>{isThoughtExpanded ? 'Hide Thought Process' : 'Show Thought Process'}</span>
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3 h-3 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
-                                                        <polyline points="9 18 15 12 9 6"></polyline>
-                                                    </svg>
-                                                </button>
+                                                {editingThoughtIdx !== index && hasThought && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setExpandedThoughts(prev => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(index)) next.delete(index);
+                                                                else next.add(index);
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 rounded-full text-xs font-semibold transition-all"
+                                                    >
+                                                        <span>🧠</span>
+                                                        <span>{isThoughtExpanded ? 'Hide Thought Process' : 'Show Thought Process'}</span>
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-3 h-3 transition-transform duration-200 transform ${isThoughtExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                                                            <polyline points="9 18 15 12 9 6"></polyline>
+                                                        </svg>
+                                                    </button>
+                                                )}
 
-                                                {isThoughtExpanded && (
+                                                {(isThoughtExpanded || editingThoughtIdx === index) && (
                                                     <div className="relative mt-3 ml-2 border-l-2 border-purple-500/30 pl-4 py-2 text-xs font-mono text-stone-400 leading-relaxed bg-[#1d152c]/30 rounded-r-2xl border border-purple-500/10 p-3 shadow-sm whitespace-pre-wrap animate-fade-in">
                                                         <div className="flex justify-between items-start mb-1 text-[10px] text-purple-400 uppercase font-semibold">
                                                             <span>🧠 Inner Thought Process</span>
                                                         </div>
-                                                        {msg.thought}
+                                                        {editingThoughtIdx === index ? (
+                                                            <div className="flex flex-col gap-3.5 mt-2">
+                                                                <textarea
+                                                                    value={editingThoughtText}
+                                                                    onChange={(e) => setEditingThoughtText(e.target.value)}
+                                                                    className="w-full bg-[#131314] text-[#e3e3e3] border border-purple-500/20 rounded-xl p-3 text-xs focus:outline-none focus:border-purple-500 transition-colors resize-none font-sans min-h-[80px]"
+                                                                    placeholder="Enter thought process..."
+                                                                />
+                                                                <div className="flex justify-end gap-2 shrink-0">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingThoughtIdx(null);
+                                                                            setEditingThoughtText('');
+                                                                        }}
+                                                                        className="px-3 py-1.5 rounded-full hover:bg-white/5 text-[10px] font-semibold text-gray-400 transition-colors"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleSaveThought(index, editingThoughtText)}
+                                                                        className="px-4 py-1.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-semibold transition-colors shadow"
+                                                                    >
+                                                                        Save Thought
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-col gap-2">
+                                                                <div>{msg.thought}</div>
+                                                                <div className="flex gap-3 text-[10px] mt-1 text-gray-500">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingThoughtIdx(index);
+                                                                            setEditingThoughtText(msg.thought || '');
+                                                                        }}
+                                                                        className="hover:text-purple-400 transition-colors"
+                                                                    >
+                                                                        ✏️ Edit Thought
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            handleSaveThought(index, '');
+                                                                        }}
+                                                                        className="hover:text-red-400 transition-colors"
+                                                                    >
+                                                                        🗑️ Delete Thought
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -1039,7 +1109,10 @@ export const NotebookWorkspace: React.FC = () => {
                                                     ✏️ Edit
                                                 </button>
                                                 <button
-                                                    onClick={() => handleAddThought(index)}
+                                                    onClick={() => {
+                                                        setEditingThoughtIdx(index);
+                                                        setEditingThoughtText(msg.thought || '');
+                                                    }}
                                                     className="text-gray-500 hover:text-purple-400 font-medium transition-colors flex items-center gap-1 hover:underline"
                                                     title={msg.thought ? 'Edit Thought Process' : 'Add Thought Process'}
                                                 >
@@ -1071,6 +1144,47 @@ export const NotebookWorkspace: React.FC = () => {
                                                 >
                                                     📌 Save to note
                                                 </button>
+
+                                                {/* Delete Popover Trigger */}
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDeleteConfirmMsgIdx(deleteConfirmMsgIdx === index ? null : index);
+                                                        }}
+                                                        className="text-gray-500 hover:text-red-400 font-medium transition-colors flex items-center gap-1 hover:underline"
+                                                        title="Delete Message"
+                                                    >
+                                                        🗑️ Delete
+                                                    </button>
+
+                                                    {deleteConfirmMsgIdx === index && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-30" onClick={() => setDeleteConfirmMsgIdx(null)} />
+                                                            <div className="absolute bottom-full mb-1.5 left-0 w-28 bg-[#1a1b1e] border border-red-500/20 rounded-xl shadow-2xl py-1 z-40 animate-fade-in flex flex-col gap-0.5">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteMessage(index);
+                                                                        setDeleteConfirmMsgIdx(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-1.5 hover:bg-red-500/10 text-xs text-red-400 font-semibold transition-colors"
+                                                                >
+                                                                    🗑️ Confirm Delete
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setDeleteConfirmMsgIdx(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-1.5 hover:bg-white/5 text-xs text-gray-400 transition-colors"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -1098,23 +1212,9 @@ export const NotebookWorkspace: React.FC = () => {
                                 <div className="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto">
                                     <span className="text-4xl mb-4">📓</span>
                                     <h3 className="text-lg font-semibold text-white mb-2">Gemini Notebook Studio</h3>
-                                    <p className="text-xs text-gray-400 mb-6">
-                                        Chat with your customized Notebook documents. Any inquiries will analyze the loaded reference materials on the left sidebar.
+                                    <p className="text-xs text-gray-400 leading-relaxed">
+                                        This workspace is a fully user-driven portal for archiving, organizing, and studying conversation threads from your reference materials and AI services.
                                     </p>
-
-                                    {/* Starter Prompts */}
-                                    <div className="w-full space-y-2.5">
-                                        {starterCards.map((card, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleSendPrompt(card.prompt)}
-                                                className="w-full text-left p-3.5 bg-[#1e1f20] border border-[#2d2f31] hover:border-[#a8c7fa]/50 hover:bg-[#2a2c2f] rounded-2xl text-xs text-gray-300 transition-all font-medium flex items-center justify-between"
-                                            >
-                                                <span>{card.label}</span>
-                                                <span className="text-gray-500 font-bold">→</span>
-                                            </button>
-                                        ))}
-                                    </div>
                                 </div>
                             )}
                             <div ref={chatEndRef} />
