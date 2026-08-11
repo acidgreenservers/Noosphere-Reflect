@@ -34,28 +34,51 @@ export class TextGenerator implements ExportGenerator {
     // Messages
     const { messages } = chatData;
     for (const msg of messages) {
-      const senderName = msg.type === ChatMessageType.Prompt ? userName : aiName;
+      const isPrompt = msg.type === ChatMessageType.Prompt;
+      const senderName = isPrompt ? userName : aiName;
       lines.push(`${senderName}:`);
-      
-      // Basic markdown stripping (removing **, __, ```, etc)
-      let text = msg.content || '';
-      
-      // Remove code blocks
-      text = text.replace(/```[\s\S]*?```/g, (match) => {
-          return match.replace(/```(.*)\n/g, '').replace(/```/g, '');
-      });
-      
-      // Remove inline code, bold, italic
-      text = text.replace(/`([^`]+)`/g, '$1');
-      text = text.replace(/\*\*(.*?)\*\*/g, '$1');
-      text = text.replace(/__(.*?)__/g, '$1');
-      text = text.replace(/\*(.*?)\*/g, '$1');
-      text = text.replace(/_(.*?)_/g, '$1');
-      
-      // Convert headers to plain text
-      text = text.replace(/^#+\s+(.*)$/gm, '$1');
 
-      lines.push(text.trim());
+      // Extract thoughts
+      let thoughts: string | null = msg.thought || null;
+      let content = msg.content || '';
+
+      const thoughtRegex = /(?:<thoughts>|<thought>)\s*([\s\S]*?)\s*(?:<\/thoughts>|<\/thought>)/i;
+      const match = content.match(thoughtRegex);
+      if (match) {
+        const extracted = match[1].trim();
+        if (extracted) {
+          thoughts = thoughts ? thoughts.trim() + '\n\n' + extracted : extracted;
+        }
+        content = content.replace(match[0], '').trim();
+      }
+
+      const stripMarkdown = (raw: string) => {
+        let text = raw || '';
+        // Remove code blocks
+        text = text.replace(/```[\s\S]*?```/g, (m) => {
+            return m.replace(/```(.*)\n/g, '').replace(/```/g, '');
+        });
+        // Remove inline code, bold, italic
+        text = text.replace(/`([^`]+)`/g, '$1');
+        text = text.replace(/\*\*(.*?)\*\*/g, '$1');
+        text = text.replace(/__(.*?)__/g, '$1');
+        text = text.replace(/\*(.*?)\*/g, '$1');
+        text = text.replace(/_(.*?)_/g, '$1');
+        // Convert headers to plain text
+        text = text.replace(/^#+\s+(.*)$/gm, '$1');
+        return text.trim();
+      };
+
+      if (!isPrompt && thoughts) {
+        lines.push('[Thought Process]');
+        lines.push(stripMarkdown(thoughts));
+        lines.push('');
+        lines.push('[Response]');
+        lines.push(stripMarkdown(content));
+      } else {
+        lines.push(stripMarkdown(content));
+      }
+
       lines.push('');
       lines.push('-'.repeat(40));
       lines.push('');

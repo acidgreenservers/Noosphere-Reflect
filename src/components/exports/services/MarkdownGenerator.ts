@@ -128,6 +128,38 @@ export class MarkdownGenerator {
     return lines.join('\n');
   }
 
+  private extractThoughts(message: ChatMessage): { thoughts: string | null; content: string } {
+    let thoughts: string | null = message.thought || null;
+    let content = message.content || '';
+
+    // Extract thoughts from content if present, matching <thoughts>...</thoughts> or <thought>...</thought> (case-insensitive)
+    const thoughtRegex = /(?:<thoughts>|<thought>)\s*([\s\S]*?)\s*(?:<\/thoughts>|<\/thought>)/i;
+    const match = content.match(thoughtRegex);
+    if (match) {
+      const extracted = match[1].trim();
+      if (extracted) {
+        if (thoughts) {
+          thoughts = thoughts.trim() + '\n\n' + extracted;
+        } else {
+          thoughts = extracted;
+        }
+      }
+      content = content.replace(match[0], '').trim();
+    }
+
+    return { thoughts, content };
+  }
+
+  private formatBlockQuote(text: string): string {
+    return text
+      .split('\n')
+      .map(line => {
+        const trimmed = line.trim();
+        return trimmed === '' ? '>' : `> ${line}`;
+      })
+      .join('\n');
+  }
+
   private renderInsertedItem(message: ChatMessage, lines: string[]): void {
     let itemTypeName = 'Item';
     switch (message.type) {
@@ -166,20 +198,21 @@ export class MarkdownGenerator {
     lines.push(`#### ${headerType} - ${speakerName} ${emoji}:`);
     lines.push('');
 
-    // Extract thoughts if present
-    const thoughtMatch = message.content.match(/<thoughts>\n\n([\s\S]*?)\n\n<\/thoughts>/);
-    if (thoughtMatch && !isPrompt) {
-      const thoughts = thoughtMatch[1];
-      const contentWithoutThoughts = message.content.replace(thoughtMatch[0], '').trim();
-
-      lines.push('```');
-      lines.push('Thoughts:');
-      lines.push(thoughts);
-      lines.push('```');
-      lines.push('');
-      lines.push(contentWithoutThoughts);
-    } else {
+    if (isPrompt) {
       lines.push(message.content);
+    } else {
+      const { thoughts, content } = this.extractThoughts(message);
+      if (thoughts) {
+        lines.push('##### Thought Process');
+        lines.push('');
+        lines.push(this.formatBlockQuote(thoughts));
+        lines.push('');
+        lines.push('##### Response');
+        lines.push('');
+        lines.push(content);
+      } else {
+        lines.push(message.content);
+      }
     }
 
     // Artifacts
@@ -212,20 +245,16 @@ export class MarkdownGenerator {
     lines.push('');
 
     if (!isPrompt) {
-      // Check for thoughts
-      const thoughtMatch = message.content.match(/<thoughts>\n\n([\s\S]*?)\n\n<\/thoughts>/);
-      if (thoughtMatch) {
-        const thoughts = thoughtMatch[1];
-        const contentWithoutThoughts = message.content.replace(thoughtMatch[0], '').trim();
-
+      const { thoughts, content } = this.extractThoughts(message);
+      if (thoughts) {
         lines.push('<details>');
         lines.push('<summary><em>💭 Thought Process</em></summary>');
         lines.push('');
-        lines.push(thoughts);
+        lines.push(this.formatBlockQuote(thoughts));
         lines.push('');
         lines.push('</details>');
         lines.push('');
-        lines.push(contentWithoutThoughts);
+        lines.push(content);
       } else {
         lines.push(message.content);
       }

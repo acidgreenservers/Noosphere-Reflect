@@ -48,6 +48,28 @@ Yes, but you need to understand the question first.`;
         expect(result.messages[1].content).toBe('The meaning of life is 42.');
     });
 
+    it('should parse Gemini Notebook thoughts into native thought property', () => {
+        const input = `---
+# My Great Notebook Chat
+
+#### Prompt - User 👤:
+Explain quantum physics in one sentence.
+
+#### Response - NotebookLM 🤖:
+\`\`\`
+Thoughts:
+This is a complex topic. Needs to be extremely concise.
+Let's use the wave-particle duality and probability concept.
+\`\`\`
+Quantum physics is the study of matter and energy at the most fundamental level, where things can behave like both particles and waves, and exist in multiple states at once until measured.`;
+
+        const result = parser.parse(input);
+        expect(result.messages).toHaveLength(2);
+        expect(result.messages[1].type).toBe(ChatMessageType.Response);
+        expect(result.messages[1].thought).toBe('This is a complex topic. Needs to be extremely concise.\nLet\'s use the wave-particle duality and probability concept.');
+        expect(result.messages[1].content).toBe('Quantum physics is the study of matter and energy at the most fundamental level, where things can behave like both particles and waves, and exist in multiple states at once until measured.');
+    });
+
     it('should fall back to standard headings if specialized headings are missing', () => {
         const input = `## User:
 Hello

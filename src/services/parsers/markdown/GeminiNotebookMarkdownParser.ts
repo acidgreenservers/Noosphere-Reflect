@@ -90,13 +90,11 @@ export class GeminiNotebookMarkdownParser extends BaseMarkdownParser {
             const isPrompt = headerType.includes('prompt');
 
             let finalContent = rawContent;
-            if (!isPrompt && thoughts) {
-                finalContent = `<thoughts>\n\n${thoughts}\n\n</thoughts>\n\n${rawContent}`;
-            }
 
             messages.push({
                 type: isPrompt ? ChatMessageType.Prompt : ChatMessageType.Response,
-                content: finalContent
+                content: finalContent,
+                thought: !isPrompt ? thoughts : undefined
             });
         }
 

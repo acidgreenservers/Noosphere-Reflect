@@ -143,7 +143,22 @@ export class LeoAiThemeRenderer implements ThemeRenderer {
     const label = isPrompt ? userName : aiName;
     const labelClass = isPrompt ? 'leo-user-label' : 'leo-assistant-label';
 
-    const contentHtml = this.convertMarkdownToHtml(message.content);
+    let contentHtml = this.convertMarkdownToHtml(message.content);
+    if (!isPrompt && message.thought) {
+      const formattedThought = this.convertMarkdownToHtml(message.thought);
+      const thoughtBlockHtml = `
+        <details class="my-4 border border-orange-200 rounded-xl overflow-hidden bg-orange-50/30" open>
+          <summary class="cursor-pointer p-3 bg-orange-50 text-orange-700 font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+            <span>🧠 Thought Process</span>
+            <span class="text-[10px] opacity-70">(Click to expand/collapse)</span>
+          </summary>
+          <div class="p-3 text-sm text-gray-700 leading-relaxed border-t border-orange-100 italic">
+            ${formattedThought}
+          </div>
+        </details>
+      `;
+      contentHtml = thoughtBlockHtml + contentHtml;
+    }
 
     return `
       <div class="flex ${isPrompt ? 'justify-end' : 'justify-start'} mb-6 w-full" data-message-index="${index}">

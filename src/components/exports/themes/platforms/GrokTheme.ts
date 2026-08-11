@@ -137,13 +137,17 @@ export class GrokThemeRenderer implements ThemeRenderer {
     // Handle thought blocks for Grok
     if (!isPrompt && message.content.includes('<thoughts>')) {
       const parts = message.content.split(/(<thoughts>[\s\S]*?<\/thought>)/);
-      const contentHtml = parts.map(part => {
+      let contentHtml = parts.map(part => {
         if (part.startsWith('<thoughts>') && part.endsWith('</thoughts>')) {
           const thoughtContent = part.replace(/<\/?thought>/g, '').trim();
           return this.generateThoughtBlockHtml(thoughtContent);
         }
         return MarkdownProcessor.convertMarkdownToHtml(part, true);
       }).join('');
+
+      if (message.thought) {
+        contentHtml = this.generateThoughtBlockHtml(message.thought) + contentHtml;
+      }
 
       return `
         <div class="${messageClasses}" data-message-index="${index}">
@@ -152,7 +156,10 @@ export class GrokThemeRenderer implements ThemeRenderer {
       `;
     }
 
-    const contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
+    let contentHtml = MarkdownProcessor.convertMarkdownToHtml(message.content, !isPrompt);
+    if (!isPrompt && message.thought) {
+      contentHtml = this.generateThoughtBlockHtml(message.thought) + contentHtml;
+    }
 
     return `
       <div class="${messageClasses}" data-message-index="${index}">
