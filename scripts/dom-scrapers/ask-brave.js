@@ -10,14 +10,14 @@
      * AI Chat (search.brave.com/ask).
      *
      * Features:
-     *   - Full recursive DOM-to-Markdown parser preserving formatting
+     *   - Reconstructs full report/chat body preserving formatting
      *     (Headings, bold/italic, lists, tables, inline code, pre blocks)
-     *   - Strips UI noise (copy-button text inside code blocks,
-     *     inline citation SVG buttons)
+     *   - Strips UI noise (code block copy buttons, citation icons)
+     *   - Extracts Sidebar Rounds / TOC into a collapsible accordion
+     *     at the top of the chat
      *   - Extracts Web & Discussion Augment carousels into structured
      *     Markdown reference links
-     *   - Complete Deep Research panel extraction (Stats, Reasoning, 
-     *     Queries, Examined source chips, Answers)
+     *   - Complete Deep Research panel extraction
      *   - Manual Chat Title & Filename configuration in UI
      *
      * Namespace: ns- (Brave Edition)
@@ -32,6 +32,10 @@
             AI_MESSAGE: '.message.assistant.llm-output',
             AUGMENT_MESSAGE: '.message.augment',
             RESEARCH_MESSAGE: '.message.research',
+
+            // Sidebar Rounds / TOC Selectors
+            TOC_ROUND: '.sidebar-history-toc-round',
+            TOC_SECTION: 'a.sidebar-history-toc-section',
 
             // Augment Card Selectors
             ENRICHMENT_CARD_ITEM: 'a.enrichment-card-item',
@@ -182,7 +186,6 @@
             }
 
             case 'code': {
-                // If code is inside pre, handled by pre
                 if (node.parentElement?.tagName.toLowerCase() === 'pre') {
                     return inner();
                 }
@@ -280,6 +283,19 @@
     // ============================================================
 
     const Extractors = {
+        extractSidebarRounds() {
+            const sections = Array.from(document.querySelectorAll(CONFIG.SELECTORS.TOC_SECTION));
+            if (!sections.length) return [];
+
+            return sections.map(sec => {
+                const titleAttr = sec.getAttribute('title');
+                const textSpan = sec.querySelector('span');
+                const label = titleAttr || Utils.cleanText(textSpan?.innerText || sec.innerText || '');
+                const href = sec.getAttribute('href') || '';
+                return { label, href };
+            }).filter(s => s.label);
+        },
+
         extractUserMessage(container) {
             const bubble = container.querySelector(CONFIG.SELECTORS.USER_BUBBLE) || container;
             return Utils.cleanText(bubble.innerText || '');
@@ -371,6 +387,8 @@
             const sourceUrl = window.location.href;
             const exportedAt = new Date().toLocaleString();
 
+            const rounds = Extractors.extractSidebarRounds();
+
             const allElements = Array.from(document.querySelectorAll([
                 CONFIG.SELECTORS.USER_MESSAGE,
                 CONFIG.SELECTORS.AI_MESSAGE,
@@ -390,7 +408,19 @@
             md += '> **🏷️ Tags:** Brave, AI-Chat, Noosphere, Search\n';
             md += '---\n\n';
 
-            md += `# ${chatTitle}\n\n---\n\n`;
+            md += `# ${chatTitle}\n\n`;
+
+            // Collapsible Sidebar Rounds / Table of Contents
+            if (rounds.length > 0) {
+                md += '<details>\n';
+                md += '<summary><b>🔄 Conversation Rounds / TOC</b></summary>\n\n';
+                rounds.forEach((round, idx) => {
+                    md += `${idx + 1}. **${round.label}**\n`;
+                });
+                md += '\n</details>\n\n';
+            }
+
+            md += '---\n\n';
 
             allElements.forEach(el => {
                 // Checkbox state
@@ -804,12 +834,7 @@
             checkbox.style.position = 'absolute';
             checkbox.style.top = '12px';
             checkbox.style.zIndex = '100';
-
-            if (type === 'user') {
-                checkbox.style.left = '-28px';
-            } else {
-                checkbox.style.left = '-28px';
-            }
+            checkbox.style.left = '-28px';
 
             container.style.position = 'relative';
             container.prepend(checkbox);
