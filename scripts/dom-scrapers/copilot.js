@@ -10,6 +10,8 @@
      * Copilot (copilot.microsoft.com).
      *
      * Features:
+     *   - Integrated Header Trigger: Sits natively beside "Invite" as "Export"
+     *     aligned horizontally in the top bar flex container
      *   - Copilot Fluent Dark UI Theme (#0e121a Midnight, #0078d4 Blue)
      *   - Un-squished Flexbox Cards (`flex-shrink: 0`) with two-line previews
      *   - Recursive DOM-to-Markdown parser preserving formatting
@@ -31,12 +33,9 @@
             AI_MESSAGE_ITEM: '.group\\/ai-message-item',
             DEEP_RESEARCH: '.group\\/ai-message-item.pt-9, [data-content="deep-research"]',
             ATTACHMENT_IMG: '.h-small-attachment img, img[alt*="attachment"]',
+            STICKY_HEADER: '[data-testid="sticky-header"]',
+            INVITE_BUTTON: 'button[title="Invite"]',
             NOISE_ELEMENTS: 'button, svg, .copy-button, .sr-only, [aria-hidden="true"]'
-        },
-
-        UI: {
-            ORB_RIGHT: 24,
-            ORB_BOTTOM: 24
         },
 
         THEME: {
@@ -518,7 +517,7 @@
     };
 
     // ============================================================
-    // UI Construction (Copilot Native Theme & Layout Fixes)
+    // UI Construction (Copilot Header Injection & Drawer Theme)
     // ============================================================
 
     function injectStyles() {
@@ -527,31 +526,29 @@
         const style = document.createElement('style');
         style.id = 'noosphere-copilot-styles';
         style.textContent = `
-            .ns-copilot-orb {
-                position: fixed;
-                bottom: ${CONFIG.UI.ORB_BOTTOM}px;
-                right: ${CONFIG.UI.ORB_RIGHT}px;
-                padding: 10px 18px;
-                background: ${CONFIG.THEME.PRIMARY_BLUE};
-                border-radius: 20px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                cursor: pointer;
-                z-index: 100000;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-                transition: background 0.2s ease, transform 0.2s ease;
-                border: 1px solid rgba(255,255,255,0.15);
-                color: white;
-                font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-                font-size: 13px;
-                font-weight: 600;
-                user-select: none;
+            /* Native Copilot Header Trigger Button */
+            .ns-copilot-header-btn {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                min-height: 36px !important;
+                padding: 0 12px !important;
+                gap: 6px !important;
+                border-radius: 12px !important;
+                cursor: pointer !important;
+                color: #f3f4f6 !important;
+                background: rgba(255, 255, 255, 0.08) !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                backdrop-filter: blur(12px) !important;
+                transition: all 0.15s ease !important;
+                user-select: none !important;
+                margin-right: 8px !important;
             }
-
-            .ns-copilot-orb:hover {
-                background: ${CONFIG.THEME.PRIMARY_BLUE_HOVER};
-                transform: translateY(-2px);
+            .ns-copilot-header-btn:hover {
+                background: rgba(255, 255, 255, 0.15) !important;
+                border-color: rgba(255, 255, 255, 0.2) !important;
             }
 
             #ns-copilot-overlay {
@@ -914,14 +911,35 @@
         });
     }
 
-    function createSidebarUI() {
-        if (document.getElementById('ns-orb-copilot')) return;
+    function injectHeaderTrigger(openSidebarFn) {
+        if (document.getElementById('ns-copilot-header-btn')) return;
 
-        const orb = document.createElement('div');
-        orb.id = 'ns-orb-copilot';
-        orb.className = 'ns-copilot-orb';
-        orb.innerHTML = `✨ Select`;
-        document.body.appendChild(orb);
+        const inviteBtn = document.querySelector(CONFIG.SELECTORS.INVITE_BUTTON) || 
+            Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim().includes('Invite'));
+
+        if (!inviteBtn) return;
+
+        const triggerBtn = document.createElement('button');
+        triggerBtn.id = 'ns-copilot-header-btn';
+        triggerBtn.className = 'ns-copilot-header-btn';
+        triggerBtn.innerHTML = `✨ Export`;
+        triggerBtn.onclick = (e) => {
+            e.stopPropagation();
+            openSidebarFn();
+        };
+
+        // Target the flex row container holding top-right actions (.gap-2)
+        const flexRowContainer = inviteBtn.closest('.flex.items-center.gap-2') ||
+                                 inviteBtn.closest('.flex.items-center') ||
+                                 inviteBtn.parentElement;
+
+        if (flexRowContainer) {
+            flexRowContainer.prepend(triggerBtn);
+        }
+    }
+
+    function createSidebarUI() {
+        if (document.getElementById('ns-copilot-sidebar')) return;
 
         const overlay = document.createElement('div');
         overlay.id = 'ns-copilot-overlay';
@@ -966,16 +984,20 @@
             renderMessageList();
             overlay.classList.add('active');
             sidebar.classList.add('active');
-            orb.style.display = 'none';
         };
 
         const closeSidebar = () => {
             overlay.classList.remove('active');
             sidebar.classList.remove('active');
-            orb.style.display = 'flex';
         };
 
-        orb.onclick = (e) => { e.stopPropagation(); openSidebar(); };
+        injectHeaderTrigger(openSidebar);
+
+        const headerObserver = new MutationObserver(() => {
+            injectHeaderTrigger(openSidebar);
+        });
+        headerObserver.observe(document.body, { childList: true, subtree: true });
+
         overlay.onclick = closeSidebar;
         document.getElementById('ns-btn-cancel').onclick = closeSidebar;
 
