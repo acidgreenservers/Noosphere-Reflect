@@ -10,6 +10,8 @@
      * (search.brave.com/ask).
      *
      * Features:
+     *   - Integrated Native Header Trigger: Compact pill (🦁 Export) sitting
+     *     natively beside Share with zero layout overlap
      *   - Interactive Accordion Sidebar: Click turns to expand/collapse
      *     and scroll full message text, Deep Research stats, and Augments inline.
      *   - Automated Deep Research Positioning: Places Deep Research outputs
@@ -33,6 +35,8 @@
             RESEARCH_MESSAGE: '.message.research',
 
             TOC_SECTION: 'a.sidebar-history-toc-section',
+            HEADER_BUTTONS_CONTAINER: '.ask-center-header-buttons',
+            SHARE_BUTTON: 'button[aria-label="Share"], .header-button',
 
             ENRICHMENT_CARD_ITEM: 'a.enrichment-card-item',
             ENRICHMENT_CARD_TITLE: '.desktop-small-semibold',
@@ -50,11 +54,6 @@
             DEEP_RESEARCH_PROGRESS: '.deep-research-progress',
 
             NOISE_ELEMENTS: 'button.inline-citation, div.copy-button, svg, .user-message-actions'
-        },
-
-        UI: {
-            ORB_RIGHT: 25,
-            ORB_BOTTOM: 25
         },
 
         THEME: {
@@ -667,7 +666,7 @@
     };
 
     // ============================================================
-    // UI Construction & Interactive Accordion Renderer
+    // UI Construction & Native Header Injection
     // ============================================================
 
     function injectStyles() {
@@ -676,30 +675,31 @@
         const style = document.createElement('style');
         style.id = 'noosphere-brave-sidebar-styles';
         style.textContent = `
-            .ns-orb {
-                position: fixed;
-                bottom: ${CONFIG.UI.ORB_BOTTOM}px;
-                right: ${CONFIG.UI.ORB_RIGHT}px;
-                width: 56px;
-                height: 56px;
-                background: linear-gradient(135deg, ${CONFIG.THEME.PRIMARY}, ${CONFIG.THEME.PURPLE});
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                z-index: 100000;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.35);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-                border: 2px solid rgba(255,255,255,0.2);
-                color: white;
-                user-select: none;
-                font-size: 24px;
+            /* Native Header Pill Trigger */
+            .ns-brave-header-btn {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 13px !important;
+                font-weight: 600 !important;
+                height: 32px !important;
+                padding: 0 12px !important;
+                gap: 6px !important;
+                border-radius: 16px !important;
+                cursor: pointer !important;
+                color: white !important;
+                background: rgba(255, 255, 255, 0.08) !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                transition: all 0.15s ease !important;
+                user-select: none !important;
+                margin-left: 8px !important;
+                margin-right: 8px !important;
+                flex-shrink: 0 !important;
+                white-space: nowrap !important;
             }
-
-            .ns-orb:hover {
-                transform: scale(1.1) rotate(5deg);
-                box-shadow: 0 6px 25px rgba(251,84,43,0.4);
+            .ns-brave-header-btn:hover {
+                background: rgba(255, 255, 255, 0.16) !important;
+                border-color: rgba(255, 255, 255, 0.25) !important;
             }
 
             #ns-sidebar-overlay {
@@ -1076,12 +1076,10 @@
 
             const isExpanded = STATE.expandedId === msg.id;
 
-            // Scrollable Accordion Container
             if (isExpanded) {
                 const accordion = document.createElement('div');
                 accordion.className = 'ns-msg-accordion';
 
-                // Render Full Scrollable Message Content
                 if (msg.text) {
                     const fullText = document.createElement('div');
                     fullText.className = 'ns-msg-fulltext';
@@ -1089,7 +1087,6 @@
                     accordion.appendChild(fullText);
                 }
 
-                // Render Augments
                 if (totalAugLinks > 0 || (msg.augments && msg.augments.length > 0)) {
                     msg.augments.forEach(aug => {
                         if (aug.searchQuery) {
@@ -1119,7 +1116,6 @@
                     });
                 }
 
-                // Render Deep Research Data
                 if (msg.role === 'research' && msg.research) {
                     const res = msg.research;
 
@@ -1195,15 +1191,33 @@
         });
     }
 
-    function createSidebarUI() {
-        if (document.getElementById('ns-orb-brave')) return;
+    function injectHeaderTrigger(openSidebarFn) {
+        if (document.getElementById('ns-brave-header-btn')) return;
 
-        const orb = document.createElement('div');
-        orb.id = 'ns-orb-brave';
-        orb.className = 'ns-orb';
-        orb.title = 'Noosphere Reflect Exporter';
-        orb.textContent = '🦁';
-        document.body.appendChild(orb);
+        const container = document.querySelector(CONFIG.SELECTORS.HEADER_BUTTONS_CONTAINER);
+        if (!container) return;
+
+        const triggerBtn = document.createElement('button');
+        triggerBtn.id = 'ns-brave-header-btn';
+        triggerBtn.type = 'button';
+        triggerBtn.className = 'ns-brave-header-btn';
+        triggerBtn.title = 'Noosphere Reflect Exporter';
+        triggerBtn.innerHTML = `🦁 Export`;
+        triggerBtn.onclick = (e) => {
+            e.stopPropagation();
+            openSidebarFn();
+        };
+
+        const shareBtn = container.querySelector(CONFIG.SELECTORS.SHARE_BUTTON);
+        if (shareBtn) {
+            container.insertBefore(triggerBtn, shareBtn);
+        } else {
+            container.prepend(triggerBtn);
+        }
+    }
+
+    function createSidebarUI() {
+        if (document.getElementById('ns-sidebar')) return;
 
         const overlay = document.createElement('div');
         overlay.id = 'ns-sidebar-overlay';
@@ -1255,7 +1269,13 @@
             sidebar.classList.remove('active');
         };
 
-        orb.onclick = (e) => { e.stopPropagation(); openSidebar(); };
+        injectHeaderTrigger(openSidebar);
+
+        const headerObserver = new MutationObserver(() => {
+            injectHeaderTrigger(openSidebar);
+        });
+        headerObserver.observe(document.body, { childList: true, subtree: true });
+
         overlay.onclick = closeSidebar;
         document.getElementById('ns-btn-cancel').onclick = closeSidebar;
 
@@ -1278,6 +1298,10 @@
 
         document.getElementById('ns-btn-copy').onclick = () => ExportService.executeCopy();
         document.getElementById('ns-btn-download').onclick = () => ExportService.executeDownload();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeSidebar();
+        });
     }
 
     function init() {
