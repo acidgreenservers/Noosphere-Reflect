@@ -10,7 +10,10 @@
      * (chat.mistral.ai).
      *
      * Features:
-     *   - Integrated Top Bar Trigger: Sits natively right next to "New chat"
+     *   - Integrated Top Bar Trigger: Sits natively next to "New chat" as "Export Chat"
+     *   - Dual Deep Research Extraction: Explicitly separates Block 1
+     *     (Research Stepper & Execution Plan) from Block 2 (Final Report
+     *     & Sources Favicon Bar)
      *   - Native Mistral Vibe UI Theme (#161618 Dark Onyx, #ff5e00 Orange)
      *   - Automated Thought Expansion: Pre-expands "Thought for X s" 
      *     collapsibles to ensure 100% of reasoning process is archived
@@ -18,7 +21,6 @@
      *     (Headings, bold/italic, lists, pipe tables, code blocks)
      *   - Interactive turn accordion drawer with batch selection controls
      *   - Noosphere Reflect frontmatter metadata & signature footer lock
-     *   - Dual export triggers: Copy to Clipboard or File Download
      *
      * Namespace: ns-vibe
      * ============================================================
@@ -31,6 +33,11 @@
             AI_MESSAGE: '[data-message-author-role="assistant"]',
             REASONING_CONTAINER: '[data-message-part-type="reasoning"]',
             ANSWER_CONTAINER: '[data-message-part-type="answer"]',
+            
+            // Deep Research Specific Selectors
+            RESEARCH_STEPPER_FORM: 'form.shadow-card, form.border-default',
+            RESEARCH_STEPS_HEADER: '.group\\/steps-header',
+            
             CONVERSATION_TITLE: '.min-h-5\\.5.truncate, header h1, title',
             TOP_BAR: '[data-desktop-window-top-bar="true"]',
             NEW_CHAT_CONTAINER: '[data-desktop-window-top-bar="true"] div.ps-3',
@@ -259,7 +266,7 @@
     }
 
     // ============================================================
-    // Vibe DOM Scanner & Pre-Expansion
+    // Vibe DOM Extractors & Deep Research Distinguishers
     // ============================================================
 
     function autoExpandThoughts() {
@@ -277,6 +284,52 @@
         });
     }
 
+    // Explicitly Extracts Block 1: The Research Stepper Form (<form>)
+    function extractResearchStepperForm(el) {
+        const formEl = el.querySelector(CONFIG.SELECTORS.RESEARCH_STEPPER_FORM);
+        if (!formEl) return null;
+
+        const mainSteps = [];
+        formEl.querySelectorAll('[style*="step-"][style*="-content"]').forEach(stepContent => {
+            const titleEl = stepContent.querySelector('span.font-medium');
+            const subItems = Array.from(stepContent.querySelectorAll('p')).map(p => Utils.cleanText(p.innerText)).filter(Boolean);
+
+            if (titleEl) {
+                mainSteps.push({
+                    title: Utils.cleanText(titleEl.innerText),
+                    items: subItems
+                });
+            }
+        });
+
+        return mainSteps.length > 0 ? mainSteps : null;
+    }
+
+    // Explicitly Extracts Block 2: The Completed Report Body + Discovered Sources
+    function extractResearchReportBody(el) {
+        const answerEl = el.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER) || el;
+        const reportTitle = Utils.cleanText(answerEl.querySelector('h1, h2')?.innerText || 'Research Report');
+        const reportMarkdown = htmlToMarkdown(answerEl);
+
+        const sources = [];
+        answerEl.querySelectorAll('a[href]').forEach(a => {
+            const href = a.getAttribute('href');
+            const label = Utils.cleanText(a.innerText || href);
+            if (href && !href.startsWith('#')) {
+                sources.push({ label, href });
+            }
+        });
+
+        const sourcesCountText = Utils.cleanText(el.querySelector('.ticker-view')?.innerText || '');
+
+        return {
+            title: reportTitle,
+            sourcesCountText,
+            sources,
+            reportMarkdown
+        };
+    }
+
     function scanThreadMessages() {
         autoExpandThoughts();
 
@@ -287,29 +340,45 @@
 
         STATE.messages = elements.map((el, idx) => {
             const isUser = el.matches(CONFIG.SELECTORS.USER_MESSAGE);
+            let role = isUser ? 'user' : 'ai';
             let text = '';
             let thoughts = '';
+            let stepperPlan = null;
+            let reportData = null;
 
             if (isUser) {
                 const contentEl = el.querySelector(CONFIG.SELECTORS.USER_CONTENT) || el;
                 text = Utils.cleanText(contentEl.innerText || '');
             } else {
-                const reasoningEl = el.querySelector(CONFIG.SELECTORS.REASONING_CONTAINER);
-                if (reasoningEl) {
-                    thoughts = htmlToMarkdown(reasoningEl);
-                }
+                stepperPlan = extractResearchStepperForm(el);
+                const hasStepsHeader = !!el.querySelector(CONFIG.SELECTORS.RESEARCH_STEPS_HEADER);
 
-                const answerEl = el.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER) || el;
-                text = htmlToMarkdown(answerEl);
+                if (stepperPlan || hasStepsHeader) {
+                    role = 'research';
+                    reportData = extractResearchReportBody(el);
+                    text = reportData.reportMarkdown;
+                } else {
+                    const reasoningEl = el.querySelector(CONFIG.SELECTORS.REASONING_CONTAINER);
+                    if (reasoningEl) {
+                        thoughts = htmlToMarkdown(reasoningEl);
+                    }
+
+                    const answerEl = el.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER) || el;
+                    text = htmlToMarkdown(answerEl);
+                }
             }
 
-            const rawPreview = isUser ? text : Utils.cleanText(el.innerText);
+            const rawPreview = isUser 
+                ? text 
+                : (reportData ? reportData.title : Utils.cleanText(el.innerText));
 
             return {
                 id: idx,
-                role: isUser ? 'user' : 'ai',
+                role,
                 text,
                 thoughts,
+                stepperPlan,
+                reportData,
                 preview: rawPreview.substring(0, 75) + '...',
                 el
             };
@@ -350,6 +419,7 @@
             const selected = STATE.messages.filter(m => STATE.selectedIds.has(m.id));
             const userCount = selected.filter(m => m.role === 'user').length;
             const aiCount = selected.filter(m => m.role === 'ai').length;
+            const researchCount = selected.filter(m => m.role === 'research').length;
 
             let md = '';
             md += '---\n';
@@ -357,8 +427,8 @@
             md += '> **🤖 Model:** Mistral Vibe\n>\n';
             md += `> **🌐 Exported:** ${exportedAt}\n>\n`;
             md += `> **🌐 Source:** [Mistral Vibe](${sourceUrl})\n>\n`;
-            md += '> **🏷️ Tags:** Mistral, Vibe, AI-Chat, Noosphere\n>\n';
-            md += `> **📊 Metadata:** ${selected.length} Selected Messages | ${userCount} User | ${aiCount} Mistral\n`;
+            md += '> **🏷️ Tags:** Mistral, Vibe, AI-Chat, Deep-Research, Noosphere\n>\n';
+            md += `> **📊 Metadata:** ${selected.length} Selected Messages | ${userCount} User | ${aiCount} Mistral | ${researchCount} Deep Research\n`;
             md += '---\n\n';
 
             md += `# ${title}\n\n---\n\n`;
@@ -382,6 +452,37 @@
                     }
 
                     md += `${msg.text}\n\n---\n\n`;
+                } else if (msg.role === 'research') {
+                    md += `#### Response - Deep Research 🔬:\n\n`;
+
+                    // Output Block 1: Research Stepper Plan if captured
+                    if (msg.stepperPlan && msg.stepperPlan.length > 0) {
+                        md += `<details>\n<summary><b>📋 Research Execution Plan & Stepper</b></summary>\n\n`;
+                        msg.stepperPlan.forEach(step => {
+                            md += `**${step.title}**\n`;
+                            if (step.items.length > 0) {
+                                step.items.forEach(item => {
+                                    md += `- ${item}\n`;
+                                });
+                            }
+                            md += '\n';
+                        });
+                        md += '</details>\n\n';
+                    }
+
+                    // Output Block 2: Full Research Report
+                    md += `${msg.text}\n\n`;
+
+                    // Discovered Sources
+                    if (msg.reportData && msg.reportData.sources.length > 0) {
+                        md += `<details>\n<summary><b>📚 Discovered Research Sources (${msg.reportData.sources.length})</b></summary>\n\n`;
+                        msg.reportData.sources.forEach(s => {
+                            md += `- [${s.label}](${s.href})\n`;
+                        });
+                        md += '\n</details>\n\n';
+                    }
+
+                    md += '---\n\n';
                 }
             });
 
@@ -406,6 +507,8 @@
                 messages: selected.map(m => ({
                     role: m.role,
                     thoughts: m.thoughts || null,
+                    stepperPlan: m.stepperPlan || null,
+                    reportData: m.reportData || null,
                     content: m.text
                 }))
             }, null, 2);
@@ -470,7 +573,6 @@
         const style = document.createElement('style');
         style.id = 'noosphere-vibe-styles';
         style.textContent = `
-            /* Native Top-Bar Trigger Button */
             .ns-vibe-header-btn {
                 display: flex !important;
                 align-items: center !important;
@@ -493,7 +595,6 @@
                 border-color: rgba(255, 255, 255, 0.2) !important;
             }
 
-            /* Slide-over Drawer Backdrop */
             #ns-vibe-overlay {
                 position: fixed;
                 top: 0; left: 0; width: 100%; height: 100%;
@@ -506,7 +607,6 @@
             }
             #ns-vibe-overlay.active { display: block; opacity: 1; }
 
-            /* Slide-over Panel */
             #ns-vibe-sidebar {
                 position: fixed;
                 top: 0; right: -380px;
@@ -681,6 +781,7 @@
             }
             .ns-role-user { background: rgba(59, 130, 246, 0.25) !important; color: #93c5fd !important; }
             .ns-role-ai { background: rgba(255, 94, 0, 0.25) !important; color: #ffb88c !important; }
+            .ns-role-research { background: rgba(16, 185, 129, 0.25) !important; color: #6ee7b7 !important; }
 
             .ns-msg-preview {
                 font-size: 12px !important;
@@ -774,6 +875,12 @@
             return;
         }
 
+        const roleConfig = {
+            user: { icon: '👤', label: 'USER' },
+            ai: { icon: '🧠', label: 'MISTRAL VIBE' },
+            research: { icon: '🔬', label: 'DEEP RESEARCH' }
+        };
+
         STATE.messages.forEach(msg => {
             const card = document.createElement('div');
             card.className = 'ns-msg-card';
@@ -789,12 +896,14 @@
             const content = document.createElement('div');
             content.className = 'ns-msg-content';
 
+            const roleMeta = roleConfig[msg.role] || { icon: '💬', label: msg.role.toUpperCase() };
+
             const badgeGroup = document.createElement('div');
             badgeGroup.className = 'ns-role-badge-group';
 
             const badge = document.createElement('span');
             badge.className = `ns-role-badge ns-role-${msg.role}`;
-            badge.textContent = msg.role === 'user' ? '👤 USER' : '🧠 MISTRAL VIBE';
+            badge.textContent = `${roleMeta.icon} ${roleMeta.label}`;
             badgeGroup.appendChild(badge);
 
             if (msg.thoughts) {
@@ -803,6 +912,14 @@
                 thoughtBadge.style.color = '#ffb88c';
                 thoughtBadge.textContent = '🧠 Thought Captured';
                 badgeGroup.appendChild(thoughtBadge);
+            }
+
+            if (msg.stepperPlan) {
+                const planBadge = document.createElement('span');
+                planBadge.style.fontSize = '9px';
+                planBadge.style.color = '#6ee7b7';
+                planBadge.textContent = `📋 ${msg.stepperPlan.length} Steps`;
+                badgeGroup.appendChild(planBadge);
             }
 
             const preview = document.createElement('div');
@@ -823,6 +940,7 @@
                 const accordion = document.createElement('div');
                 accordion.className = 'ns-msg-accordion';
 
+                // Render Thoughts if present
                 if (msg.thoughts) {
                     const tHeader = document.createElement('div');
                     tHeader.style.fontWeight = '700';
@@ -839,6 +957,51 @@
                     accordion.appendChild(tBody);
                 }
 
+                // Render Block 1: Research Execution Stepper
+                if (msg.stepperPlan && msg.stepperPlan.length > 0) {
+                    const sHeader = document.createElement('div');
+                    sHeader.style.fontWeight = '700';
+                    sHeader.style.color = '#6ee7b7';
+                    sHeader.textContent = `📋 Research Execution Stepper (${msg.stepperPlan.length} Phases):`;
+                    accordion.appendChild(sHeader);
+
+                    msg.stepperPlan.forEach(step => {
+                        const stepEl = document.createElement('div');
+                        stepEl.style.color = '#e5e7eb';
+                        stepEl.style.fontWeight = '600';
+                        stepEl.textContent = `• ${step.title}`;
+                        accordion.appendChild(stepEl);
+
+                        step.items.forEach(item => {
+                            const subItem = document.createElement('div');
+                            subItem.style.color = '#9ca3af';
+                            subItem.style.paddingLeft = '12px';
+                            subItem.textContent = `-> ${item}`;
+                            accordion.appendChild(subItem);
+                        });
+                    });
+                }
+
+                // Render Block 2: Discovered Sources
+                if (msg.reportData && msg.reportData.sources.length > 0) {
+                    const srcHeader = document.createElement('div');
+                    srcHeader.style.fontWeight = '700';
+                    srcHeader.style.color = 'rgba(255,255,255,0.8)';
+                    srcHeader.textContent = `📚 Research Sources (${msg.reportData.sources.length}):`;
+                    accordion.appendChild(srcHeader);
+
+                    msg.reportData.sources.slice(0, 8).forEach(src => {
+                        const linkEl = document.createElement('a');
+                        linkEl.style.color = '#93c5fd';
+                        linkEl.style.textDecoration = 'none';
+                        linkEl.href = src.href;
+                        linkEl.target = '_blank';
+                        linkEl.textContent = `🔗 ${src.label}`;
+                        accordion.appendChild(linkEl);
+                    });
+                }
+
+                // Render Full Report Markdown Text
                 const fullText = document.createElement('div');
                 fullText.style.color = '#e5e7eb';
                 fullText.style.whiteSpace = 'pre-wrap';
@@ -942,10 +1105,8 @@
             sidebar.classList.remove('active');
         };
 
-        // Inject into header bar
         injectHeaderTrigger(openSidebar);
 
-        // Observer to re-inject button if Vibe top bar re-renders
         const headerObserver = new MutationObserver(() => {
             injectHeaderTrigger(openSidebar);
         });
@@ -958,7 +1119,7 @@
             STATE.selectedIds.clear();
             if (type === 'all') STATE.messages.forEach(m => STATE.selectedIds.add(m.id));
             if (type === 'user') STATE.messages.filter(m => m.role === 'user').forEach(m => STATE.selectedIds.add(m.id));
-            if (type === 'ai') STATE.messages.filter(m => m.role === 'ai').forEach(m => STATE.selectedIds.add(m.id));
+            if (type === 'ai') STATE.messages.filter(m => m.role === 'ai' || m.role === 'research').forEach(m => STATE.selectedIds.add(m.id));
             renderMessageList();
         };
 
