@@ -3,22 +3,21 @@
 
     /*
      * ============================================================
-     * Noosphere Reflect — Brave Search AI Interactive Exporter
+     * Noosphere Reflect — Ask Brave Search AI Interactive Exporter
      * ============================================================
      *
      * Interactive Userscript & Console Exporter for Ask Brave Chat
      * (search.brave.com/ask).
      *
      * Features:
-     *   - Interactive Accordion Sidebar: Click turns (including Research & 
-     *     Augments) to expand/collapse internal source & query lists inline.
-     *   - Deterministic Deep Research Positioning: Auto-detects Deep
-     *     Research and places it right after User Prompt 1 & before Response 1.
+     *   - Interactive Accordion Sidebar: Click turns to expand/collapse
+     *     and scroll full message text, Deep Research stats, and Augments inline.
+     *   - Automated Deep Research Positioning: Places Deep Research outputs
+     *     deterministically after User Prompt 1 & before AI Response 1.
      *   - Augment & Research Count Badges (`📎 N AUGMENTS`, `🔬 RESEARCH`).
      *   - Custom Chat Title input & batch selection controls.
      *   - Full recursive DOM-to-Markdown parser preserving formatting.
-     *   - Automatic extraction of Sidebar Rounds / TOC into collapsible
-     *     <details> accordions.
+     *   - Automatic extraction of Sidebar Rounds / TOC into collapsible accordions.
      *   - Polished Footer Layout: Cancel | Format Select | Copy | Save.
      *
      * Namespace: ns-brave-sidebar
@@ -381,6 +380,7 @@
                     STATE.messages.push({
                         id: index,
                         role: 'user',
+                        text,
                         preview: text.substring(0, 70) + (text.length > 70 ? '...' : ''),
                         element: el,
                         augments: [],
@@ -388,12 +388,14 @@
                     });
                 }
             } else if (el.matches(CONFIG.SELECTORS.AI_MESSAGE)) {
-                const text = Utils.cleanText(el.innerText);
-                if (text) {
+                const mdText = Extractors.extractAIMessage(el);
+                const rawText = Utils.cleanText(el.innerText);
+                if (rawText) {
                     currentAIMessage = {
                         id: index,
                         role: 'ai',
-                        preview: text.substring(0, 70) + (text.length > 70 ? '...' : ''),
+                        text: mdText,
+                        preview: rawText.substring(0, 70) + (rawText.length > 70 ? '...' : ''),
                         element: el,
                         augments: [],
                         research: null
@@ -409,6 +411,7 @@
                         STATE.messages.push({
                             id: index,
                             role: 'augment',
+                            text: `Augment Search: ${augData.searchQuery}`,
                             preview: `Augment: ${augData.searchQuery || `${augData.links.length} sources`}`,
                             element: el,
                             augments: [augData],
@@ -422,6 +425,7 @@
                 STATE.messages.push({
                     id: index,
                     role: 'research',
+                    text: resData.answers.join('\n\n') || 'Deep Research Output',
                     preview: Object.keys(resData.stats).length > 0 
                         ? Object.entries(resData.stats).map(([k, v]) => `${v} ${k}`).join(' | ') 
                         : 'Deep Research Output',
@@ -712,7 +716,7 @@
 
             #ns-sidebar {
                 position: fixed;
-                top: 0; right: -400px;
+                top: 0; right: -380px;
                 width: 380px;
                 height: 100%;
                 background: ${CONFIG.THEME.BG_GLASS};
@@ -735,6 +739,7 @@
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
+                flex-shrink: 0;
             }
 
             .ns-sidebar-title {
@@ -799,100 +804,133 @@
                 padding: 10px;
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
+                gap: 8px;
             }
 
             .ns-msg-card {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                border-radius: 8px;
-                overflow: hidden;
+                background: rgba(255, 255, 255, 0.03) !important;
+                border: 1px solid rgba(255, 255, 255, 0.06) !important;
+                border-radius: 8px !important;
+                overflow: hidden !important;
+                flex-shrink: 0 !important;
+                height: auto !important;
+                min-height: 52px !important;
+                max-height: none !important;
                 transition: all 0.2s ease;
+                box-sizing: border-box !important;
             }
             .ns-msg-card:hover {
-                border-color: rgba(255, 255, 255, 0.15);
+                border-color: rgba(255, 255, 255, 0.18) !important;
+                background: rgba(255, 255, 255, 0.06) !important;
             }
 
             .ns-msg-item {
-                display: flex;
-                align-items: center;
-                padding: 8px 10px;
-                gap: 10px;
-                cursor: pointer;
+                display: flex !important;
+                align-items: flex-start !important;
+                padding: 10px 12px !important;
+                gap: 12px !important;
+                cursor: pointer !important;
+                box-sizing: border-box !important;
+                height: auto !important;
+                min-height: 48px !important;
             }
 
             .ns-msg-check {
-                appearance: none;
-                width: 16px;
-                height: 16px;
-                border: 2px solid ${CONFIG.THEME.PRIMARY};
-                border-radius: 4px;
-                cursor: pointer;
-                background: rgba(0,0,0,0.3);
-                position: relative;
-                flex-shrink: 0;
+                appearance: none !important;
+                -webkit-appearance: none !important;
+                width: 18px !important;
+                height: 18px !important;
+                border: 2px solid ${CONFIG.THEME.PRIMARY} !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+                background: rgba(0,0,0,0.3) !important;
+                position: relative !important;
+                flex-shrink: 0 !important;
+                margin-top: 2px !important;
             }
-            .ns-msg-check:checked { background: ${CONFIG.THEME.PRIMARY}; }
+            .ns-msg-check:checked {
+                background: ${CONFIG.THEME.PRIMARY} !important;
+            }
             .ns-msg-check:checked::after {
-                content: '✓';
-                position: absolute;
-                color: white;
-                font-size: 10px;
-                top: 50%; left: 50%;
-                transform: translate(-50%, -50%);
+                content: '✓' !important;
+                position: absolute !important;
+                color: white !important;
+                font-size: 12px !important;
+                font-weight: bold !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
             }
 
-            .ns-msg-content { flex: 1; min-width: 0; }
+            .ns-msg-content {
+                flex: 1 !important;
+                min-width: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 4px !important;
+            }
+
             .ns-role-badge-group {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                margin-bottom: 2px;
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
             }
 
             .ns-role-badge {
-                font-size: 9px;
-                font-weight: 700;
-                text-transform: uppercase;
-                padding: 1px 6px;
-                border-radius: 4px;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
+                font-size: 9px !important;
+                font-weight: 700 !important;
+                text-transform: uppercase !important;
+                padding: 2px 6px !important;
+                border-radius: 4px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 4px !important;
             }
-            .ns-role-user { background: rgba(59, 130, 246, 0.25); color: #93c5fd; }
-            .ns-role-ai { background: rgba(251, 84, 43, 0.25); color: #fca5a5; }
-            .ns-role-augment { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; }
-            .ns-role-research { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; }
+            .ns-role-user { background: rgba(59, 130, 246, 0.25) !important; color: #93c5fd !important; }
+            .ns-role-ai { background: rgba(251, 84, 43, 0.25) !important; color: #fca5a5 !important; }
+            .ns-role-augment { background: rgba(139, 92, 246, 0.25) !important; color: #c4b5fd !important; }
+            .ns-role-research { background: rgba(16, 185, 129, 0.25) !important; color: #6ee7b7 !important; }
 
             .ns-aug-badge {
-                font-size: 9px;
-                font-weight: 700;
-                padding: 1px 6px;
-                border-radius: 4px;
-                background: rgba(139, 92, 246, 0.2);
-                border: 1px solid rgba(139, 92, 246, 0.3);
-                color: #c4b5fd;
+                font-size: 9px !important;
+                font-weight: 700 !important;
+                padding: 1px 6px !important;
+                border-radius: 4px !important;
+                background: rgba(139, 92, 246, 0.2) !important;
+                border: 1px solid rgba(139, 92, 246, 0.3) !important;
+                color: #c4b5fd !important;
             }
 
             .ns-msg-preview {
-                font-size: 11px;
-                line-height: 1.3;
-                color: rgba(255, 255, 255, 0.7);
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+                color: rgba(255, 255, 255, 0.7) !important;
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
+                overflow: hidden !important;
+                word-break: break-word !important;
             }
 
-            /* Inline Accordion Dropdown */
+            /* Scrollable Accordion Content */
             .ns-msg-accordion {
-                background: rgba(0, 0, 0, 0.25);
-                border-top: 1px solid rgba(255, 255, 255, 0.05);
-                padding: 8px 10px 10px 36px;
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-                font-size: 11px;
+                background: rgba(0, 0, 0, 0.3) !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+                padding: 10px 12px 12px 42px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+                font-size: 12px !important;
+            }
+
+            .ns-msg-fulltext {
+                color: #e5e7eb;
+                white-space: pre-wrap;
+                max-height: 220px;
+                overflow-y: auto;
+                line-height: 1.4;
+                font-size: 12px;
+                padding-right: 4px;
             }
 
             .ns-aug-card-link {
@@ -920,6 +958,7 @@
                 display: flex;
                 align-items: center;
                 gap: 6px;
+                flex-shrink: 0;
             }
 
             .ns-btn {
@@ -1025,7 +1064,7 @@
 
             const preview = document.createElement('div');
             preview.className = 'ns-msg-preview';
-            preview.textContent = msg.preview;
+            preview.textContent = msg.preview || (msg.role === 'user' ? 'User Prompt' : 'Brave Response');
 
             content.appendChild(badgeGroup);
             content.appendChild(preview);
@@ -1037,95 +1076,98 @@
 
             const isExpanded = STATE.expandedId === msg.id;
 
-            // Accordion Body for Augments
-            if (isExpanded && (totalAugLinks > 0 || msg.augments.length > 0)) {
+            // Scrollable Accordion Container
+            if (isExpanded) {
                 const accordion = document.createElement('div');
                 accordion.className = 'ns-msg-accordion';
 
-                msg.augments.forEach(aug => {
-                    if (aug.searchQuery) {
-                        const qLabel = document.createElement('div');
-                        qLabel.style.fontWeight = '700';
-                        qLabel.style.color = 'rgba(255,255,255,0.8)';
-                        qLabel.textContent = `Search Query: "${aug.searchQuery}"`;
-                        accordion.appendChild(qLabel);
+                // Render Full Scrollable Message Content
+                if (msg.text) {
+                    const fullText = document.createElement('div');
+                    fullText.className = 'ns-msg-fulltext';
+                    fullText.textContent = msg.text;
+                    accordion.appendChild(fullText);
+                }
+
+                // Render Augments
+                if (totalAugLinks > 0 || (msg.augments && msg.augments.length > 0)) {
+                    msg.augments.forEach(aug => {
+                        if (aug.searchQuery) {
+                            const qLabel = document.createElement('div');
+                            qLabel.style.fontWeight = '700';
+                            qLabel.style.color = 'rgba(255,255,255,0.8)';
+                            qLabel.textContent = `Search Query: "${aug.searchQuery}"`;
+                            accordion.appendChild(qLabel);
+                        }
+
+                        aug.links.forEach(link => {
+                            const linkEl = document.createElement('a');
+                            linkEl.className = 'ns-aug-card-link';
+                            linkEl.href = link.href;
+                            linkEl.target = '_blank';
+                            linkEl.textContent = `🔗 ${link.title}`;
+
+                            accordion.appendChild(linkEl);
+
+                            if (link.desc) {
+                                const descEl = document.createElement('div');
+                                descEl.className = 'ns-aug-desc';
+                                descEl.textContent = link.desc;
+                                accordion.appendChild(descEl);
+                            }
+                        });
+                    });
+                }
+
+                // Render Deep Research Data
+                if (msg.role === 'research' && msg.research) {
+                    const res = msg.research;
+
+                    if (Object.keys(res.stats).length > 0) {
+                        const statsHeader = document.createElement('div');
+                        statsHeader.style.fontWeight = '700';
+                        statsHeader.style.color = '#6ee7b7';
+                        statsHeader.textContent = '📊 Research Stats: ' + Object.entries(res.stats).map(([k, v]) => `${v} ${k}`).join(' | ');
+                        accordion.appendChild(statsHeader);
                     }
 
-                    aug.links.forEach(link => {
-                        const linkEl = document.createElement('a');
-                        linkEl.className = 'ns-aug-card-link';
-                        linkEl.href = link.href;
-                        linkEl.target = '_blank';
-                        linkEl.textContent = `🔗 ${link.title}`;
+                    if (res.queries.length > 0) {
+                        const qHeader = document.createElement('div');
+                        qHeader.style.fontWeight = '700';
+                        qHeader.style.color = 'rgba(255,255,255,0.8)';
+                        qHeader.textContent = `📋 Queries Issued (${res.queries.length}):`;
+                        accordion.appendChild(qHeader);
 
-                        accordion.appendChild(linkEl);
+                        res.queries.forEach(q => {
+                            const qItem = document.createElement('div');
+                            qItem.className = 'ns-aug-desc';
+                            qItem.textContent = `> ${q}`;
+                            accordion.appendChild(qItem);
+                        });
+                    }
 
-                        if (link.desc) {
-                            const descEl = document.createElement('div');
-                            descEl.className = 'ns-aug-desc';
-                            descEl.textContent = link.desc;
-                            accordion.appendChild(descEl);
+                    if (res.sources.length > 0) {
+                        const sHeader = document.createElement('div');
+                        sHeader.style.fontWeight = '700';
+                        sHeader.style.color = 'rgba(255,255,255,0.8)';
+                        sHeader.textContent = `📚 Examined Sources (${res.sources.length}):`;
+                        accordion.appendChild(sHeader);
+
+                        res.sources.slice(0, 10).forEach(src => {
+                            const linkEl = document.createElement('a');
+                            linkEl.className = 'ns-aug-card-link';
+                            linkEl.href = src.href;
+                            linkEl.target = '_blank';
+                            linkEl.textContent = `🔗 ${src.label}`;
+                            accordion.appendChild(linkEl);
+                        });
+
+                        if (res.sources.length > 10) {
+                            const moreLabel = document.createElement('div');
+                            moreLabel.className = 'ns-aug-desc';
+                            moreLabel.textContent = `...and ${res.sources.length - 10} more sources`;
+                            accordion.appendChild(moreLabel);
                         }
-                    });
-                });
-
-                card.appendChild(accordion);
-            }
-
-            // Accordion Body for Deep Research
-            if (isExpanded && msg.role === 'research' && msg.research) {
-                const accordion = document.createElement('div');
-                accordion.className = 'ns-msg-accordion';
-
-                const res = msg.research;
-
-                // Stats summary
-                if (Object.keys(res.stats).length > 0) {
-                    const statsHeader = document.createElement('div');
-                    statsHeader.style.fontWeight = '700';
-                    statsHeader.style.color = '#6ee7b7';
-                    statsHeader.textContent = '📊 Research Stats: ' + Object.entries(res.stats).map(([k, v]) => `${v} ${k}`).join(' | ');
-                    accordion.appendChild(statsHeader);
-                }
-
-                // Queries
-                if (res.queries.length > 0) {
-                    const qHeader = document.createElement('div');
-                    qHeader.style.fontWeight = '700';
-                    qHeader.style.color = 'rgba(255,255,255,0.8)';
-                    qHeader.textContent = `📋 Queries Issued (${res.queries.length}):`;
-                    accordion.appendChild(qHeader);
-
-                    res.queries.forEach(q => {
-                        const qItem = document.createElement('div');
-                        qItem.className = 'ns-aug-desc';
-                        qItem.textContent = `> ${q}`;
-                        accordion.appendChild(qItem);
-                    });
-                }
-
-                // Sources
-                if (res.sources.length > 0) {
-                    const sHeader = document.createElement('div');
-                    sHeader.style.fontWeight = '700';
-                    sHeader.style.color = 'rgba(255,255,255,0.8)';
-                    sHeader.textContent = `📚 Examined Sources (${res.sources.length}):`;
-                    accordion.appendChild(sHeader);
-
-                    res.sources.slice(0, 10).forEach(src => {
-                        const linkEl = document.createElement('a');
-                        linkEl.className = 'ns-aug-card-link';
-                        linkEl.href = src.href;
-                        linkEl.target = '_blank';
-                        linkEl.textContent = `🔗 ${src.label}`;
-                        accordion.appendChild(linkEl);
-                    });
-
-                    if (res.sources.length > 10) {
-                        const moreLabel = document.createElement('div');
-                        moreLabel.className = 'ns-aug-desc';
-                        moreLabel.textContent = `...and ${res.sources.length - 10} more sources`;
-                        accordion.appendChild(moreLabel);
                     }
                 }
 
@@ -1239,7 +1281,7 @@
     }
 
     function init() {
-        console.log('🦁 Noosphere Reflect — Brave Search AI Interactive Exporter Initialized');
+        console.log('🦁 Noosphere Reflect — Ask Brave Search AI Interactive Exporter Initialized');
         injectStyles();
         createSidebarUI();
     }
