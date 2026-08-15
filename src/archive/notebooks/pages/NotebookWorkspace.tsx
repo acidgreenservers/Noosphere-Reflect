@@ -10,6 +10,13 @@ import { DocumentBuilder } from '../../../components/chat-ui/DocumentBuilder';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
 import { safeDecode } from '../../../components/ArtifactReader/utils';
 
+const generateUUID = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
+};
+
 // Modern SVG Sidebar panel layout icons matching image.png / Gemini UI
 const SidebarLeftIcon = () => (
     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -293,7 +300,7 @@ export const NotebookWorkspace: React.FC = () => {
 
         const newSource: NotebookSource = {
             ...sourceData,
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             createdAt: new Date().toISOString()
         };
 
@@ -350,7 +357,7 @@ export const NotebookWorkspace: React.FC = () => {
         } else {
             // Create mode
             const newNote: NotebookNote = {
-                id: crypto.randomUUID(),
+                id: generateUUID(),
                 title: noteTitle,
                 content: noteContent,
                 createdAt: new Date().toISOString(),
@@ -394,7 +401,7 @@ export const NotebookWorkspace: React.FC = () => {
         if (!notebook) return;
 
         const newChat: NotebookChat = {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             title: `Chat ${notebook.chats.length + 1}`,
             messages: [],
             createdAt: new Date().toISOString(),
@@ -424,7 +431,7 @@ export const NotebookWorkspace: React.FC = () => {
         // Create a new chat if there isn't one active
         if (!currentChatId) {
             const newChat: NotebookChat = {
-                id: crypto.randomUUID(),
+                id: generateUUID(),
                 title: text.length > 25 ? `${text.slice(0, 25)}...` : text,
                 messages: [],
                 createdAt: new Date().toISOString(),
@@ -950,7 +957,7 @@ export const NotebookWorkspace: React.FC = () => {
                                             onClick={async () => {
                                                 if (!notebook) return;
                                                 const newNote: NotebookNote = {
-                                                    id: crypto.randomUUID(),
+                                                    id: generateUUID(),
                                                     title: `Summary of ${notebook.metadata.title}`,
                                                     content: notebook.metadata.summaryContent || '',
                                                     createdAt: new Date().toISOString(),
@@ -1148,7 +1155,7 @@ export const NotebookWorkspace: React.FC = () => {
                                                         const words = msg.content.trim().split(/\s+/).slice(0, 5).join(' ');
                                                         const noteTitle = `Note from Chat: ${words || 'Untitled'}...`;
                                                         const newNote: NotebookNote = {
-                                                            id: crypto.randomUUID(),
+                                                            id: generateUUID(),
                                                             title: noteTitle,
                                                             content: msg.content,
                                                             createdAt: new Date().toISOString(),
