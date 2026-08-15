@@ -14,8 +14,9 @@
      *   - Dual Deep Research Extraction: Explicitly separates Block 1
      *     (Research Stepper & Execution Plan) from Block 2 (Final Report
      *     & Sources Favicon Bar)
-     *   - Native Mistral Vibe UI Theme (#161618 Dark Onyx, #ff5e00 Orange)
-     *   - Automated Thought Expansion: Pre-expands "Thought for X s" 
+     *   - Native Mistral Vibe UI Theme (DESIGN.md warm palette) with
+     *     automatic light / dark theme detection and live switching
+     *   - Automated Thought Expansion: Pre-expands "Thought for X s"
      *     collapsibles to ensure 100% of reasoning process is archived
      *   - Recursive DOM-to-Markdown parser preserving full formatting
      *     (Headings, bold/italic, lists, pipe tables, code blocks)
@@ -33,34 +34,160 @@
             AI_MESSAGE: '[data-message-author-role="assistant"]',
             REASONING_CONTAINER: '[data-message-part-type="reasoning"]',
             ANSWER_CONTAINER: '[data-message-part-type="answer"]',
-            
+
             // Deep Research Specific Selectors
             RESEARCH_STEPPER_FORM: 'form.shadow-card, form.border-default',
             RESEARCH_STEPS_HEADER: '.group\\/steps-header',
-            
+
             CONVERSATION_TITLE: '.min-h-5\\.5.truncate, header h1, title',
             TOP_BAR: '[data-desktop-window-top-bar="true"]',
             NEW_CHAT_CONTAINER: '[data-desktop-window-top-bar="true"] div.ps-3',
             NOISE_ELEMENTS: 'button, svg, .copy-button, [aria-hidden="true"]'
         },
 
-        THEME: {
-            BG_CANVAS: '#161618',
-            SURFACE_DARK: '#222226',
-            SURFACE_HOVER: '#2c2c32',
-            BORDER: '#323238',
-            PRIMARY_ORANGE: '#ff5e00',
-            PRIMARY_ORANGE_HOVER: '#e05300',
-            TEXT_MAIN: '#f3f4f6',
-            TEXT_MUTED: '#9ca3af'
+        THEMES: {
+            light: {
+                CANVAS: '#ffffff',
+                SURFACE: '#fafafa',
+                SURFACE_CREAM: '#fff8e0',
+                SURFACE_CREAM_SOFT: '#fffaeb',
+                CREAM: '#fff8e0',
+                CREAM_DEEPER: '#fff0c2',
+                BEIGE_DEEP: '#e6d5a8',
+                PRIMARY: '#fa520f',
+                PRIMARY_DEEP: '#cc3a05',
+                INK: '#1f1f1f',
+                INK_TINT: '#3d3d3d',
+                CHARCOAL: '#2c2c2c',
+                SLATE: '#4a4a4a',
+                STEEL: '#6a6a6a',
+                STONE: '#8a8a8a',
+                MUTED: '#a8a8a8',
+                HAIRLINE: '#e5e5e5',
+                HAIRLINE_SOFT: '#ededed',
+                HAIRLINE_STRONG: '#c7c7c7',
+                SUNSHINE_500: '#ffb83e',
+                SUNSHINE_700: '#ffa110',
+                YELLOW_SATURATED: '#ffd900',
+                ON_PRIMARY: '#ffffff',
+                ON_CREAM: '#1f1f1f',
+                ON_DARK: '#ffffff',
+                ON_DARK_MUTED: '#a8a8a8',
+                LINK: '#fa520f'
+            },
+            dark: {
+                CANVAS: '#1c1c1e',
+                SURFACE: '#161618',
+                SURFACE_CREAM: '#1a1a1c',
+                SURFACE_CREAM_SOFT: '#1f1f22',
+                CREAM: '#1f1f1f',
+                CREAM_DEEPER: '#2c2c2e',
+                BEIGE_DEEP: '#2c2c2e',
+                PRIMARY: '#fa520f',
+                PRIMARY_DEEP: '#cc3a05',
+                INK: '#f3f4f6',
+                INK_TINT: '#e5e7eb',
+                CHARCOAL: '#d1d5db',
+                SLATE: '#9ca3af',
+                STEEL: '#6b7280',
+                STONE: '#4b5563',
+                MUTED: '#6b7280',
+                HAIRLINE: '#374151',
+                HAIRLINE_SOFT: '#1f2937',
+                HAIRLINE_STRONG: '#4b5563',
+                SUNSHINE_500: '#ffb83e',
+                SUNSHINE_700: '#ffa110',
+                YELLOW_SATURATED: '#ffd900',
+                ON_PRIMARY: '#ffffff',
+                ON_CREAM: '#f3f4f6',
+                ON_DARK: '#ffffff',
+                ON_DARK_MUTED: '#9ca3af',
+                LINK: '#fb923c'
+            }
         }
     };
+
+    // Active theme reference — swapped by ThemeManager
+    CONFIG.THEME = CONFIG.THEMES.light;
 
     const STATE = {
         messages: [],
         selectedIds: new Set(),
         expandedId: null,
-        exportFormat: 'markdown' // 'markdown' or 'json'
+        exportFormat: 'markdown',
+        currentTheme: null
+    };
+
+    // ============================================================
+    // Theme Manager — Auto-detect & live-switch light / dark
+    // ============================================================
+
+    const ThemeManager = {
+        detect() {
+            const html = document.documentElement;
+            const htmlTheme = html.getAttribute('data-theme');
+            if (htmlTheme === 'dark' || html.classList.contains('dark')) return 'dark';
+            if (htmlTheme === 'light' || html.classList.contains('light')) return 'light';
+
+            const body = document.body;
+            if (body) {
+                const bodyTheme = body.getAttribute('data-theme');
+                if (bodyTheme === 'dark' || body.classList.contains('dark')) return 'dark';
+                if (bodyTheme === 'light' || body.classList.contains('light')) return 'light';
+            }
+
+            // Heuristic: inspect the top-bar background colour
+            const topBar = document.querySelector(CONFIG.SELECTORS.TOP_BAR);
+            if (topBar) {
+                const bg = getComputedStyle(topBar).backgroundColor;
+                const rgb = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (rgb) {
+                    const avg = (parseInt(rgb[1], 10) + parseInt(rgb[2], 10) + parseInt(rgb[3], 10)) / 3;
+                    if (avg < 80) return 'dark';
+                    if (avg > 200) return 'light';
+                }
+            }
+
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+            return 'light';
+        },
+
+        apply(themeName) {
+            if (STATE.currentTheme === themeName) return;
+            STATE.currentTheme = themeName;
+            CONFIG.THEME = CONFIG.THEMES[themeName];
+
+            // Remove old stylesheet and re-inject with new palette
+            const oldStyle = document.getElementById('noosphere-vibe-styles');
+            if (oldStyle) oldStyle.remove();
+            injectStyles();
+
+            // Re-render message cards so inline styles pick up new palette
+            renderMessageList();
+        },
+
+        init() {
+            this.apply(this.detect());
+
+            const observer = new MutationObserver(() => {
+                const detected = this.detect();
+                if (detected !== STATE.currentTheme) {
+                    this.apply(detected);
+                }
+            });
+
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-theme', 'class']
+            });
+
+            if (document.body) {
+                observer.observe(document.body, {
+                    attributes: true,
+                    attributeFilter: ['data-theme', 'class']
+                });
+            }
+        }
     };
 
     // ============================================================
@@ -76,16 +203,17 @@
                 position: 'fixed',
                 top: '20px',
                 right: '20px',
-                background: success ? CONFIG.THEME.PRIMARY_ORANGE : '#dc2626',
-                color: 'white',
+                background: success ? CONFIG.THEME.PRIMARY : '#dc2626',
+                color: '#ffffff',
                 padding: '12px 20px',
                 borderRadius: '8px',
                 zIndex: '200000',
-                fontSize: '13px',
-                fontWeight: '600',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                fontSize: '14px',
+                fontWeight: '500',
+                lineHeight: '1.30',
+                boxShadow: 'rgba(0, 0, 0, 0.12) 0px 16px 48px -8px',
                 transition: 'opacity 0.3s ease',
-                fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+                fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif'
             });
 
             document.body.appendChild(notification);
@@ -368,8 +496,8 @@
                 }
             }
 
-            const rawPreview = isUser 
-                ? text 
+            const rawPreview = isUser
+                ? text
                 : (reportData ? reportData.title : Utils.cleanText(el.innerText));
 
             return {
@@ -570,6 +698,7 @@
     function injectStyles() {
         if (document.getElementById('noosphere-vibe-styles')) return;
 
+        const T = CONFIG.THEME;
         const style = document.createElement('style');
         style.id = 'noosphere-vibe-styles';
         style.textContent = `
@@ -577,22 +706,24 @@
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                font-size: 13px !important;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+                font-size: 14px !important;
                 font-weight: 500 !important;
-                height: 28px !important;
-                padding: 0 10px !important;
-                border-radius: 6px !important;
+                line-height: 1.30 !important;
+                height: 32px !important;
+                padding: 0 16px !important;
+                border-radius: 8px !important;
                 cursor: pointer !important;
-                color: #f3f4f6 !important;
-                background: rgba(255, 255, 255, 0.06) !important;
-                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                color: ${T.ON_PRIMARY} !important;
+                background: ${T.PRIMARY} !important;
+                border: 1px solid ${T.PRIMARY} !important;
                 transition: all 0.15s ease !important;
                 user-select: none !important;
-                margin-left: 6px !important;
+                margin-left: 8px !important;
             }
             .ns-vibe-header-btn:hover {
-                background: rgba(255, 255, 255, 0.12) !important;
-                border-color: rgba(255, 255, 255, 0.2) !important;
+                background: ${T.PRIMARY_DEEP} !important;
+                border-color: ${T.PRIMARY_DEEP} !important;
             }
 
             #ns-vibe-overlay {
@@ -612,36 +743,38 @@
                 top: 0; right: -380px;
                 width: 380px;
                 height: 100%;
-                background: ${CONFIG.THEME.BG_CANVAS};
-                border-left: 1px solid ${CONFIG.THEME.BORDER};
-                color: ${CONFIG.THEME.TEXT_MAIN};
+                background: ${T.SURFACE_CREAM};
+                border-left: 1px solid ${T.BEIGE_DEEP};
+                color: ${T.INK};
                 z-index: 100002;
                 transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
                 display: flex;
                 flex-direction: column;
-                box-shadow: -10px 0 30px rgba(0,0,0,0.6);
-                font-family: Inter, system-ui, -apple-system, sans-serif;
+                box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
             }
             #ns-vibe-sidebar.active { right: 0; }
 
             .ns-sidebar-header {
-                padding: 16px 20px 12px;
-                background: ${CONFIG.THEME.SURFACE_DARK};
-                border-bottom: 1px solid ${CONFIG.THEME.BORDER};
+                padding: 20px 24px 16px;
+                background: ${T.CREAM};
+                border-bottom: 1px solid ${T.BEIGE_DEEP};
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
                 flex-shrink: 0;
             }
 
             .ns-sidebar-title {
-                font-size: 15px;
-                font-weight: 700;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 18px;
+                font-weight: 500;
+                line-height: 1.40;
                 display: flex;
                 align-items: center;
                 gap: 8px;
                 margin: 0;
-                color: ${CONFIG.THEME.TEXT_MAIN};
+                color: ${T.INK};
             }
 
             .ns-input-group {
@@ -651,59 +784,73 @@
             }
 
             .ns-label {
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
                 font-size: 11px;
                 font-weight: 600;
-                color: ${CONFIG.THEME.TEXT_MUTED};
+                line-height: 1.40;
+                color: ${T.STEEL};
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
+                letter-spacing: 1px;
             }
 
             .ns-input {
                 width: 100%;
-                background: ${CONFIG.THEME.BG_CANVAS};
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                padding: 8px 10px;
-                color: white;
-                font-size: 12px;
+                background: ${T.CANVAS};
+                border: 1px solid ${T.HAIRLINE_STRONG};
+                border-radius: 8px;
+                padding: 8px 12px;
+                color: ${T.INK};
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 14px;
+                font-weight: 400;
+                line-height: 1.55;
                 outline: none;
                 box-sizing: border-box;
+                height: 44px;
             }
-            .ns-input:focus { border-color: ${CONFIG.THEME.PRIMARY_ORANGE}; }
+            .ns-input:focus {
+                border: 2px solid ${T.PRIMARY};
+            }
 
             .ns-batch-controls {
                 display: grid;
                 grid-template-columns: repeat(4, 1fr);
-                gap: 6px;
+                gap: 8px;
             }
 
             .ns-batch-btn {
-                padding: 6px;
-                background: ${CONFIG.THEME.BG_CANVAS};
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                color: ${CONFIG.THEME.TEXT_MUTED};
-                font-size: 11px;
-                font-weight: 600;
+                padding: 8px;
+                background: ${T.CANVAS};
+                border: 1px solid ${T.HAIRLINE};
+                border-radius: 8px;
+                color: ${T.STEEL};
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 13px;
+                font-weight: 500;
+                line-height: 1.40;
                 cursor: pointer;
                 text-align: center;
                 transition: all 0.15s ease;
             }
-            .ns-batch-btn:hover { background: ${CONFIG.THEME.SURFACE_HOVER}; color: white; }
+            .ns-batch-btn:hover {
+                background: ${T.SURFACE_CREAM_SOFT};
+                color: ${T.INK};
+                border-color: ${T.BEIGE_DEEP};
+            }
 
             .ns-msg-list {
                 flex: 1;
                 overflow-y: auto;
-                padding: 12px;
+                padding: 16px;
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
             }
 
             .ns-msg-card {
-                background: ${CONFIG.THEME.SURFACE_DARK} !important;
-                border: 1px solid ${CONFIG.THEME.BORDER} !important;
-                border-radius: 8px !important;
+                background: ${T.CANVAS} !important;
+                border: 1px solid ${T.HAIRLINE_SOFT} !important;
+                border-radius: 12px !important;
                 overflow: hidden !important;
                 flex-shrink: 0 !important;
                 height: auto !important;
@@ -711,16 +858,17 @@
                 max-height: none !important;
                 transition: all 0.15s ease;
                 box-sizing: border-box !important;
+                box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 2px 0px;
             }
             .ns-msg-card:hover {
-                background: ${CONFIG.THEME.SURFACE_HOVER} !important;
-                border-color: rgba(255,255,255,0.18) !important;
+                box-shadow: rgba(0, 0, 0, 0.04) 0px 4px 12px 0px !important;
+                border-color: ${T.HAIRLINE} !important;
             }
 
             .ns-msg-item {
                 display: flex !important;
                 align-items: flex-start !important;
-                padding: 10px 12px !important;
+                padding: 12px 16px !important;
                 gap: 12px !important;
                 cursor: pointer !important;
                 box-sizing: border-box !important;
@@ -733,21 +881,21 @@
                 -webkit-appearance: none !important;
                 width: 18px !important;
                 height: 18px !important;
-                border: 2px solid ${CONFIG.THEME.PRIMARY_ORANGE} !important;
+                border: 2px solid ${T.PRIMARY} !important;
                 border-radius: 4px !important;
                 cursor: pointer !important;
-                background: rgba(0,0,0,0.3) !important;
+                background: ${T.CANVAS} !important;
                 position: relative !important;
                 flex-shrink: 0 !important;
                 margin-top: 2px !important;
             }
             .ns-msg-check:checked {
-                background: ${CONFIG.THEME.PRIMARY_ORANGE} !important;
+                background: ${T.PRIMARY} !important;
             }
             .ns-msg-check:checked::after {
                 content: '✓' !important;
                 position: absolute !important;
-                color: white !important;
+                color: ${T.ON_PRIMARY} !important;
                 font-size: 12px !important;
                 font-weight: bold !important;
                 top: 50% !important;
@@ -770,23 +918,36 @@
             }
 
             .ns-role-badge {
-                font-size: 9px !important;
-                font-weight: 700 !important;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 11px !important;
+                font-weight: 600 !important;
+                line-height: 1.40 !important;
                 text-transform: uppercase !important;
-                padding: 2px 6px !important;
-                border-radius: 4px !important;
+                padding: 4px 10px !important;
+                border-radius: 9999px !important;
                 display: inline-flex !important;
                 align-items: center !important;
                 gap: 4px !important;
             }
-            .ns-role-user { background: rgba(59, 130, 246, 0.25) !important; color: #93c5fd !important; }
-            .ns-role-ai { background: rgba(255, 94, 0, 0.25) !important; color: #ffb88c !important; }
-            .ns-role-research { background: rgba(16, 185, 129, 0.25) !important; color: #6ee7b7 !important; }
+            .ns-role-user {
+                background: ${T.HAIRLINE_SOFT} !important;
+                color: ${T.SLATE} !important;
+            }
+            .ns-role-ai {
+                background: rgba(250, 82, 15, 0.12) !important;
+                color: ${T.PRIMARY} !important;
+            }
+            .ns-role-research {
+                background: rgba(255, 184, 62, 0.20) !important;
+                color: ${T.SUNSHINE_700} !important;
+            }
 
             .ns-msg-preview {
-                font-size: 12px !important;
-                line-height: 1.4 !important;
-                color: ${CONFIG.THEME.TEXT_MUTED} !important;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 14px !important;
+                font-weight: 400 !important;
+                line-height: 1.50 !important;
+                color: ${T.STEEL} !important;
                 display: -webkit-box !important;
                 -webkit-line-clamp: 2 !important;
                 -webkit-box-orient: vertical !important;
@@ -795,72 +956,92 @@
             }
 
             .ns-msg-accordion {
-                background: rgba(0, 0, 0, 0.3) !important;
-                border-top: 1px solid ${CONFIG.THEME.BORDER} !important;
-                padding: 10px 12px 12px 42px !important;
+                background: ${T.SURFACE} !important;
+                border-top: 1px solid ${T.HAIRLINE_SOFT} !important;
+                padding: 12px 16px 16px 46px !important;
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 6px !important;
-                font-size: 12px !important;
+                gap: 8px !important;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 14px !important;
+                font-weight: 400 !important;
+                line-height: 1.55 !important;
             }
 
             .ns-sidebar-footer {
                 padding: 12px 16px;
-                background: ${CONFIG.THEME.SURFACE_DARK};
-                border-top: 1px solid ${CONFIG.THEME.BORDER};
+                background: ${T.CREAM};
+                border-top: 1px solid ${T.BEIGE_DEEP};
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 flex-shrink: 0;
             }
 
             .ns-btn {
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                padding: 8px 10px;
-                background: ${CONFIG.THEME.BG_CANVAS};
-                color: white;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 14px;
+                font-weight: 500;
+                line-height: 1.30;
+                border-radius: 8px;
+                padding: 10px 16px;
                 cursor: pointer;
-                font-size: 11px;
-                font-weight: 600;
                 text-align: center;
                 transition: all 0.15s ease;
                 white-space: nowrap;
+                border: none;
+                outline: none;
             }
-            .ns-btn:hover { background: ${CONFIG.THEME.SURFACE_HOVER}; }
 
             .ns-btn-cancel {
-                background: rgba(239, 68, 68, 0.15);
-                border-color: rgba(239, 68, 68, 0.3);
-                color: #fca5a5;
+                background: transparent;
+                border: 1px solid ${T.HAIRLINE_STRONG};
+                color: ${T.SLATE};
                 flex: 0.8;
             }
-            .ns-btn-cancel:hover { background: rgba(239, 68, 68, 0.25); }
+            .ns-btn-cancel:hover {
+                background: ${T.HAIRLINE_SOFT};
+                color: ${T.INK};
+            }
 
             .ns-format-select {
                 flex: 1.2;
-                background: ${CONFIG.THEME.BG_CANVAS};
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                color: white;
-                padding: 8px 6px;
+                background: ${T.CANVAS};
+                border: 1px solid ${T.HAIRLINE_STRONG};
+                border-radius: 8px;
+                color: ${T.INK};
+                padding: 8px 10px;
                 outline: none;
-                font-size: 11px;
-                font-weight: 600;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 14px;
+                font-weight: 500;
+                line-height: 1.30;
                 cursor: pointer;
                 text-align: center;
             }
-            .ns-format-select option { background: #161618; color: white; }
+            .ns-format-select option {
+                background: ${T.CANVAS};
+                color: ${T.INK};
+            }
 
-            .ns-btn-copy { flex: 1; }
+            .ns-btn-copy {
+                flex: 1;
+                background: transparent;
+                border: 1px solid ${T.HAIRLINE_STRONG};
+                color: ${T.INK};
+            }
+            .ns-btn-copy:hover {
+                background: ${T.HAIRLINE_SOFT};
+            }
 
             .ns-btn-primary {
                 flex: 1;
-                background: ${CONFIG.THEME.PRIMARY_ORANGE};
-                border-color: ${CONFIG.THEME.PRIMARY_ORANGE};
-                color: white;
+                background: ${T.PRIMARY};
+                color: ${T.ON_PRIMARY};
             }
-            .ns-btn-primary:hover { background: ${CONFIG.THEME.PRIMARY_ORANGE_HOVER}; }
+            .ns-btn-primary:hover {
+                background: ${T.PRIMARY_DEEP};
+            }
         `;
         document.head.appendChild(style);
     }
@@ -871,7 +1052,7 @@
         listContainer.innerHTML = '';
 
         if (STATE.messages.length === 0) {
-            listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#9ca3af; font-size:12px;">No messages found in Mistral Vibe thread.</div>';
+            listContainer.innerHTML = `<div style="padding:24px; text-align:center; color:${CONFIG.THEME.STEEL}; font-family:Inter,ui-sans-serif,system-ui,sans-serif; font-size:14px; font-weight:400; line-height:1.55;">No messages found in Mistral Vibe thread.</div>`;
             return;
         }
 
@@ -908,16 +1089,20 @@
 
             if (msg.thoughts) {
                 const thoughtBadge = document.createElement('span');
-                thoughtBadge.style.fontSize = '9px';
-                thoughtBadge.style.color = '#ffb88c';
+                thoughtBadge.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                thoughtBadge.style.fontSize = '11px';
+                thoughtBadge.style.fontWeight = '500';
+                thoughtBadge.style.color = CONFIG.THEME.PRIMARY;
                 thoughtBadge.textContent = '🧠 Thought Captured';
                 badgeGroup.appendChild(thoughtBadge);
             }
 
             if (msg.stepperPlan) {
                 const planBadge = document.createElement('span');
-                planBadge.style.fontSize = '9px';
-                planBadge.style.color = '#6ee7b7';
+                planBadge.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                planBadge.style.fontSize = '11px';
+                planBadge.style.fontWeight = '500';
+                planBadge.style.color = CONFIG.THEME.SUNSHINE_700;
                 planBadge.textContent = `📋 ${msg.stepperPlan.length} Steps`;
                 badgeGroup.appendChild(planBadge);
             }
@@ -943,13 +1128,20 @@
                 // Render Thoughts if present
                 if (msg.thoughts) {
                     const tHeader = document.createElement('div');
-                    tHeader.style.fontWeight = '700';
-                    tHeader.style.color = '#ffb88c';
+                    tHeader.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                    tHeader.style.fontSize = '14px';
+                    tHeader.style.fontWight = '500';
+                    tHeader.style.lineHeight = '1.30';
+                    tHeader.style.color = CONFIG.THEME.PRIMARY;
                     tHeader.textContent = '🧠 Thought Process:';
                     accordion.appendChild(tHeader);
 
                     const tBody = document.createElement('div');
-                    tBody.style.color = '#9ca3af';
+                    tBody.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                    tBody.style.fontSize = '14px';
+                    tBody.style.fontWeight = '400';
+                    tBody.style.lineHeight = '1.55';
+                    tBody.style.color = CONFIG.THEME.STEEL;
                     tBody.style.fontStyle = 'italic';
                     tBody.style.maxHeight = '100px';
                     tBody.style.overflowY = 'auto';
@@ -960,23 +1152,33 @@
                 // Render Block 1: Research Execution Stepper
                 if (msg.stepperPlan && msg.stepperPlan.length > 0) {
                     const sHeader = document.createElement('div');
-                    sHeader.style.fontWeight = '700';
-                    sHeader.style.color = '#6ee7b7';
+                    sHeader.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                    sHeader.style.fontSize = '14px';
+                    sHeader.style.fontWeight = '500';
+                    sHeader.style.lineHeight = '1.30';
+                    sHeader.style.color = CONFIG.THEME.SUNSHINE_700;
                     sHeader.textContent = `📋 Research Execution Stepper (${msg.stepperPlan.length} Phases):`;
                     accordion.appendChild(sHeader);
 
                     msg.stepperPlan.forEach(step => {
                         const stepEl = document.createElement('div');
-                        stepEl.style.color = '#e5e7eb';
-                        stepEl.style.fontWeight = '600';
+                        stepEl.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                        stepEl.style.fontSize = '14px';
+                        stepEl.style.fontWeight = '500';
+                        stepEl.style.lineHeight = '1.30';
+                        stepEl.style.color = CONFIG.THEME.INK;
                         stepEl.textContent = `• ${step.title}`;
                         accordion.appendChild(stepEl);
 
-                        step.items.forEach(item => {
+                        step.items.forEach(itemText => {
                             const subItem = document.createElement('div');
-                            subItem.style.color = '#9ca3af';
+                            subItem.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                            subItem.style.fontSize = '14px';
+                            subItem.style.fontWeight = '400';
+                            subItem.style.lineHeight = '1.55';
+                            subItem.style.color = CONFIG.THEME.STEEL;
                             subItem.style.paddingLeft = '12px';
-                            subItem.textContent = `-> ${item}`;
+                            subItem.textContent = `-> ${itemText}`;
                             accordion.appendChild(subItem);
                         });
                     });
@@ -985,14 +1187,21 @@
                 // Render Block 2: Discovered Sources
                 if (msg.reportData && msg.reportData.sources.length > 0) {
                     const srcHeader = document.createElement('div');
-                    srcHeader.style.fontWeight = '700';
-                    srcHeader.style.color = 'rgba(255,255,255,0.8)';
+                    srcHeader.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                    srcHeader.style.fontSize = '14px';
+                    srcHeader.style.fontWeight = '500';
+                    srcHeader.style.lineHeight = '1.30';
+                    srcHeader.style.color = CONFIG.THEME.INK;
                     srcHeader.textContent = `📚 Research Sources (${msg.reportData.sources.length}):`;
                     accordion.appendChild(srcHeader);
 
                     msg.reportData.sources.slice(0, 8).forEach(src => {
                         const linkEl = document.createElement('a');
-                        linkEl.style.color = '#93c5fd';
+                        linkEl.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                        linkEl.style.fontSize = '14px';
+                        linkEl.style.fontWeight = '400';
+                        linkEl.style.lineHeight = '1.55';
+                        linkEl.style.color = CONFIG.THEME.LINK;
                         linkEl.style.textDecoration = 'none';
                         linkEl.href = src.href;
                         linkEl.target = '_blank';
@@ -1003,7 +1212,11 @@
 
                 // Render Full Report Markdown Text
                 const fullText = document.createElement('div');
-                fullText.style.color = '#e5e7eb';
+                fullText.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+                fullText.style.fontSize = '14px';
+                fullText.style.fontWeight = '400';
+                fullText.style.lineHeight = '1.55';
+                fullText.style.color = CONFIG.THEME.INK_TINT;
                 fullText.style.whiteSpace = 'pre-wrap';
                 fullText.style.maxHeight = '200px';
                 fullText.style.overflowY = 'auto';
@@ -1063,7 +1276,7 @@
         sidebar.innerHTML = `
             <div class="ns-sidebar-header">
                 <div class="ns-sidebar-title">🔥 Mistral Vibe Exporter</div>
-                
+
                 <div class="ns-input-group">
                     <span class="ns-label">Chat Title</span>
                     <input type="text" id="ns-title-input" class="ns-input" placeholder="Enter session title...">
@@ -1142,7 +1355,7 @@
 
     function init() {
         console.log('🔥 Noosphere Reflect — Mistral Vibe Native Exporter Initialized');
-        injectStyles();
+        ThemeManager.init(); // Detects theme, sets CONFIG.THEME, injects styles
         createSidebarUI();
     }
 
