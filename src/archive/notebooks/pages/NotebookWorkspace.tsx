@@ -1,13 +1,14 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Notebook, NotebookSource, NotebookNote, NotebookChat, ChatMessage, ChatMessageType } from '../../../types';
+import { ConversationArtifact, Notebook, NotebookSource, NotebookNote, NotebookChat, ChatMessage, ChatMessageType } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { AddSourceModal } from '../components/AddSourceModal';
-import { NoteEditorModal } from '../components/NoteEditorModal';
-import { SourceViewerModal } from '../components/SourceViewerModal';
 import { CustomizeNotebookModal } from '../components/CustomizeNotebookModal';
 import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
+import { DocumentBuilder } from '../../../components/chat-ui/DocumentBuilder';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
+import { safeDecode } from '../../../components/ArtifactReader/utils';
 
 // Modern SVG Sidebar panel layout icons matching image.png / Gemini UI
 const SidebarLeftIcon = () => (
@@ -38,13 +39,16 @@ export const NotebookWorkspace: React.FC = () => {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
 
-    // Modals
+    // Modals & Panels
     const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
-    const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
-    const [isSourceViewerOpen, setIsSourceViewerOpen] = useState(false);
     const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
     const [activeNoteToEdit, setActiveNoteToEdit] = useState<NotebookNote | null>(null);
-    const [activeSourceToView, setActiveSourceToView] = useState<NotebookSource | null>(null);
+
+    // Document Builder & Artifact Reader drawer state
+    const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
+    const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
+    const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const [readerWidth, setReaderWidth] = useState<number>(50);
 
     // Editing message state
     const [editingMsgIdx, setEditingMsgIdx] = useState<number | null>(null);
@@ -328,8 +332,11 @@ export const NotebookWorkspace: React.FC = () => {
         });
     };
 
-    const handleSaveNote = async (title: string, content: string) => {
+    const handleSaveDocument = async (artifact: ConversationArtifact) => {
         if (!notebook) return;
+
+        const noteTitle = artifact.description || artifact.fileName.replace(/\.md$/, '');
+        const noteContent = safeDecode(artifact.fileData);
 
         let updatedNotes: NotebookNote[] = [];
 
@@ -337,15 +344,15 @@ export const NotebookWorkspace: React.FC = () => {
             // Edit mode
             updatedNotes = (notebook.notes || []).map(n =>
                 n.id === activeNoteToEdit.id
-                    ? { ...n, title, content, updatedAt: new Date().toISOString() }
+                    ? { ...n, title: noteTitle, content: noteContent, updatedAt: new Date().toISOString() }
                     : n
             );
         } else {
             // Create mode
             const newNote: NotebookNote = {
                 id: crypto.randomUUID(),
-                title,
-                content,
+                title: noteTitle,
+                content: noteContent,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -361,6 +368,7 @@ export const NotebookWorkspace: React.FC = () => {
         await storageService.saveNotebook(updated);
         setNotebook(updated);
         setActiveNoteToEdit(null);
+        setShowDocumentBuilder(false);
     };
 
     const handleRenameNote = async (noteId: string, oldTitle: string) => {
@@ -754,8 +762,24 @@ export const NotebookWorkspace: React.FC = () => {
                                                 : 'bg-[#1e1f20] border-[#2d2f31] hover:bg-white/[0.02]'
                                         }`}
                                         onClick={() => {
-                                            setActiveSourceToView(source);
-                                            setIsSourceViewerOpen(true);
+                                            setShowDocumentBuilder(false);
+                                            let mime = source.mimeType;
+                                            if (!mime) {
+                                                if (source.type === 'url') mime = 'text/markdown';
+                                                else if (source.title.toLowerCase().endsWith('.md')) mime = 'text/markdown';
+                                                else mime = 'text/plain';
+                                            }
+                                            const fileName = source.title.includes('.') ? source.title : `${source.title}.md`;
+                                            const artifact: ConversationArtifact = {
+                                                id: source.id,
+                                                fileName: fileName,
+                                                fileSize: source.fileSize || source.content.length,
+                                                mimeType: mime,
+                                                fileData: source.content,
+                                                description: source.url || source.title,
+                                                uploadedAt: source.createdAt
+                                            };
+                                            setViewingArtifact(artifact);
                                         }}
                                     >
                                         <input
@@ -1330,8 +1354,9 @@ export const NotebookWorkspace: React.FC = () => {
                                     key={note.id}
                                     className="group p-4 bg-[#131314] hover:bg-[#202124] border border-[#2d2f31] hover:border-gray-600 rounded-2xl cursor-pointer transition-all flex flex-col gap-2 relative"
                                     onClick={() => {
+                                        setViewingArtifact(null);
                                         setActiveNoteToEdit(note);
-                                        setIsNoteEditorOpen(true);
+                                        setShowDocumentBuilder(true);
                                     }}
                                 >
                                     <div className="flex justify-between items-start relative">
@@ -1358,8 +1383,9 @@ export const NotebookWorkspace: React.FC = () => {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setOpenNoteMenuId(null);
+                                                            setViewingArtifact(null);
                                                             setActiveNoteToEdit(note);
-                                                            setIsNoteEditorOpen(true);
+                                                            setShowDocumentBuilder(true);
                                                         }}
                                                         className="w-full text-left px-3 py-1.5 hover:bg-white/5 text-xs text-gray-300 hover:text-white font-medium"
                                                     >
@@ -1409,8 +1435,9 @@ export const NotebookWorkspace: React.FC = () => {
                         <div className="p-5 border-t border-[#2d2f31] bg-[#1e1f20]">
                             <button
                                 onClick={() => {
+                                    setViewingArtifact(null);
                                     setActiveNoteToEdit(null);
-                                    setIsNoteEditorOpen(true);
+                                    setShowDocumentBuilder(true);
                                 }}
                                 className="w-full py-3.5 bg-white hover:bg-gray-100 text-gray-900 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-[0_4px_12px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2"
                             >
@@ -1428,23 +1455,27 @@ export const NotebookWorkspace: React.FC = () => {
                 onAddSource={handleAddSource}
             />
 
-            <NoteEditorModal
-                isOpen={isNoteEditorOpen}
-                onClose={() => {
-                    setIsNoteEditorOpen(false);
-                    setActiveNoteToEdit(null);
-                }}
-                onSave={handleSaveNote}
-                note={activeNoteToEdit}
-            />
+            {showDocumentBuilder && notebook && (
+                <DocumentBuilder
+                    sessionId={notebook.id}
+                    messages={[]}
+                    onClose={() => {
+                        setShowDocumentBuilder(false);
+                        setActiveNoteToEdit(null);
+                    }}
+                    onSave={(artifact) => handleSaveDocument(artifact)}
+                    width={docBuilderWidth}
+                    onWidthChange={setDocBuilderWidth}
+                    initialTitle={activeNoteToEdit?.title || ''}
+                    initialContent={activeNoteToEdit?.content || ''}
+                />
+            )}
 
-            <SourceViewerModal
-                isOpen={isSourceViewerOpen}
-                onClose={() => {
-                    setIsSourceViewerOpen(false);
-                    setActiveSourceToView(null);
-                }}
-                source={activeSourceToView}
+            <ArtifactReaderLayer
+                artifact={viewingArtifact}
+                onClose={() => setViewingArtifact(null)}
+                width={readerWidth}
+                onWidthChange={setReaderWidth}
             />
 
             <CustomizeNotebookModal
