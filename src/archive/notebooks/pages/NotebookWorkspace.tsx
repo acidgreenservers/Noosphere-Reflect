@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ConversationArtifact, Notebook, NotebookSource, NotebookNote, NotebookChat, ChatMessage, ChatMessageType } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { AddSourceModal } from '../components/AddSourceModal';
@@ -35,6 +35,7 @@ const SidebarRightIcon = () => (
 export const NotebookWorkspace: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     const [notebook, setNotebook] = useState<Notebook | null>(null);
     const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
@@ -118,10 +119,15 @@ export const NotebookWorkspace: React.FC = () => {
             setNotebook(data);
             setTitleInput(data.metadata.title);
 
-            // Auto select first chat if any exists, otherwise leave it empty
+            // Select requested chatId from query parameter or auto select first chat
+            const requestedChatId = searchParams.get('chatId');
             let selectedChatId = activeChatId;
+
             if (data.chats && data.chats.length > 0) {
-                if (!activeChatId || !data.chats.some(c => c.id === activeChatId)) {
+                if (requestedChatId && data.chats.some(c => c.id === requestedChatId)) {
+                    selectedChatId = requestedChatId;
+                    setActiveChatId(selectedChatId);
+                } else if (!activeChatId || !data.chats.some(c => c.id === activeChatId)) {
                     selectedChatId = data.chats[0].id;
                     setActiveChatId(selectedChatId);
                 }
@@ -872,13 +878,13 @@ export const NotebookWorkspace: React.FC = () => {
                     {/* Main Middle Header - Thin separated border bar matching layout */}
                     <div className="h-[56px] px-6 border-b border-[#2d2f31] flex items-center justify-between shrink-0 bg-[#1e1f20] relative">
                         <div className="flex items-center gap-3 min-w-0">
-                            {/* Back to notebooks dashboard */}
+                            {/* Navigation to Notebook Chats list */}
                             <button
-                                onClick={() => navigate('/notebooks')}
+                                onClick={() => navigate(`/notebooks/${id}/chats`)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2d2f31] hover:bg-[#3d3f42] text-gray-300 hover:text-white transition-all text-xs font-bold shrink-0 border border-[#3d4043]"
-                                title="Back to Notebooks List"
+                                title="Notebook Chats List"
                             >
-                                ⬅️ Notebooks
+                                ⬅️ Notebook Chats
                             </button>
 
                             <div className="flex flex-col min-w-0">
