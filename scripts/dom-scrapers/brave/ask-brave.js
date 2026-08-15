@@ -21,6 +21,7 @@
      *   - Full recursive DOM-to-Markdown parser preserving formatting.
      *   - Automatic extraction of Sidebar Rounds / TOC into collapsible accordions.
      *   - Polished Footer Layout: Cancel | Format Select | Copy | Save.
+     *   - DESIGN.md stealth dark aesthetic (charcoal-black + Brave orange).
      *
      * Namespace: ns-brave-sidebar
      * ============================================================
@@ -56,19 +57,47 @@
             NOISE_ELEMENTS: 'button.inline-citation, div.copy-button, svg, .user-message-actions'
         },
 
+        // Ask Brave Design Tokens (from DESIGN.md — stealth dark aesthetic)
         THEME: {
-            PRIMARY: '#fb542b',
-            PRIMARY_HOVER: '#e04a22',
-            PURPLE: '#8b5cf6',
-            BG_GLASS: 'rgba(17, 24, 39, 0.95)',
-            BORDER: 'rgba(255, 255, 255, 0.12)'
+            CANVAS: '#141517',
+            CANVAS_SUBTLE: '#18191c',
+            SURFACE_SIDEBAR: '#101114',
+            SURFACE_CARD: '#1e2025',
+            SURFACE_CARD_SUBTLE: '#181a1e',
+            SURFACE_DRAWER: '#181a1f',
+            SURFACE_INPUT: '#272a30',
+            SURFACE_INPUT_FOCUSED: '#2f333b',
+            SURFACE_PILL: '#2a2d35',
+            SURFACE_PILL_HOVER: '#343842',
+            BRAND_ORANGE: '#fb542b',
+            BRAND_ORANGE_DEEP: '#de3e16',
+            ACCENT_BLUE: '#4c6ef5',
+            ACCENT_BLUE_SUBTLE: 'rgba(76, 110, 245, 0.18)',
+            ACCENT_BLUE_PILL: '#2b3452',
+            ACCENT_PURPLE_PILL: '#352e4d',
+            BUTTON_PRIMARY_LIGHT: '#cbd5e1',
+            BUTTON_PRIMARY_LIGHT_ACTIVE: '#ffffff',
+            TEXT_PRIMARY: '#f1f3f5',
+            TEXT_SECONDARY: '#a0a6b1',
+            TEXT_MUTED: '#6c727e',
+            TEXT_DIM: '#4e5460',
+            ON_BRAND: '#ffffff',
+            ON_PILL_LIGHT: '#0f172a',
+            LINK: '#748ffc',
+            BORDER_HAIRLINE: 'rgba(255, 255, 255, 0.05)',
+            BORDER_SUBTLE: 'rgba(255, 255, 255, 0.09)',
+            BORDER_STRONG: 'rgba(255, 255, 255, 0.16)',
+            BORDER_FOCUS: '#4c6ef5',
+            SHADOW_CARD: '0 4px 16px rgba(0, 0, 0, 0.25)',
+            SHADOW_FLOATING: '0 8px 30px rgba(0, 0, 0, 0.40)',
+            SHADOW_DRAWER: '0 12px 40px rgba(0, 0, 0, 0.50)'
         }
     };
 
     const STATE = {
         messages: [],
         selectedIds: new Set(),
-        expandedId: null, // Single-expanded turn focus
+        expandedId: null,
         exportFormat: 'markdown'
     };
 
@@ -85,15 +114,17 @@
                 position: 'fixed',
                 top: '20px',
                 right: '20px',
-                background: success ? CONFIG.THEME.PRIMARY : '#dc2626',
-                color: 'white',
-                padding: '12px 20px',
-                borderRadius: '8px',
+                background: success ? CONFIG.THEME.BRAND_ORANGE : '#dc2626',
+                color: CONFIG.THEME.ON_BRAND,
+                padding: '10px 20px',
+                borderRadius: '9999px',
                 zIndex: '200000',
-                fontSize: '14px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
-                transition: 'opacity 0.3s ease',
-                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+                fontSize: '13px',
+                fontWeight: '500',
+                lineHeight: '1.45',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                boxShadow: CONFIG.THEME.SHADOW_FLOATING,
+                transition: 'opacity 0.3s ease'
             });
 
             document.body.appendChild(notification);
@@ -425,8 +456,8 @@
                     id: index,
                     role: 'research',
                     text: resData.answers.join('\n\n') || 'Deep Research Output',
-                    preview: Object.keys(resData.stats).length > 0 
-                        ? Object.entries(resData.stats).map(([k, v]) => `${v} ${k}`).join(' | ') 
+                    preview: Object.keys(resData.stats).length > 0
+                        ? Object.entries(resData.stats).map(([k, v]) => `${v} ${k}`).join(' | ')
                         : 'Deep Research Output',
                     element: el,
                     augments: [],
@@ -672,6 +703,7 @@
     function injectStyles() {
         if (document.getElementById('noosphere-brave-sidebar-styles')) return;
 
+        const T = CONFIG.THEME;
         const style = document.createElement('style');
         style.id = 'noosphere-brave-sidebar-styles';
         style.textContent = `
@@ -680,16 +712,18 @@
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
                 font-size: 13px !important;
-                font-weight: 600 !important;
-                height: 32px !important;
-                padding: 0 12px !important;
+                font-weight: 500 !important;
+                line-height: 1.45 !important;
+                height: 36px !important;
+                padding: 0 16px !important;
                 gap: 6px !important;
-                border-radius: 16px !important;
+                border-radius: 9999px !important;
                 cursor: pointer !important;
-                color: white !important;
-                background: rgba(255, 255, 255, 0.08) !important;
-                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                color: ${T.TEXT_PRIMARY} !important;
+                background: ${T.SURFACE_PILL} !important;
+                border: 1px solid ${T.BORDER_SUBTLE} !important;
                 transition: all 0.15s ease !important;
                 user-select: none !important;
                 margin-left: 8px !important;
@@ -698,15 +732,18 @@
                 white-space: nowrap !important;
             }
             .ns-brave-header-btn:hover {
-                background: rgba(255, 255, 255, 0.16) !important;
-                border-color: rgba(255, 255, 255, 0.25) !important;
+                background: ${T.SURFACE_PILL_HOVER} !important;
+                border-color: ${T.BORDER_STRONG} !important;
+            }
+            .ns-brave-header-btn:active {
+                transform: scale(98.5%) !important;
             }
 
             #ns-sidebar-overlay {
                 position: fixed;
                 top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.4);
-                backdrop-filter: blur(4px);
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(6px);
                 z-index: 100001;
                 display: none;
                 opacity: 0;
@@ -716,26 +753,25 @@
 
             #ns-sidebar {
                 position: fixed;
-                top: 0; right: -380px;
-                width: 380px;
+                top: 0; right: -400px;
+                width: 400px;
                 height: 100%;
-                background: ${CONFIG.THEME.BG_GLASS};
-                backdrop-filter: blur(20px);
-                border-left: 1px solid ${CONFIG.THEME.BORDER};
-                color: white;
+                background: ${T.SURFACE_DRAWER};
+                border-left: 1px solid ${T.BORDER_SUBTLE};
+                color: ${T.TEXT_PRIMARY};
                 z-index: 100002;
                 transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 display: flex;
                 flex-direction: column;
-                box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                box-shadow: ${T.SHADOW_DRAWER};
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
             #ns-sidebar.active { right: 0; }
 
             .ns-sidebar-header {
-                padding: 18px 20px 14px;
-                background: rgba(255,255,255,0.03);
-                border-bottom: 1px solid ${CONFIG.THEME.BORDER};
+                padding: 20px 24px 16px;
+                background: ${T.SURFACE_SIDEBAR};
+                border-bottom: 1px solid ${T.BORDER_HAIRLINE};
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
@@ -743,91 +779,110 @@
             }
 
             .ns-sidebar-title {
-                font-size: 16px;
-                font-weight: 700;
+                font-family: Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 18px;
+                font-weight: 600;
+                line-height: 1.35;
                 display: flex;
                 align-items: center;
                 gap: 8px;
                 margin: 0;
+                color: ${T.TEXT_PRIMARY};
             }
 
             .ns-input-group {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
+                gap: 6px;
             }
 
             .ns-label {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 11px;
-                font-weight: 600;
-                color: rgba(255, 255, 255, 0.6);
+                font-weight: 400;
+                line-height: 1.35;
+                color: ${T.TEXT_MUTED};
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
 
             .ns-input {
                 width: 100%;
-                background: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 8px;
-                padding: 8px 10px;
-                color: white;
-                font-size: 12px;
+                background: ${T.SURFACE_INPUT};
+                border: 1px solid ${T.BORDER_SUBTLE};
+                border-radius: 20px;
+                padding: 10px 14px;
+                color: ${T.TEXT_PRIMARY};
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 15px;
+                font-weight: 400;
+                line-height: 1.60;
                 outline: none;
                 box-sizing: border-box;
+                transition: border-color 0.15s ease, background 0.15s ease;
             }
-            .ns-input:focus { border-color: ${CONFIG.THEME.PRIMARY}; }
+            .ns-input:focus {
+                background: ${T.SURFACE_INPUT_FOCUSED};
+                border-color: ${T.BORDER_FOCUS};
+            }
 
             .ns-batch-controls {
                 display: grid;
                 grid-template-columns: repeat(4, 1fr);
-                gap: 6px;
+                gap: 8px;
             }
 
             .ns-batch-btn {
-                padding: 5px;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                color: rgba(255, 255, 255, 0.7);
-                font-size: 11px;
-                font-weight: 600;
+                padding: 8px;
+                background: ${T.SURFACE_PILL};
+                border: 1px solid ${T.BORDER_SUBTLE};
+                border-radius: 9999px;
+                color: ${T.TEXT_SECONDARY};
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 13px;
+                font-weight: 500;
+                line-height: 1.45;
                 cursor: pointer;
                 text-align: center;
-                transition: all 0.2s ease;
+                transition: all 0.15s ease;
             }
-            .ns-batch-btn:hover { background: rgba(255, 255, 255, 0.12); color: white; }
+            .ns-batch-btn:hover {
+                background: ${T.SURFACE_PILL_HOVER};
+                color: ${T.TEXT_PRIMARY};
+                border-color: ${T.BORDER_STRONG};
+            }
 
             .ns-msg-list {
                 flex: 1;
                 overflow-y: auto;
-                padding: 10px;
+                padding: 16px;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: 10px;
             }
 
             .ns-msg-card {
-                background: rgba(255, 255, 255, 0.03) !important;
-                border: 1px solid rgba(255, 255, 255, 0.06) !important;
-                border-radius: 8px !important;
+                background: ${T.SURFACE_CARD} !important;
+                border: 1px solid ${T.BORDER_HAIRLINE} !important;
+                border-radius: 16px !important;
                 overflow: hidden !important;
                 flex-shrink: 0 !important;
                 height: auto !important;
                 min-height: 52px !important;
                 max-height: none !important;
-                transition: all 0.2s ease;
+                transition: all 0.15s ease;
                 box-sizing: border-box !important;
+                box-shadow: ${T.SHADOW_CARD};
             }
             .ns-msg-card:hover {
-                border-color: rgba(255, 255, 255, 0.18) !important;
-                background: rgba(255, 255, 255, 0.06) !important;
+                border-color: ${T.BORDER_SUBTLE} !important;
+                box-shadow: ${T.SHADOW_FLOATING} !important;
             }
 
             .ns-msg-item {
                 display: flex !important;
                 align-items: flex-start !important;
-                padding: 10px 12px !important;
+                padding: 12px 16px !important;
                 gap: 12px !important;
                 cursor: pointer !important;
                 box-sizing: border-box !important;
@@ -840,21 +895,22 @@
                 -webkit-appearance: none !important;
                 width: 18px !important;
                 height: 18px !important;
-                border: 2px solid ${CONFIG.THEME.PRIMARY} !important;
+                border: 2px solid ${T.BRAND_ORANGE} !important;
                 border-radius: 4px !important;
                 cursor: pointer !important;
-                background: rgba(0,0,0,0.3) !important;
+                background: ${T.SURFACE_CARD} !important;
                 position: relative !important;
                 flex-shrink: 0 !important;
                 margin-top: 2px !important;
+                transition: all 0.15s ease !important;
             }
             .ns-msg-check:checked {
-                background: ${CONFIG.THEME.PRIMARY} !important;
+                background: ${T.BRAND_ORANGE} !important;
             }
             .ns-msg-check:checked::after {
                 content: '✓' !important;
                 position: absolute !important;
-                color: white !important;
+                color: ${T.ON_BRAND} !important;
                 font-size: 12px !important;
                 font-weight: bold !important;
                 top: 50% !important;
@@ -877,34 +933,51 @@
             }
 
             .ns-role-badge {
-                font-size: 9px !important;
-                font-weight: 700 !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 11px !important;
+                font-weight: 400;
+                line-height: 1.35;
                 text-transform: uppercase !important;
-                padding: 2px 6px !important;
+                padding: 4px 8px !important;
                 border-radius: 4px !important;
                 display: inline-flex !important;
                 align-items: center !important;
                 gap: 4px !important;
             }
-            .ns-role-user { background: rgba(59, 130, 246, 0.25) !important; color: #93c5fd !important; }
-            .ns-role-ai { background: rgba(251, 84, 43, 0.25) !important; color: #fca5a5 !important; }
-            .ns-role-augment { background: rgba(139, 92, 246, 0.25) !important; color: #c4b5fd !important; }
-            .ns-role-research { background: rgba(16, 185, 129, 0.25) !important; color: #6ee7b7 !important; }
+            .ns-role-user {
+                background: ${T.ACCENT_BLUE_SUBTLE} !important;
+                color: ${T.ACCENT_BLUE} !important;
+            }
+            .ns-role-ai {
+                background: rgba(251, 84, 43, 0.18) !important;
+                color: ${T.BRAND_ORANGE} !important;
+            }
+            .ns-role-augment {
+                background: ${T.ACCENT_PURPLE_PILL} !important;
+                color: #a78bfa !important;
+            }
+            .ns-role-research {
+                background: rgba(16, 185, 129, 0.18) !important;
+                color: #6ee7b7 !important;
+            }
 
             .ns-aug-badge {
-                font-size: 9px !important;
-                font-weight: 700 !important;
-                padding: 1px 6px !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 11px !important;
+                font-weight: 400;
+                line-height: 1.35;
+                padding: 4px 8px !important;
                 border-radius: 4px !important;
-                background: rgba(139, 92, 246, 0.2) !important;
-                border: 1px solid rgba(139, 92, 246, 0.3) !important;
-                color: #c4b5fd !important;
+                background: ${T.ACCENT_PURPLE_PILL} !important;
+                color: #a78bfa !important;
             }
 
             .ns-msg-preview {
-                font-size: 12px !important;
-                line-height: 1.4 !important;
-                color: rgba(255, 255, 255, 0.7) !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 13px !important;
+                font-weight: 400 !important;
+                line-height: 1.50 !important;
+                color: ${T.TEXT_SECONDARY} !important;
                 display: -webkit-box !important;
                 -webkit-line-clamp: 2 !important;
                 -webkit-box-orient: vertical !important;
@@ -914,100 +987,115 @@
 
             /* Scrollable Accordion Content */
             .ns-msg-accordion {
-                background: rgba(0, 0, 0, 0.3) !important;
-                border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-                padding: 10px 12px 12px 42px !important;
+                background: ${T.SURFACE_CARD_SUBTLE} !important;
+                border-top: 1px solid ${T.BORDER_HAIRLINE} !important;
+                padding: 12px 16px 16px 46px !important;
                 display: flex !important;
                 flex-direction: column !important;
                 gap: 8px !important;
-                font-size: 12px !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 13px !important;
+                font-weight: 400 !important;
+                line-height: 1.50 !important;
             }
 
             .ns-msg-fulltext {
-                color: #e5e7eb;
+                color: ${T.TEXT_PRIMARY};
                 white-space: pre-wrap;
                 max-height: 220px;
                 overflow-y: auto;
-                line-height: 1.4;
-                font-size: 12px;
+                line-height: 1.50;
+                font-size: 13px;
                 padding-right: 4px;
             }
 
             .ns-aug-card-link {
-                color: #93c5fd;
+                color: ${T.LINK};
                 text-decoration: none;
                 display: block;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                font-size: 13px;
+                line-height: 1.50;
             }
             .ns-aug-card-link:hover { text-decoration: underline; }
 
             .ns-aug-desc {
-                color: rgba(255, 255, 255, 0.5);
-                font-size: 10px;
+                color: ${T.TEXT_MUTED};
+                font-size: 12px;
+                line-height: 1.40;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
 
             .ns-sidebar-footer {
-                padding: 14px 16px;
-                background: rgba(255,255,255,0.03);
-                border-top: 1px solid ${CONFIG.THEME.BORDER};
+                padding: 16px 20px;
+                background: ${T.SURFACE_SIDEBAR};
+                border-top: 1px solid ${T.BORDER_HAIRLINE};
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 flex-shrink: 0;
             }
 
             .ns-btn {
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 8px;
-                padding: 8px 10px;
-                background: rgba(255,255,255,0.05);
-                color: white;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 13px;
+                font-weight: 500;
+                line-height: 1.45;
+                border-radius: 9999px;
+                padding: 10px 16px;
                 cursor: pointer;
-                font-size: 11px;
-                font-weight: 600;
                 text-align: center;
-                transition: all 0.2s ease;
+                transition: all 0.15s ease;
                 white-space: nowrap;
+                border: none;
+                outline: none;
             }
-            .ns-btn:hover { background: rgba(255,255,255,0.12); }
 
             .ns-btn-cancel {
-                background: rgba(239, 68, 68, 0.15);
-                border-color: rgba(239, 68, 68, 0.3);
-                color: #fca5a5;
+                background: transparent;
+                border: 1px solid ${T.BORDER_SUBTLE};
+                color: ${T.TEXT_SECONDARY};
                 flex: 0.8;
             }
-            .ns-btn-cancel:hover { background: rgba(239, 68, 68, 0.25); }
+            .ns-btn-cancel:hover {
+                background: ${T.SURFACE_PILL};
+                color: ${T.TEXT_PRIMARY};
+            }
 
             .ns-format-select {
                 flex: 1.2;
-                background: rgba(255, 255, 255, 0.06);
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 8px;
-                color: white;
-                padding: 8px 6px;
+                background: ${T.SURFACE_INPUT};
+                border: 1px solid ${T.BORDER_SUBTLE};
+                border-radius: 9999px;
+                color: ${T.TEXT_PRIMARY};
+                padding: 10px 10px;
                 outline: none;
-                font-size: 11px;
-                font-weight: 600;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 12px;
+                font-weight: 400;
+                line-height: 1.40;
                 cursor: pointer;
                 text-align: center;
             }
-            .ns-format-select option { background: #111827; color: white; }
-
-            .ns-btn-copy { flex: 1; }
-
-            .ns-btn-primary {
-                flex: 1;
-                background: rgba(251, 84, 43, 0.2);
-                border-color: rgba(251, 84, 43, 0.35);
-                color: ${CONFIG.THEME.PRIMARY};
+            .ns-format-select option {
+                background: ${T.SURFACE_CARD};
+                color: ${T.TEXT_PRIMARY};
             }
-            .ns-btn-primary:hover { background: rgba(251, 84, 43, 0.3); }
+
+            .ns-btn-copy {
+                flex: 1;
+                background: transparent;
+                border: 1px solid ${T.BORDER_SUBTLE};
+                color: ${T.TEXT_PRIMARY};
+            }
+            .ns-btn-copy:hover {
+                background: ${T.SURFACE_PILL};
+            }
+
         `;
         document.head.appendChild(style);
     }
@@ -1018,7 +1106,7 @@
         listContainer.innerHTML = '';
 
         if (STATE.messages.length === 0) {
-            listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:rgba(255,255,255,0.5); font-size:12px;">No chat turns found.</div>';
+            listContainer.innerHTML = `<div style="padding:24px; text-align:center; color:${CONFIG.THEME.TEXT_MUTED}; font-family:-apple-system,system-ui,sans-serif; font-size:13px; font-weight:400; line-height:1.50;">No chat turns found.</div>`;
             return;
         }
 
@@ -1091,8 +1179,11 @@
                     msg.augments.forEach(aug => {
                         if (aug.searchQuery) {
                             const qLabel = document.createElement('div');
-                            qLabel.style.fontWeight = '700';
-                            qLabel.style.color = 'rgba(255,255,255,0.8)';
+                            qLabel.style.fontFamily = '-apple-system, system-ui, sans-serif';
+                            qLabel.style.fontSize = '13px';
+                            qLabel.style.fontWeight = '600';
+                            qLabel.style.lineHeight = '1.40';
+                            qLabel.style.color = CONFIG.THEME.TEXT_PRIMARY;
                             qLabel.textContent = `Search Query: "${aug.searchQuery}"`;
                             accordion.appendChild(qLabel);
                         }
@@ -1121,7 +1212,10 @@
 
                     if (Object.keys(res.stats).length > 0) {
                         const statsHeader = document.createElement('div');
-                        statsHeader.style.fontWeight = '700';
+                        statsHeader.style.fontFamily = '-apple-system, system-ui, sans-serif';
+                        statsHeader.style.fontSize = '13px';
+                        statsHeader.style.fontWeight = '600';
+                        statsHeader.style.lineHeight = '1.20';
                         statsHeader.style.color = '#6ee7b7';
                         statsHeader.textContent = '📊 Research Stats: ' + Object.entries(res.stats).map(([k, v]) => `${v} ${k}`).join(' | ');
                         accordion.appendChild(statsHeader);
@@ -1129,8 +1223,11 @@
 
                     if (res.queries.length > 0) {
                         const qHeader = document.createElement('div');
-                        qHeader.style.fontWeight = '700';
-                        qHeader.style.color = 'rgba(255,255,255,0.8)';
+                        qHeader.style.fontFamily = '-apple-system, system-ui, sans-serif';
+                        qHeader.style.fontSize = '13px';
+                        qHeader.style.fontWeight = '600';
+                        qHeader.style.lineHeight = '1.40';
+                        qHeader.style.color = CONFIG.THEME.TEXT_PRIMARY;
                         qHeader.textContent = `📋 Queries Issued (${res.queries.length}):`;
                         accordion.appendChild(qHeader);
 
@@ -1144,8 +1241,11 @@
 
                     if (res.sources.length > 0) {
                         const sHeader = document.createElement('div');
-                        sHeader.style.fontWeight = '700';
-                        sHeader.style.color = 'rgba(255,255,255,0.8)';
+                        sHeader.style.fontFamily = '-apple-system, system-ui, sans-serif';
+                        sHeader.style.fontSize = '13px';
+                        sHeader.style.fontWeight = '600';
+                        sHeader.style.lineHeight = '1.40';
+                        sHeader.style.color = CONFIG.THEME.TEXT_PRIMARY;
                         sHeader.textContent = `📚 Examined Sources (${res.sources.length}):`;
                         accordion.appendChild(sHeader);
 
@@ -1250,7 +1350,6 @@
                     <option value="json">JSON (.json)</option>
                 </select>
                 <button class="ns-btn ns-btn-copy" id="ns-btn-copy">📋 Copy</button>
-                <button class="ns-btn ns-btn-primary" id="ns-btn-download">⬇️ Save</button>
             </div>
         `;
 
@@ -1297,7 +1396,6 @@
         };
 
         document.getElementById('ns-btn-copy').onclick = () => ExportService.executeCopy();
-        document.getElementById('ns-btn-download').onclick = () => ExportService.executeDownload();
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeSidebar();

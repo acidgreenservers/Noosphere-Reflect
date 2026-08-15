@@ -46,9 +46,8 @@
             THINKING_STEPS: '[data-timeline-text]',
             THINKING_CONTENT: '.standard-markdown',
             
-            // Menu Injection
-            PLUS_MENU: '[data-cds="Menu"]',
-            PLUS_MENU_FIRST_ITEM: '[role="menuitem"]',
+            // Header Injection
+            WIGGLE_ACTIONS_GROUP: '[data-testid="wiggle-controls-actions-group"]',
             
             // Conversation Title
             CONVERSATION_TITLE: 'header h1, title',
@@ -774,28 +773,34 @@
         const style = document.createElement('style');
         style.id = 'noosphere-claude-styles';
         style.textContent = `
-            /* Export Chat Menu Item */
-            .ns-claude-menu-item {
-                display: flex !important;
+            /* Export Chat Header Button */
+            .ns-claude-header-btn {
+                display: inline-flex !important;
                 align-items: center !important;
-                width: 100% !important;
-                gap: 8px !important;
-                padding: 8px 10px !important;
+                justify-content: center !important;
+                width: 36px !important;
+                height: 36px !important;
+                padding: 0 !important;
                 border-radius: 6px !important;
                 cursor: pointer !important;
-                font-family: StyreneB, Inter, system-ui, sans-serif !important;
-                font-size: 14px !important;
-                font-weight: 500 !important;
-                transition: background-color 0.15s ease !important;
+                color: ${t.text} !important;
+                background: transparent !important;
+                border: none !important;
+                transition: all 0.15s ease !important;
+                user-select: none !important;
+                flex-shrink: 0 !important;
             }
-            .ns-claude-menu-item:hover,
-            .ns-claude-menu-item[data-highlighted] {
-                background: ${t.bg === CONFIG.THEME.SURFACE_DARK ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'} !important;
+            .ns-claude-header-btn:hover {
+                background: ${t.bg === CONFIG.THEME.SURFACE_DARK ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'} !important;
             }
-            .ns-claude-menu-separator {
-                height: 1px !important;
-                background: ${t.border} !important;
-                margin: 4px 8px !important;
+            .ns-claude-header-btn:active {
+                transform: scale(98.5%) !important;
+            }
+            .ns-claude-header-btn svg {
+                width: 18px !important;
+                height: 18px !important;
+                stroke: currentColor !important;
+                fill: none !important;
             }
 
             /* Sidebar Overlay */
@@ -1106,96 +1111,32 @@
                 color: ${t.text};
             }
             .ns-claude-btn-copy { flex: 1; }
-            .ns-claude-btn-primary {
-                flex: 1;
-                background: ${CONFIG.THEME.PRIMARY_CORAL};
-                border-color: ${CONFIG.THEME.PRIMARY_CORAL};
-                color: ${CONFIG.THEME.ON_PRIMARY};
-            }
-            .ns-claude-btn-primary:hover {
-                background: ${CONFIG.THEME.PRIMARY_CORAL_ACTIVE};
-                border-color: ${CONFIG.THEME.PRIMARY_CORAL_ACTIVE};
-            }
         `;
         document.head.appendChild(style);
     }
 
     // ============================================================
-    // Menu Injection
+    // Header Trigger Injection
     // ============================================================
 
-    function injectExportMenuItem() {
-        if (document.getElementById('ns-claude-menu-item')) return;
+    function injectHeaderTrigger() {
+        if (document.getElementById('ns-claude-header-btn')) return;
 
-        const menu = document.querySelector(CONFIG.SELECTORS.PLUS_MENU);
-        if (!menu) return;
+        const actionsGroup = document.querySelector(CONFIG.SELECTORS.WIGGLE_ACTIONS_GROUP);
+        if (!actionsGroup) return;
 
-        const firstItem = menu.querySelector(CONFIG.SELECTORS.PLUS_MENU_FIRST_ITEM);
-        if (!firstItem) return;
-
-        // Create separator
-        const separator = document.createElement('div');
-        separator.setAttribute('data-orientation', 'horizontal');
-        separator.setAttribute('role', 'separator');
-        separator.className = 'ns-claude-menu-separator';
-
-        // Create Export Chat menu item
-        const exportItem = document.createElement('div');
-        exportItem.id = 'ns-claude-menu-item';
-        exportItem.setAttribute('role', 'menuitem');
-        exportItem.className = 'ns-claude-menu-item';
-        exportItem.tabIndex = -1;
-        
-        // Build icon wrapper
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'flex size-icon shrink-0 items-center justify-center';
-        const iconDiv = document.createElement('div');
-        iconDiv.style.cssText = 'width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;';
-        
-        // Create SVG icon
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '20');
-        svg.setAttribute('height', '20');
-        svg.setAttribute('viewBox', '0 0 20 20');
-        svg.setAttribute('fill', 'currentColor');
-        svg.setAttribute('aria-hidden', 'true');
-        svg.style.flexShrink = '0';
-        
-        const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path1.setAttribute('fill-rule', 'evenodd');
-        path1.setAttribute('clip-rule', 'evenodd');
-        path1.setAttribute('d', 'M10 2a1 1 0 011 1v8.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 11.586V3a1 1 0 011-1z');
-        
-        const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path2.setAttribute('fill-rule', 'evenodd');
-        path2.setAttribute('clip-rule', 'evenodd');
-        path2.setAttribute('d', 'M3 15a1 1 0 011 1v1h12v-1a1 1 0 112 0v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 011-1z');
-        
-        svg.appendChild(path1);
-        svg.appendChild(path2);
-        iconDiv.appendChild(svg);
-        iconSpan.appendChild(iconDiv);
-        
-        // Build text wrapper
-        const textSpan = document.createElement('span');
-        textSpan.className = 'min-w-0 flex-1 truncate';
-        const textInner = document.createElement('span');
-        textInner.className = 'block truncate';
-        textInner.textContent = 'Export Chat';
-        textSpan.appendChild(textInner);
-        
-        exportItem.appendChild(iconSpan);
-        exportItem.appendChild(textSpan);
-
-        // Insert separator first, then export item
-        menu.insertBefore(separator, firstItem);
-        menu.insertBefore(exportItem, separator);
-
-        // Add click handler
-        exportItem.onclick = (e) => {
+        const triggerBtn = document.createElement('button');
+        triggerBtn.id = 'ns-claude-header-btn';
+        triggerBtn.className = 'ns-claude-header-btn';
+        triggerBtn.setAttribute('aria-label', 'Export Chat');
+        triggerBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke-miterlimit="10" stroke-linecap="square"><path d="M12 3V15" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/><path d="M4 18L4 20L20 20L20 18" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/></svg>`;
+        triggerBtn.onclick = (e) => {
             e.stopPropagation();
             openSidebar();
         };
+
+        // Insert as first child (to the left of the Files icon)
+        actionsGroup.prepend(triggerBtn);
     }
 
     // ============================================================
@@ -1422,15 +1363,9 @@
         copyBtn.id = 'ns-claude-copy';
         copyBtn.textContent = '📋 Copy';
 
-        const downloadBtn = document.createElement('button');
-        downloadBtn.className = 'ns-claude-btn ns-claude-btn-primary';
-        downloadBtn.id = 'ns-claude-download';
-        downloadBtn.textContent = '⬇️ Save';
-
         footer.appendChild(cancelBtn);
         footer.appendChild(formatSelect);
         footer.appendChild(copyBtn);
-        footer.appendChild(downloadBtn);
 
         // Assemble sidebar
         sidebar.appendChild(header);
@@ -1458,7 +1393,6 @@
         document.getElementById('ns-claude-batch-none').onclick = () => setBatch('none');
 
         document.getElementById('ns-claude-copy').onclick = () => ExportService.executeCopy();
-        document.getElementById('ns-claude-download').onclick = () => ExportService.executeDownload();
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && STATE.sidebarOpen) closeSidebar();
@@ -1469,11 +1403,11 @@
     // Observer for Menu Re-injection
     // ============================================================
 
-    function setupMenuObserver() {
+    function setupHeaderObserver() {
         const observer = new MutationObserver(() => {
-            const menu = document.querySelector(CONFIG.SELECTORS.PLUS_MENU);
-            if (menu && !document.getElementById('ns-claude-menu-item')) {
-                injectExportMenuItem();
+            const actionsGroup = document.querySelector(CONFIG.SELECTORS.WIGGLE_ACTIONS_GROUP);
+            if (actionsGroup && !document.getElementById('ns-claude-header-btn')) {
+                injectHeaderTrigger();
             }
         });
         
@@ -1488,8 +1422,8 @@
         console.log('🦁 Noosphere Reflect — Claude Chat Exporter Initialized');
         ThemeManager.init(); // Detects theme, sets STATE.currentTheme, injects styles
         createSidebarUI();
-        injectExportMenuItem();
-        setupMenuObserver();
+        injectHeaderTrigger();
+        setupHeaderObserver();
     }
 
     if (document.readyState === 'loading') {

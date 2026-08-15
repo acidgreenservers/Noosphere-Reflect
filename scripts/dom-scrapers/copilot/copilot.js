@@ -1024,16 +1024,6 @@
                 background: ${T.SURFACE_PILL};
             }
 
-            .ns-btn-primary {
-                flex: 1;
-                background: ${T.SURFACE_BUTTON_DARK};
-                border: 1px solid ${T.SURFACE_BUTTON_DARK};
-                color: ${T.ON_ACCENT};
-            }
-            .ns-btn-primary:hover {
-                background: ${T.SURFACE_PILL_ACTIVE};
-                border-color: ${T.SURFACE_PILL_ACTIVE};
-            }
         `;
         document.head.appendChild(style);
     }
@@ -1195,7 +1185,6 @@
                     <option value="json">JSON (.json)</option>
                 </select>
                 <button class="ns-btn ns-btn-copy" id="ns-btn-copy">📋 Copy</button>
-                <button class="ns-btn ns-btn-primary" id="ns-btn-download">⬇️ Save</button>
             </div>
         `;
 
@@ -1242,7 +1231,6 @@
         };
 
         document.getElementById('ns-btn-copy').onclick = () => ExportService.executeCopy();
-        document.getElementById('ns-btn-download').onclick = () => ExportService.executeDownload();
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeSidebar();

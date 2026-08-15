@@ -1,42 +1,18 @@
-# Noosphere Reflect - Console Scraper Scripts
+# Noosphere Reflect — Native Sidebar Exporters
 
-Collection of console scripts for exporting chat conversations from AI platforms with full Noosphere metadata.
+Collection of native slide-over drawer scripts for exporting chat conversations from AI platforms with full Noosphere metadata, DESIGN.md-driven theming, and automatic dark/light theme detection.
 
 ## 📋 What's Here?
 
-### New Universal Approach ✨
+Three platform-specific exporter scripts, each featuring a native slide-over sidebar drawer with batch selection, interactive turn accordions, dual export formats (Markdown + JSON), and automatic theme switching that follows the host page's light/dark mode in real time.
 
-**`universal-native-scraper.js`** (Works Everywhere)
-- Works on ALL platforms (Claude, ChatGPT, Gemini, LeChat, Grok)
-- Uses native copy buttons (robust to UI changes)
-- Interactive menu + keyboard shortcuts
-- Export formats: JSON & Markdown
-- Automatic platform detection
+| Script | Platform | Design System | Key Features |
+|--------|----------|---------------|--------------|
+| **`mistral-vibe.js`** | chat.mistral.ai | Warm cream/orange palette | Deep Research extraction, thought expansion, sunset-stripe branding |
+| **`claude-export.js`** | claude.ai | Warm canvas/coral palette | Thinking blocks, Appearance radiogroup detection, Copernicus typography |
+| **`copilot.js`** | copilot.microsoft.com | Fluent 2 alabaster/midnight | Deep Research, attachments, pill geometry, bento card shadows |
 
-### Individual Platform Native Scripts ✨ (NEW v2.2)
-
-**`claude-native-scraper.js`** - Claude-optimized native copy button scraper
-**`chatgpt-native-scraper.js`** - ChatGPT-optimized native copy button scraper
-**`gemini-native-scraper.js`** - Gemini-optimized native copy button scraper (with thinking blocks)
-**`lechat-native-scraper.js`** - LeChat-optimized native copy button scraper
-**`grok-native-scraper.js`** - Grok-optimized native copy button scraper
-
-**Why individual scripts?** For maximum granularity when platforms are stubborn. Each script now features:
-- **Download as MD/JSON** - No more clipboard limits!
-- **Custom Naming Formats** - 6 naming casing options
-- Platform-specific hardcoded selectors (no detection overhead)
-- Full Noosphere metadata integration
-- Interactive menu + keyboard shortcuts
-- Streamlined code for reliability
-
-Use these when you need guaranteed compatibility with a specific platform.
-
-
-
-**Documentation:**
-- `QUICKSTART.md` - 30-second setup guide
-- `NATIVE-BUTTON-STRATEGY.md` - Full technical details
-- `SCRAPER-STRATEGIES.md` - Comparison of all approaches
+Each script ships with a corresponding `DESIGN.md` that defines its visual language — colors, typography, spacing, radii, shadows, and component specs — all token-driven and dual-theme ready.
 
 ---
 
@@ -44,406 +20,416 @@ Use these when you need guaranteed compatibility with a specific platform.
 
 ### 30 Seconds to Export
 
-1. Open chat in Claude, ChatGPT, Gemini, LeChat, or Grok
+1. Open chat on **Mistral Vibe**, **Claude**, or **Copilot**
 2. Press `F12` → go to **Console** tab
-3. Copy entire content of `universal-native-scraper.js`
+3. Copy entire content of the appropriate script (`mistral-vibe.js`, `claude-export.js`, or `copilot.js`)
 4. Paste into console, press Enter
-5. Menu appears bottom-right (📋 Noosphere)
-6. Click copy buttons or use menu options
-7. Export as JSON or Markdown
-8. Paste into Noosphere Reflect
+5. An **Export** button appears in the platform's native header/top bar
+6. Click **Export** → sidebar drawer slides in from the right
+7. Select turns via checkboxes or batch controls (All / User / AI / None)
+8. Choose format (Markdown or JSON) → click **Copy** or **Save**
+9. Paste into Noosphere Reflect or save the downloaded file
 
-**Keyboard Shortcuts:**
-- `Ctrl+Shift+E` → Export all as JSON
-- `Ctrl+Shift+M` → Export all as Markdown
-
-👉 See `QUICKSTART.md` for details
+**Keyboard Shortcut:**
+- `Escape` → Close sidebar
 
 ---
 
-## 🎯 Which Script to Use?
+## 🎨 Design System Architecture
 
-| Need | Script | Why |
-|------|--------|-----|
-| **All platforms, one script** | `universal-native-scraper.js` | Auto-detects, works everywhere |
-| **Maximum platform compatibility** | `[platform]-native-scraper.js` | Hardcoded selectors, no detection |
-| **Markdown export** | `universal-native-scraper.js` or `-native-` | Built-in format |
-| **User controls collection** | `universal-native-scraper.js` or `-native-` | Interactive menus |
-| **Specific platform guaranteed** | `[platform]-native-scraper.js` | No multi-platform overhead |
+Each script implements a `CONFIG.THEMES` object with `light` and `dark` palettes, and a `CONFIG.THEME` reference that gets swapped at runtime by the `ThemeManager`.
+
+### Dual-Theme Token Structure
+
+```javascript
+CONFIG.THEMES = {
+    light: {
+        CANVAS: '#fff8e0',        // Page background
+        SURFACE_CARD: '#ffffff',   // Card surfaces
+        PRIMARY: '#fa520f',        // Brand accent
+        INK: '#1f1f1f',            // Primary text
+        // ... full token set
+    },
+    dark: {
+        CANVAS: '#1c1c1e',
+        SURFACE_CARD: '#151c2b',
+        PRIMARY: '#fa520f',
+        INK: '#f3f4f6',
+        // ... full token set
+    }
+};
+CONFIG.THEME = CONFIG.THEMES.light; // Swapped by ThemeManager
+```
+
+### Per-Script Design Languages
+
+| Script | Light Canvas | Dark Canvas | Primary Accent | Typography | Button Radius | Card Radius |
+|--------|-------------|------------|----------------|------------|---------------|-------------|
+| `mistral-vibe.js` | `#fff8e0` cream | `#1c1c1e` dark gray | `#fa520f` orange | Inter | 8px (`rounded.md`) | 12px (`rounded.lg`) |
+| `claude-export.js` | `#faf9f5` warm canvas | `#181715` dark | `#cc785c` coral | StyreneB / Copernicus | 8px | 12px |
+| `copilot.js` | `#f8f5ee` alabaster | `#0b0f19` midnight | `#3b82f6` blue | Segoe UI Variable | 9999px (pill) | 24px (`rounded.xxl`) |
 
 ---
 
-## 📊 Comparison
+## 🔄 ThemeManager — Automatic Dark/Light Detection
 
-### Universal Native (`universal-native-scraper.js`)
-```
-✅ One script for all platforms
-✅ Interactive menu system
-✅ JSON + Markdown export
-✅ Intercepts native copy buttons
-✅ Auto platform detection
-⚠️ Requires user interaction
-⚠️ Multi-platform detection overhead
+All three scripts share a proven `ThemeManager` architecture that detects the host page's theme and switches the sidebar's palette in real time.
+
+### Detection Strategy (Layered)
+
+The detection layers signals from most reliable to least, ensuring correctness across SPAs that may use dark canvases even in light mode:
+
+1. **Explicit attributes** — `data-theme="dark"` or `.dark` class on `<html>` / `<body>`
+2. **Text color luminance** — Checks computed text color on user messages (light text → dark mode, dark text → light mode). This is the SPA-safe signal that avoids false positives from dark canvas backgrounds.
+3. **Background luminance** — Falls back to checking message bubble / container background colors
+4. **`prefers-color-scheme`** — OS-level media query as last resort
+
+### Live Switching
+
+- **500ms poll** — Lightweight interval checks for theme changes without observing the entire dynamic DOM
+- **`MutationObserver`** — Watches `data-theme` and `class` attributes on `<html>` and `<body>` for immediate detection
+- **Runtime re-injection** — On theme change, removes the old `<style>` element and re-injects CSS with the new palette (template literals bake in colors at injection time)
+- **Re-render** — Calls `renderMessageList()` so inline accordion styles pick up the new palette
+
+### Initialization Pattern
+
+```javascript
+const STATE = {
+    currentTheme: null  // Must be null so first apply() always fires
+};
+
+// In init():
+ThemeManager.init();      // Detect + inject styles FIRST
+createSidebarUI();        // Then build the drawer with correct theme
 ```
 
-### Individual Platform Native (NEW v2.1) (`[platform]-native-scraper.js`)
-```
-✅ Platform-specific optimization
-✅ Interactive menu system
-✅ JSON + Markdown export
-✅ Intercepts native copy buttons
-✅ Hardcoded selectors (no detection)
-✅ Streamlined for reliability
-⚠️ Requires separate script per platform
-⚠️ Requires user interaction
+---
+
+## 🧩 Shared Architecture
+
+### Recursive DOM-to-Markdown Parser
+
+All scripts use the same recursive `renderNodeToMarkdown()` parser that walks the DOM tree and produces clean Markdown:
+
+- **Headings** (h1–h6) → `#` syntax
+- **Bold/italic** → `**bold**` / `*italic*`
+- **Code blocks** → Fenced with language detection (`data-lang` attribute)
+- **Blockquotes** → `>` prefix
+- **Lists** (ordered/unordered) → `1.` / `-` syntax
+- **Tables** → Pipe table format with header separator
+- **Links** → `[label](href)` format
+- **Noise stripping** — Removes buttons, SVGs, copy buttons, and `aria-hidden` elements before parsing
+
+### Noosphere Reflect Frontmatter
+
+Every export includes structured metadata:
+
+```markdown
+---
+> **📝 Title:** Chat Title
+> **🤖 Model:** Mistral Vibe / Claude / Microsoft Copilot
+> **🌐 Exported:** 2026-08-15 10:30:00 AM
+> **🌐 Source:** [Platform](https://...)
+> **🏷️ Tags:** Platform, AI-Chat, Noosphere
+> **📊 Metadata:** 12 Selected Messages | 6 User | 6 AI
+---
+
+# Chat Title
+---
+
+#### Prompt - User 👤:
+...
+
+#### Response - AI 🧠:
+...
+
+###### Noosphere Reflect
+###### ***Meaning Through Memory***
+###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***
 ```
 
+### Native Header Trigger Injection
 
+Each script injects an **Export** button into the platform's native UI:
+
+| Script | Injection Point | Button Style |
+|--------|-----------------|--------------|
+| `mistral-vibe.js` | After "New chat" in top bar | Orange `button-primary` (8px rounded) |
+| `claude-export.js` | In `+` menu above "Add files" | Menu item with download icon |
+| `copilot.js` | Beside "Invite" in top bar flex row | Dark solid pill (`rounded.full`) |
+
+A `MutationObserver` watches for DOM changes and re-injects the trigger if the platform re-renders its header.
+
+---
+
+## 📋 Per-Script Features
+
+### `mistral-vibe.js` — Mistral Vibe Exporter
+
+- **Platform:** chat.mistral.ai
+- **Design:** Warm cream surfaces (`#fff8e0`), saturated orange primary (`#fa520f`), Inter typography, 8px buttons, 12px cards, beige-deep borders
+- **Deep Research Extraction:** Separates Block 1 (Research Stepper & Execution Plan) from Block 2 (Final Report & Sources)
+- **Thought Expansion:** Pre-expands "Thought for X s" collapsibles to archive 100% of reasoning
+- **Theme Detection:** `data-theme`/`class` on html/body, top-bar background luminance, `prefers-color-scheme`
+- **Role Badges:** User (neutral gray), Mistral Vibe (orange), Deep Research (sunshine yellow)
+
+### `claude-export.js` — Claude Exporter
+
+- **Platform:** claude.ai
+- **Design:** Warm canvas (`#faf9f5`), coral primary (`#cc785c`), StyreneB/Copernicus typography, 8px buttons, 12px cards
+- **Thinking Blocks:** Auto-expands all thinking collapsibles, extracts summary + full reasoning content
+- **Theme Detection:** Appearance `radiogroup` checked radio (`auto`/`light`/`dark`), text-color luminance (SPA-safe), background luminance, `prefers-color-scheme`
+- **Menu Injection:** Adds "Export Chat" item with download icon to the `+` menu
+- **Role Badges:** User (warm surface), Claude (coral)
+
+### `copilot.js` — Copilot Exporter
+
+- **Platform:** copilot.microsoft.com
+- **Design:** Fluent 2 dual-theme — Light alabaster (`#f8f5ee`) / Dark midnight (`#0b0f19`), Segoe UI Variable, pill buttons (`rounded.full`), bento cards (`rounded.xxl` / 24px), full elevation system
+- **Deep Research:** Extracts report title, markdown body, and discovered sources
+- **Attachments:** Captures image attachments from user and AI messages
+- **Theme Detection:** `data-theme`/`class`, text-color luminance, background luminance, `prefers-color-scheme`
+- **Role Badges:** User (blue accent), Copilot (pill neutral)
 
 ---
 
 ## 📄 Export Formats
 
-### JSON
-```json
-{
-  "messages": [
-    {"type": "prompt", "content": "...", "timestamp": "..."},
-    {"type": "response", "content": "...", "timestamp": "..."}
-  ],
-  "metadata": {
-    "title": "Chat Title",
-    "model": "Claude",
-    "date": "2026-01-12T...",
-    "tags": ["claude", "export"],
-    "sourceUrl": "https://...",
-    "platform": "claude"
-  },
-  "exportedBy": {
-    "tool": "Noosphere Reflect",
-    "version": "Universal Native Scraper v2.0",
-    "method": "native-copy-button-intercept"
-  }
-}
-```
-
 ### Markdown
-```markdown
-# Chat Title
-**Platform:** Claude | **Date:** Jan 12, 2026
 
+```markdown
+---
+> **📝 Title:** Chat Title
+> **🤖 Model:** Claude
+> **🌐 Exported:** Aug 15, 2026
+> **🌐 Source:** [Claude](https://claude.ai/...)
+> **🏷️ Tags:** Claude, AI-Chat, Noosphere, Anthropic
+> **📊 Metadata:** 8 Selected Messages | 4 User | 4 Claude
 ---
 
-## 👤 User
+# Chat Title
+---
+
+#### Prompt - User 👤:
 Your message here
 
 ---
 
-## 🤖 Assistant  
+#### Response - Claude 🧠:
+<details>
+<summary><b>🧠 Thinking: Claude's reasoning</b></summary>
+> Reasoning content here
+</details>
+
 AI response here
 
 ---
 
-*Exported by Noosphere Reflect - Universal Native Scraper v2.0*
+###### Noosphere Reflect
+###### ***Meaning Through Memory***
+
+###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***
+```
+
+### JSON
+
+```json
+{
+  "metadata": {
+    "title": "Chat Title",
+    "exportedAt": "2026-08-15T17:30:00.000Z",
+    "sourceUrl": "https://...",
+    "model": "Claude"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "thinking": null,
+      "content": "Your message here"
+    },
+    {
+      "role": "assistant",
+      "thinking": {
+        "summary": "Claude's reasoning",
+        "content": "Reasoning content here"
+      },
+      "content": "AI response here"
+    }
+  ]
+}
 ```
 
 Both formats include full Noosphere metadata for seamless import.
 
 ---
 
-## 🔧 Usage
-
-### Method 1: Interactive Collection (Native)
-1. Run `universal-native-scraper.js`
-2. Click copy buttons naturally
-3. Script collects in background
-4. Export when ready
-
-**Best for:** Selective messages, privacy-conscious users
-
-### Method 2: Automatic Collection (Legacy)
-1. Run platform-specific script
-2. Gets all messages instantly
-3. One-click export to clipboard
-
-**Best for:** Quick exports, complete conversations
-
-### Method 3: Bulk Collect (Native)
-1. Run `universal-native-scraper.js`
-2. Click "Collect from Page" menu option
-3. All visible messages collected
-4. Export format of choice
-
-**Best for:** Mixed approach, flexibility
-
----
-
 ## 📱 Supported Platforms
 
-| Platform | Hostname | Support |
-|----------|----------|---------|
-| Claude | claude.ai | ✅ Full |
-| ChatGPT | chatgpt.com | ✅ Full |
-| Gemini | gemini.google.com | ✅ Full |
-| LeChat | chat.mistral.ai | ✅ Full |
-| Grok | grok.com, x.com | ✅ Full |
-
-Universal scraper auto-detects platform from URL and DOM markers.
-
----
-
-## 🎨 Features
-
-### Universal Native Scraper (`universal-native-scraper.js`)
-- **Auto Platform Detection** - Works on any supported platform
-- **Native Button Interception** - Uses platform's own UI
-- **Interactive Menu** - Clean UI with options
-- **Keyboard Shortcuts** - Quick export without menu
-- **Multiple Export Formats** - JSON or Markdown
-- **Status Feedback** - Visual feedback on actions
-- **Graceful Fallbacks** - Handles DOM changes well
-- **Full Metadata** - Attachs Noosphere export info
-
-### Individual Platform Native Scripts (NEW v2.1)
-- **Platform-Optimized Selectors** - Hardcoded for each platform
-- **Native Button Interception** - Uses platform's own UI
-- **Interactive Menu** - Clean UI with options
-- **Keyboard Shortcuts** - Quick export without menu (Ctrl+Shift+E/M)
-- **Multiple Export Formats** - JSON or Markdown
-- **Streamlined Code** - No multi-platform detection overhead
-- **Status Feedback** - Visual feedback on actions
-- **Full Metadata** - Attachs Noosphere export info
-- **Platform Brand Colors** - Claude purple, ChatGPT teal, Gemini green, LeChat blue, Grok pink
-
-
----
-
-## 🛠️ Technical Details
-
-### How It Works (Universal Native)
-1. Detects platform automatically
-2. Injects interactive menu UI
-3. Listens for clicks on native copy buttons
-4. Intercepts events to capture message context
-5. Stores collected messages with metadata
-6. Exports in chosen format
-7. Copies to clipboard
-
-### How It Works (Platform-Specific)
-1. Uses platform-specific CSS selectors
-2. Queries DOM for all message elements
-3. Extracts text via `innerText`
-4. Creates Noosphere JSON structure
-5. Copies to clipboard immediately
-
----
-
-## 📚 Documentation
-
-| Document | Purpose |
-|----------|---------|
-| `QUICKSTART.md` | 30-second setup, quick reference |
-| `NATIVE-BUTTON-STRATEGY.md` | Full technical documentation |
-| `SCRAPER-STRATEGIES.md` | Comparison & decision guide |
-| `README.md` | This file - overview |
-
----
-
-## 🐛 Troubleshooting
-
-### Script not working?
-1. Check browser console (F12 → Console)
-2. Look for `[Noosphere]` messages
-3. Verify messages are loaded on page
-4. Try `Collect from Page` option
-
-### Export failed?
-1. Check browser console for errors
-2. Ensure messages were collected
-3. Try smaller batch
-4. Verify clipboard permissions
-
-### Wrong platform detected?
-1. Universal script auto-detects
-2. Falls back to generic selectors
-3. "Collect from Page" works as fallback
-4. Report if consistently failing
-
-See `NATIVE-BUTTON-STRATEGY.md` for more troubleshooting.
-
----
-
-## 🎯 Use Cases
-
-### Archiving Conversations
-- Regular exports to JSON
-- Import to Noosphere Reflect
-- Build personal knowledge base
-- Search & organize by tags
-
-### Documentation
-- Export as Markdown
-- Share on GitHub gists
-- Use in blog posts
-- Create reference docs
-
-### Data Analysis
-- JSON export with metadata
-- Process with scripts
-- Analyze conversation patterns
-- Track model responses
-
-### Sharing
-- Markdown for readability
-- JSON for import/processing
-- Both preserve full context
-- With source URL reference
-
----
-
-## 🔒 Privacy & Security
-
-- **No data sent to external servers** - All processing local
-- **No persistent storage** - Session-only collection
-- **User control** - You choose what's collected
-- **Metadata preservation** - Know where data comes from
-- **Clipboard only** - No files written locally
-- **Open source** - Code is transparent
-
----
-
-## 🚀 Advanced
-
-### Combine Multiple Exports
-```javascript
-// Merge multiple JSON exports
-const combined = {
-  messages: [...export1.messages, ...export2.messages],
-  metadata: export1.metadata,
-  exportedBy: {...}
-};
-```
-
-### Export to File
-```javascript
-// Save JSON to file
-const blob = new Blob([json], {type: 'application/json'});
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'chat-export.json';
-a.click();
-```
-
-### Validate Export
-```javascript
-// Check JSON validity
-try {
-  JSON.parse(exportedText);
-  console.log('✅ Valid JSON');
-} catch(e) {
-  console.error('❌ Invalid JSON:', e);
-}
-```
+| Platform | Script | Hostname | Theme Toggle Method |
+|----------|--------|----------|---------------------|
+| Mistral Vibe | `mistral-vibe.js` | chat.mistral.ai | `data-theme` / `class` on html/body |
+| Claude | `claude-export.js` | claude.ai | Appearance radiogroup (System/Light/Dark) |
+| Copilot | `copilot.js` | copilot.microsoft.com | `data-theme` / `class` on html/body |
 
 ---
 
 ## 📊 File List
 
 ```
-noosphere-scrapers/
-├── universal-native-scraper.js ........... All platforms, native approach
-│
-├── INDIVIDUAL PLATFORM NATIVE SCRAPERS (NEW v2.1)
-├── claude-native-scraper.js .............. Claude platform-specific
-├── chatgpt-native-scraper.js ............. ChatGPT platform-specific
-├── gemini-native-scraper.js .............. Gemini platform-specific
-├── lechat-native-scraper.js .............. LeChat platform-specific
-├── grok-native-scraper.js ................ Grok platform-specific
-│
-├── DOCUMENTATION
-├── QUICKSTART.md ......................... Quick reference guide
-├── NATIVE-BUTTON-STRATEGY.md ............. Full technical docs
-├── SCRAPER-STRATEGIES.md ................. Comparison guide
-├── NOOSPHERE-METADATA-FORMAT.md .......... Metadata specification
-├── EXPORT-FORMAT-EXAMPLES.md ............. Real-world examples
-└── README.md ............................ This file
+html-projects/
+├── mistral-vibe.js ......... Mistral Vibe exporter (warm cream/orange, 8px/12px radii)
+├── claude-export.js ........ Claude exporter (warm canvas/coral, thinking blocks)
+├── copilot.js .............. Copilot exporter (Fluent 2 dual-theme, pill geometry)
+├── DESIGN.md ............... Design system specification (per-script)
+└── README.md ............... This file
 ```
 
 ---
 
-## 🤝 Contributing
+## 🔧 Usage
 
-Found an issue or have improvements?
-1. Test on your platform
-2. Document what happened
-3. Note browser & platform info
-4. Share findings
+### Exporting a Conversation
 
-Interested in adding support for:
-- New platforms (Perplexity, Copilot, etc.)
-- New export formats (CSV, YAML, PDF)
-- Browser extension integration
-- Advanced features (filtering, merging)
+1. **Inject** — Paste the script into the browser console (F12)
+2. **Open** — Click the Export button in the platform's header
+3. **Select** — Use checkboxes or batch controls (All/User/AI/None) to choose turns
+4. **Title** — Enter a custom title in the Chat Title input (optional)
+5. **Format** — Select Markdown (.md) or JSON (.json) from the dropdown
+6. **Export** — Click **📋 Copy** for clipboard or **⬇️ Save** for file download
+
+### Batch Selection
+
+| Button | Action |
+|--------|--------|
+| **All** | Select every message |
+| **User** | Select only user prompts |
+| **AI** | Select only AI responses (including Deep Research) |
+| **None** | Deselect all |
+
+### Accordion Expansion
+
+Click any message card to expand an accordion showing the full message text, thinking blocks (Claude), research stepper plans (Mistral Vibe), and discovered sources. Click again to collapse.
+
+---
+
+## 🔒 Privacy & Security
+
+- **No data sent to external servers** — All processing is local
+- **No persistent storage** — Session-only collection
+- **User control** — You choose which messages to export
+- **Metadata preservation** — Source URL, timestamp, and model info attached
+- **Clipboard or file** — No data written to disk unless you explicitly download
+- **Open source** — Code is transparent and auditable
+
+---
+
+## 🛠️ Technical Details
+
+### How It Works
+
+1. **ThemeManager** detects the page's current theme and injects the correct CSS palette
+2. **Header trigger** is injected into the platform's native UI via DOM manipulation
+3. **MutationObserver** re-injects the trigger if the platform re-renders its header
+4. On click, the **sidebar drawer** slides in from the right with a backdrop overlay
+5. **DOM extraction** scans the conversation for user messages, AI responses, thinking blocks, and Deep Research reports
+6. **Recursive parser** converts the DOM tree to clean Markdown
+7. **Export service** builds the frontmatter metadata and assembles the final document
+8. **Copy** writes to clipboard; **Save** triggers a browser file download
+
+### Theme Switching Flow
+
+```
+User toggles page theme
+        │
+        ▼
+MutationObserver / 500ms poll fires
+        │
+        ▼
+ThemeManager.detect() → 'dark' (or 'light')
+        │
+        ▼
+ThemeManager.apply('dark')
+        │
+        ├── Remove old <style> element
+        ├── Set CONFIG.THEME = CONFIG.THEMES.dark
+        ├── injectStyles() — re-inject CSS with dark palette
+        └── renderMessageList() — re-render cards with new inline styles
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Sidebar not appearing?
+1. Check browser console (F12 → Console) for errors
+2. Verify the script loaded — look for the initialization log message
+3. Ensure the platform's header has rendered (some SPAs load asynchronously)
+4. The `MutationObserver` will re-inject the trigger when the header appears
+
+### Theme not switching?
+1. Check console for `[Noosphere]` theme detection logs
+2. The 500ms poll should catch changes within half a second
+3. If stuck in dark mode, the page may use a dark canvas in both modes — text-color luminance detection handles this
+4. Try refreshing the page and re-injecting the script
+
+### Export failed?
+1. Ensure messages are loaded and visible on the page
+2. Select at least one message before exporting
+3. Check clipboard permissions for Copy
+4. Check browser download settings for Save
+
+---
+
+## 🎯 Use Cases
+
+### Archiving Conversations
+- Regular exports to Markdown or JSON
+- Import to Noosphere Reflect
+- Build a personal knowledge base
+- Search & organize by tags and metadata
+
+### Documentation
+- Export as Markdown for readability
+- Share on GitHub gists or blog posts
+- Create reference documentation
+- Preserve AI reasoning chains (thinking blocks, Deep Research)
+
+### Data Analysis
+- JSON export with structured metadata
+- Process with scripts or pipelines
+- Analyze conversation patterns
+- Track model responses over time
+
+### Sharing
+- Markdown for human-readable sharing
+- JSON for programmatic import/processing
+- Both preserve full context with source URLs
+- Noosphere Reflect frontmatter for provenance
 
 ---
 
 ## 📝 License
 
-MIT License - Use freely in your projects
+MIT License — Use freely in your projects.
 
 ---
 
-## 🎓 Learning Resources
+## ✨ Current State (v3.0)
 
-- **DOM Reference:** `/reference-html-dom/` - Platform DOM patterns
-- **Converter Service:** `/src/services/converterService.ts` - Import logic
-- **Extension Code:** `/extension/` - Browser extension implementation
-
----
-
-## ✨ What's New (v2.2)
-
-- ✅ **Download to File** - Direct browser downloads (MD & JSON)
-- ✅ **Custom Naming Formats** - Support for kebab-case, PascalCase, snake_case, etc.
-- ✅ **Standardized Markdown** - Unified Noosphere "Basic" template across all scrapers
-- ✅ **Branded Footers** - Consistent Noosphere attribution in all exports
-
-## ✨ Previous Release (v2.1)
-
-- ✅ NEW: Individual platform-specific native scrapers
-  - `claude-native-scraper.js` (Claude-optimized)
-  - `chatgpt-native-scraper.js` (ChatGPT-optimized)
-  - `gemini-native-scraper.js` (Gemini-optimized with thinking blocks)
-  - `lechat-native-scraper.js` (LeChat-optimized)
-  - `grok-native-scraper.js` (Grok-optimized)
-- ✅ Hardcoded selectors for maximum reliability
-- ✅ Platform brand color theming
-- ✅ Same Noosphere metadata integration across all scripts
-- ✅ Streamlined for better performance
-
-## ✨ Previous Release (v2.0)
-
-- ✅ Universal script for all platforms
-- ✅ Native button interception (more robust)
-- ✅ Markdown export support
-- ✅ Interactive menu system
-- ✅ Keyboard shortcuts
-- ✅ Auto platform detection
-- ✅ Better error handling
-- ✅ Comprehensive documentation
-
----
-
-## 📞 Support
-
-**Quick Questions?** → See `QUICKSTART.md`
-**Technical Details?** → See `NATIVE-BUTTON-STRATEGY.md`
-**Comparing Approaches?** → See `SCRAPER-STRATEGIES.md`
-**Issues?** → Check troubleshooting section
+- ✅ **Native sidebar drawer UI** — Slide-over drawer with batch selection and accordion
+- ✅ **DESIGN.md-driven theming** — Each script has a full design system spec
+- ✅ **Automatic dark/light detection** — ThemeManager with layered detection strategy
+- ✅ **Live theme switching** — Sidebar follows page theme in real time
+- ✅ **Deep Research extraction** — Mistral Vibe & Copilot research report parsing
+- ✅ **Thinking block expansion** — Claude reasoning chain preservation
+- ✅ **Dual export formats** — Markdown + JSON with Noosphere metadata
+- ✅ **File download** — Direct browser downloads (no clipboard limits)
+- ✅ **Recursive DOM-to-Markdown parser** — Full formatting preservation
+- ✅ **Native header trigger injection** — Export button in platform UI
+- ✅ **SPA-safe theme detection** — Text-color luminance avoids canvas false positives
 
 ---
 
 **Status:** ✅ Ready for Production
-**Last Updated:** January 28, 2026
-**Version:** 2.2 (Download to File + Custom Naming Support)
+**Last Updated:** August 15, 2026
+**Version:** 3.0 (Native Sidebar Exporters with DESIGN.md Theming)

@@ -41,7 +41,7 @@
 
             CONVERSATION_TITLE: '.min-h-5\\.5.truncate, header h1, title',
             TOP_BAR: '[data-desktop-window-top-bar="true"]',
-            NEW_CHAT_CONTAINER: '[data-desktop-window-top-bar="true"] div.ps-3',
+            RIGHT_ACTION_CONTAINER: '[data-desktop-window-top-bar="true"] > div:last-child',
             NOISE_ELEMENTS: 'button, svg, .copy-button, [aria-hidden="true"]'
         },
 
@@ -707,23 +707,28 @@
                 align-items: center !important;
                 justify-content: center !important;
                 font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif !important;
-                font-size: 14px !important;
-                font-weight: 500 !important;
-                line-height: 1.30 !important;
-                height: 32px !important;
-                padding: 0 16px !important;
-                border-radius: 8px !important;
+                width: 36px !important;
+                height: 36px !important;
+                padding: 0 !important;
+                border-radius: 6px !important;
                 cursor: pointer !important;
-                color: ${T.ON_PRIMARY} !important;
-                background: ${T.PRIMARY} !important;
-                border: 1px solid ${T.PRIMARY} !important;
+                color: ${T.STEEL} !important;
+                background: transparent !important;
+                border: none !important;
                 transition: all 0.15s ease !important;
                 user-select: none !important;
-                margin-left: 8px !important;
             }
             .ns-vibe-header-btn:hover {
-                background: ${T.PRIMARY_DEEP} !important;
-                border-color: ${T.PRIMARY_DEEP} !important;
+                background: ${T.HAIRLINE_SOFT} !important;
+            }
+            .ns-vibe-header-btn:active {
+                transform: scale(98.5%) !important;
+            }
+            .ns-vibe-header-btn svg {
+                width: 18px !important;
+                height: 18px !important;
+                stroke: currentColor !important;
+                fill: none !important;
             }
 
             #ns-vibe-overlay {
@@ -994,14 +999,14 @@
             }
 
             .ns-btn-cancel {
-                background: transparent;
-                border: 1px solid ${T.HAIRLINE_STRONG};
-                color: ${T.SLATE};
+                background: rgba(220, 38, 38, 0.10);
+                border: 1px solid rgba(220, 38, 38, 0.30);
+                color: #dc2626;
                 flex: 0.8;
             }
             .ns-btn-cancel:hover {
-                background: ${T.HAIRLINE_SOFT};
-                color: ${T.INK};
+                background: rgba(220, 38, 38, 0.20);
+                border-color: rgba(220, 38, 38, 0.40);
             }
 
             .ns-format-select {
@@ -1034,14 +1039,6 @@
                 background: ${T.HAIRLINE_SOFT};
             }
 
-            .ns-btn-primary {
-                flex: 1;
-                background: ${T.PRIMARY};
-                color: ${T.ON_PRIMARY};
-            }
-            .ns-btn-primary:hover {
-                background: ${T.PRIMARY_DEEP};
-            }
         `;
         document.head.appendChild(style);
     }
@@ -1250,19 +1247,21 @@
     function injectHeaderTrigger(openSidebarFn) {
         if (document.getElementById('ns-vibe-header-btn')) return;
 
-        const newChatContainer = document.querySelector(CONFIG.SELECTORS.NEW_CHAT_CONTAINER);
-        if (!newChatContainer) return;
+        const rightContainer = document.querySelector(CONFIG.SELECTORS.RIGHT_ACTION_CONTAINER);
+        if (!rightContainer) return;
 
         const triggerBtn = document.createElement('button');
         triggerBtn.id = 'ns-vibe-header-btn';
         triggerBtn.className = 'ns-vibe-header-btn';
-        triggerBtn.innerHTML = `🔥 Export Chat`;
+        triggerBtn.setAttribute('aria-label', 'Export Chat');
+        triggerBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke-miterlimit="10" stroke-linecap="square"><path d="M12 3V15" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/><path d="M4 18L4 20L20 20L20 18" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/></svg>`;
         triggerBtn.onclick = (e) => {
             e.stopPropagation();
             openSidebarFn();
         };
 
-        newChatContainer.after(triggerBtn);
+        // Insert as first child (to the left of the star icon)
+        rightContainer.prepend(triggerBtn);
     }
 
     function createSidebarUI() {
@@ -1299,7 +1298,6 @@
                     <option value="json">JSON (.json)</option>
                 </select>
                 <button class="ns-btn ns-btn-copy" id="ns-btn-copy">📋 Copy</button>
-                <button class="ns-btn ns-btn-primary" id="ns-btn-download">⬇️ Save</button>
             </div>
         `;
 
@@ -1346,7 +1344,6 @@
         };
 
         document.getElementById('ns-btn-copy').onclick = () => ExportService.executeCopy();
-        document.getElementById('ns-btn-download').onclick = () => ExportService.executeDownload();
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeSidebar();
