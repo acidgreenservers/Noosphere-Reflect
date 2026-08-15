@@ -280,5 +280,15 @@ export const migrations: Migration[] = [
                 notebookStore.createIndex('updatedAt', 'updatedAt', { unique: false });
             }
         }
+    },
+    {
+        version: 18,
+        description: 'Ensure notebooks store exists if upgrading from prior version 17',
+        migrate: (db) => {
+            if (!db.objectStoreNames.contains(STORES.NOTEBOOKS)) {
+                const notebookStore = db.createObjectStore(STORES.NOTEBOOKS, { keyPath: 'id' });
+                notebookStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+            }
+        }
     }
 ];

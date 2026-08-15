@@ -12,13 +12,21 @@ interface DocumentBuilderProps {
     onDragStart?: () => void;
     onDragEnd?: () => void;
     pushMode?: boolean;
+    initialTitle?: string;
+    initialContent?: string;
 }
 
 export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
-    sessionId, messages, onClose, onSave, width = 50, onWidthChange, onDragStart, onDragEnd, pushMode = false
+    sessionId, messages, onClose, onSave, width = 50, onWidthChange, onDragStart, onDragEnd, pushMode = false,
+    initialTitle = '', initialContent = ''
 }) => {
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
+    const [title, setTitle] = useState(initialTitle);
+    const [content, setContent] = useState(initialContent);
+
+    useEffect(() => {
+        setTitle(initialTitle);
+        setContent(initialContent);
+    }, [initialTitle, initialContent]);
     const [showPreview, setShowPreview] = useState(false);
     const [showMessagePicker, setShowMessagePicker] = useState(false);
     const [selectedMessageIndex, setSelectedMessageIndex] = useState<number | null>(null);

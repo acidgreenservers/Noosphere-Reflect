@@ -23,6 +23,7 @@ import ProjectDetail from './archive/projects/pages/ProjectDetail';
 import ArtifactArchive from './archive/artifacts/pages/ArtifactArchive';
 import NotebookArchive from './archive/notebooks/pages/NotebookArchive';
 import NotebookWorkspace from './archive/notebooks/pages/NotebookWorkspace';
+import NotebookChatsPage from './archive/notebooks/pages/NotebookChatsPage';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
         <Route path="/projects/:id" element={<AppShell><ProjectDetail /></AppShell>} />
         <Route path="/notebooks" element={<AppShell><NotebookArchive /></AppShell>} />
         <Route path="/notebooks/:id" element={<NotebookWorkspace />} />
+        <Route path="/notebooks/:id/chats" element={<NotebookChatsPage />} />
         <Route path="/artifacts" element={<AppShell><ArtifactArchive /></AppShell>} />
         <Route path="/memories" element={<AppShell><MemoryArchive /></AppShell>} />
         <Route path="/memories/builder" element={<AppShell><MemoryBuilder /></AppShell>} />

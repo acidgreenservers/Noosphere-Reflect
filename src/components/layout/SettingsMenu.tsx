@@ -209,7 +209,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ isOpen, onClose, set
             const data = await parseChat(content, type, mode);
             
             const newSession: any = {
-                id: crypto.randomUUID(),
+                id: (Date.now().toString(36) + Math.random().toString(36).substring(2, 9)),
                 chatTitle: data.metadata?.title || 'Imported Chat',
                 date: data.metadata?.date || new Date().toISOString(),
                 chatData: data,

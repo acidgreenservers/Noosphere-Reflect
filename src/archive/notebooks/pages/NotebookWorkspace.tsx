@@ -1,13 +1,21 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Notebook, NotebookSource, NotebookNote, NotebookChat, ChatMessage, ChatMessageType } from '../../../types';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { ConversationArtifact, Notebook, NotebookSource, NotebookNote, NotebookChat, ChatMessage, ChatMessageType } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { AddSourceModal } from '../components/AddSourceModal';
-import { NoteEditorModal } from '../components/NoteEditorModal';
-import { SourceViewerModal } from '../components/SourceViewerModal';
 import { CustomizeNotebookModal } from '../components/CustomizeNotebookModal';
 import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
+import { DocumentBuilder } from '../../../components/chat-ui/DocumentBuilder';
+import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
+import { safeDecode } from '../../../components/ArtifactReader/utils';
+
+const generateUUID = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return (Date.now().toString(36) + Math.random().toString(36).substring(2, 9));
+};
 
 // Modern SVG Sidebar panel layout icons matching image.png / Gemini UI
 const SidebarLeftIcon = () => (
@@ -27,6 +35,7 @@ const SidebarRightIcon = () => (
 export const NotebookWorkspace: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     const [notebook, setNotebook] = useState<Notebook | null>(null);
     const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
@@ -38,13 +47,16 @@ export const NotebookWorkspace: React.FC = () => {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
 
-    // Modals
+    // Modals & Panels
     const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
-    const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
-    const [isSourceViewerOpen, setIsSourceViewerOpen] = useState(false);
     const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
     const [activeNoteToEdit, setActiveNoteToEdit] = useState<NotebookNote | null>(null);
-    const [activeSourceToView, setActiveSourceToView] = useState<NotebookSource | null>(null);
+
+    // Document Builder & Artifact Reader drawer state
+    const [showDocumentBuilder, setShowDocumentBuilder] = useState(false);
+    const [docBuilderWidth, setDocBuilderWidth] = useState<number>(50);
+    const [viewingArtifact, setViewingArtifact] = useState<ConversationArtifact | null>(null);
+    const [readerWidth, setReaderWidth] = useState<number>(50);
 
     // Editing message state
     const [editingMsgIdx, setEditingMsgIdx] = useState<number | null>(null);
@@ -70,6 +82,28 @@ export const NotebookWorkspace: React.FC = () => {
     // Middle Chat Area 3-dot Menu State
     const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
 
+    // Notification Modal State
+    const [notificationModal, setNotificationModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        icon?: string;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        icon: '📋'
+    });
+
+    const showNotification = (title: string, message: string, icon: string = '📋') => {
+        setNotificationModal({
+            isOpen: true,
+            title,
+            message,
+            icon
+        });
+    };
+
     // Chat scroll ref
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -78,17 +112,22 @@ export const NotebookWorkspace: React.FC = () => {
         try {
             const data = await storageService.getNotebookById(id);
             if (!data) {
-                alert('Notebook not found.');
+                showNotification('Notebook Not Found', 'The requested notebook could not be located in your library.', '⚠️');
                 navigate('/notebooks');
                 return;
             }
             setNotebook(data);
             setTitleInput(data.metadata.title);
 
-            // Auto select first chat if any exists, otherwise leave it empty
+            // Select requested chatId from query parameter or auto select first chat
+            const requestedChatId = searchParams.get('chatId');
             let selectedChatId = activeChatId;
+
             if (data.chats && data.chats.length > 0) {
-                if (!activeChatId || !data.chats.some(c => c.id === activeChatId)) {
+                if (requestedChatId && data.chats.some(c => c.id === requestedChatId)) {
+                    selectedChatId = requestedChatId;
+                    setActiveChatId(selectedChatId);
+                } else if (!activeChatId || !data.chats.some(c => c.id === activeChatId)) {
                     selectedChatId = data.chats[0].id;
                     setActiveChatId(selectedChatId);
                 }
@@ -254,11 +293,31 @@ export const NotebookWorkspace: React.FC = () => {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Export failed', error);
-            alert('Failed to export notebook.');
+            showNotification('Export Failed', 'An error occurred while packaging the notebook backup.', '⚠️');
         }
     };
 
-    const handleCopyEntireConversation = () => {
+    const handleCopyText = async (text: string, successTitle: string, successMessage: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            showNotification(successTitle, successMessage, '📋');
+        } catch (err) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showNotification(successTitle, successMessage, '📋');
+            } catch (fallbackErr) {
+                console.error('Failed to copy text:', fallbackErr);
+                showNotification('Copy Failed', 'Unable to copy text to clipboard.', '⚠️');
+            }
+            document.body.removeChild(textArea);
+        }
+    };
+
+    const handleCopyEntireConversation = async () => {
         if (!notebook) return;
         setIsChatMenuOpen(false);
 
@@ -280,8 +339,7 @@ export const NotebookWorkspace: React.FC = () => {
             convText += `No active chat session.`;
         }
 
-        navigator.clipboard.writeText(convText);
-        alert('📋 Entire conversation copied to clipboard (with markdown formatting)!');
+        await handleCopyText(convText, 'Conversation Copied', 'Entire conversation copied to clipboard in markdown format!');
     };
 
     const handleAddSource = async (sourceData: Omit<NotebookSource, 'id' | 'createdAt'>) => {
@@ -289,7 +347,7 @@ export const NotebookWorkspace: React.FC = () => {
 
         const newSource: NotebookSource = {
             ...sourceData,
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             createdAt: new Date().toISOString()
         };
 
@@ -328,8 +386,11 @@ export const NotebookWorkspace: React.FC = () => {
         });
     };
 
-    const handleSaveNote = async (title: string, content: string) => {
+    const handleSaveDocument = async (artifact: ConversationArtifact) => {
         if (!notebook) return;
+
+        const noteTitle = artifact.description || artifact.fileName.replace(/\.md$/, '');
+        const noteContent = safeDecode(artifact.fileData);
 
         let updatedNotes: NotebookNote[] = [];
 
@@ -337,15 +398,15 @@ export const NotebookWorkspace: React.FC = () => {
             // Edit mode
             updatedNotes = (notebook.notes || []).map(n =>
                 n.id === activeNoteToEdit.id
-                    ? { ...n, title, content, updatedAt: new Date().toISOString() }
+                    ? { ...n, title: noteTitle, content: noteContent, updatedAt: new Date().toISOString() }
                     : n
             );
         } else {
             // Create mode
             const newNote: NotebookNote = {
-                id: crypto.randomUUID(),
-                title,
-                content,
+                id: generateUUID(),
+                title: noteTitle,
+                content: noteContent,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -361,6 +422,7 @@ export const NotebookWorkspace: React.FC = () => {
         await storageService.saveNotebook(updated);
         setNotebook(updated);
         setActiveNoteToEdit(null);
+        setShowDocumentBuilder(false);
     };
 
     const handleRenameNote = async (noteId: string, oldTitle: string) => {
@@ -386,7 +448,7 @@ export const NotebookWorkspace: React.FC = () => {
         if (!notebook) return;
 
         const newChat: NotebookChat = {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             title: `Chat ${notebook.chats.length + 1}`,
             messages: [],
             createdAt: new Date().toISOString(),
@@ -416,7 +478,7 @@ export const NotebookWorkspace: React.FC = () => {
         // Create a new chat if there isn't one active
         if (!currentChatId) {
             const newChat: NotebookChat = {
-                id: crypto.randomUUID(),
+                id: generateUUID(),
                 title: text.length > 25 ? `${text.slice(0, 25)}...` : text,
                 messages: [],
                 createdAt: new Date().toISOString(),
@@ -682,17 +744,72 @@ export const NotebookWorkspace: React.FC = () => {
 
                 {/* Left Sidebar: Sources */}
                 {isLeftCollapsed ? (
-                    /* Collapsed Left Sidebar Bar */
-                    <div className="w-[50px] bg-[#1e1f20] border-r border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
+                    /* Collapsed Left Sidebar Bar matching image.png Gemini UI */
+                    <div className="w-[56px] bg-[#1e1f20] border-r border-[#2d2f31] flex flex-col items-center py-3 gap-3 shrink-0 transition-all duration-300">
                         <button
                             onClick={() => setIsLeftCollapsed(false)}
-                            className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
                             title="Expand Sources Sidebar"
                         >
                             <SidebarLeftIcon />
                         </button>
-                        <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none transform rotate-180">
-                            SOURCES ({notebook?.sources?.length || 0})
+
+                        <button
+                            onClick={() => setIsAddSourceOpen(true)}
+                            className="w-8 h-8 rounded-full bg-[#a8c7fa] hover:bg-[#c2e7ff] text-[#042100] flex items-center justify-center text-lg font-bold transition-all active:scale-95 shadow"
+                            title="Add Source"
+                        >
+                            +
+                        </button>
+
+                        <div className="w-8 h-px bg-[#2d2f31] my-1" />
+
+                        <div className="flex-1 w-full overflow-y-auto flex flex-col items-center gap-2.5 px-1 scrollbar-none">
+                            {notebook?.sources && notebook.sources.map(source => {
+                                const isSelected = selectedSourceIds.has(source.id);
+                                let icon = '📄';
+                                if (source.url?.includes('youtube.com') || source.url?.includes('youtu.be')) {
+                                    icon = '▶️';
+                                } else if (source.type === 'url') {
+                                    icon = '🔗';
+                                } else if (source.type === 'text') {
+                                    icon = '📝';
+                                }
+
+                                return (
+                                    <button
+                                        key={source.id}
+                                        onClick={() => {
+                                            setShowDocumentBuilder(false);
+                                            let mime = source.mimeType;
+                                            if (!mime) {
+                                                if (source.type === 'url') mime = 'text/markdown';
+                                                else if (source.title.toLowerCase().endsWith('.md')) mime = 'text/markdown';
+                                                else mime = 'text/plain';
+                                            }
+                                            const fileName = source.title.includes('.') ? source.title : `${source.title}.md`;
+                                            const artifact: ConversationArtifact = {
+                                                id: source.id,
+                                                fileName: fileName,
+                                                fileSize: source.fileSize || source.content.length,
+                                                mimeType: mime,
+                                                fileData: source.content,
+                                                description: source.url || source.title,
+                                                uploadedAt: source.createdAt
+                                            };
+                                            setViewingArtifact(artifact);
+                                        }}
+                                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border relative group ${
+                                            isSelected
+                                                ? 'bg-[#2a2c2f] border-[#a8c7fa] text-white shadow'
+                                                : 'bg-[#131314] border-[#2d2f31] hover:border-gray-500 text-gray-300'
+                                        }`}
+                                        title={source.title}
+                                    >
+                                        <span>{icon}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 ) : (
@@ -754,8 +871,24 @@ export const NotebookWorkspace: React.FC = () => {
                                                 : 'bg-[#1e1f20] border-[#2d2f31] hover:bg-white/[0.02]'
                                         }`}
                                         onClick={() => {
-                                            setActiveSourceToView(source);
-                                            setIsSourceViewerOpen(true);
+                                            setShowDocumentBuilder(false);
+                                            let mime = source.mimeType;
+                                            if (!mime) {
+                                                if (source.type === 'url') mime = 'text/markdown';
+                                                else if (source.title.toLowerCase().endsWith('.md')) mime = 'text/markdown';
+                                                else mime = 'text/plain';
+                                            }
+                                            const fileName = source.title.includes('.') ? source.title : `${source.title}.md`;
+                                            const artifact: ConversationArtifact = {
+                                                id: source.id,
+                                                fileName: fileName,
+                                                fileSize: source.fileSize || source.content.length,
+                                                mimeType: mime,
+                                                fileData: source.content,
+                                                description: source.url || source.title,
+                                                uploadedAt: source.createdAt
+                                            };
+                                            setViewingArtifact(artifact);
                                         }}
                                     >
                                         <input
@@ -800,13 +933,13 @@ export const NotebookWorkspace: React.FC = () => {
                     {/* Main Middle Header - Thin separated border bar matching layout */}
                     <div className="h-[56px] px-6 border-b border-[#2d2f31] flex items-center justify-between shrink-0 bg-[#1e1f20] relative">
                         <div className="flex items-center gap-3 min-w-0">
-                            {/* Back to notebooks dashboard */}
+                            {/* Navigation to Notebook Chats list */}
                             <button
-                                onClick={() => navigate('/notebooks')}
+                                onClick={() => navigate(`/notebooks/${id}/chats`)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2d2f31] hover:bg-[#3d3f42] text-gray-300 hover:text-white transition-all text-xs font-bold shrink-0 border border-[#3d4043]"
-                                title="Back to Notebooks List"
+                                title="Notebook Chats List"
                             >
-                                ⬅️ Notebooks
+                                ⬅️ Notebook Chats
                             </button>
 
                             <div className="flex flex-col min-w-0">
@@ -926,7 +1059,7 @@ export const NotebookWorkspace: React.FC = () => {
                                             onClick={async () => {
                                                 if (!notebook) return;
                                                 const newNote: NotebookNote = {
-                                                    id: crypto.randomUUID(),
+                                                    id: generateUUID(),
                                                     title: `Summary of ${notebook.metadata.title}`,
                                                     content: notebook.metadata.summaryContent || '',
                                                     createdAt: new Date().toISOString(),
@@ -939,7 +1072,7 @@ export const NotebookWorkspace: React.FC = () => {
                                                 };
                                                 await storageService.saveNotebook(updated);
                                                 setNotebook(updated);
-                                                alert('📌 Saved summary to Studio Notes!');
+                                                showNotification('Summary Saved', 'Saved summary to Studio Notes!', '📌');
                                             }}
                                             className="flex items-center gap-2 px-4 py-2 bg-[#2d2f31] hover:bg-[#3d3f42] border border-[#3d4043] text-xs font-semibold rounded-full text-gray-300 hover:text-white transition-all shadow-sm active:scale-95"
                                         >
@@ -1090,8 +1223,7 @@ export const NotebookWorkspace: React.FC = () => {
                                             <div className={`flex gap-3 text-xs mt-1.5 ${isUser ? 'justify-end pr-2' : 'justify-start pl-2'}`}>
                                                 <button
                                                     onClick={() => {
-                                                        navigator.clipboard.writeText(msg.content);
-                                                        alert('📋 Message copied to clipboard!');
+                                                        handleCopyText(msg.content, 'Message Copied', 'Chat message copied to clipboard!');
                                                     }}
                                                     className="text-gray-500 hover:text-gray-300 font-medium transition-colors flex items-center gap-1 hover:underline"
                                                     title="Copy Message Text"
@@ -1124,7 +1256,7 @@ export const NotebookWorkspace: React.FC = () => {
                                                         const words = msg.content.trim().split(/\s+/).slice(0, 5).join(' ');
                                                         const noteTitle = `Note from Chat: ${words || 'Untitled'}...`;
                                                         const newNote: NotebookNote = {
-                                                            id: crypto.randomUUID(),
+                                                            id: generateUUID(),
                                                             title: noteTitle,
                                                             content: msg.content,
                                                             createdAt: new Date().toISOString(),
@@ -1137,7 +1269,7 @@ export const NotebookWorkspace: React.FC = () => {
                                                         };
                                                         await storageService.saveNotebook(updated);
                                                         setNotebook(updated);
-                                                        alert('📌 Saved chat message content as a Studio Note!');
+                                                        showNotification('Note Created', 'Saved chat message content as a Studio Note!', '📌');
                                                     }}
                                                     className="text-gray-500 hover:text-[#a8c7fa] font-medium transition-colors flex items-center gap-1 hover:underline"
                                                     title="Clip message and save as a Studio Note"
@@ -1292,17 +1424,45 @@ export const NotebookWorkspace: React.FC = () => {
 
                 {/* Right Sidebar: Studio */}
                 {isRightCollapsed ? (
-                    /* Collapsed Right Sidebar Bar */
-                    <div className="w-[50px] bg-[#1e1f20] border-l border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
+                    /* Collapsed Right Sidebar Bar matching image.png Gemini UI */
+                    <div className="w-[56px] bg-[#1e1f20] border-l border-[#2d2f31] flex flex-col items-center py-3 gap-3 shrink-0 transition-all duration-300">
                         <button
                             onClick={() => setIsRightCollapsed(false)}
-                            className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
                             title="Expand Studio Sidebar"
                         >
                             <SidebarRightIcon />
                         </button>
-                        <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none">
-                            STUDIO NOTES ({notebook?.notes?.length || 0})
+
+                        <button
+                            onClick={() => {
+                                setViewingArtifact(null);
+                                setActiveNoteToEdit(null);
+                                setShowDocumentBuilder(true);
+                            }}
+                            className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center text-lg font-bold transition-all active:scale-95 shadow"
+                            title="Add Note"
+                        >
+                            +
+                        </button>
+
+                        <div className="w-8 h-px bg-[#2d2f31] my-1" />
+
+                        <div className="flex-1 w-full overflow-y-auto flex flex-col items-center gap-2.5 px-1 scrollbar-none">
+                            {notebook?.notes && notebook.notes.map(note => (
+                                <button
+                                    key={note.id}
+                                    onClick={() => {
+                                        setViewingArtifact(null);
+                                        setActiveNoteToEdit(note);
+                                        setShowDocumentBuilder(true);
+                                    }}
+                                    className="w-9 h-9 rounded-xl bg-[#131314] hover:bg-[#202124] border border-[#2d2f31] hover:border-gray-500 text-gray-300 hover:text-white flex items-center justify-center text-sm transition-all relative group shadow-sm"
+                                    title={note.title}
+                                >
+                                    <span>📝</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 ) : (
@@ -1330,8 +1490,9 @@ export const NotebookWorkspace: React.FC = () => {
                                     key={note.id}
                                     className="group p-4 bg-[#131314] hover:bg-[#202124] border border-[#2d2f31] hover:border-gray-600 rounded-2xl cursor-pointer transition-all flex flex-col gap-2 relative"
                                     onClick={() => {
+                                        setViewingArtifact(null);
                                         setActiveNoteToEdit(note);
-                                        setIsNoteEditorOpen(true);
+                                        setShowDocumentBuilder(true);
                                     }}
                                 >
                                     <div className="flex justify-between items-start relative">
@@ -1358,8 +1519,9 @@ export const NotebookWorkspace: React.FC = () => {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setOpenNoteMenuId(null);
+                                                            setViewingArtifact(null);
                                                             setActiveNoteToEdit(note);
-                                                            setIsNoteEditorOpen(true);
+                                                            setShowDocumentBuilder(true);
                                                         }}
                                                         className="w-full text-left px-3 py-1.5 hover:bg-white/5 text-xs text-gray-300 hover:text-white font-medium"
                                                     >
@@ -1409,8 +1571,9 @@ export const NotebookWorkspace: React.FC = () => {
                         <div className="p-5 border-t border-[#2d2f31] bg-[#1e1f20]">
                             <button
                                 onClick={() => {
+                                    setViewingArtifact(null);
                                     setActiveNoteToEdit(null);
-                                    setIsNoteEditorOpen(true);
+                                    setShowDocumentBuilder(true);
                                 }}
                                 className="w-full py-3.5 bg-white hover:bg-gray-100 text-gray-900 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-[0_4px_12px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2"
                             >
@@ -1428,23 +1591,27 @@ export const NotebookWorkspace: React.FC = () => {
                 onAddSource={handleAddSource}
             />
 
-            <NoteEditorModal
-                isOpen={isNoteEditorOpen}
-                onClose={() => {
-                    setIsNoteEditorOpen(false);
-                    setActiveNoteToEdit(null);
-                }}
-                onSave={handleSaveNote}
-                note={activeNoteToEdit}
-            />
+            {showDocumentBuilder && notebook && (
+                <DocumentBuilder
+                    sessionId={notebook.id}
+                    messages={[]}
+                    onClose={() => {
+                        setShowDocumentBuilder(false);
+                        setActiveNoteToEdit(null);
+                    }}
+                    onSave={(artifact) => handleSaveDocument(artifact)}
+                    width={docBuilderWidth}
+                    onWidthChange={setDocBuilderWidth}
+                    initialTitle={activeNoteToEdit?.title || ''}
+                    initialContent={activeNoteToEdit?.content || ''}
+                />
+            )}
 
-            <SourceViewerModal
-                isOpen={isSourceViewerOpen}
-                onClose={() => {
-                    setIsSourceViewerOpen(false);
-                    setActiveSourceToView(null);
-                }}
-                source={activeSourceToView}
+            <ArtifactReaderLayer
+                artifact={viewingArtifact}
+                onClose={() => setViewingArtifact(null)}
+                width={readerWidth}
+                onWidthChange={setReaderWidth}
             />
 
             <CustomizeNotebookModal
@@ -1455,6 +1622,27 @@ export const NotebookWorkspace: React.FC = () => {
                 currentSummary={notebook?.metadata.summaryContent || ''}
                 currentBannerImage={notebook?.metadata.bannerImage || ''}
             />
+
+            {/* Custom Notification Modal */}
+            {notificationModal.isOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="w-full max-w-sm bg-[#1a1b1e] border border-[#2d2f31] rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-4 relative overflow-hidden">
+                        <div className="w-14 h-14 rounded-2xl bg-[#2d2f31] border border-[#3d4043] flex items-center justify-center text-2xl shadow-inner">
+                            {notificationModal.icon}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-base font-bold text-white">{notificationModal.title}</h3>
+                            <p className="text-xs text-gray-400 leading-relaxed max-w-xs">{notificationModal.message}</p>
+                        </div>
+                        <button
+                            onClick={() => setNotificationModal(prev => ({ ...prev, isOpen: false }))}
+                            className="w-full py-2.5 bg-[#a8c7fa] hover:bg-[#c2e7ff] text-[#042100] text-xs font-bold rounded-full transition-all shadow-md active:scale-95 mt-2"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Force Role Switch Button inside Plus trigger popup, or directly near draft area */}
             {noteIdToDelete && (
