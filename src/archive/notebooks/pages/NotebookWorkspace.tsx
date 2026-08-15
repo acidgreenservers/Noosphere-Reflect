@@ -81,6 +81,28 @@ export const NotebookWorkspace: React.FC = () => {
     // Middle Chat Area 3-dot Menu State
     const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
 
+    // Notification Modal State
+    const [notificationModal, setNotificationModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        icon?: string;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        icon: '📋'
+    });
+
+    const showNotification = (title: string, message: string, icon: string = '📋') => {
+        setNotificationModal({
+            isOpen: true,
+            title,
+            message,
+            icon
+        });
+    };
+
     // Chat scroll ref
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -89,7 +111,7 @@ export const NotebookWorkspace: React.FC = () => {
         try {
             const data = await storageService.getNotebookById(id);
             if (!data) {
-                alert('Notebook not found.');
+                showNotification('Notebook Not Found', 'The requested notebook could not be located in your library.', '⚠️');
                 navigate('/notebooks');
                 return;
             }
@@ -265,14 +287,14 @@ export const NotebookWorkspace: React.FC = () => {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Export failed', error);
-            alert('Failed to export notebook.');
+            showNotification('Export Failed', 'An error occurred while packaging the notebook backup.', '⚠️');
         }
     };
 
-    const handleCopyText = async (text: string, successMessage: string) => {
+    const handleCopyText = async (text: string, successTitle: string, successMessage: string) => {
         try {
             await navigator.clipboard.writeText(text);
-            alert(successMessage);
+            showNotification(successTitle, successMessage, '📋');
         } catch (err) {
             const textArea = document.createElement("textarea");
             textArea.value = text;
@@ -280,10 +302,10 @@ export const NotebookWorkspace: React.FC = () => {
             textArea.select();
             try {
                 document.execCommand('copy');
-                alert(successMessage);
+                showNotification(successTitle, successMessage, '📋');
             } catch (fallbackErr) {
                 console.error('Failed to copy text:', fallbackErr);
-                alert('Failed to copy to clipboard.');
+                showNotification('Copy Failed', 'Unable to copy text to clipboard.', '⚠️');
             }
             document.body.removeChild(textArea);
         }
@@ -311,7 +333,7 @@ export const NotebookWorkspace: React.FC = () => {
             convText += `No active chat session.`;
         }
 
-        await handleCopyText(convText, '📋 Entire conversation copied to clipboard (with markdown formatting)!');
+        await handleCopyText(convText, 'Conversation Copied', 'Entire conversation copied to clipboard in markdown format!');
     };
 
     const handleAddSource = async (sourceData: Omit<NotebookSource, 'id' | 'createdAt'>) => {
@@ -989,7 +1011,7 @@ export const NotebookWorkspace: React.FC = () => {
                                                 };
                                                 await storageService.saveNotebook(updated);
                                                 setNotebook(updated);
-                                                alert('📌 Saved summary to Studio Notes!');
+                                                showNotification('Summary Saved', 'Saved summary to Studio Notes!', '📌');
                                             }}
                                             className="flex items-center gap-2 px-4 py-2 bg-[#2d2f31] hover:bg-[#3d3f42] border border-[#3d4043] text-xs font-semibold rounded-full text-gray-300 hover:text-white transition-all shadow-sm active:scale-95"
                                         >
@@ -1140,7 +1162,7 @@ export const NotebookWorkspace: React.FC = () => {
                                             <div className={`flex gap-3 text-xs mt-1.5 ${isUser ? 'justify-end pr-2' : 'justify-start pl-2'}`}>
                                                 <button
                                                     onClick={() => {
-                                                        handleCopyText(msg.content, '📋 Message copied to clipboard!');
+                                                        handleCopyText(msg.content, 'Message Copied', 'Chat message copied to clipboard!');
                                                     }}
                                                     className="text-gray-500 hover:text-gray-300 font-medium transition-colors flex items-center gap-1 hover:underline"
                                                     title="Copy Message Text"
@@ -1186,7 +1208,7 @@ export const NotebookWorkspace: React.FC = () => {
                                                         };
                                                         await storageService.saveNotebook(updated);
                                                         setNotebook(updated);
-                                                        alert('📌 Saved chat message content as a Studio Note!');
+                                                        showNotification('Note Created', 'Saved chat message content as a Studio Note!', '📌');
                                                     }}
                                                     className="text-gray-500 hover:text-[#a8c7fa] font-medium transition-colors flex items-center gap-1 hover:underline"
                                                     title="Clip message and save as a Studio Note"
@@ -1511,6 +1533,27 @@ export const NotebookWorkspace: React.FC = () => {
                 currentSummary={notebook?.metadata.summaryContent || ''}
                 currentBannerImage={notebook?.metadata.bannerImage || ''}
             />
+
+            {/* Custom Notification Modal */}
+            {notificationModal.isOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="w-full max-w-sm bg-[#1a1b1e] border border-[#2d2f31] rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-4 relative overflow-hidden">
+                        <div className="w-14 h-14 rounded-2xl bg-[#2d2f31] border border-[#3d4043] flex items-center justify-center text-2xl shadow-inner">
+                            {notificationModal.icon}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-base font-bold text-white">{notificationModal.title}</h3>
+                            <p className="text-xs text-gray-400 leading-relaxed max-w-xs">{notificationModal.message}</p>
+                        </div>
+                        <button
+                            onClick={() => setNotificationModal(prev => ({ ...prev, isOpen: false }))}
+                            className="w-full py-2.5 bg-[#a8c7fa] hover:bg-[#c2e7ff] text-[#042100] text-xs font-bold rounded-full transition-all shadow-md active:scale-95 mt-2"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Force Role Switch Button inside Plus trigger popup, or directly near draft area */}
             {noteIdToDelete && (
