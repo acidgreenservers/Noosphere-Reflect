@@ -12,7 +12,8 @@
      * Features:
      *   - Integrated Header Trigger: Sits natively beside "Invite" as "Export"
      *     aligned horizontally in the top bar flex container
-     *   - Copilot Fluent Dark UI Theme (#0e121a Midnight, #0078d4 Blue)
+     *   - Copilot Fluent Dual Theme (Light Warm Alabaster / Dark Midnight)
+     *   - Automatic theme detection & live switching with the page
      *   - Un-squished Flexbox Cards (`flex-shrink: 0`) with two-line previews
      *   - Recursive DOM-to-Markdown parser preserving formatting
      *     (Headings, bold/italic, lists, pipe tables, code blocks, links)
@@ -38,25 +39,187 @@
             NOISE_ELEMENTS: 'button, svg, .copy-button, .sr-only, [aria-hidden="true"]'
         },
 
-        THEME: {
-            BG_DARK: '#0e121a',
-            SURFACE_DARK: '#17202e',
-            SURFACE_HOVER: '#232d42',
-            BORDER: '#2c384e',
-            PRIMARY_BLUE: '#0078d4',
-            PRIMARY_BLUE_HOVER: '#0084f6',
-            ACCENT_PURPLE: '#a970ff',
-            TEXT_MAIN: '#f3f4f6',
-            TEXT_MUTED: '#9ca3af'
+        THEMES: {
+            light: {
+                CANVAS: '#f8f5ee',
+                SURFACE_SIDEBAR: '#f5f1e8',
+                SURFACE_CARD: '#ffffff',
+                SURFACE_CARD_ELEVATED: '#ffffff',
+                SURFACE_INPUT: '#ffffff',
+                SURFACE_PILL: '#eee8dc',
+                SURFACE_PILL_ACTIVE: '#1e1e1e',
+                SURFACE_USER_BUBBLE: '#ede7da',
+                SURFACE_BUTTON_DARK: '#1c1d1f',
+                ACCENT_BLUE: '#3b82f6',
+                ACCENT_BLUE_DEEP: '#1d4ed8',
+                ACCENT_BLUE_SUBTLE: 'rgba(59, 130, 246, 0.15)',
+                ACCENT_SPARKLE: '#f59e0b',
+                ACCENT_SKY: '#9cbef5',
+                TEXT_PRIMARY: '#1c1c1e',
+                TEXT_SECONDARY: '#4a4c52',
+                TEXT_MUTED: '#71747d',
+                TEXT_DIM: '#9aa0a6',
+                ON_ACCENT: '#ffffff',
+                BORDER_HAIRLINE: 'rgba(0, 0, 0, 0.05)',
+                BORDER_SUBTLE: 'rgba(0, 0, 0, 0.08)',
+                BORDER_STRONG: 'rgba(0, 0, 0, 0.14)',
+                STATUS_PREVIEW_BG: 'rgba(0, 0, 0, 0.06)',
+                STATUS_PREVIEW_TEXT: '#475569',
+                SHADOW_CARD: '0 4px 20px rgba(0, 0, 0, 0.04)',
+                SHADOW_FLOATING: '0 10px 30px rgba(0, 0, 0, 0.08)',
+                SHADOW_MODAL: '0 16px 48px rgba(0, 0, 0, 0.12)'
+            },
+            dark: {
+                CANVAS: '#0b0f19',
+                SURFACE_SIDEBAR: '#0d121c',
+                SURFACE_CARD: '#151c2b',
+                SURFACE_CARD_ELEVATED: '#1a2336',
+                SURFACE_INPUT: '#161d2d',
+                SURFACE_PILL: '#1c2537',
+                SURFACE_PILL_ACTIVE: '#25334d',
+                SURFACE_USER_BUBBLE: '#1e283d',
+                SURFACE_BUTTON_DARK: '#25334d',
+                ACCENT_BLUE: '#3b82f6',
+                ACCENT_BLUE_DEEP: '#1d4ed8',
+                ACCENT_BLUE_SUBTLE: 'rgba(59, 130, 246, 0.25)',
+                ACCENT_SPARKLE: '#f59e0b',
+                ACCENT_SKY: '#9cbef5',
+                TEXT_PRIMARY: '#f8fafc',
+                TEXT_SECONDARY: '#94a3b8',
+                TEXT_MUTED: '#64748b',
+                TEXT_DIM: '#475569',
+                ON_ACCENT: '#ffffff',
+                BORDER_HAIRLINE: 'rgba(255, 255, 255, 0.06)',
+                BORDER_SUBTLE: 'rgba(255, 255, 255, 0.10)',
+                BORDER_STRONG: 'rgba(255, 255, 255, 0.16)',
+                STATUS_PREVIEW_BG: 'rgba(255, 255, 255, 0.12)',
+                STATUS_PREVIEW_TEXT: '#e2e8f0',
+                SHADOW_CARD: '0 4px 12px rgba(0, 0, 0, 0.20)',
+                SHADOW_FLOATING: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                SHADOW_MODAL: '0 16px 48px rgba(0, 0, 0, 0.50)'
+            }
         }
     };
+
+    // Active theme reference — swapped by ThemeManager
+    CONFIG.THEME = CONFIG.THEMES.light;
 
     const STATE = {
         messages: [],
         deepResearchReports: [],
         selectedIds: new Set(),
         expandedId: null,
-        exportFormat: 'markdown' // 'markdown' or 'json'
+        exportFormat: 'markdown',
+        currentTheme: null
+    };
+
+    // ============================================================
+    // Theme Manager — Auto-detect & live-switch light / dark
+    // ============================================================
+
+    const ThemeManager = {
+        detect() {
+            // 1. Explicit data-theme / class on html or body
+            const html = document.documentElement;
+            const htmlTheme = html.getAttribute('data-theme');
+            if (htmlTheme === 'dark' || html.classList.contains('dark')) return 'dark';
+            if (htmlTheme === 'light' || html.classList.contains('light')) return 'light';
+
+            if (document.body) {
+                const bodyTheme = document.body.getAttribute('data-theme');
+                if (bodyTheme === 'dark' || document.body.classList.contains('dark')) return 'dark';
+                if (bodyTheme === 'light' || document.body.classList.contains('light')) return 'light';
+            }
+
+            // 2. Text color luminance on user message (SPA-safe)
+            const getTextLum = (el) => {
+                if (!el) return null;
+                const color = window.getComputedStyle(el).color;
+                if (!color) return null;
+                const rgb = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (!rgb) return null;
+                return (parseInt(rgb[1], 10) + parseInt(rgb[2], 10) + parseInt(rgb[3], 10)) / 3;
+            };
+
+            const userMsgText = document.querySelector('[data-content="user-message"] p, [data-content="user-message"]');
+            const textLum = getTextLum(userMsgText);
+            if (textLum !== null) {
+                return textLum > 200 ? 'dark' : 'light';
+            }
+
+            // 3. Background luminance fallback
+            const getBgLum = (el) => {
+                if (!el) return null;
+                const bg = window.getComputedStyle(el).backgroundColor;
+                if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return null;
+                const rgb = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (!rgb) return null;
+                return (parseInt(rgb[1], 10) + parseInt(rgb[2], 10) + parseInt(rgb[3], 10)) / 3;
+            };
+
+            const userMsg = document.querySelector('.group\\/user-message');
+            const userLum = getBgLum(userMsg);
+            if (userLum !== null) {
+                return userLum < 128 ? 'dark' : 'light';
+            }
+
+            const appContainers = [
+                document.getElementById('root'),
+                document.getElementById('__next'),
+                document.querySelector('main'),
+                document.body
+            ];
+            for (const container of appContainers) {
+                const lum = getBgLum(container);
+                if (lum !== null) {
+                    return lum < 128 ? 'dark' : 'light';
+                }
+            }
+
+            // 4. prefers-color-scheme
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+            return 'light';
+        },
+
+        apply(themeName) {
+            if (STATE.currentTheme === themeName) return;
+            STATE.currentTheme = themeName;
+            CONFIG.THEME = CONFIG.THEMES[themeName];
+
+            const oldStyle = document.getElementById('noosphere-copilot-styles');
+            if (oldStyle) oldStyle.remove();
+            injectStyles();
+
+            renderMessageList();
+        },
+
+        init() {
+            this.apply(this.detect());
+
+            this._pollInterval = setInterval(() => {
+                const detected = this.detect();
+                if (detected !== STATE.currentTheme) {
+                    this.apply(detected);
+                }
+            }, 500);
+
+            const observer = new MutationObserver(() => {
+                const detected = this.detect();
+                if (detected !== STATE.currentTheme) {
+                    this.apply(detected);
+                }
+            });
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-theme', 'class']
+            });
+            if (document.body) {
+                observer.observe(document.body, {
+                    attributes: true,
+                    attributeFilter: ['data-theme', 'class']
+                });
+            }
+        }
     };
 
     // ============================================================
@@ -72,16 +235,17 @@
                 position: 'fixed',
                 top: '20px',
                 right: '20px',
-                background: success ? CONFIG.THEME.PRIMARY_BLUE : '#dc2626',
-                color: 'white',
+                background: success ? CONFIG.THEME.ACCENT_BLUE : '#dc2626',
+                color: CONFIG.THEME.ON_ACCENT,
                 padding: '12px 20px',
                 borderRadius: '8px',
                 zIndex: '200000',
-                fontSize: '13px',
-                fontWeight: '600',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                fontSize: '14px',
+                fontWeight: '500',
+                lineHeight: '1.30',
+                boxShadow: CONFIG.THEME.SHADOW_MODAL,
                 transition: 'opacity 0.3s ease',
-                fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif'
+                fontFamily: '"Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif'
             });
 
             document.body.appendChild(notification);
@@ -523,6 +687,7 @@
     function injectStyles() {
         if (document.getElementById('noosphere-copilot-styles')) return;
 
+        const T = CONFIG.THEME;
         const style = document.createElement('style');
         style.id = 'noosphere-copilot-styles';
         style.textContent = `
@@ -531,24 +696,25 @@
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                font-size: 14px !important;
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+                font-size: 13px !important;
                 font-weight: 500 !important;
+                line-height: 1.45 !important;
                 min-height: 36px !important;
-                padding: 0 12px !important;
+                padding: 0 18px !important;
                 gap: 6px !important;
-                border-radius: 12px !important;
+                border-radius: 9999px !important;
                 cursor: pointer !important;
-                color: #f3f4f6 !important;
-                background: rgba(255, 255, 255, 0.08) !important;
-                border: 1px solid rgba(255, 255, 255, 0.12) !important;
-                backdrop-filter: blur(12px) !important;
+                color: ${T.ON_ACCENT} !important;
+                background: ${T.SURFACE_BUTTON_DARK} !important;
+                border: 1px solid ${T.SURFACE_BUTTON_DARK} !important;
                 transition: all 0.15s ease !important;
                 user-select: none !important;
                 margin-right: 8px !important;
             }
             .ns-copilot-header-btn:hover {
-                background: rgba(255, 255, 255, 0.15) !important;
-                border-color: rgba(255, 255, 255, 0.2) !important;
+                background: ${T.SURFACE_PILL_ACTIVE} !important;
+                border-color: ${T.SURFACE_PILL_ACTIVE} !important;
             }
 
             #ns-copilot-overlay {
@@ -565,101 +731,118 @@
 
             #ns-copilot-sidebar {
                 position: fixed;
-                top: 0; right: -380px;
-                width: 380px;
+                top: 0; right: -400px;
+                width: 400px;
                 height: 100%;
-                background: ${CONFIG.THEME.BG_DARK};
-                border-left: 1px solid ${CONFIG.THEME.BORDER};
-                color: ${CONFIG.THEME.TEXT_MAIN};
+                background: ${T.CANVAS};
+                border-left: 1px solid ${T.BORDER_HAIRLINE};
+                color: ${T.TEXT_PRIMARY};
                 z-index: 100002;
                 transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
                 display: flex;
                 flex-direction: column;
-                box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-                font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+                box-shadow: ${T.SHADOW_MODAL};
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
             }
             #ns-copilot-sidebar.active { right: 0; }
 
             .ns-sidebar-header {
-                padding: 16px 20px 12px;
-                background: ${CONFIG.THEME.SURFACE_DARK};
-                border-bottom: 1px solid ${CONFIG.THEME.BORDER};
+                padding: 20px 24px 16px;
+                background: ${T.SURFACE_SIDEBAR};
+                border-bottom: 1px solid ${T.BORDER_HAIRLINE};
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
                 flex-shrink: 0;
             }
 
             .ns-sidebar-title {
-                font-size: 15px;
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 18px;
                 font-weight: 600;
+                line-height: 1.40;
                 display: flex;
                 align-items: center;
                 gap: 8px;
                 margin: 0;
-                color: ${CONFIG.THEME.TEXT_MAIN};
+                color: ${T.TEXT_PRIMARY};
             }
 
             .ns-input-group {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
+                gap: 6px;
             }
 
             .ns-label {
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
                 font-size: 11px;
                 font-weight: 600;
-                color: ${CONFIG.THEME.TEXT_MUTED};
+                line-height: 1.40;
+                color: ${T.TEXT_MUTED};
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
+                letter-spacing: 1px;
             }
 
             .ns-input {
                 width: 100%;
-                background: ${CONFIG.THEME.BG_DARK};
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                padding: 8px 10px;
-                color: white;
-                font-size: 12px;
+                background: ${T.SURFACE_INPUT};
+                border: 1px solid ${T.BORDER_SUBTLE};
+                border-radius: 24px;
+                padding: 10px 14px;
+                color: ${T.TEXT_PRIMARY};
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 14px;
+                font-weight: 400;
+                line-height: 1.50;
                 outline: none;
                 box-sizing: border-box;
+                transition: border-color 0.15s ease, box-shadow 0.15s ease;
             }
-            .ns-input:focus { border-color: ${CONFIG.THEME.PRIMARY_BLUE}; }
+            .ns-input:focus {
+                border-color: ${T.ACCENT_BLUE};
+                box-shadow: 0 0 0 3px ${T.ACCENT_BLUE_SUBTLE};
+            }
 
             .ns-batch-controls {
                 display: grid;
                 grid-template-columns: repeat(4, 1fr);
-                gap: 6px;
+                gap: 8px;
             }
 
             .ns-batch-btn {
-                padding: 6px;
-                background: ${CONFIG.THEME.BG_DARK};
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                color: ${CONFIG.THEME.TEXT_MUTED};
-                font-size: 11px;
-                font-weight: 600;
+                padding: 8px;
+                background: ${T.SURFACE_INPUT};
+                border: 1px solid ${T.BORDER_SUBTLE};
+                border-radius: 9999px;
+                color: ${T.TEXT_MUTED};
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 1.45;
                 cursor: pointer;
                 text-align: center;
                 transition: all 0.15s ease;
             }
-            .ns-batch-btn:hover { background: ${CONFIG.THEME.SURFACE_HOVER}; color: white; }
+            .ns-batch-btn:hover {
+                background: ${T.SURFACE_PILL};
+                color: ${T.TEXT_PRIMARY};
+                border-color: ${T.BORDER_STRONG};
+            }
 
             .ns-msg-list {
                 flex: 1;
                 overflow-y: auto;
-                padding: 12px;
+                padding: 16px;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: 10px;
             }
 
             .ns-msg-card {
-                background: ${CONFIG.THEME.SURFACE_DARK} !important;
-                border: 1px solid ${CONFIG.THEME.BORDER} !important;
-                border-radius: 8px !important;
+                background: ${T.SURFACE_CARD} !important;
+                border: 1px solid ${T.BORDER_HAIRLINE} !important;
+                border-radius: 24px !important;
                 overflow: hidden !important;
                 flex-shrink: 0 !important;
                 height: auto !important;
@@ -667,16 +850,17 @@
                 max-height: none !important;
                 transition: all 0.15s ease;
                 box-sizing: border-box !important;
+                box-shadow: ${T.SHADOW_CARD};
             }
             .ns-msg-card:hover {
-                background: ${CONFIG.THEME.SURFACE_HOVER} !important;
-                border-color: rgba(255,255,255,0.18) !important;
+                border-color: ${T.BORDER_SUBTLE} !important;
+                box-shadow: ${T.SHADOW_FLOATING} !important;
             }
 
             .ns-msg-item {
                 display: flex !important;
                 align-items: flex-start !important;
-                padding: 10px 12px !important;
+                padding: 12px 16px !important;
                 gap: 12px !important;
                 cursor: pointer !important;
                 box-sizing: border-box !important;
@@ -689,21 +873,22 @@
                 -webkit-appearance: none !important;
                 width: 18px !important;
                 height: 18px !important;
-                border: 2px solid ${CONFIG.THEME.PRIMARY_BLUE} !important;
+                border: 2px solid ${T.ACCENT_BLUE} !important;
                 border-radius: 4px !important;
                 cursor: pointer !important;
-                background: rgba(0,0,0,0.3) !important;
+                background: ${T.SURFACE_CARD} !important;
                 position: relative !important;
                 flex-shrink: 0 !important;
                 margin-top: 2px !important;
+                transition: all 0.15s ease !important;
             }
             .ns-msg-check:checked {
-                background: ${CONFIG.THEME.PRIMARY_BLUE} !important;
+                background: ${T.ACCENT_BLUE} !important;
             }
             .ns-msg-check:checked::after {
                 content: '✓' !important;
                 position: absolute !important;
-                color: white !important;
+                color: ${T.ON_ACCENT} !important;
                 font-size: 12px !important;
                 font-weight: bold !important;
                 top: 50% !important;
@@ -726,22 +911,33 @@
             }
 
             .ns-role-badge {
-                font-size: 9px !important;
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 10px !important;
                 font-weight: 700 !important;
+                line-height: 1.20 !important;
                 text-transform: uppercase !important;
-                padding: 2px 6px !important;
-                border-radius: 4px !important;
+                letter-spacing: 0.5px !important;
+                padding: 3px 8px !important;
+                border-radius: 9999px !important;
                 display: inline-flex !important;
                 align-items: center !important;
                 gap: 4px !important;
             }
-            .ns-role-user { background: rgba(0, 120, 212, 0.3) !important; color: #93c5fd !important; }
-            .ns-role-ai { background: rgba(169, 112, 255, 0.3) !important; color: #d8b4fe !important; }
+            .ns-role-user {
+                background: ${T.ACCENT_BLUE_SUBTLE} !important;
+                color: ${T.ACCENT_BLUE} !important;
+            }
+            .ns-role-ai {
+                background: ${T.SURFACE_PILL} !important;
+                color: ${T.TEXT_SECONDARY} !important;
+            }
 
             .ns-msg-preview {
-                font-size: 12px !important;
-                line-height: 1.4 !important;
-                color: ${CONFIG.THEME.TEXT_MUTED} !important;
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 13px !important;
+                font-weight: 400 !important;
+                line-height: 1.45 !important;
+                color: ${T.TEXT_MUTED} !important;
                 display: -webkit-box !important;
                 -webkit-line-clamp: 2 !important;
                 -webkit-box-orient: vertical !important;
@@ -750,72 +946,94 @@
             }
 
             .ns-msg-accordion {
-                background: rgba(0, 0, 0, 0.3) !important;
-                border-top: 1px solid ${CONFIG.THEME.BORDER} !important;
-                padding: 10px 12px 12px 42px !important;
+                background: ${T.SURFACE_PILL} !important;
+                border-top: 1px solid ${T.BORDER_HAIRLINE} !important;
+                padding: 12px 16px 16px 46px !important;
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 6px !important;
-                font-size: 12px !important;
+                gap: 8px !important;
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 13px !important;
+                font-weight: 400 !important;
+                line-height: 1.45 !important;
             }
 
             .ns-sidebar-footer {
-                padding: 12px 16px;
-                background: ${CONFIG.THEME.SURFACE_DARK};
-                border-top: 1px solid ${CONFIG.THEME.BORDER};
+                padding: 16px 20px;
+                background: ${T.SURFACE_SIDEBAR};
+                border-top: 1px solid ${T.BORDER_HAIRLINE};
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 flex-shrink: 0;
             }
 
             .ns-btn {
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                padding: 8px 10px;
-                background: ${CONFIG.THEME.BG_DARK};
-                color: white;
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 13px;
+                font-weight: 500;
+                line-height: 1.45;
+                border-radius: 9999px;
+                padding: 10px 16px;
                 cursor: pointer;
-                font-size: 11px;
-                font-weight: 600;
                 text-align: center;
                 transition: all 0.15s ease;
                 white-space: nowrap;
+                border: none;
+                outline: none;
             }
-            .ns-btn:hover { background: ${CONFIG.THEME.SURFACE_HOVER}; }
 
             .ns-btn-cancel {
-                background: rgba(239, 68, 68, 0.15);
-                border-color: rgba(239, 68, 68, 0.3);
-                color: #fca5a5;
+                background: transparent;
+                border: 1px solid ${T.BORDER_SUBTLE};
+                color: ${T.TEXT_SECONDARY};
                 flex: 0.8;
             }
-            .ns-btn-cancel:hover { background: rgba(239, 68, 68, 0.25); }
+            .ns-btn-cancel:hover {
+                background: ${T.SURFACE_PILL};
+                color: ${T.TEXT_PRIMARY};
+            }
 
             .ns-format-select {
                 flex: 1.2;
-                background: ${CONFIG.THEME.BG_DARK};
-                border: 1px solid ${CONFIG.THEME.BORDER};
-                border-radius: 6px;
-                color: white;
-                padding: 8px 6px;
+                background: ${T.SURFACE_INPUT};
+                border: 1px solid ${T.BORDER_SUBTLE};
+                border-radius: 9999px;
+                color: ${T.TEXT_PRIMARY};
+                padding: 10px 10px;
                 outline: none;
-                font-size: 11px;
-                font-weight: 600;
+                font-family: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 1.45;
                 cursor: pointer;
                 text-align: center;
             }
-            .ns-format-select option { background: #111827; color: white; }
+            .ns-format-select option {
+                background: ${T.SURFACE_CARD};
+                color: ${T.TEXT_PRIMARY};
+            }
 
-            .ns-btn-copy { flex: 1; }
+            .ns-btn-copy {
+                flex: 1;
+                background: transparent;
+                border: 1px solid ${T.BORDER_SUBTLE};
+                color: ${T.TEXT_PRIMARY};
+            }
+            .ns-btn-copy:hover {
+                background: ${T.SURFACE_PILL};
+            }
 
             .ns-btn-primary {
                 flex: 1;
-                background: ${CONFIG.THEME.PRIMARY_BLUE};
-                border-color: ${CONFIG.THEME.PRIMARY_BLUE};
-                color: white;
+                background: ${T.SURFACE_BUTTON_DARK};
+                border: 1px solid ${T.SURFACE_BUTTON_DARK};
+                color: ${T.ON_ACCENT};
             }
-            .ns-btn-primary:hover { background: ${CONFIG.THEME.PRIMARY_BLUE_HOVER}; }
+            .ns-btn-primary:hover {
+                background: ${T.SURFACE_PILL_ACTIVE};
+                border-color: ${T.SURFACE_PILL_ACTIVE};
+            }
         `;
         document.head.appendChild(style);
     }
@@ -826,7 +1044,7 @@
         listContainer.innerHTML = '';
 
         if (STATE.messages.length === 0) {
-            listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#9ca3af; font-size:12px;">No messages found in Copilot thread.</div>';
+            listContainer.innerHTML = `<div style="padding:24px; text-align:center; color:${CONFIG.THEME.TEXT_MUTED}; font-family:'Segoe UI Variable',system-ui,sans-serif; font-size:13px; font-weight:400; line-height:1.45;">No messages found in Copilot thread.</div>`;
             return;
         }
 
@@ -855,8 +1073,10 @@
 
             if (msg.attachments.length > 0) {
                 const attBadge = document.createElement('span');
-                attBadge.style.fontSize = '9px';
-                attBadge.style.color = '#9ca3af';
+                attBadge.style.fontFamily = "'Segoe UI Variable',system-ui,sans-serif";
+                attBadge.style.fontSize = '11px';
+                attBadge.style.fontWeight = '500';
+                attBadge.style.color = CONFIG.THEME.TEXT_DIM;
                 attBadge.textContent = `🖼️ ${msg.attachments.length} attachment(s)`;
                 badgeGroup.appendChild(attBadge);
             }
@@ -880,7 +1100,11 @@
                 accordion.className = 'ns-msg-accordion';
 
                 const fullText = document.createElement('div');
-                fullText.style.color = '#e5e7eb';
+                fullText.style.fontFamily = "'Segoe UI Variable',system-ui,sans-serif";
+                fullText.style.fontSize = '13px';
+                fullText.style.fontWeight = '400';
+                fullText.style.lineHeight = '1.45';
+                fullText.style.color = CONFIG.THEME.TEXT_SECONDARY;
                 fullText.style.whiteSpace = 'pre-wrap';
                 fullText.style.maxHeight = '220px';
                 fullText.style.overflowY = 'auto';
@@ -928,7 +1152,6 @@
             openSidebarFn();
         };
 
-        // Target the flex row container holding top-right actions (.gap-2)
         const flexRowContainer = inviteBtn.closest('.flex.items-center.gap-2') ||
                                  inviteBtn.closest('.flex.items-center') ||
                                  inviteBtn.parentElement;
@@ -1028,7 +1251,7 @@
 
     function init() {
         console.log('✨ Noosphere Reflect — Microsoft Copilot Native Exporter Initialized');
-        injectStyles();
+        ThemeManager.init();
         createSidebarUI();
     }
 
