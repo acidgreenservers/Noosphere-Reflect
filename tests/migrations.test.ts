@@ -103,4 +103,30 @@ describe('Database Migrations', () => {
 
         dbV4.close();
     });
+
+    it('should create notebooks store when upgrading database from version 17 to version 18', async () => {
+        // 1. Create v17 database missing notebooks store
+        const dbV17 = await openDB(TEST_DB_NAME, 17, {
+            upgrade(db) {
+                db.createObjectStore(STORES.SESSIONS, { keyPath: 'id' });
+                db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' });
+            }
+        });
+        expect(dbV17.objectStoreNames).not.toContain(STORES.NOTEBOOKS);
+        dbV17.close();
+
+        // 2. Upgrade to v18
+        const dbV18 = await openDB(TEST_DB_NAME, 18, {
+            upgrade(db, oldVersion, newVersion, transaction) {
+                for (const migration of migrations) {
+                    if (oldVersion < migration.version && migration.version <= 18) {
+                        migration.migrate(db as any, transaction as any, oldVersion);
+                    }
+                }
+            }
+        });
+
+        expect(dbV18.objectStoreNames).toContain(STORES.NOTEBOOKS);
+        dbV18.close();
+    });
 });
