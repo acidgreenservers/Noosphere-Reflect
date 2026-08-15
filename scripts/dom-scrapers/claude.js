@@ -1,787 +1,1366 @@
-/**
- * Claude Chat Exporter - Claude content script
- * Exports Claude chat conversations to Markdown with thought process preservation
- */
-
 (function () {
     'use strict';
 
-    // ============================================================================
-    // CONSTANTS
-    // ============================================================================
+    /*
+     * ============================================================
+     * Noosphere Reflect — Claude Chat Exporter
+     * ============================================================
+     *
+     * Native Menu Injection & Markdown Synthesizer for Claude
+     * (claude.ai).
+     *
+     * Features:
+     *   - Integrated '+' Menu Trigger: Adds "Export Chat" option 
+     *     with matching icon above "Add files or photos"
+     *   - Automated Thinking Expansion: Pre-expands all thinking 
+     *     blocks to ensure 100% of reasoning process is archived
+     *   - Recursive DOM-to-Markdown parser preserving full formatting
+     *     (Headings, bold/italic, lists, pipe tables, code blocks)
+     *   - Interactive turn accordion drawer with batch selection controls
+     *   - Claude warm-canvas editorial theme (cream + coral)
+     *   - Noosphere Reflect frontmatter metadata & signature footer
+     *
+     * Namespace: ns-claude
+     * ============================================================
+     */
+
     const CONFIG = {
-        CHECKBOX_CLASS: 'ns-checkbox',
-
         SELECTORS: {
-            // Chat container
-            CHAT_CONTAINER: '[data-testid="chat-messages"]',
-
-            // Message turns
-            CONVERSATION_TURN: '[data-test-render-count]',
+            // Message Containers
             USER_MESSAGE: '[data-testid="user-message"]',
-            CLAUDE_RESPONSE: '.font-claude-response',
-
-            // Side-channel blocks (Thoughts, Memory edits, etc)
-            SIDE_BLOCK: '.border-border-300.rounded-lg',
-            SIDE_BLOCK_TITLE: 'button',
-            SIDE_BLOCK_CONTENT: '.standard-markdown',
+            USER_MESSAGE_TEXT: 'p.whitespace-pre-wrap',
             
-            // New "Thinking" blocks (Claude 3.7+ Reasoning)
-            THOUGHT_HEADER: 'button.group\\/status',
-            THOUGHT_CONTENT_CONTAINER: '.flex-col.font-ui',
-
-            // UI elements
-            COPY_BUTTON: '[data-testid="action-bar-copy"]',
-            CONVERSATION_TITLE: '[data-testid="chat-title-button"] .truncate',
-
-            // Artifacts
-            ARTIFACT_CONTAINER: '[data-testid="artifact-container"], .artifact-block-cell'
+            // Assistant Message Containers
+            ASSISTANT_ROW: '.group\\/message-row',
+            ASSISTANT_CONTENT: '.font-claude-response',
+            ASSISTANT_MARKDOWN: '.standard-markdown',
+            ASSISTANT_PARAGRAPH: 'p.font-claude-response-body',
+            ASSISTANT_TIMESTAMP: 'time[datetime]',
+            MESSAGE_ACTIONS: '[data-cds="MessageActions"]',
+            
+            // Thinking Block Containers
+            THINKING_CONTAINER: '.row-start-1.col-start-1',
+            THINKING_BUTTON: 'button[aria-expanded]',
+            THINKING_SUMMARY: 'span.truncate.font-base',
+            THINKING_PANEL: '[data-cds="Collapsible"]',
+            THINKING_STEPS: '[data-timeline-text]',
+            THINKING_CONTENT: '.standard-markdown',
+            
+            // Menu Injection
+            PLUS_MENU: '[data-cds="Menu"]',
+            PLUS_MENU_FIRST_ITEM: '[role="menuitem"]',
+            
+            // Conversation Title
+            CONVERSATION_TITLE: 'header h1, title',
+            
+            // UI Chrome to Strip
+            NOISE_ELEMENTS: '[data-cds="MessageActions"], [data-cds="Icon"], svg, .sr-only'
         },
 
-        TIMING: {
-            SCROLL_DELAY: 2000,
-            CLIPBOARD_CLEAR_DELAY: 200,
-            CLIPBOARD_READ_DELAY: 300,
-            MOUSEOVER_DELAY: 500,
-            POPUP_DURATION: 900,
-            MAX_SCROLL_ATTEMPTS: 60,
-            MAX_STABLE_SCROLLS: 4,
-            MAX_CLIPBOARD_ATTEMPTS: 10
-        },
-
-        STYLES: {
-            BUTTON_PRIMARY: '#c76f3b', // Claude orange
-            BUTTON_HOVER: '#a55f2f',
-            DARK_BG: '#1a1a1a',
-            DARK_TEXT: '#fff',
-            DARK_BORDER: '#444',
-            LIGHT_BG: '#fff',
-            LIGHT_TEXT: '#222',
-            LIGHT_BORDER: '#ccc'
+        // Claude Design Tokens (from DESIGN.md)
+        THEME: {
+            CANVAS: '#faf9f5',
+            SURFACE_SOFT: '#f5f0e8',
+            SURFACE_CARD: '#efe9de',
+            SURFACE_DARK: '#181715',
+            SURFACE_DARK_ELEVATED: '#252320',
+            HAIRLINE: '#e6dfd8',
+            PRIMARY_CORAL: '#cc785c',
+            PRIMARY_CORAL_ACTIVE: '#a9583e',
+            PRIMARY_CORAL_DISABLED: '#e6dfd8',
+            INK: '#141413',
+            BODY: '#3d3d3a',
+            BODY_STRONG: '#252523',
+            MUTED: '#6c6a64',
+            MUTED_SOFT: 'A#8e8b82',
+            ON_PRIMARY: '#ffffff',
+            ON_DARK: '#faf9f5',
+            ON_DARK_SOFT: '#a09d96',
+            ACCENT_TEAL: '#5db8a6',
+            SUCCESS: '#5db872',
+            ERROR: '#c64545'
         }
     };
 
-    // ============================================================================
-    // UTILITY FUNCTIONS
-    // ============================================================================
+    const STATE = {
+        messages: [],
+        selectedIds: new Set(),
+        expandedId: null,
+        sidebarOpen: false
+    };
+
+    // ============================================================
+    // Utilities
+    // ============================================================
+
     const Utils = {
-        sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        },
-
-        isDarkMode() {
-            return document.documentElement.classList.contains('dark');
-        },
-
-        sanitizeFilename(text) {
-            return text
-                .replace(/[<>:"/\\|?*]/g, '')
-                .replace(/\s+/g, '_')
-                .substring(0, 50);
-        },
-
-        getDateString() {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        },
-
-        createNotification(message) {
+        createNotification(message, success = true) {
             const notification = document.createElement('div');
             notification.textContent = message;
+
             Object.assign(notification.style, {
                 position: 'fixed',
                 top: '20px',
                 right: '20px',
-                background: CONFIG.STYLES.BUTTON_PRIMARY,
-                color: 'white',
+                background: success ? CONFIG.THEME.PRIMARY_CORAL : CONFIG.THEME.ERROR,
+                color: CONFIG.THEME.ON_PRIMARY,
                 padding: '12px 20px',
                 borderRadius: '8px',
-                zIndex: '10000',
+                zIndex: '200000',
                 fontSize: '14px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                fontWeight: '500',
+                fontFamily: 'StyreneB, Inter, system-ui, -apple-system, sans-serif',
+                boxShadow: '0 4px 12px rgba(20, 20, 19, 0.15)',
                 transition: 'opacity 0.3s ease'
             });
+
             document.body.appendChild(notification);
+
             setTimeout(() => {
                 notification.style.opacity = '0';
                 setTimeout(() => notification.remove(), 300);
-            }, CONFIG.TIMING.POPUP_DURATION);
+            }, 2200);
+        },
+
+        cleanText(text) {
+            return (text || '')
+                .replace(/\u00a0/g, ' ')
+                .replace(/[ \t]+\n/g, '\n')
+                .replace(/\n[ \t]+/g, '\n')
+                .replace(/[ \t]{2,}/g, ' ')
+                .trim();
+        },
+
+        normalizeMarkdown(text) {
+            return text
+                .replace(/\n{3,}/g, '\n\n')
+                .replace(/[ \t]+\n/g, '\n')
+                .trim();
+        },
+
+        sanitizeFilename(text) {
+            return (text || 'Claude_Chat')
+                .replace(/[<>:"/\\|?*]/g, '')
+                .replace(/\s+/g, '_')
+                .substring(0, 80);
+        },
+
+        getDateString() {
+            const now = new Date();
+            const pad = n => n.toString().padStart(2, '0');
+            return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
         }
     };
 
-    // UI AND CHECKBOX FUNCTIONS - PORTED FROM NEURAL CONSOLE
-    // ============================================================================
+    // ============================================================
+    // Recursive HTML to Markdown Parser
+    // ============================================================
+
+    function renderNodeToMarkdown(node) {
+        if (!node) return '';
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent || '';
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            return '';
+        }
+
+        // Ignore UI chrome noise
+        if (node.matches && node.matches(CONFIG.SELECTORS.NOISE_ELEMENTS)) {
+            return '';
+        }
+
+        const tag = node.tagName.toLowerCase();
+
+        const inner = () =>
+            Array.from(node.childNodes)
+                .map(renderNodeToMarkdown)
+                .join('');
+
+        switch (tag) {
+            case 'h1': return `\n\n# ${Utils.cleanText(inner())}\n\n`;
+            case 'h2': return `\n\n## ${Utils.cleanText(inner())}\n\n`;
+            case 'h3': return `\n\n### ${Utils.cleanText(inner())}\n\n`;
+            case 'h4': return `\n\n#### ${Utils.cleanText(inner())}\n\n`;
+            case 'h5': return `\n\n##### ${Utils.cleanText(inner())}\n\n`;
+            case 'h6': return `\n\n###### ${Utils.cleanText(inner())}\n\n`;
+
+            case 'p': {
+                const text = inner().trim();
+                return text ? `\n\n${text}\n\n` : '';
+            }
+
+            case 'strong':
+            case 'b': {
+                const text = inner().trim();
+                return text ? `**${text}**` : '';
+            }
+
+            case 'em':
+            case 'i': {
+                const text = inner().trim();
+                return text ? `*${text}*` : '';
+            }
+
+            case 'code': {
+                if (node.parentElement?.tagName.toLowerCase() === 'pre') {
+                    return inner();
+                }
+                return `\`${inner().replace(/`/g, '\\`')}\``;
+            }
+
+            case 'pre': {
+                const clone = node.cloneNode(true);
+                clone.querySelectorAll('button, svg, .copy-button, [data-cds]').forEach(n => n.remove());
+                const lang = clone.getAttribute('data-lang') || clone.className.match(/lang-(\w+)/)?.[1] || '';
+                const codeText = clone.textContent || '';
+                return `\n\n\`\`\`${lang}\n${codeText.trim()}\n\`\`\`\n\n`;
+            }
+
+            case 'blockquote': {
+                const text = Utils.cleanText(inner());
+                return `\n\n> ${text.replace(/\n/g, '\n> ')}\n\n`;
+            }
+
+            case 'hr': return '\n\n---\n\n';
+            case 'br': return '\n';
+
+            case 'a': {
+                const label = Utils.cleanText(inner());
+                const href = node.getAttribute('href');
+                return href ? `[${label || href}](${href})` : label;
+            }
+
+            case 'ul':
+            case 'ol': {
+                const isOrdered = tag === 'ol';
+                const items = Array.from(node.children)
+                    .filter(child => child.tagName.toLowerCase() === 'li')
+                    .map((li, idx) => {
+                        const liText = Utils.cleanText(renderNodeToMarkdown(li));
+                        const prefix = isOrdered ? `${idx + 1}.` : '-';
+                        return `${prefix} ${liText}`;
+                    })
+                    .filter(Boolean);
+
+                return `\n\n${items.join('\n')}\n\n`;
+            }
+
+            case 'li': return inner().trim();
+
+            case 'table': {
+                const rows = Array.from(node.querySelectorAll('tr'));
+                if (!rows.length) return '';
+
+                const matrix = rows.map(row => {
+                    const cells = Array.from(row.querySelectorAll('th, td'));
+                    return cells.map(cell => Utils.cleanText(renderNodeToMarkdown(cell)));
+                });
+
+                const colCount = Math.max(...matrix.map(r => r.length), 0);
+                if (!colCount) return '';
+
+                const escapeCell = val => String(val || '').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+
+                const normalized = matrix.map(r => {
+                    const copy = r.slice();
+                    while (copy.length < colCount) copy.push('');
+                    return copy;
+                });
+
+                const header = normalized[0].map(escapeCell);
+                const separator = new Array(colCount).fill('---');
+                const output = [`| ${header.join(' | ')} |`, `| ${separator.join(' | ')} |`];
+
+                for (let i = 1; i < normalized.length; i++) {
+                    output.push(`| ${normalized[i].map(escapeCell).join(' | ')} |`);
+                }
+
+                return `\n\n${output.join('\n')}\n\n`;
+            }
+
+            default: return inner();
+        }
+    }
+
+    function htmlToMarkdown(element) {
+        if (!element) return '';
+        const clone = element.cloneNode(true);
+        clone.querySelectorAll(CONFIG.SELECTORS.NOISE_ELEMENTS).forEach(n => n.remove());
+        return Utils.normalizeMarkdown(renderNodeToMarkdown(clone));
+    }
+
+    // ============================================================
+    // Auto-Expand Thinking Blocks
+    // ============================================================
+
+    async function autoExpandThinkingBlocks() {
+        const thinkingButtons = document.querySelectorAll(
+            `${CONFIG.SELECTORS.THINKING_CONTAINER} ${CONFIG.SELECTORS.THINKING_BUTTON}`
+        );
+        
+        let expanded = 0;
+        
+        thinkingButtons.forEach(btn => {
+            if (btn.getAttribute('aria-expanded') === 'false') {
+                btn.click();
+                expanded++;
+            }
+        });
+        
+        if (expanded > 0) {
+            // Wait for content to render
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        return expanded;
+    }
+
+    // ============================================================
+    // Claude DOM Extractors
+    // ============================================================
+
+    function extractUserMessage(container) {
+        const textEl = container.querySelector(CONFIG.SELECTORS.USER_MESSAGE_TEXT) || container;
+        return Utils.cleanText(textEl.innerText || '');
+    }
+
+    function extractAssistantMessage(container) {
+        const contentEl = container.querySelector(CONFIG.SELECTORS.ASSISTANT_CONTENT);
+        
+        // Get timestamp if available
+        const timeEl = container.querySelector(CONFIG.SELECTORS.ASSISTANT_TIMESTAMP);
+        const timestamp = timeEl?.getAttribute('datetime') || '';
+        
+        if (!contentEl) {
+            return { content: '', timestamp };
+        }
+        
+        // Extract main content
+        const markdownEl = contentEl.querySelector(CONFIG.SELECTORS.ASSISTANT_MARKDOWN) || contentEl;
+        const content = htmlToMarkdown(markdownEl);
+        
+        return { content, timestamp };
+    }
+
+    function extractThinkingBlock(container) {
+        // Get summary
+        const summaryEl = container.querySelector(CONFIG.SELECTORS.THINKING_SUMMARY);
+        const summary = summaryEl ? Utils.cleanText(summaryEl.innerText) : '';
+        
+        // Get full thinking content
+        const panel = container.querySelector(CONFIG.SELECTORS.THINKING_PANEL);
+        if (!panel) return { summary, content: '' };
+        
+        // Extract all thinking steps
+        const steps = panel.querySelectorAll(CONFIG.SELECTORS.THINKING_STEPS);
+        let fullContent = '';
+        
+        steps.forEach(step => {
+            const markdownEl = step.querySelector(CONFIG.SELECTORS.THINKING_CONTENT);
+            if (markdownEl) {
+                const stepText = htmlToMarkdown(markdownEl);
+                if (stepText && stepText !== 'Done') {
+                    fullContent += stepText + '\n\n';
+                }
+            }
+        });
+        
+        return { summary, content: fullContent.trim() };
+    }
+
+    function scanConversation() {
+        STATE.messages = [];
+        
+        // Find all message elements
+        const userMessages = Array.from(document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE));
+        const assistantRows = Array.from(document.querySelectorAll(CONFIG.SELECTORS.ASSISTANT_ROW));
+        const thinkingBlocks = Array.from(document.querySelectorAll(CONFIG.SELECTORS.THINKING_CONTAINER));
+        
+        // Build ordered list of all elements with their positions
+        const allElements = [];
+        
+        userMessages.forEach(el => {
+            const text = extractUserMessage(el);
+            if (text) {
+                allElements.push({
+                    type: 'user',
+                    el,
+                    order: el.getBoundingClientRect().top,
+                    text,
+                    preview: text.substring(0, 75) + (text.length > 75 ? '...' : '')
+                });
+            }
+        });
+        
+        assistantRows.forEach(el => {
+            const { content, timestamp } = extractAssistantMessage(el);
+            // Only add if there's actual content
+            if (content && content.trim().length > 0) {
+                allElements.push({
+                    type: 'assistant',
+                    el,
+                    order: el.getBoundingClientRect().top,
+                    text: content,
+                    timestamp,
+                    preview: content.substring(0, 75).replace(/\n/g, ' ') + (content.length > 75 ? '...' : ''),
+                    thinking: null
+                });
+            }
+        });
+        
+        // Sort by vertical position
+        allElements.sort((a, b) => a.order - b.order);
+        
+        // Associate thinking blocks with nearest preceding assistant message
+        thinkingBlocks.forEach(thinkingEl => {
+            const thinkingData = extractThinkingBlock(thinkingEl);
+            if (!thinkingData.content) return;
+            
+            const thinkingRect = thinkingEl.getBoundingClientRect();
+            let closestAssistant = null;
+            let minDistance = Infinity;
+            
+            allElements.forEach(msg => {
+                if (msg.type === 'assistant') {
+                    const distance = Math.abs(msg.el.getBoundingClientRect().top - thinkingRect.top);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestAssistant = msg;
+                    }
+                }
+            });
+            
+            if (closestAssistant) {
+                closestAssistant.thinking = thinkingData;
+            }
+        });
+        
+        // Assign IDs and add to state
+        allElements.forEach((item, idx) => {
+            STATE.messages.push({
+                id: idx,
+                role: item.type,
+                text: item.text,
+                thinking: item.thinking || null,
+                timestamp: item.timestamp || '',
+                preview: item.preview
+            });
+        });
+        
+        // Select all by default
+        if (STATE.selectedIds.size === 0) {
+            STATE.messages.forEach(m => STATE.selectedIds.add(m.id));
+        }
+    }
+
+    // ============================================================
+    // Export Service & Document Synthesis
+    // ============================================================
+
+    const ExportService = {
+        getExportTitle() {
+            const manualTitle = document.getElementById('ns-claude-title')?.value?.trim();
+            if (manualTitle) return manualTitle;
+
+            const titleEl = document.querySelector(CONFIG.SELECTORS.CONVERSATION_TITLE);
+            if (titleEl && titleEl.innerText) {
+                return Utils.cleanText(titleEl.innerText).substring(0, 50);
+            }
+
+            const firstUserMsg = STATE.messages.find(m => m.role === 'user');
+            if (firstUserMsg && firstUserMsg.text) {
+                return Utils.cleanText(firstUserMsg.text).substring(0, 50);
+            }
+
+            return document.title || 'Claude_Chat';
+        },
+
+        buildMarkdown() {
+            const title = this.getExportTitle();
+            const sourceUrl = window.location.href;
+            const exportedAt = new Date().toLocaleString();
+
+            const selected = STATE.messages.filter(m => STATE.selectedIds.has(m.id));
+            const userCount = selected.filter(m => m.role === 'user').length;
+            const aiCount = selected.filter(m => m.role === 'assistant').length;
+
+            let md = '';
+            
+            // Frontmatter
+            md += '---\n';
+            md += `> **📝 Title:** ${title}\n>\n`;
+            md += '> **🤖 Model:** Claude\n>\n';
+            md += `> **🌐 Exported:** ${exportedAt}\n>\n`;
+            md += `> **🌐 Source:** [Claude](${sourceUrl})\n>\n`;
+            md += '> **🏷️ Tags:** Claude, AI-Chat, Noosphere, Anthropic\n>\n';
+            md += `> **📊 Metadata:** ${selected.length} Selected Messages | ${userCount} User | ${aiCount} Claude\n`;
+            md += '---\n\n';
+
+            md += `# ${title}\n\n`;
+            md += '---\n\n';
+
+            selected.forEach(msg => {
+                if (msg.role === 'user') {
+                    md += `#### Prompt - User 👤:\n\n${msg.text}\n\n---\n\n`;
+                } else if (msg.role === 'assistant') {
+                    md += `#### Response - Claude 🧠:\n\n`;
+
+                    // Include thinking if captured
+                    if (msg.thinking && msg.thinking.content) {
+                        md += `<details>\n<summary><b>🧠 Thinking: ${msg.thinking.summary || 'Claude\'s reasoning'}</b></summary>\n\n`;
+                        md += msg.thinking.content.replace(/\n/g, '\n> ');
+                        md += '\n\n</details>\n\n';
+                    }
+
+                    md += `${msg.text}\n\n---\n\n`;
+                }
+            });
+
+            // Footer
+            md += '###### Noosphere Reflect\n';
+            md += '###### ***Meaning Through Memory***\n\n';
+            md += '###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***\n';
+
+            return Utils.normalizeMarkdown(md);
+        },
+
+        buildJSON() {
+            const title = this.getExportTitle();
+            const selected = STATE.messages.filter(m => STATE.selectedIds.has(m.id));
+            
+            return JSON.stringify({
+                metadata: {
+                    title,
+                    exportedAt: new Date().toISOString(),
+                    sourceUrl: window.location.href,
+                    model: 'Claude'
+                },
+                messages: selected.map(m => ({
+                    role: m.role,
+                    thinking: m.thinking || null,
+                    content: m.text
+                }))
+            }, null, 2);
+        },
+
+        async executeCopy() {
+            if (STATE.selectedIds.size === 0) {
+                Utils.createNotification('⚠️ Select at least one message', false);
+                return;
+            }
+
+            try {
+                const format = document.getElementById('ns-claude-format')?.value || 'markdown';
+                const content = format === 'json' ? this.buildJSON() : this.buildMarkdown();
+                await navigator.clipboard.writeText(content);
+                Utils.createNotification(`✅ Copied ${STATE.selectedIds.size} turns as ${format.toUpperCase()}!`);
+            } catch (err) {
+                console.error('[Noosphere Claude]', err);
+                Utils.createNotification('❌ Clipboard export failed', false);
+            }
+        },
+
+        async executeDownload() {
+            if (STATE.selectedIds.size === 0) {
+                Utils.createNotification('⚠️ Select at least one message', false);
+                return;
+            }
+
+            try {
+                const format = document.getElementById('ns-claude-format')?.value || 'markdown';
+                const isJson = format === 'json';
+                const content = isJson ? this.buildJSON() : this.buildMarkdown();
+                const title = this.getExportTitle();
+                const ext = isJson ? 'json' : 'md';
+                const mime = isJson ? 'application/json' : 'text/markdown';
+                const filename = `${Utils.sanitizeFilename(title)}_Claude_${Utils.getDateString()}.${ext}`;
+
+                const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+
+                Utils.createNotification(`✅ Downloaded: ${filename}`);
+            } catch (err) {
+                console.error('[Noosphere Claude]', err);
+                Utils.createNotification('❌ Download failed', false);
+            }
+        }
+    };
+
+    // ============================================================
+    // UI Construction (Claude Warm Canvas Theme)
+    // ============================================================
+
+    function detectTheme() {
+        // Check if Claude is using dark mode by sampling the chat background
+        const chatContainer = document.querySelector('[data-testid="user-message"]')?.closest('div[class*="bg-"]');
+        if (chatContainer) {
+            const bg = window.getComputedStyle(chatContainer).backgroundColor;
+            if (bg && (bg.includes('18, 17, 21') || bg.includes('24, 24, 27'))) {
+                return 'dark';
+            }
+        }
+        // Fallback: check if body background is dark
+        const bodyBg = window.getComputedStyle(document.body).backgroundColor;
+        if (bodyBg) {
+            const rgb = bodyBg.match(/\d+/g);
+            if (rgb && (parseInt(rgb[0]) < 60 && parseInt(rgb[1]) < 60 && parseInt(rgb[2]) < 60)) {
+                return 'dark';
+            }
+        }
+        return 'light';
+    }
+
+    function getThemeColors() {
+        const isDark = detectTheme() === 'dark';
+        return {
+            bg: isDark ? CONFIG.THEME.SURFACE_DARK : CONFIG.THEME.CANVAS,
+            bgElevated: isDark ? CONFIG.THEME.SURFACE_DARK_ELEVATED : CONFIG.THEME.SURFACE_CARD,
+            bgSoft: isDark ? CONFIG.THEME.SURFACE_DARK_SOFT : CONFIG.THEME.SURFACE_SOFT,
+            text: isDark ? CONFIG.THEME.ON_DARK : CONFIG.THEME.INK,
+            textMuted: isDark ? CONFIG.THEME.ON_DARK_SOFT : CONFIG.THEME.MUTED,
+            border: isDark ? '#323238' : CONFIG.THEME.HAIRLINE,
+            inputBg: isDark ? CONFIG.THEME.SURFACE_DARK_ELEVATED : CONFIG.THEME.CANVAS,
+            cardBg: isDark ? CONFIG.THEME.SURFACE_DARK_ELEVATED : CONFIG.THEME.CANVAS,
+            cardHover: isDark ? '#2c2c32' : CONFIG.THEME.SURFACE_CARD
+        };
+    }
 
     function injectStyles() {
-        const styleId = 'noosphere-styles';
-        if (document.getElementById(styleId)) return;
+        if (document.getElementById('noosphere-claude-styles')) return;
 
+        const t = getThemeColors();
         const style = document.createElement('style');
-        style.id = styleId;
+        style.id = 'noosphere-claude-styles';
         style.textContent = `
-            :root {
-                --ns-green: #10b981;
-                --ns-purple: #8b5cf6;
-                --ns-amber: #f59e0b;
-                --ns-bg: rgba(17, 24, 39, 0.7);
-                --ns-border: rgba(255, 255, 255, 0.1);
-                --ns-glow: 0 0 20px rgba(16, 185, 129, 0.3);
+            /* Export Chat Menu Item */
+            .ns-claude-menu-item {
+                display: flex !important;
+                align-items: center !important;
+                width: 100% !important;
+                gap: 8px !important;
+                padding: 8px 10px !important;
+                border-radius: 6px !important;
+                cursor: pointer !important;
+                font-family: StyreneB, Inter, system-ui, sans-serif !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                transition: background-color 0.15s ease !important;
             }
-            .ns-orb {
-                position: fixed; bottom: 25px; right: 25px; width: 56px; height: 56px;
-                background: linear-gradient(135deg, var(--ns-green), var(--ns-purple));
-                border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                cursor: pointer; z-index: 100000; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-                transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                border: 2px solid rgba(255, 255, 255, 0.2);
+            .ns-claude-menu-item:hover,
+            .ns-claude-menu-item[data-highlighted] {
+                background: ${t.bg === CONFIG.THEME.SURFACE_DARK ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'} !important;
             }
-            .ns-orb:hover { transform: scale(1.1) rotate(5deg); box-shadow: var(--ns-glow); }
-            .ns-orb svg { width: 28px; height: 28px; fill: white; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
-            .ns-console {
-                position: fixed; bottom: 95px; right: 25px; width: 340px;
-                background: var(--ns-bg); backdrop-filter: blur(20px) saturate(180%);
-                border: 1px solid var(--ns-border); border-radius: 28px; z-index: 99999;
-                overflow: hidden; display: none; flex-direction: column;
-                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); color: white;
-                font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            .ns-claude-menu-separator {
+                height: 1px !important;
+                background: ${t.border} !important;
+                margin: 4px 8px !important;
             }
-            .ns-console-header { padding: 24px 24px 16px; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); }
-            .ns-console-title {
-                font-size: 20px; font-weight: 800; letter-spacing: -0.02em;
-                background: linear-gradient(to right, #fff, rgba(255,255,255,0.7));
-                -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;
-            }
-            .ns-console-subtitle { font-size: 12px; color: rgba(255, 255, 255, 0.5); font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; }
-            .ns-console-tabs { display: flex; padding: 0 16px; gap: 8px; margin-bottom: 16px; }
-            .ns-tab {
-                padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
-                cursor: pointer; transition: all 0.2s; background: rgba(255, 255, 255, 0.05);
-                color: rgba(255, 255, 255, 0.6); border: 1px solid transparent;
-            }
-            .ns-tab.active { background: rgba(16, 185, 129, 0.15); color: var(--ns-green); border: 1px solid rgba(16, 185, 129, 0.3); }
-            .ns-console-content { padding: 0 20px 24px; display: flex; flex-direction: column; gap: 10px; }
-            .ns-btn {
-                width: 100%; padding: 12px 18px; background: rgba(255, 255, 255, 0.05);
-                border: 1px solid var(--ns-border); border-radius: 16px; color: white;
-                font-size: 14px; font-weight: 600; cursor: pointer; display: flex;
-                align-items: center; gap: 12px; transition: all 0.2s;
-            }
-            .ns-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); transform: translateX(4px); }
-            .ns-btn svg { width: 18px; height: 18px; opacity: 0.7; }
-            .ns-btn-primary {
-                background: linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-                border-color: rgba(16, 185, 129, 0.3); color: var(--ns-green);
-            }
-            .ns-btn-primary:hover { background: rgba(16, 185, 129, 0.25); border-color: var(--ns-green); }
-            .ns-input-group { background: rgba(0, 0, 0, 0.2); padding: 16px; border-radius: 20px; border: 1px solid var(--ns-border); }
-            .ns-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.4); margin-bottom: 8px; display: block; }
-            .ns-input { width: 100%; background: transparent; border: none; color: white; font-size: 15px; outline: none; padding: 4px 0; }
-            .ns-select {
-                width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ns-border);
-                border-radius: 12px; color: white; padding: 10px; outline: none; font-size: 13px;
-                appearance: none; -webkit-appearance: none; -moz-appearance: none;
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.7)' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-                background-repeat: no-repeat; background-position: right 12px center;
-                background-size: 12px; padding-right: 30px; cursor: pointer; transition: all 0.2s;
-            }
-            .ns-select:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
-            .ns-select option { background: var(--ns-bg); color: white; padding: 8px; }
-            /* Checkbox Styles */
-            .ns-checkbox-container { z-index: 1000; display: flex; align-items: center; justify-content: center; }
-            .ns-checkbox {
-                appearance: none; width: 20px; height: 20px; border: 2px solid var(--ns-green);
-                border-radius: 6px; cursor: pointer; background: rgba(0,0,0,0.3);
-                transition: all 0.2s; position: relative;
-            }
-            .ns-checkbox:checked { background: var(--ns-green); box-shadow: 0 0 10px var(--ns-green); }
-            .ns-checkbox:checked::after {
-                content: '✓'; position: absolute; color: white; font-size: 14px;
-                top: 50%; left: 50%; transform: translate(-50%, -50%);
-            }
-            .ns-bulk-controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 12px; }
-            .ns-bulk-btn {
-                padding: 6px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ns-border);
-                border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px;
-                font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s;
-            }
-            .ns-bulk-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
 
-            /* Claude Specific Overrides */
-            .user-message-container .ns-checkbox-container { position: absolute; left: -30px; top: 12px; }
-            .claude-response-container .ns-checkbox-container { position: absolute; left: -30px; top: 12px; }
+            /* Sidebar Overlay */
+            #ns-claude-overlay {
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(4px);
+                z-index: 100001;
+                display: none;
+                opacity: 0;
+                transition: opacity 0.25s ease;
+            }
+            #ns-claude-overlay.active { display: block; opacity: 1; }
+
+            /* Slide-over Sidebar */
+            #ns-claude-sidebar {
+                position: fixed;
+                top: 0; right: -400px;
+                width: 400px;
+                height: 100%;
+                background: ${t.bg};
+                border-left: 1px solid ${t.border};
+                color: ${t.text};
+                z-index: 100002;
+                transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                display: flex;
+                flex-direction: column;
+                box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+                font-family: StyreneB, Inter, system-ui, -apple-system, sans-serif;
+            }
+            #ns-claude-sidebar.active { right: 0; }
+
+            /* Sidebar Header */
+            .ns-claude-header {
+                padding: 20px 24px 16px;
+                background: ${t.bg};
+                border-bottom: 1px solid ${t.border};
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                flex-shrink: 0;
+            }
+            .ns-claude-title {
+                font-family: Copernicus, Tiempos Headline, serif !important;
+                font-size: 24px !important;
+                font-weight: 400 !important;
+                letter-spacing: -0.5px !important;
+                color: ${t.text} !important;
+                margin: 0 !important;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .ns-claude-subtitle {
+                font-size: 13px !important;
+                color: ${t.textMuted} !important;
+                margin: 0 !important;
+            }
+
+            /* Input Group */
+            .ns-claude-input-group {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .ns-claude-label {
+                font-size: 11px !important;
+                font-weight: 600 !important;
+                color: ${t.textMuted} !important;
+                text-transform: uppercase !important;
+                letter-spacing: 1px !important;
+            }
+            .ns-claude-input {
+                width: 100%;
+                background: ${t.inputBg} !important;
+                border: 1px solid ${t.border} !important;
+                border-radius: 8px !important;
+                padding: 10px 14px !important;
+                color: ${t.text} !important;
+                font-size: 14px !important;
+                font-family: StyreneB, Inter, system-ui, sans-serif !important;
+                outline: none !important;
+                box-sizing: border-box !important;
+                transition: border-color 0.15s ease !important;
+            }
+            .ns-claude-input:focus {
+                border-color: ${CONFIG.THEME.PRIMARY_CORAL} !important;
+                box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15) !important;
+            }
+
+            /* Batch Controls */
+            .ns-claude-batch {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+            }
+            .ns-claude-batch-btn {
+                padding: 8px !important;
+                background: ${t.inputBg} !important;
+                border: 1px solid ${t.border} !important;
+                border-radius: 8px !important;
+                color: ${t.textMuted} !important;
+                font-size: 12px !important;
+                font-weight: 600 !important;
+                cursor: pointer !important;
+                text-align: center !important;
+                transition: all 0.15s ease !important;
+                font-family: StyreneB, Inter, system-ui, sans-serif !important;
+            }
+            .ns-claude-batch-btn:hover {
+                background: ${t.cardHover} !important;
+                color: ${t.text} !important;
+                border-color: ${CONFIG.THEME.PRIMARY_CORAL} !important;
+            }
+
+            /* Message List */
+            .ns-claude-msg-list {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .ns-claude-msg-list::-webkit-scrollbar {
+                width: 6px;
+            }
+            .ns-claude-msg-list::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .ns-claude-msg-list::-webkit-scrollbar-thumb {
+                background: ${t.border};
+                border-radius: 3px;
+            }
+
+            /* Message Card */
+            .ns-claude-msg-card {
+                background: ${t.cardBg} !important;
+                border: 1px solid ${t.border} !important;
+                border-radius: 12px !important;
+                overflow: hidden !important;
+                flex-shrink: 0 !important;
+                transition: all 0.15s ease !important;
+            }
+            .ns-claude-msg-card:hover {
+                border-color: ${CONFIG.THEME.PRIMARY_CORAL} !important;
+                box-shadow: 0 2px 8px rgba(204, 120, 92, 0.15) !important;
+            }
+            .ns-claude-msg-item {
+                display: flex !important;
+                align-items: flex-start !important;
+                padding: 12px 14px !important;
+                gap: 12px !important;
+                cursor: pointer !important;
+            }
+
+            /* Checkbox */
+            .ns-claude-check {
+                appearance: none !important;
+                -webkit-appearance: none !important;
+                width: 18px !important;
+                height: 18px !important;
+                border: 2px solid ${CONFIG.THEME.PRIMARY_CORAL} !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+                background: ${t.cardBg} !important;
+                position: relative !important;
+                flex-shrink: 0 !important;
+                margin-top: 2px !important;
+                transition: all 0.15s ease !important;
+            }
+            .ns-claude-check:checked {
+                background: ${CONFIG.THEME.PRIMARY_CORAL} !important;
+            }
+            .ns-claude-check:checked::after {
+                content: '✓' !important;
+                position: absolute !important;
+                color: ${CONFIG.THEME.ON_PRIMARY} !important;
+                font-size: 12px !important;
+                font-weight: bold !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+            }
+
+            /* Message Content */
+            .ns-claude-msg-content {
+                flex: 1 !important;
+                min-width: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 6px !important;
+            }
+            .ns-claude-role-badge {
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+                font-size: 10px !important;
+                font-weight: 700 !important;
+                text-transform: uppercase !important;
+                padding: 3px 8px !important;
+                border-radius: 9999px !important;
+                letter-spacing: 0.5px !important;
+            }
+            .ns-claude-role-user {
+                background: ${t.bg === CONFIG.THEME.SURFACE_DARK ? 'rgba(255,255,255,0.1)' : CONFIG.THEME.SURFACE_CARD} !important;
+                color: ${t.text} !important;
+            }
+            .ns-claude-role-assistant {
+                background: rgba(204, 120, 92, 0.2) !important;
+                color: ${CONFIG.THEME.PRIMARY_CORAL} !important;
+            }
+            .ns-claude-thinking-badge {
+                font-size: 10px !important;
+                color: ${CONFIG.THEME.ACCENT_TEAL} !important;
+                margin-left: 6px !important;
+            }
+            .ns-claude-msg-preview {
+                font-size: 13px !important;
+                line-height: 1.5 !important;
+                color: ${t.textMuted} !important;
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
+                overflow: hidden !important;
+                word-break: break-word !important;
+            }
+
+            /* Accordion */
+            .ns-claude-accordion {
+                background: ${t.bgSoft} !important;
+                border-top: 1px solid ${t.border} !important;
+                padding: 12px 14px 14px 44px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+                font-size: 13px !important;
+            }
+            .ns-claude-accordion-thinking {
+                color: ${t.textMuted} !important;
+                font-style: italic !important;
+                max-height: 120px !important;
+                overflow-y: auto !important;
+                line-height: 1.5 !important;
+            }
+            .ns-claude-accordion-content {
+                color: ${t.textMuted} !important;
+                white-space: pre-wrap !important;
+                max-height: 200px !important;
+                overflow-y: auto !important;
+                line-height: 1.5 !important;
+            }
+
+            /* Sidebar Footer */
+            .ns-claude-footer {
+                padding: 16px 20px;
+                background: ${t.bg};
+                border-top: 1px solid ${t.border};
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+            .ns-claude-btn {
+                border: 1px solid ${t.border};
+                border-radius: 8px;
+                padding: 10px 14px;
+                background: ${t.inputBg};
+                color: ${t.text};
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                text-align: center;
+                transition: all 0.15s ease;
+                white-space: nowrap;
+                font-family: StyreneB, Inter, system-ui, sans-serif;
+            }
+            .ns-claude-btn:hover {
+                background: ${t.cardHover};
+                border-color: ${CONFIG.THEME.PRIMARY_CORAL};
+            }
+            .ns-claude-btn-cancel {
+                background: rgba(198, 69, 69, 0.15);
+                border-color: rgba(198, 69, 69, 0.4);
+                color: ${CONFIG.THEME.ERROR};
+                flex: 0.8;
+            }
+            .ns-claude-btn-cancel:hover {
+                background: rgba(198, 69, 69, 0.25);
+            }
+            .ns-claude-format-select {
+                flex: 1.2;
+                background: ${t.inputBg};
+                border: 1px solid ${t.border};
+                border-radius: 8px;
+                color: ${t.text};
+                padding: 10px 8px;
+                outline: none;
+                font-size: 12px;
+                font-weight: 500;
+                cursor: pointer;
+                text-align: center;
+                font-family: StyreneB, Inter, system-ui, sans-serif;
+            }
+            .ns-claude-format-select option {
+                background: ${t.bg};
+                color: ${t.text};
+            }
+            .ns-claude-btn-copy { flex: 1; }
+            .ns-claude-btn-primary {
+                flex: 1;
+                background: ${CONFIG.THEME.PRIMARY_CORAL};
+                border-color: ${CONFIG.THEME.PRIMARY_CORAL};
+                color: ${CONFIG.THEME.ON_PRIMARY};
+            }
+            .ns-claude-btn-primary:hover {
+                background: ${CONFIG.THEME.PRIMARY_CORAL_ACTIVE};
+                border-color: ${CONFIG.THEME.PRIMARY_CORAL_ACTIVE};
+            }
         `;
         document.head.appendChild(style);
     }
 
-    function createMenu() {
-        const orb = document.createElement('div');
-        orb.className = 'ns-orb';
-        orb.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12,2C6.47,2,2,6.47,2,12s4.47,10,10,10,10-4.47,10-10S17.53,2,12,2zm0,18c-3.31,0-6-2.69-6-6,0-1.01,.25-1.97,.7-2.8l1.46,1.46c-.11,.43-.16,.88-.16,1.34,0,2.21,1.79,4,4,4s4-1.79,4-4-1.79-4-4-4c-.46,0-.91,.05-1.34,.16l-1.46-1.46c.83-.45,1.79-.7,2.8-.7,3.31,0,6,2.69,6,6s-2.69,6-6,6z"/></svg>`;
-        document.body.appendChild(orb);
+    // ============================================================
+    // Menu Injection
+    // ============================================================
 
-        const consoleEl = document.createElement('div');
-        consoleEl.className = 'ns-console';
-        consoleEl.innerHTML = `
-            <div class="ns-console-header">
-                <div class="ns-console-subtitle">Neural Interface</div>
-                <div class="ns-console-title">Noosphere Reflect</div>
-            </div>
-            <div class="ns-console-tabs">
-                <div class="ns-tab active" data-target="ns-pane-export">Export</div>
-                <div class="ns-tab" data-target="ns-pane-config">Configuration</div>
-            </div>
-            <div class="ns-console-content" id="ns-pane-export">
-                <div class="ns-bulk-controls">
-                    <div class="ns-bulk-btn" id="ns-select-all">All</div>
-                    <div class="ns-bulk-btn" id="ns-select-user">User</div>
-                    <div class="ns-bulk-btn" id="ns-select-ai">AI</div>
-                    <div class="ns-bulk-btn" id="ns-select-none">None</div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <button class="ns-btn" id="ns-copy-md">Copy MD</button>
-                    <button class="ns-btn" id="ns-copy-json">Copy JSON</button>
-                </div>
-                <button class="ns-btn ns-btn-primary" id="ns-dl-md">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-                    Download .MD
-                </button>
-            </div>
-            <div class="ns-console-content" id="ns-pane-config" style="display: none;">
-                <div class="ns-input-group">
-                    <span class="ns-label">Chat Title</span>
-                    <input type="text" class="ns-input" id="ns-manual-title" placeholder="e.g. Brainstorming Session">
-                </div>
-                <div class="ns-input-group">
-                    <span class="ns-label">Filename Prefix</span>
-                    <input type="text" class="ns-input" id="ns-custom-name" placeholder="Claude_Export">
-                </div>
-                <div style="padding: 0 4px;">
-                    <span class="ns-label">Naming Segment</span>
-                    <select class="ns-select" id="ns-naming-format">
-                        <option value="kebab-case">kebab-case</option>
-                        <option value="snake_case">snake_case</option>
-                        <option value="PascalCase">PascalCase</option>
-                        <option value="camelCase">camelCase</option>
-                    </select>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(consoleEl);
+    function injectExportMenuItem() {
+        if (document.getElementById('ns-claude-menu-item')) return;
 
-        orb.onclick = () => {
-            const isVisible = consoleEl.style.display === 'flex';
-            consoleEl.style.display = isVisible ? 'none' : 'flex';
+        const menu = document.querySelector(CONFIG.SELECTORS.PLUS_MENU);
+        if (!menu) return;
+
+        const firstItem = menu.querySelector(CONFIG.SELECTORS.PLUS_MENU_FIRST_ITEM);
+        if (!firstItem) return;
+
+        // Create separator
+        const separator = document.createElement('div');
+        separator.setAttribute('data-orientation', 'horizontal');
+        separator.setAttribute('role', 'separator');
+        separator.className = 'ns-claude-menu-separator';
+
+        // Create Export Chat menu item
+        const exportItem = document.createElement('div');
+        exportItem.id = 'ns-claude-menu-item';
+        exportItem.setAttribute('role', 'menuitem');
+        exportItem.className = 'ns-claude-menu-item';
+        exportItem.tabIndex = -1;
+        
+        // Build icon wrapper
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'flex size-icon shrink-0 items-center justify-center';
+        const iconDiv = document.createElement('div');
+        iconDiv.style.cssText = 'width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;';
+        
+        // Create SVG icon
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '20');
+        svg.setAttribute('height', '20');
+        svg.setAttribute('viewBox', '0 0 20 20');
+        svg.setAttribute('fill', 'currentColor');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.style.flexShrink = '0';
+        
+        const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path1.setAttribute('fill-rule', 'evenodd');
+        path1.setAttribute('clip-rule', 'evenodd');
+        path1.setAttribute('d', 'M10 2a1 1 0 011 1v8.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 11.586V3a1 1 0 011-1z');
+        
+        const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path2.setAttribute('fill-rule', 'evenodd');
+        path2.setAttribute('clip-rule', 'evenodd');
+        path2.setAttribute('d', 'M3 15a1 1 0 011 1v1h12v-1a1 1 0 112 0v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 011-1z');
+        
+        svg.appendChild(path1);
+        svg.appendChild(path2);
+        iconDiv.appendChild(svg);
+        iconSpan.appendChild(iconDiv);
+        
+        // Build text wrapper
+        const textSpan = document.createElement('span');
+        textSpan.className = 'min-w-0 flex-1 truncate';
+        const textInner = document.createElement('span');
+        textInner.className = 'block truncate';
+        textInner.textContent = 'Export Chat';
+        textSpan.appendChild(textInner);
+        
+        exportItem.appendChild(iconSpan);
+        exportItem.appendChild(textSpan);
+
+        // Insert separator first, then export item
+        menu.insertBefore(separator, firstItem);
+        menu.insertBefore(exportItem, separator);
+
+        // Add click handler
+        exportItem.onclick = (e) => {
+            e.stopPropagation();
+            openSidebar();
         };
-
-        consoleEl.querySelectorAll('.ns-tab').forEach(tab => {
-            tab.onclick = () => {
-                consoleEl.querySelectorAll('.ns-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                const target = tab.dataset.target;
-                consoleEl.querySelectorAll('.ns-console-content').forEach(c => {
-                    c.style.display = c.id === target ? 'flex' : 'none';
-                });
-            };
-        });
     }
 
-    function injectCheckboxes() {
-        const createCheckbox = (type, container) => {
-            if (container.querySelector('.ns-checkbox-container')) return;
-            const checkboxContainer = document.createElement('div');
-            checkboxContainer.className = 'ns-checkbox-container';
+    // ============================================================
+    // Sidebar UI
+    // ============================================================
+
+    function renderMessageList() {
+        const listContainer = document.getElementById('ns-claude-msg-list');
+        if (!listContainer) return;
+        
+        // Clear container using DOM API (TrustedHTML compatible)
+        while (listContainer.firstChild) {
+            listContainer.removeChild(listContainer.firstChild);
+        }
+
+        if (STATE.messages.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.cssText = 'padding:20px; text-align:center; color:#6c6a64; font-size:13px;';
+            emptyMsg.textContent = 'No messages found in this conversation.';
+            listContainer.appendChild(emptyMsg);
+            return;
+        }
+
+        STATE.messages.forEach(msg => {
+            const card = document.createElement('div');
+            card.className = 'ns-claude-msg-card';
+
+            const item = document.createElement('div');
+            item.className = 'ns-claude-msg-item';
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.className = 'ns-checkbox';
-            checkbox.dataset.type = type;
-            checkbox.checked = true;
-            checkboxContainer.appendChild(checkbox);
-            container.style.position = 'relative';
-            container.prepend(checkboxContainer);
-        };
+            checkbox.className = 'ns-claude-check';
+            checkbox.checked = STATE.selectedIds.has(msg.id);
 
-        const turns = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN);
-        turns.forEach(turn => {
-            const userMsg = turn.querySelector(CONFIG.SELECTORS.USER_MESSAGE);
-            const claudeResponse = turn.querySelector(CONFIG.SELECTORS.CLAUDE_RESPONSE);
+            const content = document.createElement('div');
+            content.className = 'ns-claude-msg-content';
 
-            if (userMsg) {
-                const target = userMsg.closest('.group') || userMsg;
-                target.classList.add('user-message-container');
-                createCheckbox('user', target);
+            const badgeGroup = document.createElement('div');
+            badgeGroup.style.display = 'flex';
+            badgeGroup.style.alignItems = 'center';
+            badgeGroup.style.gap = '6px';
+
+            const badge = document.createElement('span');
+            badge.className = `ns-claude-role-badge ns-claude-role-${msg.role}`;
+            badge.textContent = msg.role === 'user' ? '👤 USER' : '🧠 CLAUDE';
+            badgeGroup.appendChild(badge);
+
+            if (msg.thinking && msg.thinking.content) {
+                const thoughtBadge = document.createElement('span');
+                thoughtBadge.className = 'ns-claude-thinking-badge';
+                thoughtBadge.textContent = '🧠 Thinking captured';
+                badgeGroup.appendChild(thoughtBadge);
             }
-            if (claudeResponse) {
-                const target = claudeResponse.closest('.group') || claudeResponse;
-                target.classList.add('claude-response-container');
-                createCheckbox('assistant', target);
+
+            const preview = document.createElement('div');
+            preview.className = 'ns-claude-msg-preview';
+            preview.textContent = msg.preview || (msg.role === 'user' ? 'User Prompt' : 'Claude Response');
+
+            content.appendChild(badgeGroup);
+            content.appendChild(preview);
+
+            item.appendChild(checkbox);
+            item.appendChild(content);
+
+            card.appendChild(item);
+
+            // Accordion for expanded view
+            const isExpanded = STATE.expandedId === msg.id;
+            if (isExpanded) {
+                const accordion = document.createElement('div');
+                accordion.className = 'ns-claude-accordion';
+
+                if (msg.thinking && msg.thinking.content) {
+                    const tHeader = document.createElement('div');
+                    tHeader.style.fontWeight = '600';
+                    tHeader.style.color = CONFIG.THEME.ACCENT_TEAL;
+                    tHeader.textContent = `🧠 Thinking: ${msg.thinking.summary || 'Claude\'s reasoning'}`;
+                    accordion.appendChild(tHeader);
+
+                    const tBody = document.createElement('div');
+                    tBody.className = 'ns-claude-accordion-thinking';
+                    tBody.textContent = msg.thinking.content;
+                    accordion.appendChild(tBody);
+                }
+
+                const fullText = document.createElement('div');
+                fullText.className = 'ns-claude-accordion-content';
+                fullText.textContent = msg.text;
+                accordion.appendChild(fullText);
+
+                card.appendChild(accordion);
             }
+
+            checkbox.onclick = (e) => {
+                e.stopPropagation();
+                if (STATE.selectedIds.has(msg.id)) {
+                    STATE.selectedIds.delete(msg.id);
+                    checkbox.checked = false;
+                } else {
+                    STATE.selectedIds.add(msg.id);
+                    checkbox.checked = true;
+                }
+            };
+
+            item.onclick = (e) => {
+                e.stopPropagation();
+                STATE.expandedId = isExpanded ? null : msg.id;
+                renderMessageList();
+            };
+
+            listContainer.appendChild(card);
         });
     }
 
-    function setupObserver() {
-        const observer = new MutationObserver(() => {
-            injectCheckboxes();
+    async function openSidebar() {
+        // Auto-expand thinking blocks first
+        await autoExpandThinkingBlocks();
+        
+        // Scan the conversation
+        scanConversation();
+        renderMessageList();
+        
+        // Open sidebar
+        const overlay = document.getElementById('ns-claude-overlay');
+        const sidebar = document.getElementById('ns-claude-sidebar');
+        overlay.classList.add('active');
+        sidebar.classList.add('active');
+        STATE.sidebarOpen = true;
+    }
+
+    function closeSidebar() {
+        const overlay = document.getElementById('ns-claude-overlay');
+        const sidebar = document.getElementById('ns-claude-sidebar');
+        overlay.classList.remove('active');
+        sidebar.classList.remove('active');
+        STATE.sidebarOpen = false;
+    }
+
+    function createSidebarUI() {
+        if (document.getElementById('ns-claude-sidebar')) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ns-claude-overlay';
+
+        const sidebar = document.createElement('div');
+        sidebar.id = 'ns-claude-sidebar';
+
+        // Build header
+        const header = document.createElement('div');
+        header.className = 'ns-claude-header';
+
+        const title = document.createElement('h2');
+        title.className = 'ns-claude-title';
+        const titleIcon = document.createElement('span');
+        titleIcon.style.fontSize = '20px';
+        titleIcon.textContent = '🦁';
+        const titleText = document.createTextNode(' Claude Exporter');
+        title.appendChild(titleIcon);
+        title.appendChild(titleText);
+
+        const subtitle = document.createElement('p');
+        subtitle.className = 'ns-claude-subtitle';
+        subtitle.textContent = 'Noosphere Reflect — Meaning Through Memory';
+
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'ns-claude-input-group';
+        const label = document.createElement('span');
+        label.className = 'ns-claude-label';
+        label.textContent = 'Chat Title';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'ns-claude-title';
+        input.className = 'ns-claude-input';
+        input.placeholder = 'Enter session title...';
+        inputGroup.appendChild(label);
+        inputGroup.appendChild(input);
+
+        const batch = document.createElement('div');
+        batch.className = 'ns-claude-batch';
+        ['All', 'User', 'Claude', 'None'].forEach(text => {
+            const btn = document.createElement('button');
+            btn.className = 'ns-claude-batch-btn';
+            btn.id = `ns-claude-batch-${text.toLowerCase()}`;
+            btn.textContent = text;
+            batch.appendChild(btn);
         });
+
+        header.appendChild(title);
+        header.appendChild(subtitle);
+        header.appendChild(inputGroup);
+        header.appendChild(batch);
+
+        // Build message list
+        const msgList = document.createElement('div');
+        msgList.className = 'ns-claude-msg-list';
+        msgList.id = 'ns-claude-msg-list';
+
+        // Build footer
+        const footer = document.createElement('div');
+        footer.className = 'ns-claude-footer';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'ns-claude-btn ns-claude-btn-cancel';
+        cancelBtn.id = 'ns-claude-cancel';
+        cancelBtn.textContent = 'Cancel';
+
+        const formatSelect = document.createElement('select');
+        formatSelect.className = 'ns-claude-format-select';
+        formatSelect.id = 'ns-claude-format';
+        
+        const mdOption = document.createElement('option');
+        mdOption.value = 'markdown';
+        mdOption.textContent = 'Markdown (.md)';
+        formatSelect.appendChild(mdOption);
+        
+        const jsonOption = document.createElement('option');
+        jsonOption.value = 'json';
+        jsonOption.textContent = 'JSON (.json)';
+        formatSelect.appendChild(jsonOption);
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'ns-claude-btn ns-claude-btn-copy';
+        copyBtn.id = 'ns-claude-copy';
+        copyBtn.textContent = '📋 Copy';
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'ns-claude-btn ns-claude-btn-primary';
+        downloadBtn.id = 'ns-claude-download';
+        downloadBtn.textContent = '⬇️ Save';
+
+        footer.appendChild(cancelBtn);
+        footer.appendChild(formatSelect);
+        footer.appendChild(copyBtn);
+        footer.appendChild(downloadBtn);
+
+        // Assemble sidebar
+        sidebar.appendChild(header);
+        sidebar.appendChild(msgList);
+        sidebar.appendChild(footer);
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(sidebar);
+
+        // Event handlers
+        overlay.onclick = closeSidebar;
+        document.getElementById('ns-claude-cancel').onclick = closeSidebar;
+
+        const setBatch = (type) => {
+            STATE.selectedIds.clear();
+            if (type === 'all') STATE.messages.forEach(m => STATE.selectedIds.add(m.id));
+            if (type === 'user') STATE.messages.filter(m => m.role === 'user').forEach(m => STATE.selectedIds.add(m.id));
+            if (type === 'ai') STATE.messages.filter(m => m.role === 'assistant').forEach(m => STATE.selectedIds.add(m.id));
+            renderMessageList();
+        };
+
+        document.getElementById('ns-claude-batch-all').onclick = () => setBatch('all');
+        document.getElementById('ns-claude-batch-user').onclick = () => setBatch('user');
+        document.getElementById('ns-claude-batch-claude').onclick = () => setBatch('ai');
+        document.getElementById('ns-claude-batch-none').onclick = () => setBatch('none');
+
+        document.getElementById('ns-claude-copy').onclick = () => ExportService.executeCopy();
+        document.getElementById('ns-claude-download').onclick = () => ExportService.executeDownload();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && STATE.sidebarOpen) closeSidebar();
+        });
+    }
+
+    // ============================================================
+    // Observer for Menu Re-injection
+    // ============================================================
+
+    function setupMenuObserver() {
+        const observer = new MutationObserver(() => {
+            const menu = document.querySelector(CONFIG.SELECTORS.PLUS_MENU);
+            if (menu && !document.getElementById('ns-claude-menu-item')) {
+                injectExportMenuItem();
+            }
+        });
+        
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // ============================================================================
-    // TABLE EXTRACTION HELPER
-    // ============================================================================
-    function extractTableAsMarkdown(tableElement) {
-        if (!tableElement) return '';
-        
-        const rows = tableElement.querySelectorAll('tr');
-        if (!rows.length) return '';
-        
-        const markdownRows = [];
-        
-        rows.forEach((row, index) => {
-            const cells = row.querySelectorAll('th, td');
-            const cellTexts = Array.from(cells).map(cell => {
-                // Clean up cell content - remove extra whitespace
-                return cell.innerText?.trim().replace(/\n+/g, ' ') || '';
-            });
-            
-            if (cellTexts.length > 0) {
-                markdownRows.push('| ' + cellTexts.join(' | ') + ' |');
-                
-                // Add separator after header row
-                if (index === 0) {
-                    markdownRows.push('| ' + cellTexts.map(() => '---').join(' | ') + ' |');
-                }
-            }
-        });
-        
-        return markdownRows.join('\n');
-    }
+    // ============================================================
+    // Initialization
+    // ============================================================
 
-    function extractListAsMarkdown(listElement) {
-        if (!listElement) return '';
-        
-        const isOrdered = listElement.tagName === 'OL';
-        const items = listElement.querySelectorAll(':scope > li');
-        const markdownItems = [];
-        
-        items.forEach((item, index) => {
-            const prefix = isOrdered ? `${index + 1}. ` : '- ';
-            const text = item.innerText?.trim().replace(/\n+/g, '\n  ') || '';
-            if (text) {
-                markdownItems.push(`${prefix}${text}`);
-            }
-        });
-        
-        return markdownItems.join('\n');
-    }
-
-    // ============================================================================
-    // EXPORT SERVICE
-    // ============================================================================
-    const ExportService = {
-        getConversationTitle() {
-            const manualTitle = document.getElementById('ns-manual-title')?.value;
-            if (manualTitle?.trim()) return manualTitle.trim();
-
-            const titleEl = document.querySelector(CONFIG.SELECTORS.CONVERSATION_TITLE);
-            return titleEl?.textContent?.trim() || document.title || 'Claude_Conversation';
-        },
-
-        generateFilename(customFilename, conversationTitle, format = 'kebab-case') {
-            const dateStr = Utils.getDateString();
-            const baseName = customFilename?.trim() || conversationTitle;
-
-            // Apply formatting
-            let name = baseName.replace(/[<>:"/\\|?*.]/g, '').trim();
-            let formattedName = '';
-
-            switch (format) {
-                case 'kebab-case':
-                    formattedName = name.replace(/[\s_]+/g, '-').replace(/-+/g, '-').toLowerCase();
-                    break;
-                case 'Kebab-Case':
-                    formattedName = name.split(/[\s_-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('-');
-                    break;
-                case 'snake_case':
-                    formattedName = name.replace(/[\s-]+/g, '_').replace(/_+/g, '_').toLowerCase();
-                    break;
-                case 'Snake_Case':
-                    formattedName = name.split(/[\s_-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('_');
-                    break;
-                case 'PascalCase':
-                    formattedName = name.split(/[\s_-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
-                    break;
-                case 'camelCase':
-                    formattedName = name.split(/[\s_-]+/).map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
-                    break;
-                default:
-                    formattedName = name.replace(/\s+/g, '_').toLowerCase();
-            }
-
-            return `${formattedName}_${dateStr}.md`;
-        },
-
-        buildMarkdown(conversationTitle) {
-            const now = new Date();
-            const dateStr = now.toLocaleString();
-            const sourceUrl = window.location.href;
-
-            const turns = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN);
-            let userCount = 0;
-            let aiCount = 0;
-            let artifactCount = 0;
-            let selectedMessages = [];
-
-            turns.forEach((turn) => {
-                const checkboxes = turn.querySelectorAll('.ns-checkbox');
-                checkboxes.forEach(cb => {
-                    if (!cb.checked) return;
-
-                    const container = cb.closest('.user-message-container, .claude-response-container');
-                    if (container) {
-                        selectedMessages.push({
-                            type: cb.dataset.type,
-                            element: container,
-                            hasArtifact: !!container.querySelector(CONFIG.SELECTORS.ARTIFACT_CONTAINER)
-                        });
-
-                        if (cb.dataset.type === 'user') userCount++;
-                        if (cb.dataset.type === 'assistant') aiCount++;
-                        if (container.querySelector(CONFIG.SELECTORS.ARTIFACT_CONTAINER)) artifactCount++;
-                    }
-                });
-            });
-
-            const totalMessages = userCount + aiCount;
-            const exchanges = selectedMessages.length;
-
-            let markdown = `---
-> **🤖 Model:** Claude
->
-> **🌐 Date:** ${dateStr}
->
-> **🌐 Source:** [Claude Chat](${sourceUrl})
->
-> **🏷️ Tags:** Claude, AI-Chat, Noosphere
->
-> **📂 Artifacts:** [Internal](${sourceUrl})
->
-> **📊 Metadata:**
->> **Total Exchanges:** ${exchanges}
->>
->> **Total Chat Messages:** ${totalMessages}
->>
->> **Total User Messages:** ${userCount}
->>
->> **Total AI Messages:** ${aiCount}
->>
->> **Total Artifacts:** ${artifactCount}
----
-
-## Title:
-
-> ${conversationTitle}
-
---- 
-
-`;
-
-            selectedMessages.forEach((msg, index) => {
-                if (msg.type === 'user') {
-                    const content = msg.element.querySelector(CONFIG.SELECTORS.USER_MESSAGE);
-                    markdown += `#### Prompt - User 👤:\n\n`;
-                    markdown += `${content?.innerText?.trim() || ''}\n\n`;
-                }
-
-                if (msg.type === 'assistant') {
-                    markdown += `#### Response - Model 🤖:\n\n`;
-
-                    // 1. Extract new style "Thinking / Thoughts" (Reasoning steps)
-                    const thoughtHeader = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_HEADER);
-                    const thoughtContent = msg.element.querySelector(CONFIG.SELECTORS.THOUGHT_CONTENT_CONTAINER);
-
-                    if (thoughtHeader || thoughtContent) {
-                        // Extract title from header (e.g., "Architected interactive reference tool...")
-                        const statusTitle = thoughtHeader?.querySelector('.truncate')?.innerText?.trim() 
-                                         || thoughtHeader?.innerText?.trim() 
-                                         || 'Thinking Process';
-                        
-                        // Extract FULL thought body text with max-height fix
-                        let fullThoughtText = '';
-                        
-                        if (thoughtContent) {
-                            // MAX-HEIGHT FIX: Temporarily remove CSS height restriction
-                            // Thought blocks have max-height: 200px + overflow: hidden that visually hides content
-                            // But the full text is always in the DOM - we just need to remove the height limit
-                            const thoughtBlockContainer = thoughtContent.closest('[class*="overflow-hidden"][class*="transition-[max-height]"]') 
-                                                       || thoughtContent;
-                            const originalMaxHeight = thoughtBlockContainer.style.maxHeight;
-                            thoughtBlockContainer.style.maxHeight = 'none';
-                            
-                            // Get ALL markdown elements within the thought container
-                            const allMarkdownElements = thoughtContent.querySelectorAll('.standard-markdown');
-                            const thoughtParagraphs = [];
-                            
-                            allMarkdownElements.forEach(mdEl => {
-                                const text = mdEl.innerText?.trim();
-                                if (text && text.length > 10) { // Filter out tiny fragments
-                                    // Check if this is inside a reasoning step container
-                                    const isStepContainer = mdEl.closest('.flex.flex-col.shrink-0');
-                                    if (isStepContainer) {
-                                        // Format as bullet point for reasoning steps
-                                        thoughtParagraphs.push(`- ${text.replace(/\n/g, '\n  ')}`);
-                                    } else {
-                                        // This is the main thought body text - preserve as paragraph
-                                        thoughtParagraphs.push(text);
-                                    }
-                                }
-                            });
-                            
-                            // Restore original max-height
-                            thoughtBlockContainer.style.maxHeight = originalMaxHeight;
-                            
-                            // Also check for any direct text content in the thought container
-                            const directText = thoughtContent.innerText?.trim();
-                            if (directText && thoughtParagraphs.length === 0) {
-                                // Fallback: use the full inner text
-                                fullThoughtText = directText;
-                            } else {
-                                fullThoughtText = thoughtParagraphs.join('\n\n');
-                            }
-                            
-                            // Check for status labels like "Done" (text-text-300)
-                            const statusLabels = thoughtContent.querySelectorAll('.text-text-300');
-                            statusLabels.forEach(label => {
-                                const labelText = label.innerText?.trim();
-                                if (labelText && labelText.length > 2) {
-                                    fullThoughtText += `\n\n- ${labelText}`;
-                                }
-                            });
-                        }
-
-                        if (fullThoughtText || statusTitle) {
-                            markdown += "```\n";
-                            markdown += `Thoughts:\n${statusTitle}\n\n${fullThoughtText}\n`;
-                            markdown += "```\n\n";
-                        }
-                    }
-
-                    // 2. Extract legacy side blocks (Thoughts, Memory edits, tool usage summaries)
-                    // We skip the first one if we already captured thoughts above to avoid duplication
-                    const sideBlocks = Array.from(msg.element.querySelectorAll(CONFIG.SELECTORS.SIDE_BLOCK));
-                    sideBlocks.forEach((block, sbIndex) => {
-                        // Title is usually in the button text
-                        const title = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_TITLE)?.innerText?.trim() || 'Internal Process';
-                        const content = block.querySelector(CONFIG.SELECTORS.SIDE_BLOCK_CONTENT)?.innerText?.trim();
-
-                        if (content) {
-                            // If we already added new-style thoughts, and this looks like a thought, skip it
-                            const isThought = sbIndex === 0 || title.toLowerCase().includes('thought');
-                            if (isThought && (thoughtHeader || thoughtContent)) return;
-
-                            if (isThought && !title.toLowerCase().includes('memory')) {
-                                // Align with Universal Export Standard: Thoughts: header in triple backticks
-                                markdown += "```\n";
-                                markdown += `Thoughts:\n${title}\n\n${content}\n`;
-                                markdown += "```\n\n";
-                            } else {
-                                // Use blockquotes for other internal processes (Memory edits, etc.)
-                                markdown += `> **[${title}]**\n> \n`;
-                                markdown += `> ${content.replace(/\n/g, '\n> ')}\n\n`;
-                            }
-                        }
-                    });
-
-                    // 2. Extract main response
-                    const claudeResponse = msg.element.querySelector(CONFIG.SELECTORS.CLAUDE_RESPONSE);
-                    if (claudeResponse) {
-                        // Find all standard-markdown elements that are NOT inside a side block
-                        // to avoid duplication.
-                        const mainContents = Array.from(claudeResponse.querySelectorAll('.standard-markdown'))
-                            .filter(el => !el.closest(CONFIG.SELECTORS.SIDE_BLOCK));
-
-                        if (mainContents.length > 0) {
-                            mainContents.forEach(contentEl => {
-                                // Check for tables in this content block
-                                const tables = contentEl.querySelectorAll('table');
-                                const lists = contentEl.querySelectorAll('ul, ol');
-                                
-                                if (tables.length > 0 || lists.length > 0) {
-                                    // Process structured content with tables/lists
-                                    const childNodes = contentEl.childNodes;
-                                    let blockContent = '';
-                                    
-                                    childNodes.forEach(node => {
-                                        if (node.nodeType === Node.ELEMENT_NODE) {
-                                            if (node.tagName === 'TABLE') {
-                                                const tableMd = extractTableAsMarkdown(node);
-                                                if (tableMd) {
-                                                    blockContent += '\n' + tableMd + '\n\n';
-                                                }
-                                            } else if (node.tagName === 'UL' || node.tagName === 'OL') {
-                                                const listMd = extractListAsMarkdown(node);
-                                                if (listMd) {
-                                                    blockContent += listMd + '\n\n';
-                                                }
-                                            } else {
-                                                // Regular element - get text
-                                                const text = node.innerText?.trim();
-                                                if (text) {
-                                                    blockContent += text + '\n\n';
-                                                }
-                                            }
-                                        } else if (node.nodeType === Node.TEXT_NODE) {
-                                            const text = node.textContent?.trim();
-                                            if (text) {
-                                                blockContent += text + '\n';
-                                            }
-                                        }
-                                    });
-                                    
-                                    if (blockContent.trim()) {
-                                        markdown += blockContent;
-                                    }
-                                } else {
-                                    // No structured content - just get text
-                                    const text = contentEl.innerText?.trim();
-                                    if (text) {
-                                        markdown += `${text}\n\n`;
-                                    }
-                                }
-                            });
-                        } else {
-                            // Fallback: if no isolated markdown blocks found, try to get text from the whole response 
-                            // minus the side blocks' text
-                            let fullText = claudeResponse.innerText;
-                            sideBlocks.forEach(sb => {
-                                fullText = fullText.replace(sb.innerText, '');
-                            });
-                            
-                            // Check for tables in the fallback text
-                            const allTables = claudeResponse.querySelectorAll('table');
-                            if (allTables.length > 0) {
-                                // Extract tables separately and insert them
-                                let processedText = fullText;
-                                allTables.forEach(table => {
-                                    const tableMd = extractTableAsMarkdown(table);
-                                    if (tableMd) {
-                                        // Replace table placeholder with markdown
-                                        processedText = processedText.replace(table.innerText, '\n' + tableMd + '\n');
-                                    }
-                                });
-                                markdown += `${processedText.trim()}\n\n`;
-                            } else {
-                                markdown += `${fullText.trim()}\n\n`;
-                            }
-                        }
-                    }
-                }
-
-                if (index < selectedMessages.length - 1) {
-                    markdown += `\n\n`;
-                }
-            });
-
-            markdown += `\n---\n\n`;
-            markdown += `###### Noosphere Reflect\n`;
-            markdown += `###### ***Meaning Through Memory***\n\n`;
-            markdown += `###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***\n`;
-
-            return markdown;
-        },
-
-        exportToClipboard(markdown) {
-            navigator.clipboard.writeText(markdown).then(() => {
-                Utils.createNotification('✅ Copied to clipboard!');
-            }).catch(err => {
-                console.error('Clipboard error:', err);
-                Utils.createNotification('❌ Clipboard failed');
-            });
-        },
-
-        exportToFile(markdown, filename) {
-            const blob = new Blob([markdown], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
-            Utils.createNotification(`✅ Downloaded ${filename}`);
-        },
-
-        execute(exportMode, customFilename) {
-            const turns = document.querySelectorAll(CONFIG.SELECTORS.CONVERSATION_TURN);
-            if (!turns.length) {
-                Utils.createNotification('❌ No messages found');
-                return;
-            }
-
-            const conversationTitle = this.getConversationTitle();
-            const markdown = this.buildMarkdown(conversationTitle);
-            const namingFormat = document.getElementById('ns-naming-format')?.value || 'kebab-case';
-            const filename = this.generateFilename(customFilename, conversationTitle, namingFormat);
-
-            if (exportMode === 'clipboard') {
-                this.exportToClipboard(markdown);
-            } else {
-                this.exportToFile(markdown, filename);
-            }
-        }
-    };
-
-    // ============================================================================
-    // MAIN INITIALIZATION
-    // ============================================================================
     function init() {
-        console.log('[Noosphere] Initializing Claude Exporter with Neural Console...');
-
-        // Ensure no old UI is present
-        document.getElementById('claude-export-btn')?.remove();
-        document.getElementById('claude-export-dropdown')?.remove();
-
+        console.log('🦁 Noosphere Reflect — Claude Chat Exporter Initialized');
         injectStyles();
-        createMenu();
-        injectCheckboxes();
-        setupObserver();
-
-        // Connect UI buttons to ExportService
-        document.getElementById('ns-copy-md').onclick = () => {
-            const customFilename = document.getElementById('ns-custom-name')?.value;
-            ExportService.execute('clipboard', customFilename);
-        };
-
-        document.getElementById('ns-dl-md').onclick = () => {
-            const customFilename = document.getElementById('ns-custom-name')?.value;
-            ExportService.execute('file', customFilename);
-        };
-
-        document.getElementById('ns-copy-json').onclick = () => {
-            const customFilename = document.getElementById('ns-custom-name')?.value;
-            Utils.createNotification('JSON export not yet implemented. Copying Markdown instead.');
-            ExportService.execute('clipboard', customFilename);
-        };
-
-        // Bulk selection logic
-        const bulkSelect = (type) => {
-            document.querySelectorAll('.ns-checkbox').forEach(cb => {
-                let shouldBeChecked = false;
-                if (type === 'all') shouldBeChecked = true;
-                if (type === 'none') shouldBeChecked = false;
-                if (type === 'user' && cb.dataset.type === 'user') shouldBeChecked = true;
-                if (type === 'ai' && cb.dataset.type === 'assistant') shouldBeChecked = true;
-                cb.checked = shouldBeChecked;
-            });
-        };
-
-        document.getElementById('ns-select-all').onclick = () => bulkSelect('all');
-        document.getElementById('ns-select-user').onclick = () => bulkSelect('user');
-        document.getElementById('ns-select-ai').onclick = () => bulkSelect('ai');
-        document.getElementById('ns-select-none').onclick = () => bulkSelect('none');
-
-        console.log('[Noosphere] Neural Console is live on Claude.');
+        createSidebarUI();
+        injectExportMenuItem();
+        setupMenuObserver();
     }
 
-    // Run on page load
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
