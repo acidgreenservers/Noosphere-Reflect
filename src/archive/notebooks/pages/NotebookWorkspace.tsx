@@ -744,17 +744,72 @@ export const NotebookWorkspace: React.FC = () => {
 
                 {/* Left Sidebar: Sources */}
                 {isLeftCollapsed ? (
-                    /* Collapsed Left Sidebar Bar */
-                    <div className="w-[50px] bg-[#1e1f20] border-r border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
+                    /* Collapsed Left Sidebar Bar matching image.png Gemini UI */
+                    <div className="w-[56px] bg-[#1e1f20] border-r border-[#2d2f31] flex flex-col items-center py-3 gap-3 shrink-0 transition-all duration-300">
                         <button
                             onClick={() => setIsLeftCollapsed(false)}
-                            className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
                             title="Expand Sources Sidebar"
                         >
                             <SidebarLeftIcon />
                         </button>
-                        <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none transform rotate-180">
-                            SOURCES ({notebook?.sources?.length || 0})
+
+                        <button
+                            onClick={() => setIsAddSourceOpen(true)}
+                            className="w-8 h-8 rounded-full bg-[#a8c7fa] hover:bg-[#c2e7ff] text-[#042100] flex items-center justify-center text-lg font-bold transition-all active:scale-95 shadow"
+                            title="Add Source"
+                        >
+                            +
+                        </button>
+
+                        <div className="w-8 h-px bg-[#2d2f31] my-1" />
+
+                        <div className="flex-1 w-full overflow-y-auto flex flex-col items-center gap-2.5 px-1 scrollbar-none">
+                            {notebook?.sources && notebook.sources.map(source => {
+                                const isSelected = selectedSourceIds.has(source.id);
+                                let icon = '📄';
+                                if (source.url?.includes('youtube.com') || source.url?.includes('youtu.be')) {
+                                    icon = '▶️';
+                                } else if (source.type === 'url') {
+                                    icon = '🔗';
+                                } else if (source.type === 'text') {
+                                    icon = '📝';
+                                }
+
+                                return (
+                                    <button
+                                        key={source.id}
+                                        onClick={() => {
+                                            setShowDocumentBuilder(false);
+                                            let mime = source.mimeType;
+                                            if (!mime) {
+                                                if (source.type === 'url') mime = 'text/markdown';
+                                                else if (source.title.toLowerCase().endsWith('.md')) mime = 'text/markdown';
+                                                else mime = 'text/plain';
+                                            }
+                                            const fileName = source.title.includes('.') ? source.title : `${source.title}.md`;
+                                            const artifact: ConversationArtifact = {
+                                                id: source.id,
+                                                fileName: fileName,
+                                                fileSize: source.fileSize || source.content.length,
+                                                mimeType: mime,
+                                                fileData: source.content,
+                                                description: source.url || source.title,
+                                                uploadedAt: source.createdAt
+                                            };
+                                            setViewingArtifact(artifact);
+                                        }}
+                                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border relative group ${
+                                            isSelected
+                                                ? 'bg-[#2a2c2f] border-[#a8c7fa] text-white shadow'
+                                                : 'bg-[#131314] border-[#2d2f31] hover:border-gray-500 text-gray-300'
+                                        }`}
+                                        title={source.title}
+                                    >
+                                        <span>{icon}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 ) : (
@@ -1369,17 +1424,45 @@ export const NotebookWorkspace: React.FC = () => {
 
                 {/* Right Sidebar: Studio */}
                 {isRightCollapsed ? (
-                    /* Collapsed Right Sidebar Bar */
-                    <div className="w-[50px] bg-[#1e1f20] border-l border-[#2d2f31] flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
+                    /* Collapsed Right Sidebar Bar matching image.png Gemini UI */
+                    <div className="w-[56px] bg-[#1e1f20] border-l border-[#2d2f31] flex flex-col items-center py-3 gap-3 shrink-0 transition-all duration-300">
                         <button
                             onClick={() => setIsRightCollapsed(false)}
-                            className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all flex items-center justify-center"
                             title="Expand Studio Sidebar"
                         >
                             <SidebarRightIcon />
                         </button>
-                        <div className="h-full flex flex-col justify-center text-[10px] text-gray-500 font-bold tracking-widest uppercase writing-vertical-lr select-none">
-                            STUDIO NOTES ({notebook?.notes?.length || 0})
+
+                        <button
+                            onClick={() => {
+                                setViewingArtifact(null);
+                                setActiveNoteToEdit(null);
+                                setShowDocumentBuilder(true);
+                            }}
+                            className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center text-lg font-bold transition-all active:scale-95 shadow"
+                            title="Add Note"
+                        >
+                            +
+                        </button>
+
+                        <div className="w-8 h-px bg-[#2d2f31] my-1" />
+
+                        <div className="flex-1 w-full overflow-y-auto flex flex-col items-center gap-2.5 px-1 scrollbar-none">
+                            {notebook?.notes && notebook.notes.map(note => (
+                                <button
+                                    key={note.id}
+                                    onClick={() => {
+                                        setViewingArtifact(null);
+                                        setActiveNoteToEdit(note);
+                                        setShowDocumentBuilder(true);
+                                    }}
+                                    className="w-9 h-9 rounded-xl bg-[#131314] hover:bg-[#202124] border border-[#2d2f31] hover:border-gray-500 text-gray-300 hover:text-white flex items-center justify-center text-sm transition-all relative group shadow-sm"
+                                    title={note.title}
+                                >
+                                    <span>📝</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 ) : (
