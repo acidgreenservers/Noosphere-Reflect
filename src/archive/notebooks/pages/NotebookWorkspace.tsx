@@ -269,7 +269,27 @@ export const NotebookWorkspace: React.FC = () => {
         }
     };
 
-    const handleCopyEntireConversation = () => {
+    const handleCopyText = async (text: string, successMessage: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            alert(successMessage);
+        } catch (err) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert(successMessage);
+            } catch (fallbackErr) {
+                console.error('Failed to copy text:', fallbackErr);
+                alert('Failed to copy to clipboard.');
+            }
+            document.body.removeChild(textArea);
+        }
+    };
+
+    const handleCopyEntireConversation = async () => {
         if (!notebook) return;
         setIsChatMenuOpen(false);
 
@@ -291,8 +311,7 @@ export const NotebookWorkspace: React.FC = () => {
             convText += `No active chat session.`;
         }
 
-        navigator.clipboard.writeText(convText);
-        alert('📋 Entire conversation copied to clipboard (with markdown formatting)!');
+        await handleCopyText(convText, '📋 Entire conversation copied to clipboard (with markdown formatting)!');
     };
 
     const handleAddSource = async (sourceData: Omit<NotebookSource, 'id' | 'createdAt'>) => {
@@ -1121,8 +1140,7 @@ export const NotebookWorkspace: React.FC = () => {
                                             <div className={`flex gap-3 text-xs mt-1.5 ${isUser ? 'justify-end pr-2' : 'justify-start pl-2'}`}>
                                                 <button
                                                     onClick={() => {
-                                                        navigator.clipboard.writeText(msg.content);
-                                                        alert('📋 Message copied to clipboard!');
+                                                        handleCopyText(msg.content, '📋 Message copied to clipboard!');
                                                     }}
                                                     className="text-gray-500 hover:text-gray-300 font-medium transition-colors flex items-center gap-1 hover:underline"
                                                     title="Copy Message Text"
