@@ -64,6 +64,7 @@
             SURFACE_CARD: '#efe9de',
             SURFACE_DARK: '#181715',
             SURFACE_DARK_ELEVATED: '#252320',
+            SURFACE_DARK_SOFT: '#1f1d1a',
             HAIRLINE: '#e6dfd8',
             PRIMARY_CORAL: '#cc785c',
             PRIMARY_CORAL_ACTIVE: '#a9583e',
@@ -86,7 +87,8 @@
         messages: [],
         selectedIds: new Set(),
         expandedId: null,
-        sidebarOpen: false
+        sidebarOpen: false,
+        currentTheme: null
     };
 
     // ============================================================
@@ -601,28 +603,157 @@
     // UI Construction (Claude Warm Canvas Theme)
     // ============================================================
 
-    function detectTheme() {
-        // Check if Claude is using dark mode by sampling the chat background
-        const chatContainer = document.querySelector('[data-testid="user-message"]')?.closest('div[class*="bg-"]');
-        if (chatContainer) {
-            const bg = window.getComputedStyle(chatContainer).backgroundColor;
-            if (bg && (bg.includes('18, 17, 21') || bg.includes('24, 24, 27'))) {
-                return 'dark';
+    // ============================================================
+    // Theme Manager — Auto-detect & live-switch light / dark
+    // ============================================================
+
+    const ThemeManager = {
+        detect() {
+            // 1. Appearance radiogroup (most reliable when settings panel is open)
+            const radioGroup = document.querySelector('[data-cds="SegmentedControl"][aria-label="Appearance"]');
+            if (radioGroup) {
+                const checkedRadio = radioGroup.querySelector('input[type="radio"]:checked');
+                if (checkedRadio) {
+                    const val = checkedRadio.value;
+                    if (val === 'dark') return 'dark';
+                    if (val === 'light') return 'light';
+                    // 'auto' — fall through to UI background check
+                }
+                // Fallback: visual span elements
+                const checkedSpan = radioGroup.querySelector('span[role="radio"][aria-checked="true"]');
+                if (checkedSpan) {
+                    const label = checkedSpan.getAttribute('aria-label');
+                    if (label === 'Dark') return 'dark';
+                    if (label === 'Light') return 'light';
+                }
             }
-        }
-        // Fallback: check if body background is dark
-        const bodyBg = window.getComputedStyle(document.body).backgroundColor;
-        if (bodyBg) {
-            const rgb = bodyBg.match(/\d+/g);
-            if (rgb && (parseInt(rgb[0]) < 60 && parseInt(rgb[1]) < 60 && parseInt(rgb[2]) < 60)) {
-                return 'dark';
+
+            // 2. Claude UI text-color check — more reliable than background in SPAs
+            //    because body/main may be dark in both modes (dark canvas with light bubbles)
+            const getTextColorLuminance = (el) => {
+                if (!el) return null;
+                const color = window.getComputedStyle(el).color;
+                if (!color) return null;
+                const rgb = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (!rgb) return null;
+                const avg = (parseInt(rgb[1], 10) + parseInt(rgb[2], 10) + parseInt(rgb[3], 10)) / 3;
+                return avg;
+            };
+
+            // Check user message text color
+            const userMsgText = document.querySelector('[data-testid="user-message"] p, [data-testid="user-message"]');
+            const textLum = getTextColorLuminance(userMsgText);
+            if (textLum !== null) {
+                // Light text (avg > 200) → dark mode. Dark text (avg < 100) → light mode.
+                return textLum > 200 ? 'dark' : 'light';
             }
+
+            // 3. Claude UI background luminance — sample actual chat message backgrounds
+            const luminanceFromEl = (el) => {
+                if (!el) return null;
+                const bg = window.getComputedStyle(el).backgroundColor;
+                if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return null;
+                const rgb = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (!rgb) return null;
+                const avg = (parseInt(rgb[1], 10) + parseInt(rgb[2], 10) + parseInt(rgb[3], 10)) / 3;
+                return avg;
+            };
+
+            // Try user message bubble background
+            const userMsg = document.querySelector('[data-testid="user-message"]');
+            const userLum = luminanceFromEl(userMsg);
+            if (userLum !== null) {
+                return userLum < 128 ? 'dark' : 'light';
+            }
+
+            // Try assistant message row background
+            const assistantRow = document.querySelector('.group\\/message-row');
+            const assistantLum = luminanceFromEl(assistantRow);
+            if (assistantLum !== null) {
+                return assistantLum < 128 ? 'dark' : 'light';
+            }
+
+            // Try common app root containers
+            const appContainers = [
+                document.getElementById('root'),
+                document.getElementById('__next'),
+                document.getElementById('app'),
+                document.querySelector('.h-full.w-full'),
+                document.querySelector('[data-testid="chat-container"]'),
+                document.querySelector('main'),
+                document.body
+            ];
+            for (const container of appContainers) {
+                const lum = luminanceFromEl(container);
+                if (lum !== null) {
+                    return lum < 128 ? 'dark' : 'light';
+                }
+            }
+
+            // 4. data-theme / class on html/body
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) return 'dark';
+            if (html.classList.contains('light')) return 'light';
+            if (html.getAttribute('data-theme') === 'dark') return 'dark';
+            if (html.getAttribute('data-theme') === 'light') return 'light';
+
+            if (document.body) {
+                if (document.body.classList.contains('dark')) return 'dark';
+                if (document.body.classList.contains('light')) return 'light';
+                if (document.body.getAttribute('data-theme') === 'dark') return 'dark';
+                if (document.body.getAttribute('data-theme') === 'light') return 'light';
+            }
+
+            // 5. prefers-color-scheme (absolute last resort)
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+            return 'light';
+        },
+
+        apply(themeName) {
+            if (STATE.currentTheme === themeName) return;
+            STATE.currentTheme = themeName;
+
+            // Remove old stylesheet and re-inject with new palette
+            const oldStyle = document.getElementById('noosphere-claude-styles');
+            if (oldStyle) oldStyle.remove();
+            injectStyles();
+
+            // Re-render message cards so inline styles pick up new palette
+            renderMessageList();
+        },
+
+        init() {
+            const initial = this.detect();
+            console.log('[Noosphere Claude] Initial theme detected:', initial);
+            this.apply(initial);
+
+            // Poll every 500ms — lightweight and catches theme changes without
+            // needing to observe the entire dynamic chat DOM
+            this._pollInterval = setInterval(() => {
+                const detected = this.detect();
+                if (detected !== STATE.currentTheme) {
+                    console.log('[Noosphere Claude] Theme changed:', detected);
+                    this.apply(detected);
+                }
+            }, 500);
+
+            // Also watch html element for explicit data-theme/class changes
+            const observer = new MutationObserver(() => {
+                const detected = this.detect();
+                if (detected !== STATE.currentTheme) {
+                    console.log('[Noosphere Claude] Theme changed via observer:', detected);
+                    this.apply(detected);
+                }
+            });
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-theme', 'class']
+            });
         }
-        return 'light';
-    }
+    };
 
     function getThemeColors() {
-        const isDark = detectTheme() === 'dark';
+        const isDark = STATE.currentTheme === 'dark';
         return {
             bg: isDark ? CONFIG.THEME.SURFACE_DARK : CONFIG.THEME.CANVAS,
             bgElevated: isDark ? CONFIG.THEME.SURFACE_DARK_ELEVATED : CONFIG.THEME.SURFACE_CARD,
@@ -1355,7 +1486,7 @@
 
     function init() {
         console.log('🦁 Noosphere Reflect — Claude Chat Exporter Initialized');
-        injectStyles();
+        ThemeManager.init(); // Detects theme, sets STATE.currentTheme, injects styles
         createSidebarUI();
         injectExportMenuItem();
         setupMenuObserver();
