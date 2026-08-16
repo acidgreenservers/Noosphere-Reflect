@@ -23,6 +23,19 @@ export class DBService {
                         migration.migrate(db as any, transaction as any, oldVersion);
                     }
                 }
+            },
+            blocked(currentVersion, blockedVersion, event) {
+                console.warn(`Database upgrade blocked (current: ${currentVersion}, blocked: ${blockedVersion}). Close other tabs.`);
+                alert('A new version of the app is ready, but another tab is keeping the database open. Please close other tabs of this site to continue.');
+            },
+            blocking: (currentVersion, blockedVersion, event) => {
+                console.warn(`Another tab is upgrading the database (current: ${currentVersion}, blocked: ${blockedVersion}). Closing connection.`);
+                if (this.db) {
+                    this.db.close();
+                    this.db = null;
+                }
+                alert('The app was updated in another tab. This tab must reload to continue.');
+                window.location.reload();
             }
         });
 
