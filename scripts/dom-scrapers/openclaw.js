@@ -1,469 +1,348 @@
-/**
- * OpenClaw Chat Exporter - Noosphere Reflect
- * v1.0 - DOM Scraper Edition
- *
- * Scrapes OpenClaw chat conversations with metadata preservation.
- */
-
 (function () {
     'use strict';
 
-    // ============================================================================
-    // CONSTANTS
-    // ============================================================================
-    const CONFIG = {
-        CHECKBOX_CLASS: 'ns-checkbox',
+    /*
+     * ============================================================
+     * Noosphere Reflect — OpenClaw Chat Exporter (V2)
+     * ============================================================
+     *
+     * Native Slide-Over Drawer & Markdown Synthesizer for OpenClaw Control.
+     *
+     * Features:
+     *   - Integrated Header Trigger: Injected into the top header bar
+     *   - Recursive DOM-to-Markdown parser preserving formatting
+     *   - Interactive turn accordion drawer with batch filtering
+     *   - OpenClaw Dual Theme (Light Canvas / Stealth Charcoal)
+     *   - Automatic theme detection & live switching
+     *   - Frontmatter metadata extraction (model, tokens, cache, ctx)
+     *
+     * Namespace: ns-openclaw
+     * ============================================================
+     */
 
+    const CONFIG = {
         SELECTORS: {
-            // Chat messages
             USER_MESSAGE: '.chat-group.user',
             AI_MESSAGE: '.chat-group.assistant',
-            MESSAGE_CONTAINER: '.chat-group',
-
-            // Text content
             CHAT_TEXT: '.chat-text',
-
-            // Metadata
-            SENDER_NAME: '.chat-sender-name',
             TIMESTAMP: '.chat-group-timestamp',
             MODEL_NAME: '.msg-meta__model',
             TOKENS_UP: '.msg-meta__tokens',
             CACHE_INFO: '.msg-meta__cache',
             CTX_INFO: '.msg-meta__ctx',
-            MSG_META: '.msg-meta',
-
-            // UI artifacts to strip
-            CHAT_BUBBLE_ACTIONS: '.chat-bubble-actions',
-            CHAT_GROUP_FOOTER: '.chat-group-footer',
-            CHAT_AVATAR: '.chat-avatar',
-            CHAT_DELETE_WRAP: '.chat-delete-wrap',
-            CHAT_TTS_BTN: '.chat-tts-btn',
-
-            // Chat container
-            CHAT_CONTAINER: '.chat-container, .chat-messages, main',
-
-            // Title
-            CONVERSATION_TITLE: 'title'
+            
+            // Rail Injection
+            HEADER_CONTAINER: '.chat-workspace-rail',
+            
+            // Conversation Title
+            CONVERSATION_TITLE: 'title',
+            
+            // UI Chrome to Strip
+            NOISE_ELEMENTS: '.chat-bubble-actions, .chat-group-footer, .chat-avatar, .chat-delete-wrap, .chat-tts-btn, button, svg, .sr-only'
         },
 
-        TIMING: {
-            SCROLL_DELAY: 1500,
-            CLIPBOARD_CLEAR_DELAY: 200,
-            CLIPBOARD_READ_DELAY: 300,
-            POPUP_DURATION: 900,
-            MAX_SCROLL_ATTEMPTS: 40,
-            MAX_STABLE_SCROLLS: 3
-        },
-
-        STYLES: {
-            BUTTON_PRIMARY: '#ff6b35', // OpenClaw orange
-            BUTTON_HOVER: '#e55a2b',
-            DARK_BG: '#1a1a1a',
-            DARK_TEXT: '#fff',
-            DARK_BORDER: '#444',
-            LIGHT_BG: '#fff',
-            LIGHT_TEXT: '#222',
-            LIGHT_BORDER: '#ccc'
+        // OpenClaw Design Tokens (from DESIGN.md)
+        THEMES: {
+            light: {
+                CANVAS: '#f4f5f7',
+                SURFACE_SIDEBAR: '#ffffff',
+                SURFACE_CARD: '#ffffff',
+                SURFACE_INPUT: '#ffffff',
+                TEXT_PRIMARY: '#1a1d20',
+                TEXT_MUTED: '#868e96',
+                BORDER: '#e9ecef',
+                HOVER: '#f1f3f5',
+                USER_BUBBLE: '#feeae8',
+                AGENT_BUBBLE: '#ffffff',
+                BRAND_LOBSTER: '#e03131',
+                BRAND_LOBSTER_HOVER: '#c92a2a',
+                ON_BRAND: '#ffffff',
+                ERROR: '#e03131'
+            },
+            dark: {
+                CANVAS: '#111317',
+                SURFACE_SIDEBAR: '#16181d',
+                SURFACE_CARD: '#1b1e24',
+                SURFACE_INPUT: '#1b1e24',
+                TEXT_PRIMARY: '#f1f3f5',
+                TEXT_MUTED: '#6c7482',
+                BORDER: 'rgba(255, 255, 255, 0.10)',
+                HOVER: '#22262e',
+                USER_BUBBLE: '#2a1b1d',
+                AGENT_BUBBLE: '#1b1e24',
+                BRAND_LOBSTER: '#e03131',
+                BRAND_LOBSTER_HOVER: '#c92a2a',
+                ON_BRAND: '#ffffff',
+                ERROR: '#e03131'
+            }
         }
     };
 
-    // ============================================================================
-    // UTILITY FUNCTIONS
-    // ============================================================================
+    // Active theme reference — swapped by ThemeManager
+    CONFIG.THEME = CONFIG.THEMES.light;
+
+    const STATE = {
+        messages: [],
+        selectedIds: new Set(),
+        expandedId: null,
+        sidebarOpen: false,
+        currentTheme: null
+    };
+
+    // ============================================================
+    // Utilities
+    // ============================================================
+
     const Utils = {
-        sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        },
-
-        isDarkMode() {
-            return document.documentElement.classList.contains('dark');
-        },
-
-        sanitizeFilename(text) {
-            return text
-                .replace(/[<>:"\/\\|?*]/g, '')
-                .replace(/\s+/g, '_')
-                .substring(0, 50);
-        },
-
-        getDateString() {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        },
-
-        createNotification(message) {
+        createNotification(message, success = true) {
             const notification = document.createElement('div');
             notification.textContent = message;
+
             Object.assign(notification.style, {
                 position: 'fixed',
                 top: '20px',
                 right: '20px',
-                background: CONFIG.STYLES.BUTTON_PRIMARY,
-                color: 'white',
+                background: success ? CONFIG.THEME.BRAND_LOBSTER : CONFIG.THEME.ERROR,
+                color: CONFIG.THEME.ON_BRAND,
                 padding: '12px 20px',
                 borderRadius: '8px',
-                zIndex: '10000',
+                zIndex: '200000',
                 fontSize: '14px',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                transition: 'opacity 0.3s ease',
-                maxWidth: '300px',
-                wordWrap: 'break-word'
+                fontWeight: '500',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                transition: 'opacity 0.3s ease'
             });
+
             document.body.appendChild(notification);
+
             setTimeout(() => {
                 notification.style.opacity = '0';
                 setTimeout(() => notification.remove(), 300);
-            }, CONFIG.TIMING.POPUP_DURATION);
+            }, 2200);
+        },
+
+        cleanText(text) {
+            return (text || '')
+                .replace(/\u00a0/g, ' ')
+                .replace(/[ \t]+\n/g, '\n')
+                .replace(/\n[ \t]+/g, '\n')
+                .replace(/[ \t]{2,}/g, ' ')
+                .trim();
+        },
+
+        normalizeMarkdown(text) {
+            return text
+                .replace(/\n{3,}/g, '\n\n')
+                .replace(/[ \t]+\n/g, '\n')
+                .trim();
+        },
+
+        sanitizeFilename(text) {
+            return (text || 'OpenClaw_Chat')
+                .replace(/[<>:"/\\|?*]/g, '')
+                .replace(/\s+/g, '_')
+                .substring(0, 80);
+        },
+
+        getDateString() {
+            const now = new Date();
+            const pad = n => n.toString().padStart(2, '0');
+            return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
         }
     };
 
-    // ============================================================================
-    // STYLES
-    // ============================================================================
-    function injectStyles() {
-        const styleId = 'noosphere-styles';
-        if (document.getElementById(styleId)) return;
+    // ============================================================
+    // Recursive HTML to Markdown Parser
+    // ============================================================
 
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `
-            :root {
-                --ns-green: ${CONFIG.STYLES.BUTTON_PRIMARY};
-                --ns-purple: ${CONFIG.STYLES.BUTTON_HOVER};
-                --ns-amber: #f59e0b;
-                --ns-bg: rgba(17, 24, 39, 0.7);
-                --ns-border: rgba(255, 255, 255, 0.1);
-                --ns-glow: 0 0 20px ${CONFIG.STYLES.BUTTON_PRIMARY}40;
-            }
-            .ns-orb {
-                position: fixed; top: 215px; right: 16px; width: 40px; height: 40px;
-                background: linear-gradient(135deg, var(--ns-green), var(--ns-purple));
-                border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                cursor: pointer; z-index: 100000; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-                transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                border: 2px solid rgba(255, 255, 255, 0.2);
-            }
-            .ns-orb:hover { transform: scale(1.1) rotate(5deg); box-shadow: var(--ns-glow); }
-            .ns-orb svg { width: 20px; height: 20px; fill: white; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
-            .ns-console {
-                position: fixed; top: 243px; right: 16px; width: 340px;
-                background: var(--ns-bg); backdrop-filter: blur(20px) saturate(180%);
-                border: 1px solid var(--ns-border); border-radius: 28px; z-index: 99999;
-                overflow: hidden; display: none; flex-direction: column;
-                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); color: white;
-                font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            }
-            .ns-console-header { padding: 24px 24px 16px; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); }
-            .ns-console-title {
-                font-size: 20px; font-weight: 800; letter-spacing: -0.02em;
-                background: linear-gradient(to right, #fff, rgba(255,255,255,0.7));
-                -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;
-            }
-            .ns-console-subtitle { font-size: 12px; color: rgba(255, 255, 255, 0.5); font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; }
-            .ns-console-tabs { display: flex; padding: 0 16px; gap: 8px; margin-bottom: 16px; }
-            .ns-tab {
-                padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
-                cursor: pointer; transition: all 0.2s; background: rgba(255, 255, 255, 0.05);
-                color: rgba(255, 255, 255, 0.6); border: 1px solid transparent;
-            }
-            .ns-tab.active { background: ${CONFIG.STYLES.BUTTON_PRIMARY}20; color: var(--ns-green); border: 1px solid ${CONFIG.STYLES.BUTTON_PRIMARY}40; }
-            .ns-console-content { padding: 0 20px 24px; display: flex; flex-direction: column; gap: 10px; }
-            .ns-btn {
-                width: 100%; padding: 12px 18px; background: rgba(255, 255, 255, 0.05);
-                border: 1px solid var(--ns-border); border-radius: 16px; color: white;
-                font-size: 14px; font-weight: 600; cursor: pointer; display: flex;
-                align-items: center; gap: 12px; transition: all 0.2s;
-            }
-            .ns-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); transform: translateX(4px); }
-            .ns-btn svg { width: 18px; height: 18px; opacity: 0.7; }
-            .ns-btn-primary {
-                background: linear-gradient(to right, ${CONFIG.STYLES.BUTTON_PRIMARY}30, ${CONFIG.STYLES.BUTTON_PRIMARY}15);
-                border-color: ${CONFIG.STYLES.BUTTON_PRIMARY}40; color: var(--ns-green);
-            }
-            .ns-btn-primary:hover { background: ${CONFIG.STYLES.BUTTON_PRIMARY}35; border-color: var(--ns-green); }
-            .ns-input-group { background: rgba(0, 0, 0, 0.2); padding: 16px; border-radius: 20px; border: 1px solid var(--ns-border); }
-            .ns-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.4); margin-bottom: 8px; display: block; }
-            .ns-input { width: 100%; background: transparent; border: none; color: white; font-size: 15px; outline: none; padding: 4px 0; }
-            .ns-select {
-                width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ns-border);
-                border-radius: 12px; color: white; padding: 10px; outline: none; font-size: 13px;
-                appearance: none; -webkit-appearance: none; -moz-appearance: none;
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.7)' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-                background-repeat: no-repeat; background-position: right 12px center;
-                background-size: 12px; padding-right: 30px; cursor: pointer; transition: all 0.2s;
-            }
-            .ns-select:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
-            .ns-select option { background: var(--ns-bg); color: white; padding: 8px; }
-            /* Checkbox Styles */
-            .ns-checkbox-container { z-index: 1000; display: flex; align-items: center; justify-content: center; }
-            .ns-checkbox {
-                appearance: none; width: 20px; height: 20px; border: 2px solid var(--ns-green);
-                border-radius: 6px; cursor: pointer; background: rgba(0,0,0,0.3);
-                transition: all 0.2s; position: relative; z-index: 1001;
-            }
-            .ns-checkbox:checked { background: var(--ns-green); box-shadow: 0 0 10px var(--ns-green); }
-            .ns-checkbox:checked::after {
-                content: '✓'; position: absolute; color: white; font-size: 14px;
-                top: 50%; left: 50%; transform: translate(-50%, -50%);
-            }
-            .ns-bulk-controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 12px; }
-            .ns-bulk-btn {
-                padding: 6px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ns-border);
-                border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px;
-                font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s;
-            }
-            .ns-bulk-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+    function renderNodeToMarkdown(node) {
+        if (!node) return '';
 
-            /* OpenClaw Specific Overrides */
-            .chat-group { position: relative; }
-            .chat-group.user .ns-checkbox { position: absolute; right: 25px; top: 12px; }
-            .chat-group.assistant .ns-checkbox { position: absolute; left: 10px; top: 42px; }
-        `;
-        document.head.appendChild(style);
-    }
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent || '';
+        }
 
-    // ============================================================================
-    // MENU CREATION
-    // ============================================================================
-    function createMenu() {
-        const orb = document.createElement('div');
-        orb.className = 'ns-orb';
-        orb.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12,2C6.47,2,2,6.47,2,12s4.47,10,10,10,10-4.47,10-10S17.53,2,12,2zm0,18c-3.31,0-6-2.69-6-6,0-1.01,.25-1.97,.7-2.8l1.46,1.46c-.11,.43-.16,.88-.16,1.34,0,2.21,1.79,4,4,4s4-1.79,4-4-1.79-4-4-4c-.46,0-.91,.05-1.34,.16l-1.46-1.46c.83-.45,1.79-.7,2.8-.7,3.31,0,6,2.69,6,6s-2.69,6-6,6z"/></svg>`;
-        document.body.appendChild(orb);
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            return '';
+        }
 
-        const consoleEl = document.createElement('div');
-        consoleEl.className = 'ns-console';
-        consoleEl.innerHTML = `
-            <div class="ns-console-header">
-                <div class="ns-console-subtitle">Neural Interface</div>
-                <div class="ns-console-title">Noosphere Reflect</div>
-            </div>
-            <div class="ns-console-tabs">
-                <div class="ns-tab active" data-target="ns-pane-export">Export</div>
-                <div class="ns-tab" data-target="ns-pane-config">Configuration</div>
-            </div>
-            <div class="ns-console-content" id="ns-pane-export">
-                <div class="ns-bulk-controls">
-                    <div class="ns-bulk-btn" id="ns-select-all">All</div>
-                    <div class="ns-bulk-btn" id="ns-select-user">User</div>
-                    <div class="ns-bulk-btn" id="ns-select-ai">AI</div>
-                    <div class="ns-bulk-btn" id="ns-select-none">None</div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <button class="ns-btn" id="ns-copy-md">Copy MD</button>
-                    <button class="ns-btn" id="ns-copy-json">Copy JSON</button>
-                </div>
-                <button class="ns-btn ns-btn-primary" id="ns-dl-md">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-                    Download .MD
-                </button>
-                <div class="ns-stats" id="ns-stats" style="font-size: 11px; color: #888; text-align: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">0 messages selected</div>
-            </div>
-            <div class="ns-console-content" id="ns-pane-config" style="display: none;">
-                <div class="ns-input-group">
-                    <span class="ns-label">Chat Title</span>
-                    <input type="text" class="ns-input" id="ns-manual-title" placeholder="e.g. OpenClaw Research Session">
-                </div>
-                <div class="ns-input-group">
-                    <span class="ns-label">Filename Prefix</span>
-                    <input type="text" class="ns-input" id="ns-custom-name" placeholder="OpenClaw_Export">
-                </div>
-                <div style="padding: 0 4px;">
-                    <span class="ns-label">Naming Segment</span>
-                    <select class="ns-select" id="ns-naming-format">
-                        <option value="kebab-case">kebab-case</option>
-                        <option value="snake_case">snake_case</option>
-                        <option value="PascalCase">PascalCase</option>
-                        <option value="camelCase">camelCase</option>
-                    </select>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(consoleEl);
+        // Ignore UI chrome noise
+        if (node.matches && node.matches(CONFIG.SELECTORS.NOISE_ELEMENTS)) {
+            return '';
+        }
 
-        orb.onclick = () => {
-            const isVisible = consoleEl.style.display === 'flex';
-            consoleEl.style.display = isVisible ? 'none' : 'flex';
-        };
+        const tag = node.tagName.toLowerCase();
+        const inner = () => Array.from(node.childNodes).map(renderNodeToMarkdown).join('');
 
-        consoleEl.querySelectorAll('.ns-tab').forEach(tab => {
-            tab.onclick = () => {
-                consoleEl.querySelectorAll('.ns-tab').forEach(t => t.classList.remove('active'));
-                consoleEl.querySelectorAll('.ns-console-content').forEach(c => c.style.display = 'none');
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.target).style.display = 'flex';
-            };
-        });
-
-        document.getElementById('ns-copy-md').addEventListener('click', () => ExportService.exportToClipboard('markdown'));
-        document.getElementById('ns-copy-json').addEventListener('click', () => ExportService.exportToClipboard('json'));
-        document.getElementById('ns-dl-md').addEventListener('click', () => ExportService.exportToFile('markdown'));
-    }
-
-    // ============================================================================
-    // CHECKBOX INJECTION
-    // ============================================================================
-    function injectCheckboxes() {
-        const messages = document.querySelectorAll(`${CONFIG.SELECTORS.USER_MESSAGE}, ${CONFIG.SELECTORS.AI_MESSAGE}`);
-        messages.forEach(msg => {
-            if (msg.querySelector(`.${CONFIG.CHECKBOX_CLASS}`)) return;
-
-            msg.style.position = 'relative';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = CONFIG.CHECKBOX_CLASS;
-            checkbox.dataset.messageId = Math.random().toString(36).substr(2, 9);
-            checkbox.addEventListener('change', updateStats);
-            msg.appendChild(checkbox);
-        });
-    }
-
-    function updateStats() {
-        const checked = document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}:checked`);
-        const stats = document.getElementById('ns-stats');
-        if (stats) {
-            stats.textContent = `${checked.length} message${checked.length !== 1 ? 's' : ''} selected`;
+        switch (tag) {
+            case 'h1': return `\n\n# ${Utils.cleanText(inner())}\n\n`;
+            case 'h2': return `\n\n## ${Utils.cleanText(inner())}\n\n`;
+            case 'h3': return `\n\n### ${Utils.cleanText(inner())}\n\n`;
+            case 'h4': return `\n\n#### ${Utils.cleanText(inner())}\n\n`;
+            case 'h5': return `\n\n##### ${Utils.cleanText(inner())}\n\n`;
+            case 'h6': return `\n\n###### ${Utils.cleanText(inner())}\n\n`;
+            case 'p': return `\n\n${inner().trim()}\n\n`;
+            case 'strong': case 'b': return `**${inner().trim()}**`;
+            case 'em': case 'i': return `*${inner().trim()}*`;
+            case 'code': {
+                if (node.parentElement?.tagName.toLowerCase() === 'pre') return inner();
+                return `\`${inner().replace(/`/g, '\\`')}\``;
+            }
+            case 'pre': {
+                const clone = node.cloneNode(true);
+                clone.querySelectorAll(CONFIG.SELECTORS.NOISE_ELEMENTS).forEach(n => n.remove());
+                const lang = clone.getAttribute('data-lang') || clone.className.match(/lang-(\w+)/)?.[1] || '';
+                return `\n\n\`\`\`${lang}\n${(clone.textContent || '').trim()}\n\`\`\`\n\n`;
+            }
+            case 'blockquote': return `\n\n> ${Utils.cleanText(inner()).replace(/\n/g, '\n> ')}\n\n`;
+            case 'hr': return '\n\n---\n\n';
+            case 'br': return '\n';
+            case 'a': {
+                const label = Utils.cleanText(inner());
+                const href = node.getAttribute('href');
+                return href ? `[${label || href}](${href})` : label;
+            }
+            case 'ul': case 'ol': {
+                const isOrdered = tag === 'ol';
+                const items = Array.from(node.children)
+                    .filter(child => child.tagName.toLowerCase() === 'li')
+                    .map((li, idx) => `${isOrdered ? `${idx + 1}.` : '-'} ${Utils.cleanText(renderNodeToMarkdown(li))}`)
+                    .filter(Boolean);
+                return `\n\n${items.join('\n')}\n\n`;
+            }
+            case 'li': return inner().trim();
+            case 'table': {
+                const rows = Array.from(node.querySelectorAll('tr'));
+                if (!rows.length) return '';
+                const matrix = rows.map(row => Array.from(row.querySelectorAll('th, td')).map(cell => Utils.cleanText(renderNodeToMarkdown(cell))));
+                const colCount = Math.max(...matrix.map(r => r.length), 0);
+                if (!colCount) return '';
+                const escapeCell = val => String(val || '').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+                const normalized = matrix.map(r => {
+                    const copy = r.slice();
+                    while (copy.length < colCount) copy.push('');
+                    return copy;
+                });
+                const header = normalized[0].map(escapeCell);
+                const separator = new Array(colCount).fill('---');
+                const output = [`| ${header.join(' | ')} |`, `| ${separator.join(' | ')} |`];
+                for (let i = 1; i < normalized.length; i++) output.push(`| ${normalized[i].map(escapeCell).join(' | ')} |`);
+                return `\n\n${output.join('\n')}\n\n`;
+            }
+            default: return inner();
         }
     }
 
-    function setupObserver() {
-        const targetSelector = `${CONFIG.SELECTORS.USER_MESSAGE}, ${CONFIG.SELECTORS.AI_MESSAGE}`;
-        const observer = new MutationObserver((mutations) => {
-            let shouldInject = false;
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            if (node.matches?.(targetSelector) ||
-                                node.querySelector?.(targetSelector)) {
-                                shouldInject = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (shouldInject) break;
-            }
-            if (shouldInject) {
-                setTimeout(injectCheckboxes, 500);
-            }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
+    function htmlToMarkdown(element) {
+        if (!element) return '';
+        const clone = element.cloneNode(true);
+        clone.querySelectorAll(CONFIG.SELECTORS.NOISE_ELEMENTS).forEach(n => n.remove());
+        return Utils.normalizeMarkdown(renderNodeToMarkdown(clone));
     }
 
-    // ============================================================================
-    // TEXT EXTRACTION
-    // ============================================================================
-    function extractUserText(element) {
-        const textEl = element.querySelector(CONFIG.SELECTORS.CHAT_TEXT);
-        if (!textEl) return '';
-        return textEl.innerText.trim();
-    }
+    // ============================================================
+    // DOM Extractors
+    // ============================================================
 
-    function extractAIText(element) {
-        const textEl = element.querySelector(CONFIG.SELECTORS.CHAT_TEXT);
-        if (!textEl) return '';
-
-        // Clone to avoid modifying live DOM
-        const clone = textEl.cloneNode(true);
-
-        // Remove any UI artifacts that might be inside chat-text
-        clone.querySelectorAll('button, svg, .chat-bubble-actions').forEach(el => el.remove());
-
-        return clone.innerText.trim();
-    }
-
-    // ============================================================================
-    // METADATA EXTRACTION
-    // ============================================================================
-    function extractMetadata(element) {
+    function extractMetadata(container) {
         const metadata = {};
-
-        const senderEl = element.querySelector(CONFIG.SELECTORS.SENDER_NAME);
-        if (senderEl) metadata.sender = senderEl.textContent.trim();
-
-        const timestampEl = element.querySelector(CONFIG.SELECTORS.TIMESTAMP);
+        const timestampEl = container.querySelector(CONFIG.SELECTORS.TIMESTAMP);
         if (timestampEl) metadata.timestamp = timestampEl.textContent.trim();
-
-        const modelEl = element.querySelector(CONFIG.SELECTORS.MODEL_NAME);
+        
+        const modelEl = container.querySelector(CONFIG.SELECTORS.MODEL_NAME);
         if (modelEl) metadata.model = modelEl.textContent.trim();
-
-        // Extract token counts
-        const tokenEls = element.querySelectorAll(CONFIG.SELECTORS.TOKENS_UP);
-        if (tokenEls.length > 0) {
-            metadata.tokens = Array.from(tokenEls).map(el => el.textContent.trim()).join(' ');
-        }
-
-        const cacheEl = element.querySelector(CONFIG.SELECTORS.CACHE_INFO);
+        
+        const tokenEls = container.querySelectorAll(CONFIG.SELECTORS.TOKENS_UP);
+        if (tokenEls.length > 0) metadata.tokens = Array.from(tokenEls).map(el => el.textContent.trim()).join(' ');
+        
+        const cacheEl = container.querySelector(CONFIG.SELECTORS.CACHE_INFO);
         if (cacheEl) metadata.cache = cacheEl.textContent.trim();
-
-        const ctxEl = element.querySelector(CONFIG.SELECTORS.CTX_INFO);
+        
+        const ctxEl = container.querySelector(CONFIG.SELECTORS.CTX_INFO);
         if (ctxEl) metadata.ctx = ctxEl.textContent.trim();
-
+        
         return metadata;
     }
 
-    // ============================================================================
-    // EXPORT SERVICE
-    // ============================================================================
-    const ExportService = {
-        getSelectedMessages() {
-            const checked = document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}:checked`);
-            const messages = [];
-
-            checked.forEach(checkbox => {
-                const msgEl = checkbox.closest(CONFIG.SELECTORS.MESSAGE_CONTAINER);
-                if (!msgEl) return;
-
-                const isUser = msgEl.classList.contains('user');
-                const isAI = msgEl.classList.contains('assistant');
-
-                if (!isUser && !isAI) return;
-
-                const text = isUser ? extractUserText(msgEl) : extractAIText(msgEl);
-                if (!text) return;
-
-                const metadata = extractMetadata(msgEl);
-
-                messages.push({
-                    type: isUser ? 'prompt' : 'response',
-                    role: isUser ? 'user' : 'assistant',
-                    content: text,
-                    metadata: metadata
-                });
+    function scanConversation() {
+        STATE.messages = [];
+        
+        const userContainers = Array.from(document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE));
+        const aiContainers = Array.from(document.querySelectorAll(CONFIG.SELECTORS.AI_MESSAGE));
+        
+        const allElements = [];
+        
+        userContainers.forEach(el => {
+            const textEl = el.querySelector(CONFIG.SELECTORS.CHAT_TEXT);
+            if (textEl) {
+                const content = htmlToMarkdown(textEl);
+                if (content) {
+                    allElements.push({
+                        type: 'user', el, order: el.getBoundingClientRect().top,
+                        text: content, metadata: extractMetadata(el),
+                        preview: content.substring(0, 75).replace(/\n/g, ' ') + (content.length > 75 ? '...' : '')
+                    });
+                }
+            }
+        });
+        
+        aiContainers.forEach(el => {
+            const textEl = el.querySelector(CONFIG.SELECTORS.CHAT_TEXT);
+            if (textEl) {
+                const content = htmlToMarkdown(textEl);
+                if (content) {
+                    allElements.push({
+                        type: 'assistant', el, order: el.getBoundingClientRect().top,
+                        text: content, metadata: extractMetadata(el),
+                        preview: content.substring(0, 75).replace(/\n/g, ' ') + (content.length > 75 ? '...' : '')
+                    });
+                }
+            }
+        });
+        
+        allElements.sort((a, b) => a.order - b.order);
+        
+        allElements.forEach((item, idx) => {
+            STATE.messages.push({
+                id: idx, role: item.type, text: item.text, metadata: item.metadata, preview: item.preview
             });
+        });
+        
+        if (STATE.selectedIds.size === 0) {
+            STATE.messages.forEach(m => STATE.selectedIds.add(m.id));
+        }
+    }
 
-            return messages;
-        },
+    // ============================================================
+    // Export Service & Document Synthesis
+    // ============================================================
 
-        getConversationTitle() {
+    const ExportService = {
+        getExportTitle() {
+            const manualTitle = document.getElementById('ns-openclaw-title')?.value?.trim();
+            if (manualTitle) return manualTitle;
             const titleEl = document.querySelector(CONFIG.SELECTORS.CONVERSATION_TITLE);
-            return titleEl ? titleEl.textContent.trim() : 'OpenClaw Chat';
+            if (titleEl && titleEl.innerText) return Utils.cleanText(titleEl.innerText).substring(0, 50);
+            return 'OpenClaw_Chat';
         },
 
-        buildMarkdown(messages) {
-            const title = this.getConversationTitle();
-            const now = new Date();
-            const dateStr = now.toLocaleString();
-            const url = window.location.href;
+        buildMarkdown() {
+            const title = this.getExportTitle();
+            const sourceUrl = window.location.href;
+            const exportedAt = new Date().toLocaleString();
+            const selected = STATE.messages.filter(m => STATE.selectedIds.has(m.id));
+            const models = [...new Set(selected.map(m => m.metadata?.model).filter(Boolean))];
 
-            // Collect unique models from metadata
-            const models = [...new Set(messages
-                .map(m => m.metadata?.model)
-                .filter(Boolean))];
-
-            // Build metadata block
-            let md = `# ${title}\n\n`;
-            md += `> **🤖 Model:** ${models.join(', ') || 'OpenClaw'}\n`;
-            md += `> **🌐 Date:** ${dateStr}\n`;
-            md += `> **🌐 Source:** ${url}\n`;
-            md += `> **🏷️ Tags:** openclaw, export\n`;
-            md += `> **📂 Artifacts:** ${messages.length} messages\n`;
-            md += `> **📊 Metadata:**\n`;
-
-            messages.forEach((msg, idx) => {
+            let md = '---\n';
+            md += `> **📝 Title:** ${title}\n>\n`;
+            md += `> **🤖 Model:** ${models.join(', ') || 'OpenClaw'}\n>\n`;
+            md += `> **🌐 Exported:** ${exportedAt}\n>\n`;
+            md += `> **🌐 Source:** [OpenClaw Control](${sourceUrl})\n>\n`;
+            md += '> **🏷️ Tags:** OpenClaw, AI-Chat, Agent, Noosphere\n>\n';
+            md += `> **📊 Metadata:** ${selected.length} Selected Messages\n`;
+            
+            selected.forEach((msg, idx) => {
                 const meta = msg.metadata || {};
                 if (meta.model || meta.tokens || meta.cache || meta.ctx) {
                     md += `>   ${idx + 1}. ${msg.role}${meta.model ? ` [${meta.model}]` : ''}`;
@@ -473,176 +352,468 @@
                     md += '\n';
                 }
             });
+            md += '---\n\n';
+            md += `# ${title}\n\n---\n\n`;
 
-            md += '\n---\n\n';
-
-            // Messages
-            messages.forEach(msg => {
-                const meta = msg.metadata || {};
-                const senderLabel = msg.type === 'prompt' ? 'User' : 'OpenClaw';
-                const emoji = msg.type === 'prompt' ? '👤' : '🤖';
-
-                md += `#### ${msg.type === 'prompt' ? 'Prompt' : 'Response'} - ${senderLabel} ${emoji}:\n\n`;
-                md += msg.content;
-                md += '\n\n---\n\n';
+            selected.forEach(msg => {
+                const senderLabel = msg.role === 'user' ? 'User' : 'OpenClaw Agent';
+                const emoji = msg.role === 'user' ? '👤' : '🤖';
+                md += `#### ${msg.role === 'user' ? 'Prompt' : 'Response'} - ${senderLabel} ${emoji}:\n\n`;
+                md += `${msg.text}\n\n---\n\n`;
             });
 
-            // Footer
-            md += `###### Noosphere Reflect\n`;
-            md += `###### ***Meaning Through Memory***\n`;
-            md += `###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***\n`;
-
-            return md;
+            md += '###### Noosphere Reflect\n###### ***Meaning Through Memory***\n###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***\n';
+            return Utils.normalizeMarkdown(md);
         },
 
-        buildJSON(messages) {
-            const title = this.getConversationTitle();
-            const now = new Date();
-            const url = window.location.href;
-
-            // Collect unique models
-            const models = [...new Set(messages
-                .map(m => m.metadata?.model)
-                .filter(Boolean))];
-
-            const data = {
-                messages: messages.map(msg => ({
-                    type: msg.type,
-                    role: msg.role,
-                    content: msg.content,
-                    metadata: msg.metadata
-                })),
-                metadata: {
-                    title: title,
-                    platform: 'OpenClaw',
-                    date: now.toISOString(),
-                    source: url,
-                    tags: ['openclaw', 'export'],
-                    models: models,
-                    messageCount: messages.length
-                },
-                exportedBy: {
-                    tool: 'Noosphere Reflect - OpenClaw DOM Scraper',
-                    version: '1.0',
-                    timestamp: now.toISOString()
-                }
-            };
-
-            return JSON.stringify(data, null, 2);
+        buildJSON() {
+            const title = this.getExportTitle();
+            const selected = STATE.messages.filter(m => STATE.selectedIds.has(m.id));
+            const models = [...new Set(selected.map(m => m.metadata?.model).filter(Boolean))];
+            
+            return JSON.stringify({
+                metadata: { title, exportedAt: new Date().toISOString(), sourceUrl: window.location.href, platform: 'OpenClaw', models },
+                messages: selected.map(m => ({ role: m.role, content: m.text, metadata: m.metadata }))
+            }, null, 2);
         },
 
-        async exportToClipboard(format) {
-            const messages = this.getSelectedMessages();
-            if (messages.length === 0) {
-                Utils.createNotification('⚠️ No messages selected!');
-                return;
-            }
-
-            const content = format === 'json'
-                ? this.buildJSON(messages)
-                : this.buildMarkdown(messages);
-
+        async executeCopy() {
+            if (STATE.selectedIds.size === 0) return Utils.createNotification('⚠️ Select at least one message', false);
             try {
-                await navigator.clipboard.writeText(content);
-                Utils.createNotification(`✅ ${messages.length} messages copied as ${format.toUpperCase()}!`);
+                const format = document.getElementById('ns-openclaw-format')?.value || 'markdown';
+                await navigator.clipboard.writeText(format === 'json' ? this.buildJSON() : this.buildMarkdown());
+                Utils.createNotification(`✅ Copied ${STATE.selectedIds.size} turns as ${format.toUpperCase()}!`);
             } catch (err) {
-                console.error('[Noosphere] Clipboard failed:', err);
-                Utils.createNotification('❌ Clipboard failed. Try downloading instead.');
+                console.error(err);
+                Utils.createNotification('❌ Clipboard export failed', false);
             }
         },
 
-        exportToFile(format) {
-            const messages = this.getSelectedMessages();
-            if (messages.length === 0) {
-                Utils.createNotification('⚠️ No messages selected!');
-                return;
-            }
-
-            const content = format === 'json'
-                ? this.buildJSON(messages)
-                : this.buildMarkdown(messages);
-
-            const title = this.getConversationTitle();
-            const safeTitle = Utils.sanitizeFilename(title);
-            const ext = format === 'json' ? 'json' : 'md';
-            const filename = `openclaw_${safeTitle}_${Utils.getDateString()}.${ext}`;
-
-            const blob = new Blob([content], {
-                type: format === 'json' ? 'application/json' : 'text/markdown'
-            });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            Utils.createNotification(`💾 Downloaded ${filename}`);
-        },
-
-        execute(format, method) {
-            if (method === 'clipboard') {
-                this.exportToClipboard(format);
-            } else {
-                this.exportToFile(format);
+        async executeDownload() {
+            if (STATE.selectedIds.size === 0) return Utils.createNotification('⚠️ Select at least one message', false);
+            try {
+                const format = document.getElementById('ns-openclaw-format')?.value || 'markdown';
+                const isJson = format === 'json';
+                const content = isJson ? this.buildJSON() : this.buildMarkdown();
+                const filename = `${Utils.sanitizeFilename(this.getExportTitle())}_OpenClaw_${Utils.getDateString()}.${isJson ? 'json' : 'md'}`;
+                
+                const blob = new Blob([content], { type: `${isJson ? 'application/json' : 'text/markdown'};charset=utf-8` });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+                Utils.createNotification(`✅ Downloaded: ${filename}`);
+            } catch (err) {
+                console.error(err);
+                Utils.createNotification('❌ Download failed', false);
             }
         }
     };
 
-    // ============================================================================
-    // BULK CONTROLS
-    // ============================================================================
-    function setupBulkControls() {
-        const bulkSelect = (type) => {
-            const checkboxes = document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`);
-            checkboxes.forEach(cb => {
-                const msgEl = cb.closest(CONFIG.SELECTORS.MESSAGE_CONTAINER);
-                if (!msgEl) return;
+    // ============================================================
+    // Theme Manager
+    // ============================================================
 
-                switch (type) {
-                    case 'all':
-                        cb.checked = true;
-                        break;
-                    case 'none':
-                        cb.checked = false;
-                        break;
-                    case 'user':
-                        cb.checked = msgEl.classList.contains('user');
-                        break;
-                    case 'ai':
-                        cb.checked = msgEl.classList.contains('assistant');
-                        break;
+    const ThemeManager = {
+        detect() {
+            // 1. Explicit data-theme / class / color-scheme on html or body
+            const html = document.documentElement;
+            const htmlTheme = html.getAttribute('data-theme') || html.getAttribute('data-mode') || html.getAttribute('color-scheme');
+            if (htmlTheme === 'dark' || html.classList.contains('dark') || html.classList.contains('dark-theme')) return 'dark';
+            if (htmlTheme === 'light' || html.classList.contains('light') || html.classList.contains('light-theme')) return 'light';
+
+            if (document.body) {
+                const bodyTheme = document.body.getAttribute('data-theme') || document.body.getAttribute('data-mode');
+                if (bodyTheme === 'dark' || document.body.classList.contains('dark') || document.body.classList.contains('dark-theme')) return 'dark';
+                if (bodyTheme === 'light' || document.body.classList.contains('light') || document.body.classList.contains('light-theme')) return 'light';
+            }
+
+            // 2. Sample computed background/text luminance of container elements
+            const getBgLum = (el) => {
+                if (!el) return null;
+                const bg = window.getComputedStyle(el).backgroundColor;
+                if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return null;
+                const rgb = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (!rgb) return null;
+                return (parseInt(rgb[1], 10) + parseInt(rgb[2], 10) + parseInt(rgb[3], 10)) / 3;
+            };
+
+            const getTextLum = (el) => {
+                if (!el) return null;
+                const color = window.getComputedStyle(el).color;
+                if (!color) return null;
+                const rgb = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (!rgb) return null;
+                return (parseInt(rgb[1], 10) + parseInt(rgb[2], 10) + parseInt(rgb[3], 10)) / 3;
+            };
+
+            const sampleContainers = [
+                document.querySelector('.chat-workspace-rail'),
+                document.querySelector('.top-header-bar'),
+                document.querySelector('.chat-container'),
+                document.querySelector('main'),
+                document.querySelector('#root'),
+                document.querySelector('#app'),
+                document.body
+            ];
+
+            for (const el of sampleContainers) {
+                const bgLum = getBgLum(el);
+                if (bgLum !== null) {
+                    return bgLum < 128 ? 'dark' : 'light';
+                }
+                const textLum = getTextLum(el);
+                if (textLum !== null) {
+                    return textLum > 180 ? 'dark' : 'light';
+                }
+            }
+
+            // 3. prefers-color-scheme fallback
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+            return 'light';
+        },
+
+        apply(themeName) {
+            if (STATE.currentTheme === themeName) return;
+            STATE.currentTheme = themeName;
+            CONFIG.THEME = CONFIG.THEMES[themeName];
+
+            const oldStyle = document.getElementById('ns-openclaw-styles');
+            if (oldStyle) oldStyle.remove();
+            injectStyles();
+
+            renderMessageList();
+        },
+
+        init() {
+            this.apply(this.detect());
+
+            this._pollInterval = setInterval(() => {
+                const detected = this.detect();
+                if (detected !== STATE.currentTheme) {
+                    this.apply(detected);
+                }
+            }, 500);
+
+            const observer = new MutationObserver(() => {
+                const detected = this.detect();
+                if (detected !== STATE.currentTheme) {
+                    this.apply(detected);
                 }
             });
-            updateStats();
+
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-theme', 'class', 'style', 'color-scheme']
+            });
+
+            if (document.body) {
+                observer.observe(document.body, {
+                    attributes: true,
+                    attributeFilter: ['data-theme', 'class', 'style', 'color-scheme']
+                });
+            }
+        }
+    };
+
+    function injectStyles() {
+        if (document.getElementById('ns-openclaw-styles')) return;
+
+        const T = CONFIG.THEME;
+        const style = document.createElement('style');
+        style.id = 'ns-openclaw-styles';
+        style.textContent = `
+            .ns-rail-trigger {
+                color: ${T.BRAND_LOBSTER} !important;
+                margin-top: 8px !important;
+                cursor: pointer !important;
+                opacity: 0.85 !important;
+                transition: all 0.2s ease !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            .ns-rail-trigger:hover {
+                opacity: 1 !important;
+                transform: scale(1.05) !important;
+            }
+            .ns-rail-trigger svg { 
+                width: 24px !important; 
+                height: 24px !important; 
+                fill: none; 
+                stroke: currentColor; 
+                stroke-width: 2; 
+            }
+            .ns-expanded-trigger {
+                color: ${T.BRAND_LOBSTER} !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                padding: 4px 6px !important;
+            }
+            .ns-expanded-trigger:hover {
+                background: ${T.HOVER} !important;
+            }
+            .ns-expanded-trigger svg {
+                width: 16px !important;
+                height: 16px !important;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 2;
+            }
+            
+            #ns-overlay { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0,0,0,0.5) !important; backdrop-filter: blur(4px) !important; z-index: 100001 !important; display: none; opacity: 0; transition: opacity 0.25s ease !important; }
+            #ns-overlay.active { display: block !important; opacity: 1 !important; }
+            
+            #ns-sidebar { position: fixed !important; top: 0 !important; right: -400px !important; width: 400px !important; height: 100% !important; background: ${T.SURFACE_SIDEBAR} !important; border-left: 1px solid ${T.BORDER} !important; color: ${T.TEXT_PRIMARY} !important; z-index: 100002 !important; transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important; display: flex !important; flex-direction: column !important; box-shadow: -4px 0 24px rgba(0,0,0,0.15) !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; }
+            #ns-sidebar.active { right: 0 !important; }
+            
+            .ns-header { padding: 20px 24px 16px !important; background: ${T.SURFACE_SIDEBAR} !important; border-bottom: 1px solid ${T.BORDER} !important; display: flex !important; flex-direction: column !important; gap: 12px !important; flex-shrink: 0 !important; }
+            .ns-title { font-size: 20px !important; font-weight: 700 !important; letter-spacing: -0.3px !important; color: ${T.TEXT_PRIMARY} !important; margin: 0 !important; display: flex !important; align-items: center !important; gap: 8px !important; }
+            .ns-title span { color: ${T.BRAND_LOBSTER} !important; }
+            .ns-subtitle { font-size: 12px !important; color: ${T.TEXT_MUTED} !important; margin: 0 !important; }
+            
+            .ns-input-group { display: flex !important; flex-direction: column !important; gap: 6px !important; }
+            .ns-label { font-size: 11px !important; font-weight: 700 !important; color: ${T.TEXT_MUTED} !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; }
+            .ns-input { width: 100% !important; background: ${T.SURFACE_INPUT} !important; border: 1px solid ${T.BORDER} !important; border-radius: 6px !important; padding: 8px 12px !important; color: ${T.TEXT_PRIMARY} !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important; transition: border-color 0.15s ease !important; }
+            .ns-input:focus { border-color: ${T.BRAND_LOBSTER} !important; box-shadow: 0 0 0 3px rgba(224, 49, 49, 0.15) !important; }
+            
+            .ns-batch { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; }
+            .ns-batch-btn { padding: 6px !important; background: ${T.SURFACE_INPUT} !important; border: 1px solid ${T.BORDER} !important; border-radius: 6px !important; color: ${T.TEXT_MUTED} !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; text-align: center !important; transition: all 0.15s ease !important; }
+            .ns-batch-btn:hover { background: ${T.HOVER} !important; color: ${T.TEXT_PRIMARY} !important; border-color: ${T.BRAND_LOBSTER} !important; }
+            
+            .ns-msg-list { flex: 1 !important; overflow-y: auto !important; padding: 16px !important; display: flex !important; flex-direction: column !important; gap: 12px !important; background: ${T.CANVAS} !important; }
+            .ns-msg-list::-webkit-scrollbar { width: 6px !important; }
+            .ns-msg-list::-webkit-scrollbar-thumb { background: ${T.BORDER} !important; border-radius: 3px !important; }
+            
+            .ns-msg-card { background: ${T.SURFACE_CARD} !important; border: 1px solid ${T.BORDER} !important; border-radius: 12px !important; overflow: hidden !important; flex-shrink: 0 !important; transition: all 0.15s ease !important; }
+            .ns-msg-card:hover { border-color: ${T.BRAND_LOBSTER} !important; box-shadow: 0 2px 8px rgba(224, 49, 49, 0.1) !important; }
+            .ns-msg-item { display: flex !important; align-items: flex-start !important; padding: 12px 16px !important; gap: 12px !important; cursor: pointer !important; }
+            
+            .ns-check { appearance: none !important; -webkit-appearance: none !important; width: 16px !important; height: 16px !important; border: 2px solid ${T.BRAND_LOBSTER} !important; border-radius: 4px !important; cursor: pointer !important; background: ${T.SURFACE_CARD} !important; position: relative !important; flex-shrink: 0 !important; margin-top: 2px !important; transition: all 0.15s ease !important; }
+            .ns-check:checked { background: ${T.BRAND_LOBSTER} !important; }
+            .ns-check:checked::after { content: '✓' !important; position: absolute !important; color: white !important; font-size: 11px !important; font-weight: bold !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; }
+            
+            .ns-msg-content { flex: 1 !important; min-width: 0 !important; display: flex !important; flex-direction: column !important; gap: 4px !important; }
+            .ns-role-badge { display: inline-flex !important; font-size: 10px !important; font-weight: 700 !important; padding: 2px 6px !important; border-radius: 4px !important; letter-spacing: 0.5px !important; font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace !important; }
+            .ns-role-user { background: ${T.USER_BUBBLE} !important; color: ${T.BRAND_LOBSTER} !important; border: 1px solid rgba(224,49,49,0.2) !important; }
+            .ns-role-assistant { background: ${T.AGENT_BUBBLE} !important; color: ${T.TEXT_PRIMARY} !important; border: 1px solid ${T.BORDER} !important; }
+            
+            .ns-msg-preview { font-size: 13px !important; line-height: 1.45 !important; color: ${T.TEXT_MUTED} !important; display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; word-break: break-word !important; }
+            
+            .ns-accordion { background: ${T.SURFACE_SIDEBAR} !important; border-top: 1px solid ${T.BORDER} !important; padding: 12px 16px !important; font-size: 13px !important; color: ${T.TEXT_PRIMARY} !important; white-space: pre-wrap !important; max-height: 250px !important; overflow-y: auto !important; line-height: 1.5 !important; }
+            
+            .ns-footer { padding: 16px 20px !important; background: ${T.SURFACE_SIDEBAR} !important; border-top: 1px solid ${T.BORDER} !important; display: flex !important; align-items: center !important; gap: 8px !important; flex-shrink: 0 !important; }
+            .ns-btn { border: 1px solid ${T.BORDER} !important; border-radius: 6px !important; padding: 8px 14px !important; background: ${T.SURFACE_INPUT} !important; color: ${T.TEXT_PRIMARY} !important; cursor: pointer !important; font-size: 13px !important; font-weight: 500 !important; text-align: center !important; transition: all 0.15s ease !important; white-space: nowrap !important; }
+            .ns-btn:hover { background: ${T.HOVER} !important; border-color: ${T.BRAND_LOBSTER} !important; }
+            .ns-btn-cancel { background: rgba(224, 49, 49, 0.1) !important; border-color: rgba(224, 49, 49, 0.3) !important; color: ${T.BRAND_LOBSTER} !important; flex: 0.8 !important; }
+            .ns-btn-cancel:hover { background: rgba(224, 49, 49, 0.2) !important; }
+            .ns-format-select { flex: 1.2 !important; background: ${T.SURFACE_INPUT} !important; border: 1px solid ${T.BORDER} !important; border-radius: 6px !important; color: ${T.TEXT_PRIMARY} !important; padding: 8px !important; outline: none !important; font-size: 12px !important; cursor: pointer !important; text-align: center !important; }
+            .ns-btn-copy { flex: 1 !important; background: ${T.BRAND_LOBSTER} !important; color: white !important; border: none !important; }
+            .ns-btn-copy:hover { background: ${T.BRAND_LOBSTER_HOVER} !important; border-color: transparent !important; color: white !important; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // ============================================================
+    // UI Construction
+    // ============================================================
+
+    function injectHeaderTrigger() {
+        const rail = document.querySelector('.chat-workspace-rail');
+        if (!rail) return;
+
+        const isCollapsed = rail.classList.contains('chat-workspace-rail--collapsed');
+
+        if (isCollapsed) {
+            document.getElementById('ns-expanded-btn')?.remove();
+
+            if (!document.getElementById('ns-rail-btn')) {
+                const triggerBtn = document.createElement('span');
+                triggerBtn.id = 'ns-rail-btn';
+                triggerBtn.className = 'chat-workspace-rail__collapsed-icon ns-rail-trigger';
+                triggerBtn.setAttribute('title', 'Export Session');
+                triggerBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+                triggerBtn.onclick = (e) => { e.stopPropagation(); openSidebar(); };
+                rail.appendChild(triggerBtn);
+            }
+        } else {
+            document.getElementById('ns-rail-btn')?.remove();
+
+            if (!document.getElementById('ns-expanded-btn')) {
+                const actionsGroup = rail.querySelector('.chat-workspace-rail__actions');
+                if (actionsGroup) {
+                    const refreshBtn = actionsGroup.querySelector('.chat-workspace-rail__refresh');
+                    const triggerBtn = document.createElement('button');
+                    triggerBtn.id = 'ns-expanded-btn';
+                    triggerBtn.className = 'btn btn--ghost btn--sm ns-expanded-trigger';
+                    triggerBtn.type = 'button';
+                    triggerBtn.setAttribute('title', 'Export Session');
+                    triggerBtn.setAttribute('aria-label', 'Export Session');
+                    triggerBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+                    triggerBtn.onclick = (e) => { e.stopPropagation(); openSidebar(); };
+
+                    if (refreshBtn) {
+                        actionsGroup.insertBefore(triggerBtn, refreshBtn);
+                    } else {
+                        actionsGroup.prepend(triggerBtn);
+                    }
+                }
+            }
+        }
+    }
+
+    function renderMessageList() {
+        const listContainer = document.getElementById('ns-msg-list');
+        if (!listContainer) return;
+        while (listContainer.firstChild) listContainer.removeChild(listContainer.firstChild);
+
+        if (STATE.messages.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.cssText = 'padding:20px; text-align:center; color:#868e96; font-size:13px;';
+            emptyMsg.textContent = 'No messages found in this conversation.';
+            listContainer.appendChild(emptyMsg);
+            return;
+        }
+
+        STATE.messages.forEach(msg => {
+            const card = document.createElement('div');
+            card.className = 'ns-msg-card';
+
+            const item = document.createElement('div');
+            item.className = 'ns-msg-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'ns-check';
+            checkbox.checked = STATE.selectedIds.has(msg.id);
+
+            const content = document.createElement('div');
+            content.className = 'ns-msg-content';
+
+            const badge = document.createElement('span');
+            badge.className = `ns-role-badge ns-role-${msg.role}`;
+            badge.textContent = msg.role === 'user' ? 'USER' : 'AGENT';
+
+            const preview = document.createElement('div');
+            preview.className = 'ns-msg-preview';
+            preview.textContent = msg.preview || 'No content';
+
+            content.appendChild(badge);
+            content.appendChild(preview);
+            item.appendChild(checkbox);
+            item.appendChild(content);
+            card.appendChild(item);
+
+            if (STATE.expandedId === msg.id) {
+                const accordion = document.createElement('div');
+                accordion.className = 'ns-accordion';
+                accordion.textContent = msg.text;
+                card.appendChild(accordion);
+            }
+
+            checkbox.onclick = (e) => {
+                e.stopPropagation();
+                if (STATE.selectedIds.has(msg.id)) { STATE.selectedIds.delete(msg.id); checkbox.checked = false; }
+                else { STATE.selectedIds.add(msg.id); checkbox.checked = true; }
+            };
+
+            item.onclick = (e) => {
+                e.stopPropagation();
+                STATE.expandedId = STATE.expandedId === msg.id ? null : msg.id;
+                renderMessageList();
+            };
+
+            listContainer.appendChild(card);
+        });
+    }
+
+    function openSidebar() {
+        scanConversation();
+        renderMessageList();
+        document.getElementById('ns-overlay').classList.add('active');
+        document.getElementById('ns-sidebar').classList.add('active');
+        STATE.sidebarOpen = true;
+    }
+
+    function closeSidebar() {
+        document.getElementById('ns-overlay').classList.remove('active');
+        document.getElementById('ns-sidebar').classList.remove('active');
+        STATE.sidebarOpen = false;
+    }
+
+    function createSidebarUI() {
+        if (document.getElementById('ns-sidebar')) return;
+
+        const overlay = document.createElement('div'); overlay.id = 'ns-overlay';
+        const sidebar = document.createElement('div'); sidebar.id = 'ns-sidebar';
+
+        const header = document.createElement('div'); header.className = 'ns-header';
+        header.innerHTML = `
+            <h2 class="ns-title"><span>●</span> OpenClaw Exporter</h2>
+            <p class="ns-subtitle">Noosphere Reflect Telemetry Export</p>
+            <div class="ns-input-group">
+                <span class="ns-label">Session Name</span>
+                <input type="text" id="ns-openclaw-title" class="ns-input" placeholder="e.g. Agent Analysis 01">
+            </div>
+            <div class="ns-batch">
+                <button class="ns-batch-btn" id="ns-batch-all">All</button>
+                <button class="ns-batch-btn" id="ns-batch-user">User</button>
+                <button class="ns-batch-btn" id="ns-batch-ai">Agent</button>
+                <button class="ns-batch-btn" id="ns-batch-none">None</button>
+            </div>
+        `;
+
+        const msgList = document.createElement('div'); msgList.className = 'ns-msg-list'; msgList.id = 'ns-msg-list';
+
+        const footer = document.createElement('div'); footer.className = 'ns-footer';
+        footer.innerHTML = `
+            <button class="ns-btn ns-btn-cancel" id="ns-cancel">Cancel</button>
+            <select class="ns-format-select" id="ns-openclaw-format">
+                <option value="markdown">Markdown</option>
+                <option value="json">JSON</option>
+            </select>
+            <button class="ns-btn ns-btn-copy" id="ns-copy">Copy</button>
+        `;
+
+        sidebar.appendChild(header); sidebar.appendChild(msgList); sidebar.appendChild(footer);
+        document.body.appendChild(overlay); document.body.appendChild(sidebar);
+
+        overlay.onclick = closeSidebar;
+        document.getElementById('ns-cancel').onclick = closeSidebar;
+        document.getElementById('ns-copy').onclick = () => ExportService.executeCopy();
+
+        const setBatch = (type) => {
+            STATE.selectedIds.clear();
+            if (type === 'all') STATE.messages.forEach(m => STATE.selectedIds.add(m.id));
+            if (type === 'user') STATE.messages.filter(m => m.role === 'user').forEach(m => STATE.selectedIds.add(m.id));
+            if (type === 'ai') STATE.messages.filter(m => m.role === 'assistant').forEach(m => STATE.selectedIds.add(m.id));
+            renderMessageList();
         };
 
-        document.getElementById('ns-select-all').onclick = () => bulkSelect('all');
-        document.getElementById('ns-select-user').onclick = () => bulkSelect('user');
-        document.getElementById('ns-select-ai').onclick = () => bulkSelect('ai');
-        document.getElementById('ns-select-none').onclick = () => bulkSelect('none');
+        document.getElementById('ns-batch-all').onclick = () => setBatch('all');
+        document.getElementById('ns-batch-user').onclick = () => setBatch('user');
+        document.getElementById('ns-batch-ai').onclick = () => setBatch('ai');
+        document.getElementById('ns-batch-none').onclick = () => setBatch('none');
     }
 
-    // ============================================================================
-    // INITIALIZATION
-    // ============================================================================
+    function setupObserver() {
+        const observer = new MutationObserver(() => {
+            injectHeaderTrigger();
+        });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'aria-expanded'] });
+    }
+
     function init() {
-        injectStyles();
-        createMenu();
-        injectCheckboxes();
+        console.log('[Noosphere] OpenClaw Chat Exporter Initialized');
+        ThemeManager.init();
+        createSidebarUI();
+        injectHeaderTrigger();
         setupObserver();
-        setupBulkControls();
-
-        console.log('[Noosphere] Neural Console is live on OpenClaw.');
     }
 
-    // Run on page load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+
 })();
