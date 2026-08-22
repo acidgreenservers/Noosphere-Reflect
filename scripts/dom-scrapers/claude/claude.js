@@ -27,14 +27,14 @@
     const CONFIG = {
         SELECTORS: {
             // Message Containers
-            USER_MESSAGE: '[data-testid="user-message"]',
-            USER_MESSAGE_TEXT: 'p.whitespace-pre-wrap',
+            USER_MESSAGE: '[data-testid="user-message"], [data-message-author-role="user"], .font-user-message',
+            USER_MESSAGE_TEXT: 'p.whitespace-pre-wrap, .whitespace-pre-wrap, p',
             
             // Assistant Message Containers
-            ASSISTANT_ROW: '.group\\/message-row',
-            ASSISTANT_CONTENT: '.font-claude-response',
-            ASSISTANT_MARKDOWN: '.standard-markdown',
-            ASSISTANT_PARAGRAPH: 'p.font-claude-response-body',
+            ASSISTANT_ROW: '[data-message-author-role="assistant"], [data-testid="assistant-message"], .font-claude-response',
+            ASSISTANT_CONTENT: '.font-claude-response, .standard-markdown, .prose',
+            ASSISTANT_MARKDOWN: '.standard-markdown, .prose, .markdown-body',
+            ASSISTANT_PARAGRAPH: 'p.font-claude-response-body, p',
             ASSISTANT_TIMESTAMP: 'time[datetime]',
             MESSAGE_ACTIONS: '[data-cds="MessageActions"]',
             
@@ -72,7 +72,7 @@
             BODY: '#3d3d3a',
             BODY_STRONG: '#252523',
             MUTED: '#6c6a64',
-            MUTED_SOFT: 'A#8e8b82',
+            MUTED_SOFT: '#8e8b82',
             ON_PRIMARY: '#ffffff',
             ON_DARK: '#faf9f5',
             ON_DARK_SOFT: '#a09d96',
@@ -87,7 +87,85 @@
         selectedIds: new Set(),
         expandedId: null,
         sidebarOpen: false,
-        currentTheme: null
+        currentTheme: null,
+        isDirty: true
+    };
+
+    // ============================================================
+    // Session Message Cache
+    // ============================================================
+    // Persists collected messages to sessionStorage per conversation,
+    // so the sidebar doesn't need to re-walk the entire virtualized DOM
+    // on every open/close cycle. Clears on page reload (sessionStorage).
+
+    const MessageCache = {
+        _key() {
+            // Derive conversation-specific key from the URL path.
+            // Claude URLs: /chat/<uuid> or /project/<uuid>/chat/<uuid>
+            const path = window.location.pathname || 'unknown';
+            const id = path.replace(/^\/+|\/+$/g, '').replace(/\//g, '_') || 'unknown';
+            return `ns_claude_cache_${id}`;
+        },
+
+        load() {
+            try {
+                const raw = sessionStorage.getItem(this._key());
+                if (!raw) return null;
+
+                const parsed = JSON.parse(raw);
+                // Validate shape
+                if (!parsed || parsed.version !== 1) return null;
+                if (parsed.url !== window.location.pathname) {
+                    // Conversation changed (SPA navigation without reload)
+                    sessionStorage.removeItem(this._key());
+                    return null;
+                }
+                return parsed;
+            } catch (e) {
+                // Quota exceeded, corrupted data, or any other sessionStorage error
+                return null;
+            }
+        },
+
+        save() {
+            try {
+                const payload = {
+                    version: 1,
+                    url: window.location.pathname,
+                    savedAt: Date.now(),
+                    messages: STATE.messages.map(m => ({
+                        id: m.id,
+                        role: m.role,
+                        text: m.text,
+                        thinking: m.thinking || null,
+                        timestamp: m.timestamp || '',
+                        preview: m.preview || ''
+                    })),
+                    selectedIds: Array.from(STATE.selectedIds)
+                };
+
+                const serialized = JSON.stringify(payload);
+
+                // Size guard: sessionStorage quota is ~5MB. If payload exceeds
+                // 4MB (leaving headroom for other keys), don't cache rather than
+                // throwing QuotaExceededError.
+                if (serialized.length > 4 * 1024 * 1024) {
+                    console.warn('[Noosphere Claude] Cache payload exceeds 4MB, skipping cache save');
+                    return;
+                }
+
+                sessionStorage.setItem(this._key(), serialized);
+            } catch (e) {
+                // Silent degradation: cache is a perf optimization, never a hard dependency
+                console.warn('[Noosphere Claude] Cache save failed', e);
+            }
+        },
+
+        clear() {
+            try {
+                sessionStorage.removeItem(this._key());
+            } catch (e) { /* ignore */ }
+        }
     };
 
     // ============================================================
@@ -325,23 +403,23 @@
 
     function extractUserMessage(container) {
         const textEl = container.querySelector(CONFIG.SELECTORS.USER_MESSAGE_TEXT) || container;
-        return Utils.cleanText(textEl.innerText || '');
+        return Utils.cleanText(textEl.innerText || container.innerText || '');
     }
 
     function extractAssistantMessage(container) {
-        const contentEl = container.querySelector(CONFIG.SELECTORS.ASSISTANT_CONTENT);
+        const contentEl = container.querySelector(CONFIG.SELECTORS.ASSISTANT_CONTENT) ||
+                          container.querySelector(CONFIG.SELECTORS.ASSISTANT_MARKDOWN) ||
+                          container;
         
         // Get timestamp if available
         const timeEl = container.querySelector(CONFIG.SELECTORS.ASSISTANT_TIMESTAMP);
         const timestamp = timeEl?.getAttribute('datetime') || '';
         
-        if (!contentEl) {
-            return { content: '', timestamp };
+        const markdownEl = contentEl ? (contentEl.querySelector(CONFIG.SELECTORS.ASSISTANT_MARKDOWN) || contentEl) : container;
+        let content = htmlToMarkdown(markdownEl);
+        if (!content || !content.trim()) {
+            content = htmlToMarkdown(container);
         }
-        
-        // Extract main content
-        const markdownEl = contentEl.querySelector(CONFIG.SELECTORS.ASSISTANT_MARKDOWN) || contentEl;
-        const content = htmlToMarkdown(markdownEl);
         
         return { content, timestamp };
     }
@@ -373,87 +451,195 @@
     }
 
     function scanConversation() {
-        STATE.messages = [];
-        
-        // Find all message elements
-        const userMessages = Array.from(document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE));
-        const assistantRows = Array.from(document.querySelectorAll(CONFIG.SELECTORS.ASSISTANT_ROW));
-        const thinkingBlocks = Array.from(document.querySelectorAll(CONFIG.SELECTORS.THINKING_CONTAINER));
-        
-        // Build ordered list of all elements with their positions
+        const oldLength = STATE.messages.length;
+        const IS_CHROME_OR_MENU = (el) => {
+            const noiseSelectors = [
+                'header', 'nav', 'aside', // <--- Exclude all sidebars, profiles, rails
+                '[data-testid*="profile"]', 
+                '[data-testid*="menu"]', 
+                '[data-testid*="account"]', 
+                '[data-cds="Dropdown"]', 
+                '#ns-claude-sidebar', 
+                '#ns-claude-overlay'
+            ].join(', ');
+            return !!el.closest(noiseSelectors);
+        };
+
+        // 1. Find User Message Elements
+        let userEls = Array.from(document.querySelectorAll(CONFIG.SELECTORS.USER_MESSAGE))
+            .filter(el => !IS_CHROME_OR_MENU(el));
+
+        // 2. Find Assistant Message Elements
+        let assistantEls = Array.from(document.querySelectorAll(CONFIG.SELECTORS.ASSISTANT_ROW))
+            .filter(el => !IS_CHROME_OR_MENU(el));
+
+        // Fallback to .font-claude-response if role containers are not present
+        if (assistantEls.length === 0) {
+            assistantEls = Array.from(document.querySelectorAll('.font-claude-response'))
+                .filter(el => !IS_CHROME_OR_MENU(el));
+        }
+
+        // Helper: Strip out any nested child elements when a parent container was already matched
+        const filterNested = (elements) => {
+            return elements.filter((el, idx) => {
+                return !elements.some((other, oIdx) => oIdx !== idx && other.contains(el));
+            });
+        };
+
+        userEls = filterNested(userEls);
+        assistantEls = filterNested(assistantEls);
+
         const allElements = [];
-        
-        userMessages.forEach(el => {
+
+        userEls.forEach(el => {
             const text = extractUserMessage(el);
-            if (text) {
+            if (text && text.trim().length > 0) {
                 allElements.push({
                     type: 'user',
                     el,
-                    order: el.getBoundingClientRect().top,
                     text,
                     preview: text.substring(0, 75) + (text.length > 75 ? '...' : '')
                 });
             }
         });
-        
-        assistantRows.forEach(el => {
+
+        assistantEls.forEach(el => {
+            // Prevent overlap with user message elements
+            if (userEls.some(uEl => uEl.contains(el) || el.contains(uEl))) return;
+
             const { content, timestamp } = extractAssistantMessage(el);
-            // Only add if there's actual content
+
+            // Directly inspect for inline or adjacent thinking block
+            let thinkingData = null;
+            const thinkingEl = el.querySelector(CONFIG.SELECTORS.THINKING_CONTAINER) ||
+                               el.querySelector('[data-cds="Collapsible"]');
+            if (thinkingEl) {
+                const extracted = extractThinkingBlock(thinkingEl);
+                if (extracted && extracted.content) {
+                    thinkingData = extracted;
+                }
+            }
+
             if (content && content.trim().length > 0) {
                 allElements.push({
                     type: 'assistant',
                     el,
-                    order: el.getBoundingClientRect().top,
                     text: content,
                     timestamp,
                     preview: content.substring(0, 75).replace(/\n/g, ' ') + (content.length > 75 ? '...' : ''),
-                    thinking: null
+                    thinking: thinkingData
                 });
             }
         });
+
+        // Sort strictly by DOM position (topological document tree order)
+        allElements.sort((a, b) => {
+            if (!a.el || !b.el) return 0;
+            return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        });
         
-        // Sort by vertical position
-        allElements.sort((a, b) => a.order - b.order);
-        
-        // Associate thinking blocks with nearest preceding assistant message
-        thinkingBlocks.forEach(thinkingEl => {
-            const thinkingData = extractThinkingBlock(thinkingEl);
-            if (!thinkingData.content) return;
-            
-            const thinkingRect = thinkingEl.getBoundingClientRect();
-            let closestAssistant = null;
-            let minDistance = Infinity;
-            
-            allElements.forEach(msg => {
-                if (msg.type === 'assistant') {
-                    const distance = Math.abs(msg.el.getBoundingClientRect().top - thinkingRect.top);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestAssistant = msg;
+        const newMessages = allElements.map(item => ({
+            role: item.type,
+            text: item.text,
+            thinking: item.thinking || null,
+            timestamp: item.timestamp || '',
+            preview: item.preview
+        }));
+
+        if (STATE.messages.length === 0) {
+            newMessages.forEach((msg, idx) => {
+                msg.id = idx;
+                STATE.messages.push(msg);
+                STATE.selectedIds.add(msg.id);
+            });
+        } else if (newMessages.length > 0) {
+            let matchIndexNew = -1;
+            let matchIndexOld = -1;
+            for (let i = 0; i < newMessages.length; i++) {
+                const newMsg = newMessages[i];
+                for (let j = 0; j < STATE.messages.length; j++) {
+                    const oldMsg = STATE.messages[j];
+                    if (newMsg.role === oldMsg.role && newMsg.text === oldMsg.text) {
+                        matchIndexNew = i;
+                        matchIndexOld = j;
+                        break;
                     }
                 }
-            });
-            
-            if (closestAssistant) {
-                closestAssistant.thinking = thinkingData;
+                if (matchIndexNew !== -1) break;
             }
-        });
+
+            let nextId = Math.max(...STATE.messages.map(m => m.id)) + 1;
+            
+            let matchNew = -1;
+            let matchOld = -1;
+            
+            for (let i = 0; i < newMessages.length; i++) {
+                const n = newMessages[i];
+                for (let j = 0; j < STATE.messages.length; j++) {
+                    const o = STATE.messages[j];
+                    if (n.role === o.role && n.text === o.text) {
+                        matchNew = i;
+                        matchOld = j;
+                        break;
+                    }
+                }
+                if (matchNew !== -1) break;
+            }
+            
+            if (matchNew === -1) {
+                // No overlap found. Assume newer messages and append them.
+                const toAdd = newMessages.filter(n => !STATE.messages.some(o => o.role === n.role && o.text === n.text));
+                toAdd.forEach(msg => {
+                    msg.id = nextId++;
+                    STATE.selectedIds.add(msg.id);
+                    STATE.messages.push(msg);
+                });
+            } else {
+                // 1. Insert any new messages that appear BEFORE the anchor
+                const before = newMessages.slice(0, matchNew).filter(n => !STATE.messages.some(o => o.role === n.role && o.text === n.text));
+                before.forEach(msg => {
+                    msg.id = nextId++;
+                    STATE.selectedIds.add(msg.id);
+                });
+                if (before.length > 0) {
+                    STATE.messages.splice(matchOld, 0, ...before);
+                }
+                
+                // 2. Insert any new messages that appear AFTER the anchor
+                let currentOldIndex = matchOld + before.length;
+                
+                for (let i = matchNew + 1; i < newMessages.length; i++) {
+                    const newMsg = newMessages[i];
+                    const existsIdx = STATE.messages.findIndex(o => o.role === newMsg.role && o.text === newMsg.text);
+                    
+                    if (existsIdx !== -1) {
+                        // Message already captured. Backfill richer thinking content.
+                        // Old messages can mount with their thinking blocks collapsed, so an
+                        // earlier scan may have stored `thinking: null`. If we now have the
+                        // full reasoning, update the existing record rather than dropping it.
+                        const existing = STATE.messages[existsIdx];
+                        if (existing && !existing.thinking && newMsg.thinking && newMsg.thinking.content) {
+                            existing.thinking = newMsg.thinking;
+                            STATE.isDirty = true;
+                        }
+                        // Backfill a timestamp that was missing on first mount.
+                        if (existing && existing.timestamp !== newMsg.timestamp) {
+                            existing.timestamp = newMsg.timestamp;
+                            STATE.isDirty = true;
+                        }
+                        currentOldIndex = existsIdx;
+                    } else {
+                        newMsg.id = nextId++;
+                        STATE.selectedIds.add(newMsg.id);
+                        currentOldIndex++;
+                        STATE.messages.splice(currentOldIndex, 0, newMsg);
+                    }
+                }
+            }
+        }
         
-        // Assign IDs and add to state
-        allElements.forEach((item, idx) => {
-            STATE.messages.push({
-                id: idx,
-                role: item.type,
-                text: item.text,
-                thinking: item.thinking || null,
-                timestamp: item.timestamp || '',
-                preview: item.preview
-            });
-        });
-        
-        // Select all by default
-        if (STATE.selectedIds.size === 0) {
-            STATE.messages.forEach(m => STATE.selectedIds.add(m.id));
+        if (STATE.messages.length !== oldLength) {
+            STATE.isDirty = true;
         }
     }
 
@@ -712,22 +898,28 @@
             if (STATE.currentTheme === themeName) return;
             STATE.currentTheme = themeName;
 
-            // Remove old stylesheet and re-inject with new palette
-            const oldStyle = document.getElementById('noosphere-claude-styles');
-            if (oldStyle) oldStyle.remove();
-            injectStyles();
-
-            // Re-render message cards so inline styles pick up new palette
-            renderMessageList();
+            const sidebar = document.getElementById('ns-claude-sidebar');
+            if (sidebar) {
+                if (themeName === 'dark') sidebar.classList.add('ns-claude-dark-theme');
+                else sidebar.classList.remove('ns-claude-dark-theme');
+            }
+            
+            const trigger = document.getElementById('ns-claude-header-btn');
+            if (trigger) {
+                if (themeName === 'dark') trigger.classList.add('ns-claude-dark-theme');
+                else trigger.classList.remove('ns-claude-dark-theme');
+            }
         },
 
         init() {
+            // First time init: inject the base styles with CSS variables
+            injectStyles();
+
             const initial = this.detect();
             console.log('[Noosphere Claude] Initial theme detected:', initial);
             this.apply(initial);
 
-            // Poll every 500ms — lightweight and catches theme changes without
-            // needing to observe the entire dynamic chat DOM
+            // Poll every 500ms
             this._pollInterval = setInterval(() => {
                 const detected = this.detect();
                 if (detected !== STATE.currentTheme) {
@@ -736,11 +928,10 @@
                 }
             }, 500);
 
-            // Also watch html element for explicit data-theme/class changes
+            // Also watch html element
             const observer = new MutationObserver(() => {
                 const detected = this.detect();
                 if (detected !== STATE.currentTheme) {
-                    console.log('[Noosphere Claude] Theme changed via observer:', detected);
                     this.apply(detected);
                 }
             });
@@ -751,28 +942,41 @@
         }
     };
 
-    function getThemeColors() {
-        const isDark = STATE.currentTheme === 'dark';
-        return {
-            bg: isDark ? CONFIG.THEME.SURFACE_DARK : CONFIG.THEME.CANVAS,
-            bgElevated: isDark ? CONFIG.THEME.SURFACE_DARK_ELEVATED : CONFIG.THEME.SURFACE_CARD,
-            bgSoft: isDark ? CONFIG.THEME.SURFACE_DARK_SOFT : CONFIG.THEME.SURFACE_SOFT,
-            text: isDark ? CONFIG.THEME.ON_DARK : CONFIG.THEME.INK,
-            textMuted: isDark ? CONFIG.THEME.ON_DARK_SOFT : CONFIG.THEME.MUTED,
-            border: isDark ? '#323238' : CONFIG.THEME.HAIRLINE,
-            inputBg: isDark ? CONFIG.THEME.SURFACE_DARK_ELEVATED : CONFIG.THEME.CANVAS,
-            cardBg: isDark ? CONFIG.THEME.SURFACE_DARK_ELEVATED : CONFIG.THEME.CANVAS,
-            cardHover: isDark ? '#2c2c32' : CONFIG.THEME.SURFACE_CARD
-        };
-    }
-
     function injectStyles() {
         if (document.getElementById('noosphere-claude-styles')) return;
 
-        const t = getThemeColors();
         const style = document.createElement('style');
         style.id = 'noosphere-claude-styles';
         style.textContent = `
+            :root, #ns-claude-sidebar, #ns-claude-header-btn {
+                --ns-bg: ${CONFIG.THEME.CANVAS};
+                --ns-bg-elevated: ${CONFIG.THEME.SURFACE_CARD};
+                --ns-bg-soft: ${CONFIG.THEME.SURFACE_SOFT};
+                --ns-text: ${CONFIG.THEME.INK};
+                --ns-text-muted: ${CONFIG.THEME.MUTED};
+                --ns-border: ${CONFIG.THEME.HAIRLINE};
+                --ns-input-bg: ${CONFIG.THEME.CANVAS};
+                --ns-card-bg: ${CONFIG.THEME.CANVAS};
+                --ns-card-hover: ${CONFIG.THEME.SURFACE_CARD};
+                --ns-btn-hover-bg: rgba(0, 0, 0, 0.06);
+                --ns-role-user-bg: ${CONFIG.THEME.SURFACE_CARD};
+            }
+            :root.ns-claude-dark-theme, 
+            #ns-claude-sidebar.ns-claude-dark-theme, 
+            #ns-claude-header-btn.ns-claude-dark-theme {
+                --ns-bg: ${CONFIG.THEME.SURFACE_DARK};
+                --ns-bg-elevated: ${CONFIG.THEME.SURFACE_DARK_ELEVATED};
+                --ns-bg-soft: ${CONFIG.THEME.SURFACE_DARK_SOFT};
+                --ns-text: ${CONFIG.THEME.ON_DARK};
+                --ns-text-muted: ${CONFIG.THEME.ON_DARK_SOFT};
+                --ns-border: #323238;
+                --ns-input-bg: ${CONFIG.THEME.SURFACE_DARK_ELEVATED};
+                --ns-card-bg: ${CONFIG.THEME.SURFACE_DARK_ELEVATED};
+                --ns-card-hover: #2c2c32;
+                --ns-btn-hover-bg: rgba(255, 255, 255, 0.08);
+                --ns-role-user-bg: rgba(255,255,255,0.1);
+            }
+
             /* Export Chat Header Button */
             .ns-claude-header-btn {
                 display: inline-flex !important;
@@ -783,7 +987,7 @@
                 padding: 0 !important;
                 border-radius: 6px !important;
                 cursor: pointer !important;
-                color: ${t.text} !important;
+                color: var(--ns-text) !important;
                 background: transparent !important;
                 border: none !important;
                 transition: all 0.15s ease !important;
@@ -791,7 +995,7 @@
                 flex-shrink: 0 !important;
             }
             .ns-claude-header-btn:hover {
-                background: ${t.bg === CONFIG.THEME.SURFACE_DARK ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'} !important;
+                background: var(--ns-btn-hover-bg) !important;
             }
             .ns-claude-header-btn:active {
                 transform: scale(98.5%) !important;
@@ -799,6 +1003,28 @@
             .ns-claude-header-btn svg {
                 width: 18px !important;
                 height: 18px !important;
+                stroke: currentColor !important;
+                fill: none !important;
+            }
+
+            /* Rail Button Styling */
+            .ns-claude-rail-btn {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 4px !important;
+                color: var(--ns-text-muted) !important;
+                background: transparent !important;
+                border: none !important;
+                cursor: pointer !important;
+                transition: color 0.15s ease !important;
+            }
+            .ns-claude-rail-btn:hover {
+                color: var(--ns-text) !important;
+            }
+            .ns-claude-rail-btn svg {
+                width: 16px !important;
+                height: 16px !important;
                 stroke: currentColor !important;
                 fill: none !important;
             }
@@ -822,9 +1048,9 @@
                 top: 0; right: -400px;
                 width: 400px;
                 height: 100%;
-                background: ${t.bg};
-                border-left: 1px solid ${t.border};
-                color: ${t.text};
+                background: var(--ns-bg);
+                border-left: 1px solid var(--ns-border);
+                color: var(--ns-text);
                 z-index: 100002;
                 transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 display: flex;
@@ -834,11 +1060,50 @@
             }
             #ns-claude-sidebar.active { right: 0; }
 
+            /* Sidebar Loading Overlay */
+            #ns-claude-sidebar-loading {
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: var(--ns-bg-soft);
+                backdrop-filter: blur(4px);
+                z-index: 100003;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 16px;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+            #ns-claude-sidebar-loading.active {
+                opacity: 1;
+                pointer-events: all;
+            }
+            .ns-claude-spinner {
+                width: 32px;
+                height: 32px;
+                border: 3px solid var(--ns-border);
+                border-top-color: ${CONFIG.THEME.PRIMARY_CORAL};
+                border-radius: 50%;
+                animation: ns-spin 1s linear infinite;
+            }
+            .ns-claude-loading-text {
+                font-size: 13px;
+                font-weight: 500;
+                color: var(--ns-text-muted);
+                font-family: StyreneB, Inter, system-ui, sans-serif;
+            }
+            @keyframes ns-spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
             /* Sidebar Header */
             .ns-claude-header {
                 padding: 20px 24px 16px;
-                background: ${t.bg};
-                border-bottom: 1px solid ${t.border};
+                background: var(--ns-bg);
+                border-bottom: 1px solid var(--ns-border);
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
@@ -849,7 +1114,7 @@
                 font-size: 24px !important;
                 font-weight: 400 !important;
                 letter-spacing: -0.5px !important;
-                color: ${t.text} !important;
+                color: var(--ns-text) !important;
                 margin: 0 !important;
                 display: flex;
                 align-items: center;
@@ -857,7 +1122,7 @@
             }
             .ns-claude-subtitle {
                 font-size: 13px !important;
-                color: ${t.textMuted} !important;
+                color: var(--ns-text-muted) !important;
                 margin: 0 !important;
             }
 
@@ -870,17 +1135,17 @@
             .ns-claude-label {
                 font-size: 11px !important;
                 font-weight: 600 !important;
-                color: ${t.textMuted} !important;
+                color: var(--ns-text-muted) !important;
                 text-transform: uppercase !important;
                 letter-spacing: 1px !important;
             }
             .ns-claude-input {
                 width: 100%;
-                background: ${t.inputBg} !important;
-                border: 1px solid ${t.border} !important;
+                background: var(--ns-input-bg) !important;
+                border: 1px solid var(--ns-border) !important;
                 border-radius: 8px !important;
                 padding: 10px 14px !important;
-                color: ${t.text} !important;
+                color: var(--ns-text) !important;
                 font-size: 14px !important;
                 font-family: StyreneB, Inter, system-ui, sans-serif !important;
                 outline: none !important;
@@ -900,10 +1165,10 @@
             }
             .ns-claude-batch-btn {
                 padding: 8px !important;
-                background: ${t.inputBg} !important;
-                border: 1px solid ${t.border} !important;
+                background: var(--ns-input-bg) !important;
+                border: 1px solid var(--ns-border) !important;
                 border-radius: 8px !important;
-                color: ${t.textMuted} !important;
+                color: var(--ns-text-muted) !important;
                 font-size: 12px !important;
                 font-weight: 600 !important;
                 cursor: pointer !important;
@@ -912,8 +1177,8 @@
                 font-family: StyreneB, Inter, system-ui, sans-serif !important;
             }
             .ns-claude-batch-btn:hover {
-                background: ${t.cardHover} !important;
-                color: ${t.text} !important;
+                background: var(--ns-card-hover) !important;
+                color: var(--ns-text) !important;
                 border-color: ${CONFIG.THEME.PRIMARY_CORAL} !important;
             }
 
@@ -933,14 +1198,14 @@
                 background: transparent;
             }
             .ns-claude-msg-list::-webkit-scrollbar-thumb {
-                background: ${t.border};
+                background: var(--ns-border);
                 border-radius: 3px;
             }
 
             /* Message Card */
             .ns-claude-msg-card {
-                background: ${t.cardBg} !important;
-                border: 1px solid ${t.border} !important;
+                background: var(--ns-card-bg) !important;
+                border: 1px solid var(--ns-border) !important;
                 border-radius: 12px !important;
                 overflow: hidden !important;
                 flex-shrink: 0 !important;
@@ -967,7 +1232,7 @@
                 border: 2px solid ${CONFIG.THEME.PRIMARY_CORAL} !important;
                 border-radius: 4px !important;
                 cursor: pointer !important;
-                background: ${t.cardBg} !important;
+                background: var(--ns-card-bg) !important;
                 position: relative !important;
                 flex-shrink: 0 !important;
                 margin-top: 2px !important;
@@ -1007,8 +1272,8 @@
                 letter-spacing: 0.5px !important;
             }
             .ns-claude-role-user {
-                background: ${t.bg === CONFIG.THEME.SURFACE_DARK ? 'rgba(255,255,255,0.1)' : CONFIG.THEME.SURFACE_CARD} !important;
-                color: ${t.text} !important;
+                background: var(--ns-role-user-bg) !important;
+                color: var(--ns-text) !important;
             }
             .ns-claude-role-assistant {
                 background: rgba(204, 120, 92, 0.2) !important;
@@ -1022,7 +1287,7 @@
             .ns-claude-msg-preview {
                 font-size: 13px !important;
                 line-height: 1.5 !important;
-                color: ${t.textMuted} !important;
+                color: var(--ns-text-muted) !important;
                 display: -webkit-box !important;
                 -webkit-line-clamp: 2 !important;
                 -webkit-box-orient: vertical !important;
@@ -1032,8 +1297,8 @@
 
             /* Accordion */
             .ns-claude-accordion {
-                background: ${t.bgSoft} !important;
-                border-top: 1px solid ${t.border} !important;
+                background: var(--ns-bg-soft) !important;
+                border-top: 1px solid var(--ns-border) !important;
                 padding: 12px 14px 14px 44px !important;
                 display: flex !important;
                 flex-direction: column !important;
@@ -1041,14 +1306,14 @@
                 font-size: 13px !important;
             }
             .ns-claude-accordion-thinking {
-                color: ${t.textMuted} !important;
+                color: var(--ns-text-muted) !important;
                 font-style: italic !important;
                 max-height: 120px !important;
                 overflow-y: auto !important;
                 line-height: 1.5 !important;
             }
             .ns-claude-accordion-content {
-                color: ${t.textMuted} !important;
+                color: var(--ns-text-muted) !important;
                 white-space: pre-wrap !important;
                 max-height: 200px !important;
                 overflow-y: auto !important;
@@ -1058,19 +1323,19 @@
             /* Sidebar Footer */
             .ns-claude-footer {
                 padding: 16px 20px;
-                background: ${t.bg};
-                border-top: 1px solid ${t.border};
+                background: var(--ns-bg);
+                border-top: 1px solid var(--ns-border);
                 display: flex;
                 align-items: center;
                 gap: 8px;
                 flex-shrink: 0;
             }
             .ns-claude-btn {
-                border: 1px solid ${t.border};
+                border: 1px solid var(--ns-border);
                 border-radius: 8px;
                 padding: 10px 14px;
-                background: ${t.inputBg};
-                color: ${t.text};
+                background: var(--ns-input-bg);
+                color: var(--ns-text);
                 cursor: pointer;
                 font-size: 13px;
                 font-weight: 500;
@@ -1080,7 +1345,7 @@
                 font-family: StyreneB, Inter, system-ui, sans-serif;
             }
             .ns-claude-btn:hover {
-                background: ${t.cardHover};
+                background: var(--ns-card-hover);
                 border-color: ${CONFIG.THEME.PRIMARY_CORAL};
             }
             .ns-claude-btn-cancel {
@@ -1094,10 +1359,10 @@
             }
             .ns-claude-format-select {
                 flex: 1.2;
-                background: ${t.inputBg};
-                border: 1px solid ${t.border};
+                background: var(--ns-input-bg);
+                border: 1px solid var(--ns-border);
                 border-radius: 8px;
-                color: ${t.text};
+                color: var(--ns-text);
                 padding: 10px 8px;
                 outline: none;
                 font-size: 12px;
@@ -1107,8 +1372,8 @@
                 font-family: StyreneB, Inter, system-ui, sans-serif;
             }
             .ns-claude-format-select option {
-                background: ${t.bg};
-                color: ${t.text};
+                background: var(--ns-bg);
+                color: var(--ns-text);
             }
             .ns-claude-btn-copy { flex: 1; }
         `;
@@ -1120,23 +1385,51 @@
     // ============================================================
 
     function injectHeaderTrigger() {
-        if (document.getElementById('ns-claude-header-btn')) return;
+        // Try the workspace rail first
+        let targetGroup = document.querySelector('.chat-workspace-rail__actions');
+        let isRail = !!targetGroup;
+        
+        // Fallback to the wiggle actions group
+        if (!targetGroup) {
+            targetGroup = document.querySelector(CONFIG.SELECTORS.WIGGLE_ACTIONS_GROUP);
+        }
 
-        const actionsGroup = document.querySelector(CONFIG.SELECTORS.WIGGLE_ACTIONS_GROUP);
-        if (!actionsGroup) return;
+        if (!targetGroup) return;
 
-        const triggerBtn = document.createElement('button');
+        let triggerBtn = document.getElementById('ns-claude-header-btn');
+        if (triggerBtn) {
+            // Check if it's already in the right place
+            if (triggerBtn.parentElement === targetGroup) return;
+            // Otherwise remove it so we can re-inject
+            triggerBtn.remove();
+        }
+
+        triggerBtn = document.createElement('button');
         triggerBtn.id = 'ns-claude-header-btn';
-        triggerBtn.className = 'ns-claude-header-btn';
-        triggerBtn.setAttribute('aria-label', 'Export Chat');
+        
+        // If in rail, match rail button styling, else match header styling
+        if (isRail) {
+            triggerBtn.className = 'btn btn--ghost btn--sm ns-claude-rail-btn';
+        } else {
+            triggerBtn.className = 'ns-claude-header-btn';
+        }
+        
+        // Ensure theme class is applied correctly if initialized
+        if (STATE.currentTheme === 'dark') {
+            triggerBtn.classList.add('ns-claude-dark-theme');
+        }
+        
+        triggerBtn.setAttribute('aria-label', 'Export Session');
+        triggerBtn.title = 'Export Session';
+        
         triggerBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke-miterlimit="10" stroke-linecap="square"><path d="M12 3V15" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/><path d="M4 18L4 20L20 20L20 18" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/></svg>`;
         triggerBtn.onclick = (e) => {
             e.stopPropagation();
             openSidebar();
         };
 
-        // Insert as first child (to the left of the Files icon)
-        actionsGroup.prepend(triggerBtn);
+        // Insert as first child
+        targetGroup.prepend(triggerBtn);
     }
 
     // ============================================================
@@ -1252,20 +1545,144 @@
         });
     }
 
+    function getScrollContainer() {
+        const msgEl = document.querySelector(CONFIG.SELECTORS.USER_MESSAGE) || document.querySelector(CONFIG.SELECTORS.ASSISTANT_ROW);
+        if (!msgEl) return null;
+        
+        let parent = msgEl.parentElement;
+        while (parent && parent !== document.body && parent !== document.documentElement) {
+            const style = window.getComputedStyle(parent);
+            if (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto' || style.overflow === 'scroll') {
+                return parent;
+            }
+            parent = parent.parentElement;
+        }
+        return document.documentElement;
+    }
+
+    async function autoLoadAllMessages() {
+        const loadingOverlay = document.getElementById('ns-claude-sidebar-loading');
+        if (loadingOverlay) loadingOverlay.classList.add('active');
+
+        // Render current state underneath the overlay
+        renderMessageList();
+
+        // Allow UI to render the overlay and list
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const scrollContainer = getScrollContainer();
+        if (!scrollContainer) {
+            if (loadingOverlay) loadingOverlay.classList.remove('active');
+            renderMessageList();
+            STATE.isDirty = false;
+            return;
+        }
+
+        const originalScrollTop = scrollContainer.scrollTop;
+        let stuckCount = 0;
+        let lastLength = STATE.messages.length;
+        let lastObservedTop = scrollContainer.scrollTop;
+        let firstIteration = true;
+
+        while (true) {
+            // Walk up toward the conversation start. We use a negative offset
+            // from the current position so Claude's virtualizer mounts the
+            // window *above* the one we just captured, letting us stitch it into
+            // STATE.messages on the next iteration.
+            const targetTop = Math.max(0, scrollContainer.scrollTop - scrollContainer.clientHeight * 0.9);
+            scrollContainer.scrollTop = targetTop;
+            
+            // Wait for Claude to fetch and render the new window
+            await new Promise(resolve => setTimeout(resolve, 600));
+
+            // Read the position Claude actually settled on (not the value we wrote)
+            const settledTop = scrollContainer.scrollTop;
+
+            // Expand thinking blocks in the newly-mounted window so the extractor
+            // can capture the full reasoning (older messages can mount collapsed).
+            await autoExpandThinkingBlocks();
+
+            // Run our scan to accumulate
+            scanConversation();
+
+            const grew = STATE.messages.length > lastLength;
+
+            if (grew) {
+                // Progress — keep walking up
+                stuckCount = 0;
+                lastLength = STATE.messages.length;
+                lastObservedTop = settledTop;
+                firstIteration = false;
+                continue;
+            }
+
+            // No growth. Determine whether we're truly at the top or just stalled.
+            const atVeryTop = settledTop <= 1;
+            const noUpwardMove = settledTop >= lastObservedTop;
+
+            if (atVeryTop || noUpwardMove) {
+                stuckCount++;
+                // Require several consecutive stalled-at-top checks before giving up,
+                // so transient fetch/render pauses don't abort the walk prematurely.
+                if (stuckCount >= 3) break;
+            } else {
+                // The container can still scroll further up; we're just mid-render.
+                // Keep walking toward the top.
+                stuckCount = 0;
+                lastObservedTop = settledTop;
+            }
+
+            firstIteration = false;
+        }
+
+        // Restore scroll position
+        scrollContainer.scrollTop = originalScrollTop;
+
+        // Final render
+        renderMessageList();
+        STATE.isDirty = false;
+
+        if (loadingOverlay) loadingOverlay.classList.remove('active');
+    }
+
     async function openSidebar() {
         // Auto-expand thinking blocks first
         await autoExpandThinkingBlocks();
+
+        // Load cached messages (if any) so the sidebar renders instantly
+        // and the walk only collects new messages / backfills thinking.
+        const cached = MessageCache.load();
+        if (cached && cached.messages && cached.messages.length > 0) {
+            STATE.messages = cached.messages;
+            STATE.selectedIds = new Set(cached.selectedIds || []);
+        } else {
+            // No cache: do an initial scan so the sidebar has something to show
+            // while the walk runs in the background.
+            scanConversation();
+        }
         
-        // Scan the conversation
-        scanConversation();
-        renderMessageList();
-        
-        // Open sidebar
+        // Open sidebar visually immediately
         const overlay = document.getElementById('ns-claude-overlay');
         const sidebar = document.getElementById('ns-claude-sidebar');
         overlay.classList.add('active');
         sidebar.classList.add('active');
         STATE.sidebarOpen = true;
+
+        // When a cache was loaded, skip the walk entirely — the cache already
+        // has the full history. The MutationObserver (requestScan) will catch
+        // any new messages the user adds while the sidebar is open.
+        // Only run the walk on first-ever open (no cache).
+        if (!cached) {
+            await autoLoadAllMessages();
+        } else {
+            // Still render the list so the sidebar shows cached messages
+            renderMessageList();
+            STATE.isDirty = false;
+        }
+
+        // Save cache after the walk completes
+        MessageCache.save();
     }
 
     function closeSidebar() {
@@ -1274,6 +1691,9 @@
         overlay.classList.remove('active');
         sidebar.classList.remove('active');
         STATE.sidebarOpen = false;
+
+        // Save cache so reopen within this page session is near-instant
+        MessageCache.save();
     }
 
     function createSidebarUI() {
@@ -1284,6 +1704,17 @@
 
         const sidebar = document.createElement('div');
         sidebar.id = 'ns-claude-sidebar';
+        if (STATE.currentTheme === 'dark') {
+            sidebar.classList.add('ns-claude-dark-theme');
+        }
+
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'ns-claude-sidebar-loading';
+        loadingOverlay.innerHTML = `
+            <div class="ns-claude-spinner"></div>
+            <div class="ns-claude-loading-text">Loading full conversation...</div>
+        `;
+        sidebar.appendChild(loadingOverlay);
 
         // Build header
         const header = document.createElement('div');
@@ -1400,15 +1831,41 @@
     }
 
     // ============================================================
-    // Observer for Menu Re-injection
+    // Observer for Menu Re-injection & Scroll Collection
     // ============================================================
 
+    let scanTimeout = null;
+    function requestScan() {
+        if (scanTimeout) clearTimeout(scanTimeout);
+        scanTimeout = setTimeout(() => {
+            scanConversation();
+            if (STATE.sidebarOpen && STATE.isDirty) {
+                renderMessageList();
+                STATE.isDirty = false;
+            }
+        }, 500);
+    }
+
     function setupHeaderObserver() {
-        const observer = new MutationObserver(() => {
-            const actionsGroup = document.querySelector(CONFIG.SELECTORS.WIGGLE_ACTIONS_GROUP);
-            if (actionsGroup && !document.getElementById('ns-claude-header-btn')) {
+        const observer = new MutationObserver((mutations) => {
+            // Ignore mutations that occur entirely within our own UI to prevent infinite loops
+            const isOnlyOurUI = mutations.every(m => {
+                let target = m.target;
+                if (target.nodeType === Node.TEXT_NODE) target = target.parentNode;
+                if (!target || !target.closest) return false;
+                return target.closest('#ns-claude-sidebar') || target.closest('#ns-claude-overlay') || target.closest('#noosphere-claude-styles');
+            });
+            if (isOnlyOurUI) return;
+
+            let targetGroup = document.querySelector('.chat-workspace-rail__actions') || document.querySelector(CONFIG.SELECTORS.WIGGLE_ACTIONS_GROUP);
+            let btn = document.getElementById('ns-claude-header-btn');
+            
+            if (targetGroup && (!btn || btn.parentElement !== targetGroup)) {
                 injectHeaderTrigger();
             }
+
+            // Debounced scan to accumulate virtualized messages during scrolling
+            requestScan();
         });
         
         observer.observe(document.body, { childList: true, subtree: true });
@@ -1424,6 +1881,12 @@
         createSidebarUI();
         injectHeaderTrigger();
         setupHeaderObserver();
+
+        // Clear cache on page unload so it doesn't persist across reloads.
+        // sessionStorage normally clears on page reload, but some browsers
+        // (or SPA behaviors) may preserve it. This ensures a clean slate
+        // on every fresh page load.
+        window.addEventListener('beforeunload', () => MessageCache.clear());
     }
 
     if (document.readyState === 'loading') {
