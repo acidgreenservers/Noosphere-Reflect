@@ -4,7 +4,7 @@
 
 ---
 
-## System Overview
+## 🏗️ System Overview
 
 Noosphere Reflect implements a client-sovereign **"Bridge"** architecture, creating a resilient pipeline that handles data extraction, offline indexing, secure persistence, and native restorations:
 
@@ -44,7 +44,8 @@ Noosphere Reflect implements a client-sovereign **"Bridge"** architecture, creat
 |  |  |  | (Sessions, Memories,      | <==========> | (Off-Thread MiniSearch Index Engine)  |  |  |  |
 |  |  |  |  Prompts, Folders,        | (Coherence)  | (Polymorphic 'archiveType' Queries)   |  |  |  |
 |  |  |  |  Settings, Workflows,     |              +---------------------------------------+  |  |  |
-|  |  |  |  Artifact Blobs)          |                                                         |  |  |
+|  |  |  |  Artifact Blobs,          |                                                         |  |  |
+|  |  |  |  Notebooks)               |                                                         |  |  |
 |  |  |  +---------------------------+                                                         |  |  |
 |  |  +----------------------------------------------------------------------------------------+  |  |
 |  |                                                                                               |  |
@@ -63,7 +64,7 @@ Noosphere Reflect implements a client-sovereign **"Bridge"** architecture, creat
 
 ---
 
-## Logical Pipeline Flows
+## 🔄 Logical Pipeline Flows
 
 ### 1. The Forward Path (Capture → Storage)
 
@@ -81,16 +82,16 @@ The Forward Path moves captured conversation data securely from external web con
 The Backward Path ensures no data lock-in and facilitates total preservation recovery:
 
 1. **Export Execution**: Individual chat sessions can be exported using customized brand templates to HTML, Markdown, or standard raw JSON schemas.
-2. **Database Backup**: The settings section enables a complete, system-wide JSON Database Export including all Folders, Skills, Workflows, Prompts, and Sessions.
+2. **Database Backup**: The settings section enables a complete, system-wide JSON Database Export including all Folders, Skills, Workflows, Prompts, Sessions, and Notebooks.
 3. **Database Restore**: A user can upload a previously exported DB backup. The `importDatabase` engine validates the JSON structure against strict Zod schemas inside `importValidator.ts` and sequentially re-populates the IndexedDB stores, immediately re-indexing all entities off-thread to maintain complete **Search-Storage Coherence**.
 
 ---
 
-## Core Component Ledger
+## 🧩 Core Component Ledger
 
 | Component | Architecture Role | Description / Implementation |
 | :--- | :--- | :--- |
-| **StorageService** | Facade Pattern | A single unified facade (`src/services/storageService.ts`) coordinating access to specialized stores (Session, Memory, Prompt, Setting, Folder, Workflow, Artifact). |
+| **StorageService** | Facade Pattern | A single unified facade (`src/services/storageService.ts`) coordinating access to specialized stores (Session, Memory, Prompt, Setting, Folder, Workflow, Artifact, Notebook). |
 | **SearchWorker** | Off-Thread Indexer | Web Worker (`src/workers/searchWorker.ts`) housing a `MiniSearch` index. Synchronizes immediately when save, edit, or delete events execute. |
 | **DocumentBuilder** | Sidebar Workspace | Sliding layout (`src/components/chat-ui/DocumentBuilder.tsx`) containing markdown text areas, edit toolbars, drag-handles for resize, and insert-message connectors. |
 | **ArtifactListSidebar** | File Workspace | Handles navigation and metadata inspection for all message and session attachments. Features direct reader rendering integration. |
@@ -99,7 +100,7 @@ The Backward Path ensures no data lock-in and facilitates total preservation rec
 
 ---
 
-## Persistent Data Schema (IndexedDB)
+## 💾 Persistent Data Schema (IndexedDB)
 
 The local browser storage uses standard indexed tables configured in `src/services/db/schema.ts` and managed via transactional migrations in `migrations.ts`:
 
@@ -109,12 +110,13 @@ The local browser storage uses standard indexed tables configured in `src/servic
 - `skills`: Skill entities added in schema v9.
 - `folders`: Hierarchical folder entities for grouping other items.
 - `workflows`: Operational templates/workflows.
+- `notebooks`: Gemini-style multi-column Notebook workspace entities.
 - `artifacts`: Media assets, files, and captured code assets stored as raw blobs or base64 data.
 - `settings`: Global application settings, theme configurations, and API keys.
 
 ---
 
-## Architecture Constraints & Invariants
+## 📐 Architecture Constraints & Invariants
 
 To keep the application highly stable and secure, we enforce these invariant boundaries:
 
