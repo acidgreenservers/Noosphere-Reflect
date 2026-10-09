@@ -9,6 +9,7 @@ import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
 import { DocumentBuilder } from '../../../components/chat-ui/DocumentBuilder';
 import { ArtifactReaderLayer } from '../../../components/ArtifactReader';
 import { safeDecode } from '../../../components/ArtifactReader/utils';
+import { exportNotebookAsZip } from '../../../utils/notebookExporter';
 
 const generateUUID = (): string => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -226,71 +227,7 @@ export const NotebookWorkspace: React.FC = () => {
         setIsExportMenuOpen(false);
 
         try {
-            const JSZip = (await import('jszip')).default;
-            const zip = new JSZip();
-
-            // 1. Root metadata.json
-            zip.file('metadata.json', JSON.stringify({
-                id: notebook.id,
-                createdAt: notebook.createdAt,
-                updatedAt: notebook.updatedAt,
-                metadata: notebook.metadata,
-                sourcesCount: notebook.sources?.length || 0,
-                notesCount: notebook.notes?.length || 0,
-                chatsCount: notebook.chats?.length || 0,
-            }, null, 2));
-
-            // 2. Sources folder
-            if (notebook.sources && notebook.sources.length > 0) {
-                const sourcesFolder = zip.folder('sources')!;
-                notebook.sources.forEach(source => {
-                    const safeTitle = source.title.replace(/[\\/:*?"<>|]/g, '_');
-                    let content = source.content;
-                    let filename = `${safeTitle}.txt`;
-                    if (source.type === 'url' && source.url) {
-                        content = `URL: ${source.url}\n\n${source.content}`;
-                        filename = `${safeTitle}.url.txt`;
-                    }
-                    sourcesFolder.file(filename, content);
-                });
-            }
-
-            // 3. Notes folder
-            if (notebook.notes && notebook.notes.length > 0) {
-                const notesFolder = zip.folder('notes')!;
-                notebook.notes.forEach(note => {
-                    const safeTitle = note.title.replace(/[\\/:*?"<>|]/g, '_');
-                    const content = `# ${note.title}\n\n${note.content}\n\n_Last Updated: ${new Date(note.updatedAt).toLocaleString()}_`;
-                    notesFolder.file(`${safeTitle}.md`, content);
-                });
-            }
-
-            // 4. Chats folder
-            if (notebook.chats && notebook.chats.length > 0) {
-                const chatsFolder = zip.folder('chats')!;
-                notebook.chats.forEach(chat => {
-                    const safeTitle = chat.title.replace(/[\\/:*?"<>|]/g, '_');
-                    let chatMd = `# ${chat.title}\n\n`;
-                    chat.messages.forEach(msg => {
-                        const role = msg.type === ChatMessageType.Prompt ? 'USER' : 'ASSISTANT';
-                        if (msg.thought) {
-                            chatMd += `> 🧠 **Thought Process**\n> ${msg.thought.replace(/\n/g, '\n> ')}\n\n`;
-                        }
-                        chatMd += `### **${role}**\n${msg.content}\n\n---\n\n`;
-                    });
-                    chatsFolder.file(`${safeTitle}.md`, chatMd);
-                });
-            }
-
-            const blob = await zip.generateAsync({ type: 'blob' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${notebook.metadata.title.replace(/[\\/:*?"<>|]/g, '_')}_backup.zip`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            await exportNotebookAsZip(notebook);
         } catch (error) {
             console.error('Export failed', error);
             showNotification('Export Failed', 'An error occurred while packaging the notebook backup.', '⚠️');

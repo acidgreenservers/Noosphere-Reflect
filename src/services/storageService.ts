@@ -276,17 +276,19 @@ class StorageService {
         skills: Skill[];
         workflows: Workflow[];
         agents: Agent[];
+        notebooks: Notebook[];
         version: number;
         exportedAt: string;
     }> {
-        const [sessions, settings, memories, prompts, skills, workflows, agents] = await Promise.all([
+        const [sessions, settings, memories, prompts, skills, workflows, agents, notebooks] = await Promise.all([
             this.getAllSessions(),
             this.getSettings(),
             this.getAllMemories(),
             this.getAllPrompts(),
             this.getAllSkills(),
             this.getAllWorkflows(),
-            this.getAllAgents()
+            this.getAllAgents(),
+            this.getAllNotebooks()
         ]);
 
         return {
@@ -297,6 +299,7 @@ class StorageService {
             skills,
             workflows,
             agents,
+            notebooks,
             version: DB_VERSION,
             exportedAt: new Date().toISOString()
         };
@@ -342,6 +345,12 @@ class StorageService {
         if (validatedData.agents && Array.isArray(validatedData.agents)) {
             for (const agent of validatedData.agents) {
                 await this.saveAgent(agent);
+            }
+        }
+
+        if (validatedData.notebooks && Array.isArray(validatedData.notebooks)) {
+            for (const notebook of validatedData.notebooks) {
+                await this.saveNotebook(notebook as Notebook);
             }
         }
 

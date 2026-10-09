@@ -445,4 +445,6 @@ export interface Notebook {
   sources: NotebookSource[];
   notes: NotebookNote[];
   chats: NotebookChat[];
+  tags?: string[];
+  projectId?: string;
 }
