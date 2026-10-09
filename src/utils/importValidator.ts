@@ -283,6 +283,51 @@ export const AgentSchema = z.object({
     projectId: z.string().optional()
 });
 
+// Notebook Schemas
+const NotebookSourceSchema = z.object({
+    id: z.string(),
+    type: z.enum(['file', 'url', 'text']),
+    title: z.string().max(500),
+    content: z.string().max(10_000_000),
+    url: z.string().max(2000).optional(),
+    fileSize: z.number().optional(),
+    mimeType: z.string().max(100).optional(),
+    createdAt: z.string()
+});
+
+const NotebookNoteSchema = z.object({
+    id: z.string(),
+    title: z.string().max(500),
+    content: z.string().max(10_000_000),
+    createdAt: z.string(),
+    updatedAt: z.string()
+});
+
+const NotebookChatSchema = z.object({
+    id: z.string(),
+    title: z.string().max(500),
+    messages: z.array(ChatMessageSchema).max(10_000),
+    createdAt: z.string(),
+    updatedAt: z.string()
+});
+
+export const NotebookSchema = z.object({
+    id: z.string(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    metadata: z.object({
+        title: z.string().max(500),
+        description: z.string().max(2000).optional(),
+        summaryContent: z.string().max(1_000_000).optional(),
+        bannerImage: z.string().max(10_000_000).optional()
+    }),
+    sources: z.array(NotebookSourceSchema).max(1000),
+    notes: z.array(NotebookNoteSchema).max(1000),
+    chats: z.array(NotebookChatSchema).max(1000),
+    tags: z.array(z.string().max(50)).max(50).optional(),
+    projectId: z.string().optional()
+});
+
 // Database Export Schema
 const DatabaseExportSchema = z.object({
     sessions: z.array(SavedChatSessionSchema).max(10_000).optional(),
@@ -292,6 +337,7 @@ const DatabaseExportSchema = z.object({
     skills: z.array(SkillSchema).max(10_000).optional(),
     workflows: z.array(WorkflowSchema).max(10_000).optional(),
     agents: z.array(AgentSchema).max(10_000).optional(),
+    notebooks: z.array(NotebookSchema).max(10_000).optional(),
     version: z.number().optional(),
     exportedAt: z.string().optional()
 });

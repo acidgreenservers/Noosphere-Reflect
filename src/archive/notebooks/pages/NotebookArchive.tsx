@@ -7,6 +7,7 @@ import { storageService } from '../../../services/storageService';
 import { ArchiveLayout } from '../../../components/layout/ArchiveLayout';
 import { CreateNotebookModal } from '../components/CreateNotebookModal';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { exportNotebookAsZip } from '../../../utils/notebookExporter';
 
 const NotebookArchive: React.FC = () => {
     const [notebooks, setNotebooks] = useState<Notebook[]>([]);
@@ -51,9 +52,40 @@ const NotebookArchive: React.FC = () => {
     }, []);
 
     const filteredNotebooks = notebooks.filter(n => {
-        const query = searchQuery.toLowerCase();
-        return n.metadata.title.toLowerCase().includes(query) ||
-               (n.metadata.description && n.metadata.description.toLowerCase().includes(query));
+        if (!searchQuery.trim()) return true;
+        const query = searchQuery.toLowerCase().trim();
+
+        // Title and description match
+        if (n.metadata.title.toLowerCase().includes(query)) return true;
+        if (n.metadata.description && n.metadata.description.toLowerCase().includes(query)) return true;
+        if (n.metadata.summaryContent && n.metadata.summaryContent.toLowerCase().includes(query)) return true;
+
+        // Tags match
+        if (n.tags && n.tags.some(tag => tag.toLowerCase().includes(query))) return true;
+
+        // Sources match
+        if (n.sources && n.sources.some(s =>
+            s.title.toLowerCase().includes(query) ||
+            s.content.toLowerCase().includes(query) ||
+            (s.url && s.url.toLowerCase().includes(query))
+        )) return true;
+
+        // Notes match
+        if (n.notes && n.notes.some(note =>
+            note.title.toLowerCase().includes(query) ||
+            note.content.toLowerCase().includes(query)
+        )) return true;
+
+        // Chats match
+        if (n.chats && n.chats.some(chat =>
+            chat.title.toLowerCase().includes(query) ||
+            (chat.messages && chat.messages.some(m =>
+                m.content.toLowerCase().includes(query) ||
+                (m.thought && m.thought.toLowerCase().includes(query))
+            ))
+        )) return true;
+
+        return false;
     });
 
     const handleCreateNotebook = async (title: string, description: string) => {
@@ -117,12 +149,30 @@ const NotebookArchive: React.FC = () => {
         if (isSelectionMode) setSelectedIds(new Set());
     };
 
+    const handleExportNotebookZip = async (notebook: Notebook) => {
+        try {
+            setMenuOpenId(null);
+            await exportNotebookAsZip(notebook);
+        } catch (err) {
+            console.error('Failed to export notebook zip:', err);
+        }
+    };
+
     const renderMenu = (notebook: Notebook) => (
         <div
             ref={menuRef}
             className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50"
             onClick={(e) => e.stopPropagation()}
         >
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleExportNotebookZip(notebook);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+            >
+                <span>📦</span> Export ZIP
+            </button>
             <button
                 onClick={(e) => {
                     e.stopPropagation();

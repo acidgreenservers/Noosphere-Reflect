@@ -4,7 +4,7 @@ import { getFileIcon } from '../../../components/artifacts/utils';
 
 export interface AggregatedArtifact extends ConversationArtifact {
     sourceId: string;
-    sourceType: 'chat' | 'project';
+    sourceType: 'chat' | 'project' | 'notebook';
     sourceTitle: string;
     messageIndex?: number;
 }
@@ -67,8 +67,8 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({ artifact, onClick, o
                                     }}
                                     className="w-full text-left px-4 py-2.5 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors flex items-center gap-2"
                                 >
-                                    <span>{artifact.sourceType === 'project' ? '📁' : '💬'}</span>
-                                    <span>Open in {artifact.sourceType === 'project' ? 'Project' : 'Chat'}</span>
+                                    <span>{artifact.sourceType === 'project' ? '📁' : artifact.sourceType === 'notebook' ? '📓' : '💬'}</span>
+                                    <span>Open in {artifact.sourceType === 'project' ? 'Project' : artifact.sourceType === 'notebook' ? 'Notebook' : 'Chat'}</span>
                                 </button>
                                 <button
                                     onClick={(e) => {
@@ -97,7 +97,7 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({ artifact, onClick, o
             </div>
 
             <div className="mt-4 pt-3 border-t border-gray-700/50 flex items-center gap-2 text-xs text-gray-400 truncate">
-                <span className="shrink-0">{artifact.sourceType === 'project' ? '📁' : '💬'}</span>
+                <span className="shrink-0">{artifact.sourceType === 'project' ? '📁' : artifact.sourceType === 'notebook' ? '📓' : '💬'}</span>
                 <span className="truncate" title={artifact.sourceTitle}>
                     {artifact.sourceTitle}
                 </span>

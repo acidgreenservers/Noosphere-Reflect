@@ -27,6 +27,7 @@ const ArtifactArchive: React.FC = () => {
             const projects = await storageService.getAllProjects();
             // We need full sessions to get all artifacts from messages
             const sessions = await sessionStore.getAll(); 
+            const notebooks = await storageService.getAllNotebooks();
             
             const aggregated: AggregatedArtifact[] = [];
 
@@ -39,6 +40,34 @@ const ArtifactArchive: React.FC = () => {
                             sourceId: p.id,
                             sourceType: 'project',
                             sourceTitle: p.metadata.title
+                        });
+                    });
+                }
+            });
+
+            // Add Notebook Sources (File / Attachment type sources)
+            notebooks.forEach(nb => {
+                if (nb.sources) {
+                    nb.sources.forEach(source => {
+                        let mime = source.mimeType;
+                        if (!mime) {
+                            if (source.type === 'url') mime = 'text/markdown';
+                            else if (source.title.toLowerCase().endsWith('.md')) mime = 'text/markdown';
+                            else mime = 'text/plain';
+                        }
+                        const fileName = source.title.includes('.') ? source.title : `${source.title}.md`;
+
+                        aggregated.push({
+                            id: source.id,
+                            fileName,
+                            fileSize: source.fileSize || source.content.length,
+                            mimeType: mime,
+                            fileData: source.content,
+                            description: source.url || source.title,
+                            uploadedAt: source.createdAt,
+                            sourceId: nb.id,
+                            sourceType: 'notebook',
+                            sourceTitle: nb.metadata.title
                         });
                     });
                 }
@@ -113,6 +142,8 @@ const ArtifactArchive: React.FC = () => {
     const handleOpenSource = (artifact: AggregatedArtifact) => {
         if (artifact.sourceType === 'project') {
             navigate(`/projects/${artifact.sourceId}`);
+        } else if (artifact.sourceType === 'notebook') {
+            navigate(`/notebooks/${artifact.sourceId}`);
         } else {
             const url = `/chat/${artifact.sourceId}`;
             if (artifact.messageIndex !== undefined) {
