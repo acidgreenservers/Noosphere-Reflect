@@ -1,8 +1,8 @@
+# Noosphere Reflect 📘
+
 <p align="center">
   <img src="public/logo.png" alt="Noosphere Reflect" width="128" height="128" />
 </p>
-
-# Noosphere Reflect
 
 > [!NOTE]  
 > **100% Agent-Engineered Architecture**  
@@ -10,11 +10,12 @@
 
 <div align="center">
 
+[![CI](https://github.com/acidgreenservers/Noosphere-Reflect/actions/workflows/ci.yml/badge.svg)](https://github.com/acidgreenservers/Noosphere-Reflect/actions/workflows/ci.yml)
+[![Deploy](https://github.com/acidgreenservers/Noosphere-Reflect/actions/workflows/deploy.yml/badge.svg)](https://github.com/acidgreenservers/Noosphere-Reflect/actions/workflows/deploy.yml)
 [![License: AGPL3.0](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.6.4-green.svg)](CHANGELOG.md)
-[![Build Status](https://github.com/acidgreenservers/Noosphere-Reflect/actions/workflows/deploy.yml/badge.svg)](https://github.com/acidgreenservers/Noosphere-Reflect/actions)
+[![Version](https://img.shields.io/badge/version-0.5.8.8-green.svg)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.x-brightgreen.svg)](package.json)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](tsconfig.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-~5.8.2-blue.svg)](package.json)
 
 </div>
 
@@ -37,22 +38,25 @@
 
 **Preserve Meaning Through Memory** — A highly secure, client-side AI chat archival and workspace system featuring a companion Chrome Extension for high-fidelity capture across Claude, ChatGPT, Gemini, LeChat, Grok, Llamacoder, Kimi, Google AI Studio, and Brave.
 
-<div align="center">
+---
 
-### [**Live Application**](https://acidgreenservers.github.io/Noosphere-Reflect/) | [**Quickstart Guide**](QUICKSTART.md) | [**Architecture**](ARCHITECTURE.md) | [**Security Policy**](SECURITY.md)
+## 📌 Navigation
 
-</div>
+- [**Live Application**](https://acidgreenservers.github.io/Noosphere-Reflect/)
+- [**Quickstart Guide**](QUICKSTART.md)
+- [**Architecture**](ARCHITECTURE.md)
+- [**Security Policy**](SECURITY.md)
 
 ---
 
-## Why This Exists?
+## 💡 Why This Exists
 
 The AI conversational ecosystem is highly fragmented. Power users routinely jump between Claude, ChatGPT, Gemini, and local LLMs—leaving valuable ideas, code snippets, and intellectual workflows trapped in isolated vendor silos. Traditional conversation history disappears behind platform updates, export formats change without notice, and cloud synchronization compromises privacy.
 
 **Noosphere Reflect** was created to restore total data sovereignty to personal AI interactions. Built around a familiar, webchat-native canvas, it provides a unified client-side workspace where retroactive session history, prompt templates, memories, skills, workflows, agents, artifacts, and projects are captured with high fidelity and preserved entirely locally.
 
 ### Core System Mandates
-To fulfill true preservation, Noosphere Reflect adheres to four strict principles:
+
 - **Zero-Telemetry Client Sovereignty**: All session files, memories, and prompt artifacts remain inside local browser storage (`IndexedDB`). No external databases or analytics tracking.
 - **Universal Multi-Platform Parsing**: Modular DOM scrapers seamlessly ingest structured chats and raw thinking chains from commercial and open-weight AI web clients via a companion Chrome extension.
 - **High-Fidelity Document Synthesis**: An integrated in-chat Markdown document workspace to extract, organize, and synthesize model turns into clean deliverables.
@@ -60,23 +64,27 @@ To fulfill true preservation, Noosphere Reflect adheres to four strict principle
 
 ---
 
-## Features
+## ✨ Features
 
 ### 💬 Unified WebChat Canvas
+
 - **Familiar Chat Architecture**: Designed after modern AI interfaces for intuitive interaction, complete with retroactive conversation replay and turn-level attachments.
 - **Thinking Block Rendering**: Native support for hidden or expanded model reasoning chains ("Thinking Blocks"), preserving full execution fidelity from high-reasoning LLMs.
 - **Rich HTML & Code Rendering**: In-line sandbox supporting full HTML preview, interactive code snippets, and custom console styling locked to `65ch` reading widths.
 - **Turn Controls & Feedback**: Hover actions on every message turn for **Copy**, **Fork**, **Edit**, and **Save As** (Memory, Prompt, Skill, or Workflow) with instant visual verification cues (`✓`).
 
 ### 📁 Projects & Context Hub
+
 - **Isolated Workspaces**: Group related chats, uploaded artifacts, static files, and prompts inside dedicated Project containers (similar to Claude Projects / GPTs).
 - **Context Injection**: Attach project-level knowledge directly into conversation turns to maintain topic alignment across long-running sessions.
 
 ### 👤 Custom Profiles & Instructions
+
 - **Global & Local Preferences**: Define custom system instructions, user background context, and persona constraints across chats.
 - **Behavioral Profiles**: Quickly toggle instruction profiles to tailor model responses for coding, technical writing, or creative brainstorming.
 
 ### 🧩 Modular Scrapers & Granular Export System
+
 - **Updated Extension Scrapers**: High-fidelity capture engine targeting major web interfaces with individual styling support:
   - **Claude** (`claude.ai`) — 🟠 Orange Theme
   - **ChatGPT** (`chatgpt.com`) — 🟢 Green Theme
@@ -90,41 +98,42 @@ To fulfill true preservation, Noosphere Reflect adheres to four strict principle
 - **Granular Export Utilities**: Export full sessions or specific sub-trees to JSON, Markdown, or raw database backups with full structural metadata.
 
 ### 📝 In-Chat Document Builder & Artifacts
+
 - **Sliding Workspace Pane**: Dynamic split-screen panel (`30vw` to `90vw`) with real-time Markdown rendering.
 - **Direct Segment Insertion**: Select text snippets directly from chat responses and append them directly into your draft document.
 - **Centralized Artifact Reader**: Drawer interface to review, inspect, and download image attachments, code artifacts, and session files.
 
 ### ⚡ Search Engine & Local Persistence
+
 - **Off-Thread MiniSearch**: Background Web Worker (`SearchWorker`) running MiniSearch for instant indexing across chats, memories, prompts, and skills.
 - **Archive Hub**: Full organization dashboard for saved sessions, project tags, search filters, and database maintenance.
 
 ---
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 ### Core Frontend
-- **Framework**: React 19 & TypeScript 5.8
+
+- **Framework**: React 19 & TypeScript ~5.8.2
 - **Build Tool**: Vite 6.2
 - **Styling**: Tailwind CSS v4 (Glassmorphic dark-amber design system)
 - **Icons**: Lucide React
 
 ### Storage & Search Engine
+
 - **Persistence Layer**: `IndexedDB` wrapped via `idb` (`StorageService`)
 - **Full-Text Search**: MiniSearch off-loaded to a Web Worker (`SearchWorker`)
 - **Sanitization**: `DOMPurify` enforcing multi-tier XSS protection
 
 ### Cloud Backup
-> Feature not fully finished
 
-- **Drive Sync**: Google Drive API (optional manual OAuth2 sync.)
+- **Drive Sync**: Google Drive API (optional manual OAuth2 sync)
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
-
-```
-
+```text
 Noosphere-Reflect/
 ├── public/                 # Static assets, logo, & icons
 ├── src/
@@ -149,59 +158,58 @@ Noosphere-Reflect/
 ├── tsconfig.json          # TypeScript project configuration
 ├── package.json           # Dependencies & scripts
 └── README.md
-
 ```
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
+
+> The commands below are verified for this repo.
 
 ### Prerequisites
-- **Node.js**: `20.x` or higher
-- **npm**: `10.x` or higher
+
+- **Node.js**: `>=20.x`
+- **npm**: `>=10.x`
 - **Browser**: Google Chrome or Chromium-based browser (for companion Chrome Extension)
 
 > **Note**: This repository is a 100% client-side web application. It does not require Python, Docker, or external backend server processes.
 
-### Quick Start
+### 1) Node Setup & Launch
 
-1. **Clone the repository**:
 ```bash
-   git clone [https://github.com/acidgreenservers/Noosphere-Reflect.git](https://github.com/acidgreenservers/Noosphere-Reflect.git)
-   cd Noosphere-Reflect
-```
+# 1. Clone & enter repository
+git clone https://github.com/acidgreenservers/Noosphere-Reflect.git
+cd Noosphere-Reflect
 
-2. **Install dependencies**:
-```bash
+# 2. Install dependencies
 npm install
-```
 
-
-3. **Start the development server**:
-```bash
+# 3. Start local development server
 npm run dev
 ```
 
+### 2) Access Local Workspace
 
-4. **Access the application**:
-Open your browser to `http://localhost:3000/Noosphere-Reflect/`
+Navigate your browser to: **`http://localhost:3000/Noosphere-Reflect/`**
 
-### Build & Verification Commands
+> **Note**: By default Vite launches on port `3000` with base path `/Noosphere-Reflect/`.
+
+### 3) Verification & Test Commands
 
 ```bash
-# Compile production bundle to /dist
-npm run build
-
-# Execute unit and integration tests
-npm test
+# Execute unit and integration test suite (Vitest)
+npx vitest run
 
 # Run code style and linting checks
 npm run lint
+
+# Compile production bundle to /dist
+npm run build
 ```
 
 ---
 
-## Environment Variables
+## ⚙️ Environment Variables
 
 All settings are managed within the web UI. Optional environment variables can be provided in `.env` for development integrations:
 
@@ -212,7 +220,7 @@ All settings are managed within the web UI. Optional environment variables can b
 
 ---
 
-## Architecture
+## 🧱 Architecture
 
 Noosphere Reflect implements a **Bridge Pattern** to decouple browser extension scrapers from storage layers:
 
@@ -226,18 +234,18 @@ For full schematics, schema configurations, and worker pipelines, refer to **[AR
 
 ---
 
-## Security Policy
+## 🔐 Security Policy
 
 Security is enforced at the local storage boundary:
 
-* **Data Isolation**: 100% of data lives locally in `IndexedDB`.
-* **XSS Prevention**: Strict `DOMPurify` filters run on data ingestion, HTML turns, and document rendering.
-* **Input Guardrails**: Dedicated modals protect against database state corruption.
+- **Data Isolation**: 100% of data lives locally in `IndexedDB`.
+- **XSS Prevention**: Strict `DOMPurify` filters run on data ingestion, HTML turns, and document rendering.
+- **Input Guardrails**: Dedicated modals protect against database state corruption.
 
 Review **[SECURITY.md](SECURITY.md)** for detailed security practices and vulnerability reporting protocols.
 
 ---
 
-## License
+## 📄 License
 
-This project is licensed under the **AGPL-3.0 License**. See the [LICENSE](https://www.google.com/search?q=LICENSE) file for complete details.
+This project is licensed under the **AGPL-3.0 License**. See the [LICENSE](https://github.com/acidgreenservers/Noosphere-Reflect/blob/main/LICENSE) file for complete details.
