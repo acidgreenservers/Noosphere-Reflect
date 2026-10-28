@@ -59,11 +59,12 @@ class StorageService {
     }
 
     async saveSession(session: SavedChatSession): Promise<void> {
-        if (session.exportStatus === 'exported') {
+        if (session.exportStatus === 'exported' || session.metadata?.exportStatus === 'exported' || session.metadata?.lastExportDate) {
             session.exportStatus = 'modified';
-            if (session.metadata) {
-                session.metadata.exportStatus = 'modified';
+            if (!session.metadata) {
+                session.metadata = {} as ChatMetadata;
             }
+            session.metadata.exportStatus = 'modified';
         }
         return sessionStore.save(session);
     }

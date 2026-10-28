@@ -192,24 +192,6 @@ const ArchiveHub: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
-    const handleStatusToggle = async (session: SavedChatSessionMetadata, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent card click
-
-        const current = session.exportStatus || 'not_exported';
-        const next: 'exported' | 'not_exported' = current === 'exported' ? 'not_exported' : 'exported';
-
-        // await storageService.updateExportStatus('sessions', session.id, next);
-
-        // Optimistic update
-        setSessions((prev: SavedChatSessionMetadata[]) => prev.map(s =>
-            s.id === session.id ? {
-                ...s,
-                exportStatus: next,
-                metadata: { ...(s.metadata || { title: s.chatTitle, model: '', date: s.date, tags: [] }), exportStatus: next }
-            } : s
-        ));
-    };
 
     const handleExportStart = () => {
         if (selectedIds.size === 0) {
@@ -384,10 +366,7 @@ const ArchiveHub: React.FC = () => {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                // Mark as exported
-                await storageService.updateExportStatus('sessions', session.id, 'exported');
-                await loadSessions();
-
+                // Single file exports do NOT mark session as exported (ZIP exports only)
                 setExportModalOpen(false);
                 setExportDropdownOpen(false);
                 return;
@@ -410,8 +389,9 @@ const ArchiveHub: React.FC = () => {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                // Mark as exported
-                await storageService.updateExportStatus('sessions', session.id, 'exported');
+                // Mark as exported (ZIP only)
+                const currentCount = session.metadata?.exportCount || 0;
+                await storageService.updateExportStatus('sessions', session.id, 'exported', format, currentCount + 1);
                 await loadSessions();
             } else {
                 // Directory export - use File System Access API
@@ -553,8 +533,7 @@ const ArchiveHub: React.FC = () => {
 
                     alert(`✅ Exported to directory:\n- ${baseFilename}/\n  - ${baseFilename}.${extension}\n  - artifacts/ (${uniqueArtifacts.length} files)\n  - export-metadata.json`);
 
-                    // Mark as exported
-                    await storageService.updateExportStatus('sessions', session.id, 'exported');
+                    // Directory export is not a ZIP export, so we do not update exportStatus
                     await loadSessions();
                 } catch (error: any) {
                     if (error.name === 'AbortError') {
@@ -767,8 +746,6 @@ const ArchiveHub: React.FC = () => {
                 // Directory export - create folder structure in Google Drive
                 const result = await handleDirectoryExportToDrive(session, format, appSettings, accessToken, chatsFolderId);
 
-                // Mark as exported
-                await storageService.updateExportStatus('sessions', session.id, 'exported');
                 await loadSessions();
 
                 alert(`✅ Exported to Google Drive folder:\n- ${result.folderName}/\n  - ${result.mainFile}\n  - artifacts/ (${result.artifactsUploaded} files)\n  - export-metadata.json`);
@@ -839,8 +816,6 @@ const ArchiveHub: React.FC = () => {
                     chatsFolderId
                 );
 
-                // Mark as exported
-                await storageService.updateExportStatus('sessions', session.id, 'exported');
                 await loadSessions();
                 alert(`✅ Uploaded to Google Drive: ${uploadFilename}`);
             }
@@ -1096,9 +1071,6 @@ const ArchiveHub: React.FC = () => {
                     mimeType,
                     chatsFolderId
                 );
-
-                // Mark as exported
-                await storageService.updateExportStatus('sessions', session.id, 'exported');
             }
 
             await loadSessions();
@@ -1165,9 +1137,6 @@ const ArchiveHub: React.FC = () => {
                     'text/html',
                     chatsFolderId
                 );
-
-                // Mark as exported
-                await storageService.updateExportStatus('sessions', session.id, 'exported');
             }
 
             await loadSessions();
