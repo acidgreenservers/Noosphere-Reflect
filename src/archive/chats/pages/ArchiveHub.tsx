@@ -1204,7 +1204,7 @@ const ArchiveHub: React.FC = () => {
                     isSelected={selectedIds.has(session.id)}
                     onSelect={toggleSelection}
                     onDelete={handleDelete} // We will fix this delete confirm later
-                    onExport={(session, format, toClipboard) => handleSingleExport(session, format, 'single', toClipboard)}
+                    onExport={(session, format, packageType = 'single', toClipboard) => handleSingleExport(session, format, packageType, toClipboard)}
                     onPreview={handlePreview}
                     onManageArtifacts={(full) => {
                         setSelectedSessionForArtifacts(full);

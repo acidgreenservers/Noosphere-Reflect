@@ -16,7 +16,7 @@ interface ChatSessionCardProps {
     onManageArtifacts: (session: SavedChatSession) => void;
     getModelBadgeColor: (model: string | undefined) => string;
     viewMode?: 'grid' | 'list';
-    onExport: (session: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json' | 'text', toClipboard?: boolean) => void;
+    onExport: (session: SavedChatSessionMetadata, format: 'html' | 'markdown' | 'json' | 'text', packageType?: 'directory' | 'zip' | 'single', toClipboard?: boolean) => void;
     onMoveToProject?: () => void;
 }
 
@@ -137,6 +137,19 @@ export function ChatSessionCard({
                     <span className="text-[10px]">◀</span>
                 </button>
                 <div className="absolute right-full top-0 mr-1 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-opacity duration-150 py-1 text-sm">
+                    {/* ZIP Submenu */}
+                    <div className="relative group/zip">
+                        <button className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white transition-colors flex justify-between items-center">
+                            <span>📦 ZIP Archive</span>
+                            <span className="text-[10px]">◀</span>
+                        </button>
+                        <div className="absolute right-full top-0 mr-1 w-36 bg-gray-900 border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover/zip:opacity-100 group-hover/zip:visible transition-opacity duration-150 py-1">
+                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'text', 'zip'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Plain Text</button>
+                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'markdown', 'zip'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
+                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'html', 'zip'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">🌐 HTML</button>
+                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'json', 'zip'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
+                        </div>
+                    </div>
                     {/* Clipboard Submenu */}
                     <div className="relative group/clipboard">
                         <button className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white transition-colors flex justify-between items-center">
@@ -144,14 +157,14 @@ export function ChatSessionCard({
                             <span className="text-[10px]">◀</span>
                         </button>
                         <div className="absolute right-full top-0 mr-1 w-32 bg-gray-900 border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover/clipboard:opacity-100 group-hover/clipboard:visible transition-opacity duration-150 py-1">
-                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'text', true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Text</button>
-                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'markdown', true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
+                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'text', 'single', true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Text</button>
+                            <button onClick={(e) => { e.stopPropagation(); onExport(session, 'markdown', 'single', true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
                         </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'text'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Plain Text</button>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'markdown'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'html'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">🌐 HTML</button>
-                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'json'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
+                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'text', 'single'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Plain Text</button>
+                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'markdown', 'single'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📝 Markdown</button>
+                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'html', 'single'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">🌐 HTML</button>
+                    <button onClick={(e) => { e.stopPropagation(); onExport(session, 'json', 'single'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-800 text-gray-300 hover:text-white">📊 JSON</button>
                 </div>
             </div>
 
