@@ -185,14 +185,6 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         setChatToRename(null);
     };
 
-    const handleToggleExported = async (id: string, currentStatus: string | undefined, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const nextStatus = currentStatus === 'exported' ? 'not_exported' : 'exported';
-        await storageService.updateExportStatus(id, nextStatus);
-        await loadRecentChats();
-        setActiveActionMenuId(null);
-    };
 
     return (
         <aside className={`h-full bg-[#09100c] border-r border-green-500/15 flex flex-col justify-between select-none shrink-0 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
@@ -400,19 +392,35 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                                     : 'text-gray-400 hover:text-gray-200 hover:bg-green-500/5'
                                                 }`}
                                         >
-                                            <Link
-                                                to={`/chat/${chat.id}`}
-                                                className={`flex-1 py-2.5 text-xs truncate font-medium flex items-center gap-2 ${isCollapsed ? 'px-0 justify-center' : 'px-3 pr-10'}`}
-                                                title={chat.chatTitle || 'Untitled Session'}
-                                            >
-                                                <span className={isCollapsed ? '' : ''}>💬</span>
-                                                {!isCollapsed && <span className="truncate">{chat.chatTitle || 'Untitled Session'}</span>}
-                                                {!isCollapsed && chat.projectId && (
-                                                    <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
-                                                        Project
-                                                    </span>
-                                                )}
-                                            </Link>
+                                            {(() => {
+                                                const isExported = chat.exportStatus === 'exported' || chat.metadata?.exportStatus === 'exported' || !!chat.metadata?.lastExportDate;
+                                                const isModified = chat.exportStatus === 'modified' || chat.metadata?.exportStatus === 'modified';
+                                                return (
+                                                    <Link
+                                                        to={`/chat/${chat.id}`}
+                                                        className={`flex-1 py-2.5 text-xs truncate font-medium flex items-center gap-2 ${isCollapsed ? 'px-0 justify-center' : 'px-3 pr-10'}`}
+                                                        title={chat.chatTitle || 'Untitled Session'}
+                                                    >
+                                                        <span className={isCollapsed ? '' : ''}>💬</span>
+                                                        {!isCollapsed && <span className="truncate">{chat.chatTitle || 'Untitled Session'}</span>}
+                                                        {!isCollapsed && isExported && (
+                                                            <span className="flex-shrink-0 px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-bold border border-emerald-500/30" title="Exported">
+                                                                EXP
+                                                            </span>
+                                                        )}
+                                                        {!isCollapsed && isModified && (
+                                                            <span className="flex-shrink-0 px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-bold border border-amber-500/30" title="Modified since export">
+                                                                MOD
+                                                            </span>
+                                                        )}
+                                                        {!isCollapsed && chat.projectId && (
+                                                            <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
+                                                                Project
+                                                            </span>
+                                                        )}
+                                                    </Link>
+                                                );
+                                            })()}
 
                                             {/* Action trigger button */}
                                             {!isCollapsed && (
@@ -451,13 +459,6 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                                             >
                                                                 📁 Move to Project
                                                             </button>
-                                                            <button
-                                                                onClick={(e) => handleToggleExported(chat.id, chat.exportStatus, e)}
-                                                                className="w-full text-left px-3 py-2 text-gray-300 hover:bg-green-500/10 hover:text-green-400 transition-colors"
-                                                            >
-                                                                {chat.exportStatus === 'exported' ? '❌ Mark Unexported' : '✅ Mark Exported'}
-                                                            </button>
-                                                            <div className="border-t border-green-500/10 my-1"></div>
                                                             <button
                                                                 onClick={(e) => handleDeleteChat(chat.id, e)}
                                                                 className="w-full text-left px-3 py-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"

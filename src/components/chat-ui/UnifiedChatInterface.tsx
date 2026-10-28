@@ -1440,11 +1440,7 @@ export default function UnifiedChatInterface() {
             showToast(`✓ Exported ${format.toUpperCase()}`, 'success');
             setShowChatActionsMenu(false);
 
-            if (!toClipboard) {
-                const currentCount = session.metadata?.exportCount || 0;
-                await storageService.updateExportStatus('sessions', session.id, 'exported', format, currentCount + 1);
-            }
-            setSession({ ...session, exportStatus: 'exported', metadata: { ...session.metadata, exportStatus: 'exported' } as any });
+            // Single file downloads and clipboard copies do NOT update exportStatus (ZIP exports only)
             window.dispatchEvent(new Event('chatSaved'));
 
         } catch (e) {
@@ -1876,9 +1872,14 @@ export default function UnifiedChatInterface() {
                                 >
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
-                                {session.metadata?.exportStatus === 'exported' && (
-                                    <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                                {(session.exportStatus === 'exported' || session.metadata?.exportStatus === 'exported' || !!session.metadata?.lastExportDate) && (
+                                    <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-bold" title={session.metadata?.lastExportDate ? `Exported ${session.metadata.exportCount ? `${session.metadata.exportCount}x` : ''} • Last: ${new Date(session.metadata.lastExportDate).toLocaleString()}` : 'Exported'}>
                                         EXPORTED
+                                    </span>
+                                )}
+                                {(session.exportStatus === 'modified' || session.metadata?.exportStatus === 'modified') && (
+                                    <span className="bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] px-2 py-0.5 rounded-full font-bold" title="Chat has been edited since its last export">
+                                        MODIFIED
                                     </span>
                                 )}
                             </div>

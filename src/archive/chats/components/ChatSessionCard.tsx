@@ -81,6 +81,17 @@ export function ChatSessionCard({
     const artifactCount = session.metadata?.artifacts?.length || 0;
     const formattedDate = formatRelativeDate(session.metadata?.date || session.date);
 
+    const isExported = session.exportStatus === 'exported' || session.metadata?.exportStatus === 'exported' || !!session.metadata?.lastExportDate;
+    const isModified = session.exportStatus === 'modified' || session.metadata?.exportStatus === 'modified';
+
+    let exportHoverTitle = undefined;
+    if (session.metadata?.lastExportDate || session.metadata?.exportCount) {
+        const dateStr = session.metadata.lastExportDate ? formatRelativeDate(session.metadata.lastExportDate) : '';
+        const formatsStr = session.metadata.exportFormats?.join(', ') || '';
+        const countStr = session.metadata.exportCount ? `${session.metadata.exportCount}x` : '';
+        exportHoverTitle = `Exported ${countStr}${formatsStr ? ` (${formatsStr})` : ''}${dateStr ? ` • Last: ${dateStr}` : ''}`;
+    }
+
     const handleDragStart = (e: React.DragEvent) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', session.id);
@@ -172,6 +183,8 @@ export function ChatSessionCard({
                     </span>
                 </>}
             badges={[
+                ...(isExported ? [{ text: 'EXPORTED', colorClass: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold', title: exportHoverTitle }] : []),
+                ...(isModified ? [{ text: 'MODIFIED', colorClass: 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold', title: 'Session edited since last export' }] : []),
                 ...(session.metadata?.model ? [{ text: session.metadata.model, colorClass: getModelBadgeColor(session.metadata.model) }] : []),
                 ...(artifactCount > 0 ? [{ text: `${artifactCount} Artifacts`, colorClass: 'bg-blue-500/10 text-blue-400 border border-blue-500/20' }] : []),
                 ...(session.projectId ? [{ text: 'Project', colorClass: 'bg-orange-500/10 text-orange-400 border border-orange-500/20' }] : [])
