@@ -5,38 +5,19 @@
      * ============================================================
      * Noosphere Reflect — Ask Brave Search AI Interactive Exporter
      * ============================================================
-     *
-     * Interactive Userscript & Console Exporter for Ask Brave Chat
-     * (search.brave.com/ask).
-     *
-     * Features:
-     *   - Integrated Native Header Trigger: Compact pill (🦁 Export) sitting
-     *     natively beside Share with zero layout overlap
-     *   - Interactive Accordion Sidebar: Click turns to expand/collapse
-     *     and scroll full message text, Deep Research stats, and Augments inline.
-     *   - Automated Deep Research Positioning: Places Deep Research outputs
-     *     deterministically after User Prompt 1 & before AI Response 1.
-     *   - Augment & Research Count Badges (`📎 N AUGMENTS`, `🔬 RESEARCH`).
-     *   - Custom Chat Title input & batch selection controls.
-     *   - Full recursive DOM-to-Markdown parser preserving formatting.
-     *   - Automatic extraction of Sidebar Rounds / TOC into collapsible accordions.
-     *   - Polished Footer Layout: Cancel | Format Select | Copy | Save.
-     *   - DESIGN.md stealth dark aesthetic (charcoal-black + Brave orange).
-     *
-     * Namespace: ns-brave-sidebar
-     * ============================================================
      */
 
     const CONFIG = {
         SELECTORS: {
-            USER_MESSAGE: '.message.user',
-            USER_BUBBLE: '.user-bubble',
+            USER_MESSAGE: '.user-bubble',
+            USER_BUBBLE_TEXT: '.user-bubble-text',
             AI_MESSAGE: '.message.assistant.llm-output',
             AUGMENT_MESSAGE: '.message.augment',
             RESEARCH_MESSAGE: '.message.research',
 
             TOC_SECTION: 'a.sidebar-history-toc-section',
             HEADER_BUTTONS_CONTAINER: '.ask-center-header-buttons',
+            HEADER_TABS_NAV: 'nav.tabs',
             SHARE_BUTTON: 'button[aria-label="Share"], .header-button',
 
             ENRICHMENT_CARD_ITEM: 'a.enrichment-card-item',
@@ -54,43 +35,68 @@
             DEEP_RESEARCH_ANSWER_CONTENT: '.deep-research-answer-content',
             DEEP_RESEARCH_PROGRESS: '.deep-research-progress',
 
-            NOISE_ELEMENTS: 'button.inline-citation, div.copy-button, svg, .user-message-actions'
+            NOISE_ELEMENTS: 'button.inline-citation, div.copy-button, .table-sticky, .table-tools, svg, .user-message-actions'
         },
 
-        // Ask Brave Design Tokens (from DESIGN.md — stealth dark aesthetic)
-        THEME: {
-            CANVAS: '#141517',
-            CANVAS_SUBTLE: '#18191c',
-            SURFACE_SIDEBAR: '#101114',
-            SURFACE_CARD: '#1e2025',
-            SURFACE_CARD_SUBTLE: '#181a1e',
-            SURFACE_DRAWER: '#181a1f',
-            SURFACE_INPUT: '#272a30',
-            SURFACE_INPUT_FOCUSED: '#2f333b',
-            SURFACE_PILL: '#2a2d35',
-            SURFACE_PILL_HOVER: '#343842',
-            BRAND_ORANGE: '#fb542b',
-            BRAND_ORANGE_DEEP: '#de3e16',
-            ACCENT_BLUE: '#4c6ef5',
-            ACCENT_BLUE_SUBTLE: 'rgba(76, 110, 245, 0.18)',
-            ACCENT_BLUE_PILL: '#2b3452',
-            ACCENT_PURPLE_PILL: '#352e4d',
-            BUTTON_PRIMARY_LIGHT: '#cbd5e1',
-            BUTTON_PRIMARY_LIGHT_ACTIVE: '#ffffff',
-            TEXT_PRIMARY: '#f1f3f5',
-            TEXT_SECONDARY: '#a0a6b1',
-            TEXT_MUTED: '#6c727e',
-            TEXT_DIM: '#4e5460',
-            ON_BRAND: '#ffffff',
-            ON_PILL_LIGHT: '#0f172a',
-            LINK: '#748ffc',
-            BORDER_HAIRLINE: 'rgba(255, 255, 255, 0.05)',
-            BORDER_SUBTLE: 'rgba(255, 255, 255, 0.09)',
-            BORDER_STRONG: 'rgba(255, 255, 255, 0.16)',
-            BORDER_FOCUS: '#4c6ef5',
-            SHADOW_CARD: '0 4px 16px rgba(0, 0, 0, 0.25)',
-            SHADOW_FLOATING: '0 8px 30px rgba(0, 0, 0, 0.40)',
-            SHADOW_DRAWER: '0 12px 40px rgba(0, 0, 0, 0.50)'
+        THEMES: {
+            dark: {
+                SURFACE_SIDEBAR: '#101114',
+                SURFACE_CARD: '#1e2025',
+                SURFACE_CARD_SUBTLE: '#181a1e',
+                SURFACE_DRAWER: '#181a1f',
+                SURFACE_INPUT: '#272a30',
+                SURFACE_INPUT_FOCUSED: '#2f333b',
+                SURFACE_PILL: '#2a2d35',
+                SURFACE_PILL_HOVER: '#343842',
+                BRAND_ORANGE: '#fb542b',
+                ACCENT_BLUE: '#4c6ef5',
+                ACCENT_BLUE_SUBTLE: 'rgba(76, 110, 245, 0.18)',
+                ACCENT_PURPLE_PILL: '#352e4d',
+                ACCENT_PURPLE_TEXT: '#a78bfa',
+                ACCENT_GREEN_SUBTLE: 'rgba(16, 185, 129, 0.18)',
+                ACCENT_GREEN_TEXT: '#6ee7b7',
+                TEXT_PRIMARY: '#f1f3f5',
+                TEXT_SECONDARY: '#a0a6b1',
+                TEXT_MUTED: '#6c727e',
+                ON_BRAND: '#ffffff',
+                LINK: '#748ffc',
+                BORDER_HAIRLINE: 'rgba(255, 255, 255, 0.06)',
+                BORDER_SUBTLE: 'rgba(255, 255, 255, 0.10)',
+                BORDER_STRONG: 'rgba(255, 255, 255, 0.18)',
+                BORDER_FOCUS: '#4c6ef5',
+                SHADOW_CARD: '0 4px 16px rgba(0, 0, 0, 0.25)',
+                SHADOW_FLOATING: '0 8px 30px rgba(0, 0, 0, 0.40)',
+                SHADOW_DRAWER: '0 12px 40px rgba(0, 0, 0, 0.50)'
+            },
+            light: {
+                SURFACE_SIDEBAR: '#f8f9fa',
+                SURFACE_CARD: '#ffffff',
+                SURFACE_CARD_SUBTLE: '#f1f3f5',
+                SURFACE_DRAWER: '#f8f9fa',
+                SURFACE_INPUT: '#ffffff',
+                SURFACE_INPUT_FOCUSED: '#ffffff',
+                SURFACE_PILL: '#f1f3f5',
+                SURFACE_PILL_HOVER: '#e9ecef',
+                BRAND_ORANGE: '#fb542b',
+                ACCENT_BLUE: '#3b5bdb',
+                ACCENT_BLUE_SUBTLE: 'rgba(59, 91, 219, 0.10)',
+                ACCENT_PURPLE_PILL: 'rgba(121, 80, 242, 0.10)',
+                ACCENT_PURPLE_TEXT: '#6741d9',
+                ACCENT_GREEN_SUBTLE: 'rgba(12, 166, 120, 0.10)',
+                ACCENT_GREEN_TEXT: '#099268',
+                TEXT_PRIMARY: '#1a1b1e',
+                TEXT_SECONDARY: '#495057',
+                TEXT_MUTED: '#868e96',
+                ON_BRAND: '#ffffff',
+                LINK: '#3b5bdb',
+                BORDER_HAIRLINE: 'rgba(0, 0, 0, 0.06)',
+                BORDER_SUBTLE: 'rgba(0, 0, 0, 0.12)',
+                BORDER_STRONG: 'rgba(0, 0, 0, 0.22)',
+                BORDER_FOCUS: '#3b5bdb',
+                SHADOW_CARD: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                SHADOW_FLOATING: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                SHADOW_DRAWER: '-8px 0 32px rgba(0, 0, 0, 0.14)'
+            }
         }
     };
 
@@ -98,8 +104,75 @@
         messages: [],
         selectedIds: new Set(),
         expandedId: null,
-        exportFormat: 'markdown'
+        exportFormat: 'markdown',
+        lastUrl: '',
+        activeTheme: 'dark'
     };
+
+    // ============================================================
+    // Theme Detection & Sync
+    // ============================================================
+
+    function detectPageTheme() {
+        const root = document.documentElement;
+        const body = document.body;
+
+        const attr = [
+            root.getAttribute('data-theme'),
+            root.getAttribute('data-color-scheme'),
+            body?.getAttribute('data-theme')
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        if (attr.includes('light')) return 'light';
+        if (attr.includes('dark')) return 'dark';
+
+        const classes = `${root.className} ${body?.className || ''}`.toLowerCase();
+        if (/\blight\b/.test(classes)) return 'light';
+        if (/\bdark\b/.test(classes)) return 'dark';
+
+        const colorScheme = getComputedStyle(root).colorScheme;
+        if (colorScheme === 'light' || colorScheme === 'dark') return colorScheme;
+
+        // Walk primary surfaces for the first opaque background color
+        const surfaces = [body, root, document.querySelector('main'), document.querySelector(CONFIG.SELECTORS.HEADER_BUTTONS_CONTAINER)].filter(Boolean);
+        for (const el of surfaces) {
+            const rgba = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+            if (!rgba || rgba.length < 3) continue;
+            if (rgba[3] !== undefined && parseFloat(rgba[3]) === 0) continue;
+            const [r, g, b] = rgba.map(Number);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.5 ? 'light' : 'dark';
+        }
+
+        return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+
+    function syncTheme() {
+        const mode = detectPageTheme();
+        STATE.activeTheme = mode;
+        const rootStyle = document.documentElement.style;
+
+        Object.entries(CONFIG.THEMES[mode]).forEach(([key, val]) => {
+            rootStyle.setProperty(`--ns-${key.toLowerCase().replace(/_/g, '-')}`, val);
+        });
+
+        const triggerBtn = document.getElementById('ns-brave-header-btn');
+        const container = document.querySelector(CONFIG.SELECTORS.HEADER_BUTTONS_CONTAINER);
+        const nativeBtn = container?.querySelector('button:not(#ns-brave-header-btn)');
+
+        if (triggerBtn && nativeBtn) {
+            const cs = getComputedStyle(nativeBtn);
+            if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                triggerBtn.style.setProperty('background', cs.backgroundColor, 'important');
+            }
+            if (cs.color) triggerBtn.style.setProperty('color', cs.color, 'important');
+            if (cs.borderColor) triggerBtn.style.setProperty('border-color', cs.borderColor, 'important');
+        } else if (triggerBtn) {
+            triggerBtn.style.removeProperty('background');
+            triggerBtn.style.removeProperty('color');
+            triggerBtn.style.removeProperty('border-color');
+        }
+    }
 
     // ============================================================
     // Utilities
@@ -114,8 +187,8 @@
                 position: 'fixed',
                 top: '20px',
                 right: '20px',
-                background: success ? CONFIG.THEME.BRAND_ORANGE : '#dc2626',
-                color: CONFIG.THEME.ON_BRAND,
+                background: success ? 'var(--ns-brand-orange, #fb542b)' : '#dc2626',
+                color: '#ffffff',
                 padding: '10px 20px',
                 borderRadius: '9999px',
                 zIndex: '200000',
@@ -123,7 +196,7 @@
                 fontWeight: '500',
                 lineHeight: '1.45',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                boxShadow: CONFIG.THEME.SHADOW_FLOATING,
+                boxShadow: 'var(--ns-shadow-floating)',
                 transition: 'opacity 0.3s ease'
             });
 
@@ -139,7 +212,6 @@
             return (text || '')
                 .replace(/\u00a0/g, ' ')
                 .replace(/[ \t]+\n/g, '\n')
-                .replace(/\n[ \t]+/g, '\n')
                 .replace(/[ \t]{2,}/g, ' ')
                 .trim();
         },
@@ -169,27 +241,21 @@
     // Recursive HTML to Markdown Parser
     // ============================================================
 
-    function renderNodeToMarkdown(node) {
+    function renderNodeToMarkdown(node, listDepth = 0) {
         if (!node) return '';
+        if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+        if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
-        if (node.nodeType === Node.TEXT_NODE) {
-            return node.textContent || '';
-        }
-
-        if (node.nodeType !== Node.ELEMENT_NODE) {
-            return '';
-        }
-
-        if (node.matches(CONFIG.SELECTORS.NOISE_ELEMENTS)) {
-            return '';
+        if (node.classList.contains('katex')) {
+            const tex = node.querySelector('annotation[encoding="application/x-tex"]')?.textContent?.trim();
+            if (tex) {
+                return node.closest('.katex-display') ? `\n\n$$${tex}$$\n\n` : `$${tex}$`;
+            }
         }
 
         const tag = node.tagName.toLowerCase();
-
-        const inner = () =>
-            Array.from(node.childNodes)
-                .map(renderNodeToMarkdown)
-                .join('');
+        const inner = (depth = listDepth) =>
+            Array.from(node.childNodes).map(child => renderNodeToMarkdown(child, depth)).join('');
 
         switch (tag) {
             case 'h1': return `\n\n# ${Utils.cleanText(inner())}\n\n`;
@@ -217,17 +283,13 @@
             }
 
             case 'code': {
-                if (node.parentElement?.tagName.toLowerCase() === 'pre') {
-                    return inner();
-                }
+                if (node.parentElement?.tagName.toLowerCase() === 'pre') return inner();
                 return `\`${inner().replace(/`/g, '\\`')}\``;
             }
 
             case 'pre': {
-                const clone = node.cloneNode(true);
-                clone.querySelectorAll('div.copy-button, button, svg').forEach(n => n.remove());
-                const lang = clone.getAttribute('data-lang') || '';
-                const codeText = clone.textContent || '';
+                const lang = node.getAttribute('data-lang') || '';
+                const codeText = node.textContent || '';
                 return `\n\n\`\`\`${lang}\n${codeText.trim()}\n\`\`\`\n\n`;
             }
 
@@ -248,34 +310,38 @@
             case 'ul':
             case 'ol': {
                 const isOrdered = tag === 'ol';
+                const indent = '  '.repeat(listDepth);
                 const items = Array.from(node.children)
                     .filter(child => child.tagName.toLowerCase() === 'li')
                     .map((li, idx) => {
-                        const liText = Utils.cleanText(renderNodeToMarkdown(li));
                         const prefix = isOrdered ? `${idx + 1}.` : '-';
-                        return `${prefix} ${liText}`;
+                        const raw = renderNodeToMarkdown(li, listDepth + 1)
+                            .replace(/\n{2,}/g, '\n')
+                            .trim();
+                        return raw ? `${indent}${prefix} ${raw}` : '';
                     })
                     .filter(Boolean);
 
-                return `\n\n${items.join('\n')}\n\n`;
+                const block = items.join('\n');
+                return listDepth === 0 ? `\n\n${block}\n\n` : `\n${block}`;
             }
 
-            case 'li': return inner().trim();
+            case 'li': return inner(listDepth);
 
             case 'table': {
                 const rows = Array.from(node.querySelectorAll('tr'));
                 if (!rows.length) return '';
 
-                const matrix = rows.map(row => {
-                    const cells = Array.from(row.querySelectorAll('th, td'));
-                    return cells.map(cell => Utils.cleanText(renderNodeToMarkdown(cell)));
-                });
+                const matrix = rows.map(row =>
+                    Array.from(row.querySelectorAll('th, td')).map(cell =>
+                        Utils.cleanText(renderNodeToMarkdown(cell))
+                    )
+                );
 
                 const colCount = Math.max(...matrix.map(r => r.length), 0);
                 if (!colCount) return '';
 
                 const escapeCell = val => String(val || '').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
-
                 const normalized = matrix.map(r => {
                     const copy = r.slice();
                     while (copy.length < colCount) copy.push('');
@@ -310,21 +376,17 @@
 
     const Extractors = {
         extractSidebarRounds() {
-            const sections = Array.from(document.querySelectorAll(CONFIG.SELECTORS.TOC_SECTION));
-            if (!sections.length) return [];
-
-            return sections.map(sec => {
-                const titleAttr = sec.getAttribute('title');
-                const textSpan = sec.querySelector('span');
-                const label = titleAttr || Utils.cleanText(textSpan?.innerText || sec.innerText || '');
-                const href = sec.getAttribute('href') || '';
-                return { label, href };
-            }).filter(s => s.label);
+            return Array.from(document.querySelectorAll(CONFIG.SELECTORS.TOC_SECTION))
+                .map(sec => ({
+                    label: sec.getAttribute('title') || Utils.cleanText(sec.querySelector('span')?.innerText || sec.innerText || ''),
+                    href: sec.getAttribute('href') || ''
+                }))
+                .filter(s => s.label);
         },
 
         extractUserMessage(container) {
-            const bubble = container.querySelector(CONFIG.SELECTORS.USER_BUBBLE) || container;
-            return Utils.cleanText(bubble.innerText || '');
+            const textEl = container.querySelector(CONFIG.SELECTORS.USER_BUBBLE_TEXT) || container;
+            return Utils.cleanText(textEl.innerText || textEl.textContent || '');
         },
 
         extractAIMessage(container) {
@@ -333,18 +395,13 @@
 
         extractAugmentCards(container) {
             const cards = Array.from(container.querySelectorAll(CONFIG.SELECTORS.ENRICHMENT_CARD_ITEM));
-            const queryEl = container.querySelector(CONFIG.SELECTORS.ENRICHMENT_FOOTER_QUERY);
-            const searchQuery = Utils.cleanText(queryEl?.innerText || '');
+            const searchQuery = Utils.cleanText(container.querySelector(CONFIG.SELECTORS.ENRICHMENT_FOOTER_QUERY)?.innerText || '');
 
             const links = cards.map(card => {
                 const href = card.getAttribute('href') || '';
-                const titleEl = card.querySelector(CONFIG.SELECTORS.ENRICHMENT_CARD_TITLE);
-                const descEl = card.querySelector(CONFIG.SELECTORS.ENRICHMENT_CARD_DESC);
-
-                const title = Utils.cleanText(titleEl?.innerText || href);
-                const desc = Utils.cleanText(descEl?.innerText || '');
-
                 if (!href) return null;
+                const title = Utils.cleanText(card.querySelector(CONFIG.SELECTORS.ENRICHMENT_CARD_TITLE)?.innerText || href);
+                const desc = Utils.cleanText(card.querySelector(CONFIG.SELECTORS.ENRICHMENT_CARD_DESC)?.innerText || '');
                 return { href, title, desc };
             }).filter(Boolean);
 
@@ -357,7 +414,10 @@
             const stats = {};
             panel.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_STATS_ITEM).forEach(item => {
                 const val = item.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_STATS_VALUE)?.innerText?.trim();
-                const label = item.querySelector('.long-label, .short-label, .deep-research-stats-item-label')?.innerText?.trim();
+                const labelEl = item.querySelector('.long-label')
+                    || item.querySelector('.short-label')
+                    || item.querySelector(CONFIG.SELECTORS.DEEP_RESEARCH_STATS_LABEL);
+                const label = labelEl?.innerText?.trim();
                 if (val && label) stats[label] = val;
             });
 
@@ -368,7 +428,7 @@
             });
 
             const queries = [];
-            panel.querySelectorAll(CONFIG.SELECTORS.DEEP_RESEARCH_QUERIES + ' ' + CONFIG.SELECTORS.DEEP_RESEARCH_QUERY).forEach(q => {
+            panel.querySelectorAll(`${CONFIG.SELECTORS.DEEP_RESEARCH_QUERIES} ${CONFIG.SELECTORS.DEEP_RESEARCH_QUERY}`).forEach(q => {
                 const text = Utils.cleanText(q.querySelector('span')?.innerText || q.innerText || '');
                 if (text) queries.push(text);
             });
@@ -391,6 +451,9 @@
     // ============================================================
 
     function scanThreadMessages() {
+        const currentUrl = window.location.href;
+        const urlChanged = STATE.lastUrl !== currentUrl;
+        STATE.lastUrl = currentUrl;
         STATE.messages = [];
 
         const elements = Array.from(document.querySelectorAll([
@@ -399,6 +462,10 @@
             CONFIG.SELECTORS.AUGMENT_MESSAGE,
             CONFIG.SELECTORS.RESEARCH_MESSAGE
         ].join(', ')));
+
+        if (elements.length === 0) {
+            console.warn('[Noosphere Brave] 0 message containers matched current selectors:', CONFIG.SELECTORS);
+        }
 
         let currentAIMessage = null;
 
@@ -412,7 +479,6 @@
                         role: 'user',
                         text,
                         preview: text.substring(0, 70) + (text.length > 70 ? '...' : ''),
-                        element: el,
                         augments: [],
                         research: null
                     });
@@ -426,7 +492,6 @@
                         role: 'ai',
                         text: mdText,
                         preview: rawText.substring(0, 70) + (rawText.length > 70 ? '...' : ''),
-                        element: el,
                         augments: [],
                         research: null
                     };
@@ -443,7 +508,6 @@
                             role: 'augment',
                             text: `Augment Search: ${augData.searchQuery}`,
                             preview: `Augment: ${augData.searchQuery || `${augData.links.length} sources`}`,
-                            element: el,
                             augments: [augData],
                             research: null
                         });
@@ -459,14 +523,15 @@
                     preview: Object.keys(resData.stats).length > 0
                         ? Object.entries(resData.stats).map(([k, v]) => `${v} ${k}`).join(' | ')
                         : 'Deep Research Output',
-                    element: el,
                     augments: [],
                     research: resData
                 });
             }
         });
 
-        if (STATE.selectedIds.size === 0) {
+        if (urlChanged || STATE.selectedIds.size === 0) {
+            STATE.selectedIds.clear();
+            STATE.expandedId = null;
             STATE.messages.forEach(m => STATE.selectedIds.add(m.id));
         }
     }
@@ -480,10 +545,8 @@
             const manualTitle = document.getElementById('ns-sidebar-title-input')?.value?.trim();
             if (manualTitle) return manualTitle;
 
-            const firstUserMsg = document.querySelector(CONFIG.SELECTORS.USER_BUBBLE);
-            if (firstUserMsg) {
-                return Utils.cleanText(firstUserMsg.innerText).substring(0, 50);
-            }
+            const firstUser = STATE.messages.find(m => m.role === 'user');
+            if (firstUser?.text) return firstUser.text.substring(0, 50);
 
             return document.title || 'Brave_Search_AI_Chat';
         },
@@ -491,52 +554,61 @@
         getOrderedSelectedMessages() {
             const selected = STATE.messages.filter(m => STATE.selectedIds.has(m.id));
             const researchMsgs = selected.filter(m => m.role === 'research');
-
             if (researchMsgs.length === 0) return selected;
 
             const nonResearch = selected.filter(m => m.role !== 'research');
             const firstUserIdx = nonResearch.findIndex(m => m.role === 'user');
 
-            const reordered = [];
             if (firstUserIdx !== -1) {
-                reordered.push(...nonResearch.slice(0, firstUserIdx + 1));
-                reordered.push(...researchMsgs);
-                reordered.push(...nonResearch.slice(firstUserIdx + 1));
-            } else {
-                const firstAiIdx = nonResearch.findIndex(m => m.role === 'ai');
-                if (firstAiIdx !== -1) {
-                    reordered.push(...nonResearch.slice(0, firstAiIdx));
-                    reordered.push(...researchMsgs);
-                    reordered.push(...nonResearch.slice(firstAiIdx));
-                } else {
-                    reordered.push(...researchMsgs, ...nonResearch);
-                }
+                return [
+                    ...nonResearch.slice(0, firstUserIdx + 1),
+                    ...researchMsgs,
+                    ...nonResearch.slice(firstUserIdx + 1)
+                ];
             }
 
-            return reordered;
+            const firstAiIdx = nonResearch.findIndex(m => m.role === 'ai');
+            if (firstAiIdx !== -1) {
+                return [
+                    ...nonResearch.slice(0, firstAiIdx),
+                    ...researchMsgs,
+                    ...nonResearch.slice(firstAiIdx)
+                ];
+            }
+
+            return [...researchMsgs, ...nonResearch];
+        },
+
+        formatAugmentDetails(augData) {
+            let block = `<details>\n<summary><b>📎 Search References ${augData.searchQuery ? `("${augData.searchQuery}")` : ''}</b></summary>\n\n`;
+            augData.links.forEach(link => {
+                block += `- [${link.title}](${link.href})${link.desc ? ` — *${link.desc}*` : ''}\n`;
+            });
+            return `${block}\n</details>\n\n`;
         },
 
         buildMarkdown() {
             const chatTitle = this.getChatTitle();
-            const sourceUrl = window.location.href;
-            const exportedAt = new Date().toLocaleString();
             const rounds = Extractors.extractSidebarRounds();
             const orderedMessages = this.getOrderedSelectedMessages();
 
-            let md = '';
-
-            md += '---\n';
-            md += '> **🤖 Model:** Brave Search AI\n>\n';
-            md += `> **🌐 Exported:** ${exportedAt}\n>\n`;
-            md += `> **🌐 Source:** [Brave Search AI](${sourceUrl})\n>\n`;
-            md += '> **🏷️ Tags:** Brave, AI-Chat, Noosphere, Search\n';
-            md += '---\n\n';
-
-            md += `# ${chatTitle}\n\n`;
+            let md = [
+                '---',
+                '> **🤖 Model:** Brave Search AI',
+                '>',
+                `> **🌐 Exported:** ${new Date().toLocaleString()}`,
+                '>',
+                `> **🌐 Source:** [Brave Search AI](${window.location.href})`,
+                '>',
+                '> **🏷️ Tags:** Brave, AI-Chat, Noosphere, Search',
+                '---',
+                '',
+                `# ${chatTitle}`,
+                ''
+            ].join('\n');
 
             if (rounds.length > 0) {
-                md += '<details>\n';
-                md += '<summary><b>🔄 Conversation Rounds / TOC</b></summary>\n\n';
+                md += '<details>\n<summary><b>🔄 Conversation Rounds / TOC</b></summary>\n\n';
                 rounds.forEach((round, idx) => {
                     md += `${idx + 1}. **${round.label}**\n`;
                 });
@@ -546,104 +618,62 @@
             md += '---\n\n';
 
             orderedMessages.forEach(msg => {
-                const el = msg.element;
-
                 if (msg.role === 'user') {
-                    const userText = Extractors.extractUserMessage(el);
-                    md += `#### Prompt - User 👤:\n\n${userText}\n\n---\n\n`;
-                }
-                else if (msg.role === 'ai') {
-                    const aiMd = Extractors.extractAIMessage(el);
-                    md += `#### Response - Brave Search AI 🤖:\n\n${aiMd}\n\n`;
-
-                    if (msg.augments && msg.augments.length > 0) {
-                        msg.augments.forEach(augData => {
-                            md += `<details>\n<summary><b>📎 Search References ${augData.searchQuery ? `("${augData.searchQuery}")` : ''}</b></summary>\n\n`;
-                            augData.links.forEach(link => {
-                                md += `- [${link.title}](${link.href}) ${link.desc ? `— *${link.desc}*` : ''}\n`;
-                            });
-                            md += '\n</details>\n\n';
-                        });
-                    }
-
+                    md += `#### Prompt - User 👤:\n\n${msg.text}\n\n---\n\n`;
+                } else if (msg.role === 'ai') {
+                    md += `#### Response - Brave Search AI 🤖:\n\n${msg.text}\n\n`;
+                    (msg.augments || []).forEach(aug => { md += this.formatAugmentDetails(aug); });
                     md += '---\n\n';
-                }
-                else if (msg.role === 'augment') {
-                    const augmentData = Extractors.extractAugmentCards(el);
-                    if (augmentData.links.length > 0) {
-                        md += `<details>\n<summary><b>📎 Search References ${augmentData.searchQuery ? `("${augmentData.searchQuery}")` : ''}</b></summary>\n\n`;
-                        augmentData.links.forEach(link => {
-                            md += `- [${link.title}](${link.href}) ${link.desc ? `— *${link.desc}*` : ''}\n`;
-                        });
-                        md += '\n</details>\n\n---\n\n';
+                } else if (msg.role === 'augment') {
+                    const aug = msg.augments?.[0];
+                    if (aug?.links.length > 0) {
+                        md += `${this.formatAugmentDetails(aug)}---\n\n`;
                     }
-                }
-                else if (msg.role === 'research') {
-                    const research = Extractors.extractDeepResearch(el);
+                } else if (msg.role === 'research' && msg.research) {
+                    const res = msg.research;
                     md += `#### Response - Deep Research 🤖:\n\n`;
 
-                    if (Object.keys(research.stats).length > 0) {
-                        md += `**📊 Research Stats:** `;
-                        md += Object.entries(research.stats).map(([k, v]) => `${v} ${k}`).join(' | ');
-                        md += '\n\n';
+                    if (Object.keys(res.stats).length > 0) {
+                        md += `**📊 Research Stats:** ${Object.entries(res.stats).map(([k, v]) => `${v} ${k}`).join(' | ')}\n\n`;
                     }
-
-                    if (research.answers.length > 0) {
-                        md += `${research.answers.join('\n\n')}\n\n`;
+                    if (res.answers.length > 0) {
+                        md += `${res.answers.join('\n\n')}\n\n`;
                     }
-
-                    if (research.sources.length > 0) {
-                        md += `<details>\n<summary><b>📚 Deep Research Sources (${research.sources.length})</b></summary>\n\n`;
-                        research.sources.forEach(s => {
-                            md += `- [${s.label}](${s.href})\n`;
-                        });
+                    if (res.sources.length > 0) {
+                        md += `<details>\n<summary><b>📚 Deep Research Sources (${res.sources.length})</b></summary>\n\n`;
+                        res.sources.forEach(s => { md += `- [${s.label}](${s.href})\n`; });
                         md += '\n</details>\n\n';
                     }
-
-                    if (research.progress) {
-                        md += `*${research.progress}*\n\n`;
+                    if (res.progress) {
+                        md += `*${res.progress}*\n\n`;
                     }
-
                     md += '---\n\n';
                 }
             });
 
-            md += '###### Noosphere Reflect\n';
-            md += '###### ***Meaning Through Memory***\n\n';
-            md += '###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***\n';
-
+            md += '###### Noosphere Reflect\n###### ***Meaning Through Memory***\n\n###### ***[Preserve Your Meaning](https://acidgreenservers.github.io/Noosphere-Reflect/)***\n';
             return Utils.normalizeMarkdown(md);
         },
 
         buildJSON() {
-            const chatTitle = this.getChatTitle();
-            const rounds = Extractors.extractSidebarRounds();
             const orderedMessages = this.getOrderedSelectedMessages();
 
-            const exportedMessages = orderedMessages.map(m => {
-                if (m.role === 'user') {
-                    return { role: 'user', content: Extractors.extractUserMessage(m.element) };
-                }
-                if (m.role === 'ai') {
-                    return { role: 'assistant', content: Extractors.extractAIMessage(m.element), augments: m.augments };
-                }
-                if (m.role === 'augment') {
-                    return { role: 'augment', data: Extractors.extractAugmentCards(m.element) };
-                }
-                if (m.role === 'research') {
-                    return { role: 'research', data: Extractors.extractDeepResearch(m.element) };
-                }
+            const messages = orderedMessages.map(m => {
+                if (m.role === 'user') return { role: 'user', content: m.text };
+                if (m.role === 'ai') return { role: 'assistant', content: m.text, augments: m.augments };
+                if (m.role === 'augment') return { role: 'augment', data: m.augments?.[0] || null };
+                if (m.role === 'research') return { role: 'research', data: m.research };
                 return null;
             }).filter(Boolean);
 
             return JSON.stringify({
                 metadata: {
-                    title: chatTitle,
+                    title: this.getChatTitle(),
                     exportedAt: new Date().toISOString(),
                     sourceUrl: window.location.href,
-                    tocRounds: rounds
+                    tocRounds: Extractors.extractSidebarRounds()
                 },
-                messages: exportedMessages
+                messages
             }, null, 2);
         },
 
@@ -652,7 +682,6 @@
                 Utils.createNotification('⚠️ Please select at least one turn', false);
                 return;
             }
-
             try {
                 const content = STATE.exportFormat === 'json' ? this.buildJSON() : this.buildMarkdown();
                 await navigator.clipboard.writeText(content);
@@ -668,21 +697,14 @@
                 Utils.createNotification('⚠️ Please select at least one turn', false);
                 return;
             }
-
             try {
                 const isJson = STATE.exportFormat === 'json';
                 const content = isJson ? this.buildJSON() : this.buildMarkdown();
-                const title = this.getChatTitle();
-                const ext = isJson ? 'json' : 'md';
-                const mime = isJson ? 'application/json' : 'text/markdown';
-
-                const filename = `${Utils.sanitizeFilename(title)}_${Utils.getDateString()}.${ext}`;
-                const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+                const filename = `${Utils.sanitizeFilename(this.getChatTitle())}_${Utils.getDateString()}.${isJson ? 'json' : 'md'}`;
+                const blob = new Blob([content], { type: `${isJson ? 'application/json' : 'text/markdown'};charset=utf-8` });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
+                const a = Object.assign(document.createElement('a'), { href: url, download: filename });
 
-                a.href = url;
-                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -703,11 +725,9 @@
     function injectStyles() {
         if (document.getElementById('noosphere-brave-sidebar-styles')) return;
 
-        const T = CONFIG.THEME;
         const style = document.createElement('style');
         style.id = 'noosphere-brave-sidebar-styles';
         style.textContent = `
-            /* Native Header Pill Trigger */
             .ns-brave-header-btn {
                 display: inline-flex !important;
                 align-items: center !important;
@@ -721,19 +741,18 @@
                 gap: 6px !important;
                 border-radius: 9999px !important;
                 cursor: pointer !important;
-                color: ${T.TEXT_PRIMARY} !important;
-                background: ${T.SURFACE_PILL} !important;
-                border: 1px solid ${T.BORDER_SUBTLE} !important;
+                color: var(--ns-text-primary) !important;
+                background: var(--ns-surface-pill) !important;
+                border: 1px solid var(--ns-border-subtle) !important;
                 transition: all 0.15s ease !important;
                 user-select: none !important;
-                margin-left: 8px !important;
-                margin-right: 8px !important;
+                margin: 0 8px !important;
                 flex-shrink: 0 !important;
                 white-space: nowrap !important;
             }
             .ns-brave-header-btn:hover {
-                background: ${T.SURFACE_PILL_HOVER} !important;
-                border-color: ${T.BORDER_STRONG} !important;
+                filter: brightness(0.95);
+                border-color: var(--ns-border-strong) !important;
             }
             .ns-brave-header-btn:active {
                 transform: scale(98.5%) !important;
@@ -741,8 +760,8 @@
 
             #ns-sidebar-overlay {
                 position: fixed;
-                top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.5);
+                inset: 0;
+                background: rgba(0, 0, 0, 0.45);
                 backdrop-filter: blur(6px);
                 z-index: 100001;
                 display: none;
@@ -756,22 +775,22 @@
                 top: 0; right: -400px;
                 width: 400px;
                 height: 100%;
-                background: ${T.SURFACE_DRAWER};
-                border-left: 1px solid ${T.BORDER_SUBTLE};
-                color: ${T.TEXT_PRIMARY};
+                background: var(--ns-surface-drawer);
+                border-left: 1px solid var(--ns-border-subtle);
+                color: var(--ns-text-primary);
                 z-index: 100002;
                 transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 display: flex;
                 flex-direction: column;
-                box-shadow: ${T.SHADOW_DRAWER};
+                box-shadow: var(--ns-shadow-drawer);
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
             #ns-sidebar.active { right: 0; }
 
             .ns-sidebar-header {
                 padding: 20px 24px 16px;
-                background: ${T.SURFACE_SIDEBAR};
-                border-bottom: 1px solid ${T.BORDER_HAIRLINE};
+                background: var(--ns-surface-sidebar);
+                border-bottom: 1px solid var(--ns-border-hairline);
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
@@ -787,7 +806,7 @@
                 align-items: center;
                 gap: 8px;
                 margin: 0;
-                color: ${T.TEXT_PRIMARY};
+                color: var(--ns-text-primary);
             }
 
             .ns-input-group {
@@ -797,33 +816,29 @@
             }
 
             .ns-label {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 11px;
-                font-weight: 400;
                 line-height: 1.35;
-                color: ${T.TEXT_MUTED};
+                color: var(--ns-text-muted);
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
 
             .ns-input {
                 width: 100%;
-                background: ${T.SURFACE_INPUT};
-                border: 1px solid ${T.BORDER_SUBTLE};
+                background: var(--ns-surface-input);
+                border: 1px solid var(--ns-border-subtle);
                 border-radius: 20px;
                 padding: 10px 14px;
-                color: ${T.TEXT_PRIMARY};
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                color: var(--ns-text-primary);
                 font-size: 15px;
-                font-weight: 400;
                 line-height: 1.60;
                 outline: none;
                 box-sizing: border-box;
                 transition: border-color 0.15s ease, background 0.15s ease;
             }
             .ns-input:focus {
-                background: ${T.SURFACE_INPUT_FOCUSED};
-                border-color: ${T.BORDER_FOCUS};
+                background: var(--ns-surface-input-focused);
+                border-color: var(--ns-border-focus);
             }
 
             .ns-batch-controls {
@@ -834,11 +849,10 @@
 
             .ns-batch-btn {
                 padding: 8px;
-                background: ${T.SURFACE_PILL};
-                border: 1px solid ${T.BORDER_SUBTLE};
+                background: var(--ns-surface-pill);
+                border: 1px solid var(--ns-border-subtle);
                 border-radius: 9999px;
-                color: ${T.TEXT_SECONDARY};
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                color: var(--ns-text-secondary);
                 font-size: 13px;
                 font-weight: 500;
                 line-height: 1.45;
@@ -847,9 +861,9 @@
                 transition: all 0.15s ease;
             }
             .ns-batch-btn:hover {
-                background: ${T.SURFACE_PILL_HOVER};
-                color: ${T.TEXT_PRIMARY};
-                border-color: ${T.BORDER_STRONG};
+                background: var(--ns-surface-pill-hover);
+                color: var(--ns-text-primary);
+                border-color: var(--ns-border-strong);
             }
 
             .ns-msg-list {
@@ -861,22 +875,28 @@
                 gap: 10px;
             }
 
+            .ns-empty-state {
+                padding: 24px;
+                text-align: center;
+                color: var(--ns-text-muted);
+                font-size: 13px;
+                line-height: 1.50;
+            }
+
             .ns-msg-card {
-                background: ${T.SURFACE_CARD} !important;
-                border: 1px solid ${T.BORDER_HAIRLINE} !important;
+                background: var(--ns-surface-card) !important;
+                border: 1px solid var(--ns-border-hairline) !important;
                 border-radius: 16px !important;
                 overflow: hidden !important;
                 flex-shrink: 0 !important;
-                height: auto !important;
                 min-height: 52px !important;
-                max-height: none !important;
                 transition: all 0.15s ease;
                 box-sizing: border-box !important;
-                box-shadow: ${T.SHADOW_CARD};
+                box-shadow: var(--ns-shadow-card);
             }
             .ns-msg-card:hover {
-                border-color: ${T.BORDER_SUBTLE} !important;
-                box-shadow: ${T.SHADOW_FLOATING} !important;
+                border-color: var(--ns-border-subtle) !important;
+                box-shadow: var(--ns-shadow-floating) !important;
             }
 
             .ns-msg-item {
@@ -886,7 +906,6 @@
                 gap: 12px !important;
                 cursor: pointer !important;
                 box-sizing: border-box !important;
-                height: auto !important;
                 min-height: 48px !important;
             }
 
@@ -895,22 +914,22 @@
                 -webkit-appearance: none !important;
                 width: 18px !important;
                 height: 18px !important;
-                border: 2px solid ${T.BRAND_ORANGE} !important;
+                border: 2px solid var(--ns-brand-orange) !important;
                 border-radius: 4px !important;
                 cursor: pointer !important;
-                background: ${T.SURFACE_CARD} !important;
+                background: var(--ns-surface-card) !important;
                 position: relative !important;
                 flex-shrink: 0 !important;
                 margin-top: 2px !important;
                 transition: all 0.15s ease !important;
             }
             .ns-msg-check:checked {
-                background: ${T.BRAND_ORANGE} !important;
+                background: var(--ns-brand-orange) !important;
             }
             .ns-msg-check:checked::after {
                 content: '✓' !important;
                 position: absolute !important;
-                color: ${T.ON_BRAND} !important;
+                color: var(--ns-on-brand) !important;
                 font-size: 12px !important;
                 font-weight: bold !important;
                 top: 50% !important;
@@ -933,9 +952,7 @@
             }
 
             .ns-role-badge {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 11px !important;
-                font-weight: 400;
                 line-height: 1.35;
                 text-transform: uppercase !important;
                 padding: 4px 8px !important;
@@ -945,39 +962,35 @@
                 gap: 4px !important;
             }
             .ns-role-user {
-                background: ${T.ACCENT_BLUE_SUBTLE} !important;
-                color: ${T.ACCENT_BLUE} !important;
+                background: var(--ns-accent-blue-subtle) !important;
+                color: var(--ns-accent-blue) !important;
             }
             .ns-role-ai {
-                background: rgba(251, 84, 43, 0.18) !important;
-                color: ${T.BRAND_ORANGE} !important;
+                background: rgba(251, 84, 43, 0.16) !important;
+                color: var(--ns-brand-orange) !important;
             }
             .ns-role-augment {
-                background: ${T.ACCENT_PURPLE_PILL} !important;
-                color: #a78bfa !important;
+                background: var(--ns-accent-purple-pill) !important;
+                color: var(--ns-accent-purple-text) !important;
             }
             .ns-role-research {
-                background: rgba(16, 185, 129, 0.18) !important;
-                color: #6ee7b7 !important;
+                background: var(--ns-accent-green-subtle) !important;
+                color: var(--ns-accent-green-text) !important;
             }
 
             .ns-aug-badge {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 11px !important;
-                font-weight: 400;
                 line-height: 1.35;
                 padding: 4px 8px !important;
                 border-radius: 4px !important;
-                background: ${T.ACCENT_PURPLE_PILL} !important;
-                color: #a78bfa !important;
+                background: var(--ns-accent-purple-pill) !important;
+                color: var(--ns-accent-purple-text) !important;
             }
 
             .ns-msg-preview {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 13px !important;
-                font-weight: 400 !important;
                 line-height: 1.50 !important;
-                color: ${T.TEXT_SECONDARY} !important;
+                color: var(--ns-text-secondary) !important;
                 display: -webkit-box !important;
                 -webkit-line-clamp: 2 !important;
                 -webkit-box-orient: vertical !important;
@@ -985,22 +998,29 @@
                 word-break: break-word !important;
             }
 
-            /* Scrollable Accordion Content */
             .ns-msg-accordion {
-                background: ${T.SURFACE_CARD_SUBTLE} !important;
-                border-top: 1px solid ${T.BORDER_HAIRLINE} !important;
+                background: var(--ns-surface-card-subtle) !important;
+                border-top: 1px solid var(--ns-border-hairline) !important;
                 padding: 12px 16px 16px 46px !important;
                 display: flex !important;
                 flex-direction: column !important;
                 gap: 8px !important;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 13px !important;
-                font-weight: 400 !important;
                 line-height: 1.50 !important;
             }
 
+            .ns-sec-header {
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1.40;
+                color: var(--ns-text-primary);
+            }
+            .ns-sec-header.is-research {
+                color: var(--ns-accent-green-text);
+            }
+
             .ns-msg-fulltext {
-                color: ${T.TEXT_PRIMARY};
+                color: var(--ns-text-primary);
                 white-space: pre-wrap;
                 max-height: 220px;
                 overflow-y: auto;
@@ -1010,7 +1030,7 @@
             }
 
             .ns-aug-card-link {
-                color: ${T.LINK};
+                color: var(--ns-link);
                 text-decoration: none;
                 display: block;
                 white-space: nowrap;
@@ -1022,7 +1042,7 @@
             .ns-aug-card-link:hover { text-decoration: underline; }
 
             .ns-aug-desc {
-                color: ${T.TEXT_MUTED};
+                color: var(--ns-text-muted);
                 font-size: 12px;
                 line-height: 1.40;
                 white-space: nowrap;
@@ -1032,8 +1052,8 @@
 
             .ns-sidebar-footer {
                 padding: 16px 20px;
-                background: ${T.SURFACE_SIDEBAR};
-                border-top: 1px solid ${T.BORDER_HAIRLINE};
+                background: var(--ns-surface-sidebar);
+                border-top: 1px solid var(--ns-border-hairline);
                 display: flex;
                 align-items: center;
                 gap: 8px;
@@ -1041,12 +1061,11 @@
             }
 
             .ns-btn {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 13px;
                 font-weight: 500;
                 line-height: 1.45;
                 border-radius: 9999px;
-                padding: 10px 16px;
+                padding: 10px 14px;
                 cursor: pointer;
                 text-align: center;
                 transition: all 0.15s ease;
@@ -1057,56 +1076,73 @@
 
             .ns-btn-cancel {
                 background: transparent;
-                border: 1px solid ${T.BORDER_SUBTLE};
-                color: ${T.TEXT_SECONDARY};
-                flex: 0.8;
+                border: 1px solid var(--ns-border-subtle);
+                color: var(--ns-text-secondary);
             }
             .ns-btn-cancel:hover {
-                background: ${T.SURFACE_PILL};
-                color: ${T.TEXT_PRIMARY};
+                background: var(--ns-surface-pill);
+                color: var(--ns-text-primary);
             }
 
             .ns-format-select {
-                flex: 1.2;
-                background: ${T.SURFACE_INPUT};
-                border: 1px solid ${T.BORDER_SUBTLE};
+                flex: 1;
+                background: var(--ns-surface-input);
+                border: 1px solid var(--ns-border-subtle);
                 border-radius: 9999px;
-                color: ${T.TEXT_PRIMARY};
-                padding: 10px 10px;
+                color: var(--ns-text-primary);
+                padding: 10px 8px;
                 outline: none;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 12px;
-                font-weight: 400;
                 line-height: 1.40;
                 cursor: pointer;
                 text-align: center;
             }
             .ns-format-select option {
-                background: ${T.SURFACE_CARD};
-                color: ${T.TEXT_PRIMARY};
+                background: var(--ns-surface-card);
+                color: var(--ns-text-primary);
             }
 
             .ns-btn-copy {
-                flex: 1;
                 background: transparent;
-                border: 1px solid ${T.BORDER_SUBTLE};
-                color: ${T.TEXT_PRIMARY};
+                border: 1px solid var(--ns-border-subtle);
+                color: var(--ns-text-primary);
             }
             .ns-btn-copy:hover {
-                background: ${T.SURFACE_PILL};
+                background: var(--ns-surface-pill);
             }
 
+            .ns-btn-save {
+                background: var(--ns-brand-orange);
+                color: var(--ns-on-brand);
+            }
+            .ns-btn-save:hover {
+                filter: brightness(1.08);
+            }
         `;
         document.head.appendChild(style);
+        syncTheme();
+    }
+
+    function el(tag, props = {}, children = []) {
+        const node = document.createElement(tag);
+        Object.entries(props).forEach(([k, v]) => {
+            if (k === 'className') node.className = v;
+            else if (k === 'textContent') node.textContent = v;
+            else node.setAttribute(k, v);
+        });
+        children.forEach(c => c && node.appendChild(c));
+        return node;
     }
 
     function renderMessageList() {
         const listContainer = document.getElementById('ns-msg-list');
         if (!listContainer) return;
+
+        const prevScroll = listContainer.scrollTop;
         listContainer.innerHTML = '';
 
         if (STATE.messages.length === 0) {
-            listContainer.innerHTML = `<div style="padding:24px; text-align:center; color:${CONFIG.THEME.TEXT_MUTED}; font-family:-apple-system,system-ui,sans-serif; font-size:13px; font-weight:400; line-height:1.50;">No chat turns found.</div>`;
+            listContainer.appendChild(el('div', { className: 'ns-empty-state', textContent: 'No chat turns found.' }));
             return;
         }
 
@@ -1118,151 +1154,66 @@
         };
 
         STATE.messages.forEach(msg => {
-            const card = document.createElement('div');
-            card.className = 'ns-msg-card';
-
-            const item = document.createElement('div');
-            item.className = 'ns-msg-item';
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'ns-msg-check';
-            checkbox.checked = STATE.selectedIds.has(msg.id);
-
-            const content = document.createElement('div');
-            content.className = 'ns-msg-content';
-
             const roleMeta = roleConfig[msg.role] || { icon: '💬', label: msg.role.toUpperCase() };
-
-            const badgeGroup = document.createElement('div');
-            badgeGroup.className = 'ns-role-badge-group';
-
-            const badge = document.createElement('span');
-            badge.className = `ns-role-badge ns-role-${msg.role}`;
-            badge.textContent = `${roleMeta.icon} ${roleMeta.label}`;
-            badgeGroup.appendChild(badge);
-
             const totalAugLinks = msg.augments ? msg.augments.reduce((acc, a) => acc + a.links.length, 0) : 0;
-            if (totalAugLinks > 0) {
-                const augBadge = document.createElement('span');
-                augBadge.className = 'ns-aug-badge';
-                augBadge.textContent = `📎 ${totalAugLinks} AUGMENT${totalAugLinks > 1 ? 'S' : ''}`;
-                badgeGroup.appendChild(augBadge);
-            }
-
-            const preview = document.createElement('div');
-            preview.className = 'ns-msg-preview';
-            preview.textContent = msg.preview || (msg.role === 'user' ? 'User Prompt' : 'Brave Response');
-
-            content.appendChild(badgeGroup);
-            content.appendChild(preview);
-
-            item.appendChild(checkbox);
-            item.appendChild(content);
-
-            card.appendChild(item);
-
             const isExpanded = STATE.expandedId === msg.id;
 
+            const checkbox = el('input', { type: 'checkbox', className: 'ns-msg-check' });
+            checkbox.checked = STATE.selectedIds.has(msg.id);
+
+            const badgeGroup = el('div', { className: 'ns-role-badge-group' }, [
+                el('span', { className: `ns-role-badge ns-role-${msg.role}`, textContent: `${roleMeta.icon} ${roleMeta.label}` }),
+                totalAugLinks > 0
+                    ? el('span', { className: 'ns-aug-badge', textContent: `📎 ${totalAugLinks} AUGMENT${totalAugLinks > 1 ? 'S' : ''}` })
+                    : null
+            ]);
+
+            const item = el('div', { className: 'ns-msg-item' }, [
+                checkbox,
+                el('div', { className: 'ns-msg-content' }, [
+                    badgeGroup,
+                    el('div', { className: 'ns-msg-preview', textContent: msg.preview || (msg.role === 'user' ? 'User Prompt' : 'Brave Response') })
+                ])
+            ]);
+
+            const card = el('div', { className: 'ns-msg-card' }, [item]);
+
             if (isExpanded) {
-                const accordion = document.createElement('div');
-                accordion.className = 'ns-msg-accordion';
+                const accordion = el('div', { className: 'ns-msg-accordion' });
 
                 if (msg.text) {
-                    const fullText = document.createElement('div');
-                    fullText.className = 'ns-msg-fulltext';
-                    fullText.textContent = msg.text;
-                    accordion.appendChild(fullText);
+                    accordion.appendChild(el('div', { className: 'ns-msg-fulltext', textContent: msg.text }));
                 }
 
-                if (totalAugLinks > 0 || (msg.augments && msg.augments.length > 0)) {
-                    msg.augments.forEach(aug => {
-                        if (aug.searchQuery) {
-                            const qLabel = document.createElement('div');
-                            qLabel.style.fontFamily = '-apple-system, system-ui, sans-serif';
-                            qLabel.style.fontSize = '13px';
-                            qLabel.style.fontWeight = '600';
-                            qLabel.style.lineHeight = '1.40';
-                            qLabel.style.color = CONFIG.THEME.TEXT_PRIMARY;
-                            qLabel.textContent = `Search Query: "${aug.searchQuery}"`;
-                            accordion.appendChild(qLabel);
-                        }
-
-                        aug.links.forEach(link => {
-                            const linkEl = document.createElement('a');
-                            linkEl.className = 'ns-aug-card-link';
-                            linkEl.href = link.href;
-                            linkEl.target = '_blank';
-                            linkEl.textContent = `🔗 ${link.title}`;
-
-                            accordion.appendChild(linkEl);
-
-                            if (link.desc) {
-                                const descEl = document.createElement('div');
-                                descEl.className = 'ns-aug-desc';
-                                descEl.textContent = link.desc;
-                                accordion.appendChild(descEl);
-                            }
-                        });
+                (msg.augments || []).forEach(aug => {
+                    if (aug.searchQuery) {
+                        accordion.appendChild(el('div', { className: 'ns-sec-header', textContent: `Search Query: "${aug.searchQuery}"` }));
+                    }
+                    aug.links.forEach(link => {
+                        accordion.appendChild(el('a', { className: 'ns-aug-card-link', href: link.href, target: '_blank', textContent: `🔗 ${link.title}` }));
+                        if (link.desc) accordion.appendChild(el('div', { className: 'ns-aug-desc', textContent: link.desc }));
                     });
-                }
+                });
 
                 if (msg.role === 'research' && msg.research) {
                     const res = msg.research;
-
                     if (Object.keys(res.stats).length > 0) {
-                        const statsHeader = document.createElement('div');
-                        statsHeader.style.fontFamily = '-apple-system, system-ui, sans-serif';
-                        statsHeader.style.fontSize = '13px';
-                        statsHeader.style.fontWeight = '600';
-                        statsHeader.style.lineHeight = '1.20';
-                        statsHeader.style.color = '#6ee7b7';
-                        statsHeader.textContent = '📊 Research Stats: ' + Object.entries(res.stats).map(([k, v]) => `${v} ${k}`).join(' | ');
-                        accordion.appendChild(statsHeader);
+                        accordion.appendChild(el('div', {
+                            className: 'ns-sec-header is-research',
+                            textContent: '📊 Research Stats: ' + Object.entries(res.stats).map(([k, v]) => `${v} ${k}`).join(' | ')
+                        }));
                     }
-
                     if (res.queries.length > 0) {
-                        const qHeader = document.createElement('div');
-                        qHeader.style.fontFamily = '-apple-system, system-ui, sans-serif';
-                        qHeader.style.fontSize = '13px';
-                        qHeader.style.fontWeight = '600';
-                        qHeader.style.lineHeight = '1.40';
-                        qHeader.style.color = CONFIG.THEME.TEXT_PRIMARY;
-                        qHeader.textContent = `📋 Queries Issued (${res.queries.length}):`;
-                        accordion.appendChild(qHeader);
-
-                        res.queries.forEach(q => {
-                            const qItem = document.createElement('div');
-                            qItem.className = 'ns-aug-desc';
-                            qItem.textContent = `> ${q}`;
-                            accordion.appendChild(qItem);
-                        });
+                        accordion.appendChild(el('div', { className: 'ns-sec-header', textContent: `📋 Queries Issued (${res.queries.length}):` }));
+                        res.queries.forEach(q => accordion.appendChild(el('div', { className: 'ns-aug-desc', textContent: `> ${q}` })));
                     }
-
                     if (res.sources.length > 0) {
-                        const sHeader = document.createElement('div');
-                        sHeader.style.fontFamily = '-apple-system, system-ui, sans-serif';
-                        sHeader.style.fontSize = '13px';
-                        sHeader.style.fontWeight = '600';
-                        sHeader.style.lineHeight = '1.40';
-                        sHeader.style.color = CONFIG.THEME.TEXT_PRIMARY;
-                        sHeader.textContent = `📚 Examined Sources (${res.sources.length}):`;
-                        accordion.appendChild(sHeader);
-
+                        accordion.appendChild(el('div', { className: 'ns-sec-header', textContent: `📚 Examined Sources (${res.sources.length}):` }));
                         res.sources.slice(0, 10).forEach(src => {
-                            const linkEl = document.createElement('a');
-                            linkEl.className = 'ns-aug-card-link';
-                            linkEl.href = src.href;
-                            linkEl.target = '_blank';
-                            linkEl.textContent = `🔗 ${src.label}`;
-                            accordion.appendChild(linkEl);
+                            accordion.appendChild(el('a', { className: 'ns-aug-card-link', href: src.href, target: '_blank', textContent: `🔗 ${src.label}` }));
                         });
-
                         if (res.sources.length > 10) {
-                            const moreLabel = document.createElement('div');
-                            moreLabel.className = 'ns-aug-desc';
-                            moreLabel.textContent = `...and ${res.sources.length - 10} more sources`;
-                            accordion.appendChild(moreLabel);
+                            accordion.appendChild(el('div', { className: 'ns-aug-desc', textContent: `...and ${res.sources.length - 10} more sources` }));
                         }
                     }
                 }
@@ -1272,13 +1223,9 @@
 
             checkbox.onclick = (e) => {
                 e.stopPropagation();
-                if (STATE.selectedIds.has(msg.id)) {
-                    STATE.selectedIds.delete(msg.id);
-                    checkbox.checked = false;
-                } else {
-                    STATE.selectedIds.add(msg.id);
-                    checkbox.checked = true;
-                }
+                if (STATE.selectedIds.has(msg.id)) STATE.selectedIds.delete(msg.id);
+                else STATE.selectedIds.add(msg.id);
+                checkbox.checked = STATE.selectedIds.has(msg.id);
             };
 
             item.onclick = (e) => {
@@ -1289,50 +1236,54 @@
 
             listContainer.appendChild(card);
         });
+
+        listContainer.scrollTop = prevScroll;
     }
 
     function injectHeaderTrigger(openSidebarFn) {
-        if (document.getElementById('ns-brave-header-btn')) return;
+        if (document.getElementById('ns-brave-header-btn')) return true;
 
         const container = document.querySelector(CONFIG.SELECTORS.HEADER_BUTTONS_CONTAINER);
-        if (!container) return;
+        const navTabs = document.querySelector(CONFIG.SELECTORS.HEADER_TABS_NAV);
+        const target = container || navTabs;
+        if (!target) return false;
 
-        const triggerBtn = document.createElement('button');
-        triggerBtn.id = 'ns-brave-header-btn';
-        triggerBtn.type = 'button';
-        triggerBtn.className = 'ns-brave-header-btn';
-        triggerBtn.title = 'Noosphere Reflect Exporter';
-        triggerBtn.innerHTML = `🦁 Export`;
+        const triggerBtn = el('button', {
+            id: 'ns-brave-header-btn',
+            type: 'button',
+            className: 'ns-brave-header-btn',
+            title: 'Noosphere Reflect Exporter',
+            textContent: '🦁 Export'
+        });
         triggerBtn.onclick = (e) => {
             e.stopPropagation();
             openSidebarFn();
         };
 
-        const shareBtn = container.querySelector(CONFIG.SELECTORS.SHARE_BUTTON);
-        if (shareBtn) {
-            container.insertBefore(triggerBtn, shareBtn);
+        if (container) {
+            const shareBtn = container.querySelector(CONFIG.SELECTORS.SHARE_BUTTON);
+            if (shareBtn) container.insertBefore(triggerBtn, shareBtn);
+            else container.prepend(triggerBtn);
         } else {
-            container.prepend(triggerBtn);
+            target.appendChild(triggerBtn);
         }
+
+        syncTheme();
+        return true;
     }
 
     function createSidebarUI() {
         if (document.getElementById('ns-sidebar')) return;
 
-        const overlay = document.createElement('div');
-        overlay.id = 'ns-sidebar-overlay';
-
-        const sidebar = document.createElement('div');
-        sidebar.id = 'ns-sidebar';
+        const overlay = el('div', { id: 'ns-sidebar-overlay' });
+        const sidebar = el('div', { id: 'ns-sidebar' });
         sidebar.innerHTML = `
             <div class="ns-sidebar-header">
                 <div class="ns-sidebar-title">🦁 Ask Brave Exporter</div>
-                
                 <div class="ns-input-group">
                     <span class="ns-label">Chat Title</span>
                     <input type="text" id="ns-sidebar-title-input" class="ns-input" placeholder="e.g. Brave Search DOM Scraping Session">
                 </div>
-
                 <div class="ns-batch-controls">
                     <button class="ns-batch-btn" id="ns-batch-all">All</button>
                     <button class="ns-batch-btn" id="ns-batch-user">User</button>
@@ -1350,6 +1301,7 @@
                     <option value="json">JSON (.json)</option>
                 </select>
                 <button class="ns-btn ns-btn-copy" id="ns-btn-copy">📋 Copy</button>
+                <button class="ns-btn ns-btn-save" id="ns-btn-save">💾 Save</button>
             </div>
         `;
 
@@ -1357,6 +1309,7 @@
         document.body.appendChild(sidebar);
 
         const openSidebar = () => {
+            syncTheme();
             scanThreadMessages();
             renderMessageList();
             overlay.classList.add('active');
@@ -1368,12 +1321,33 @@
             sidebar.classList.remove('active');
         };
 
-        injectHeaderTrigger(openSidebar);
+        const watchHeaderMount = () => {
+            if (injectHeaderTrigger(openSidebar)) return;
+            const obs = new MutationObserver(() => {
+                if (injectHeaderTrigger(openSidebar)) obs.disconnect();
+            });
+            obs.observe(document.body, { childList: true, subtree: true });
+        };
 
-        const headerObserver = new MutationObserver(() => {
-            injectHeaderTrigger(openSidebar);
+        watchHeaderMount();
+
+        // Re-check header mount on SvelteKit SPA navigations without observing every token stream
+        ['pushState', 'replaceState'].forEach(fn => {
+            const orig = history[fn];
+            history[fn] = function (...args) {
+                const res = orig.apply(this, args);
+                setTimeout(watchHeaderMount, 100);
+                return res;
+            };
         });
-        headerObserver.observe(document.body, { childList: true, subtree: true });
+        window.addEventListener('popstate', () => setTimeout(watchHeaderMount, 100));
+
+        const themeObserver = new MutationObserver(() => syncTheme());
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'data-color-scheme', 'style'] });
+        if (document.body) {
+            themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+        }
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', syncTheme);
 
         overlay.onclick = closeSidebar;
         document.getElementById('ns-btn-cancel').onclick = closeSidebar;
@@ -1396,6 +1370,7 @@
         };
 
         document.getElementById('ns-btn-copy').onclick = () => ExportService.executeCopy();
+        document.getElementById('ns-btn-save').onclick = () => ExportService.executeDownload();
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeSidebar();
