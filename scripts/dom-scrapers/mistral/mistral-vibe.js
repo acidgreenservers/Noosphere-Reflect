@@ -3,21 +3,22 @@
 
     /*
      * ============================================================
-     * Noosphere Reflect — Mistral Vibe Native Exporter
+     * Noosphere Reflect — Mistral Vibe Native Exporter (v2.2)
      * ============================================================
      *
      * Native Slide-Over Drawer & Markdown Synthesizer for Mistral Vibe
      * (chat.mistral.ai).
      *
      * Features:
-     *   - Integrated Top Bar Trigger: Sits natively next to "New chat" as "Export Chat"
+     *   - Integrated Top Bar Trigger: Sits natively to the right of the
+     *     conversation title dropdown in the header bar
      *   - Dual Deep Research Extraction: Explicitly separates Block 1
      *     (Research Stepper & Execution Plan) from Block 2 (Final Report
      *     & Sources Favicon Bar)
      *   - Native Mistral Vibe UI Theme (DESIGN.md warm palette) with
      *     automatic light / dark theme detection and live switching
-     *   - Automated Thought Expansion: Pre-expands "Thought for X s"
-     *     collapsibles to ensure 100% of reasoning process is archived
+     *   - Automated Thought & Agent Harness Expansion: Pre-expands
+     *     "Thought for X s" and harness step summaries before scraping
      *   - Recursive DOM-to-Markdown parser preserving full formatting
      *     (Headings, bold/italic, lists, pipe tables, code blocks)
      *   - Interactive turn accordion drawer with batch selection controls
@@ -30,18 +31,21 @@
     const CONFIG = {
         SELECTORS: {
             USER_MESSAGE: '[data-message-author-role="user"]',
-            USER_CONTENT: '.whitespace-pre-wrap',
+            USER_CONTENT: '.whitespace-pre-wrap, [dir="auto"]',
             AI_MESSAGE: '[data-message-author-role="assistant"]',
             REASONING_CONTAINER: '[data-message-part-type="reasoning"]',
+            HARNESS_STEPS: '[data-testid="harness-steps-summary"]',
             ANSWER_CONTAINER: '[data-message-part-type="answer"]',
+            TEXT_MESSAGE_PART: '[data-testid="text-message-part"]',
 
             // Deep Research Specific Selectors
             RESEARCH_STEPPER_FORM: 'form.shadow-card, form.border-default',
             RESEARCH_STEPS_HEADER: '.group\\/steps-header',
 
-            CONVERSATION_TITLE: '.min-h-5\\.5.truncate, header h1, title',
-            TOP_BAR: '[data-desktop-window-top-bar="true"]',
-            RIGHT_ACTION_CONTAINER: '[data-desktop-window-top-bar="true"] > div:last-child',
+            // Header & Title Mount Points
+            CONVERSATION_TITLE: 'button[aria-haspopup="menu"] span.truncate, .min-h-5\\.5.truncate, header h1, title',
+            TOP_BAR: '[data-desktop-window-top-bar="true"], header',
+            TITLE_WRAPPER: 'div.flex.items-center.max-w-full.min-w-0.shrink.ps-3',
             NOISE_ELEMENTS: 'button, svg, .copy-button, [aria-hidden="true"]'
         },
 
@@ -397,9 +401,20 @@
     // Vibe DOM Extractors & Deep Research Distinguishers
     // ============================================================
 
-    function autoExpandThoughts() {
-        const thoughtContainers = document.querySelectorAll('.-ms-10');
-        thoughtContainers.forEach(container => {
+    async function autoExpandThoughts() {
+        let clicked = 0;
+
+        // 1. Updated Vibe Work Agent Harness Step Summaries
+        document.querySelectorAll(CONFIG.SELECTORS.HARNESS_STEPS).forEach(summary => {
+            const toggleBtn = summary.closest('button') || summary.querySelector('button[aria-expanded="false"]');
+            if (toggleBtn && toggleBtn.getAttribute('aria-expanded') !== 'true') {
+                toggleBtn.click();
+                clicked++;
+            }
+        });
+
+        // 2. Legacy Thought Collapsibles
+        document.querySelectorAll('.-ms-10').forEach(container => {
             const reasoningEl = container.parentElement?.querySelector(CONFIG.SELECTORS.REASONING_CONTAINER);
             const isHidden = !reasoningEl || reasoningEl.offsetParent === null;
 
@@ -407,9 +422,15 @@
                 const btn = container.querySelector('button');
                 if (btn && btn.textContent.includes('Thought')) {
                     btn.click();
+                    clicked++;
                 }
             }
         });
+
+        // Allow React state & CSS interpolate-size transitions to expand DOM nodes
+        if (clicked > 0) {
+            await new Promise(resolve => setTimeout(resolve, 350));
+        }
     }
 
     // Explicitly Extracts Block 1: The Research Stepper Form (<form>)
@@ -435,12 +456,13 @@
 
     // Explicitly Extracts Block 2: The Completed Report Body + Discovered Sources
     function extractResearchReportBody(el) {
-        const answerEl = el.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER) || el;
+        const answerContainer = el.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER) || el;
+        const answerEl = answerContainer.querySelector(CONFIG.SELECTORS.TEXT_MESSAGE_PART) || answerContainer;
         const reportTitle = Utils.cleanText(answerEl.querySelector('h1, h2')?.innerText || 'Research Report');
         const reportMarkdown = htmlToMarkdown(answerEl);
 
         const sources = [];
-        answerEl.querySelectorAll('a[href]').forEach(a => {
+        answerContainer.querySelectorAll('a[href]').forEach(a => {
             const href = a.getAttribute('href');
             const label = Utils.cleanText(a.innerText || href);
             if (href && !href.startsWith('#')) {
@@ -458,8 +480,8 @@
         };
     }
 
-    function scanThreadMessages() {
-        autoExpandThoughts();
+    async function scanThreadMessages() {
+        await autoExpandThoughts();
 
         const elements = Array.from(document.querySelectorAll([
             CONFIG.SELECTORS.USER_MESSAGE,
@@ -468,6 +490,7 @@
 
         STATE.messages = elements.map((el, idx) => {
             const isUser = el.matches(CONFIG.SELECTORS.USER_MESSAGE);
+            const messageId = el.getAttribute('data-message-id') || `msg-${idx}`;
             let role = isUser ? 'user' : 'ai';
             let text = '';
             let thoughts = '';
@@ -487,27 +510,38 @@
                     text = reportData.reportMarkdown;
                 } else {
                     const reasoningEl = el.querySelector(CONFIG.SELECTORS.REASONING_CONTAINER);
+                    const harnessEl = el.querySelector(CONFIG.SELECTORS.HARNESS_STEPS);
+
                     if (reasoningEl) {
                         thoughts = htmlToMarkdown(reasoningEl);
+                    } else if (harnessEl) {
+                        const harnessWrapper = harnessEl.parentElement?.parentElement || harnessEl.parentElement;
+                        if (harnessWrapper && !harnessWrapper.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER)) {
+                            thoughts = htmlToMarkdown(harnessWrapper);
+                        } else {
+                            thoughts = htmlToMarkdown(harnessEl);
+                        }
                     }
 
-                    const answerEl = el.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER) || el;
+                    const answerContainer = el.querySelector(CONFIG.SELECTORS.ANSWER_CONTAINER) || el;
+                    const answerEl = answerContainer.querySelector(CONFIG.SELECTORS.TEXT_MESSAGE_PART) || answerContainer;
                     text = htmlToMarkdown(answerEl);
                 }
             }
 
             const rawPreview = isUser
                 ? text
-                : (reportData ? reportData.title : Utils.cleanText(el.innerText));
+                : (reportData ? reportData.title : (text || Utils.cleanText(el.innerText)));
 
             return {
                 id: idx,
+                messageId,
                 role,
                 text,
                 thoughts,
                 stepperPlan,
                 reportData,
-                preview: rawPreview.substring(0, 75) + '...',
+                preview: rawPreview.substring(0, 75) + (rawPreview.length > 75 ? '...' : ''),
                 el
             };
         });
@@ -633,6 +667,7 @@
                     model: 'Mistral Vibe'
                 },
                 messages: selected.map(m => ({
+                    id: m.messageId,
                     role: m.role,
                     thoughts: m.thoughts || null,
                     stepperPlan: m.stepperPlan || null,
@@ -706,9 +741,11 @@
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
+                flex-shrink: 0 !important;
+                margin-left: 4px !important;
                 font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif !important;
-                width: 36px !important;
-                height: 36px !important;
+                width: 32px !important;
+                height: 32px !important;
                 padding: 0 !important;
                 border-radius: 6px !important;
                 cursor: pointer !important;
@@ -1038,7 +1075,6 @@
             .ns-btn-copy:hover {
                 background: ${T.HAIRLINE_SOFT};
             }
-
         `;
         document.head.appendChild(style);
     }
@@ -1127,7 +1163,7 @@
                     const tHeader = document.createElement('div');
                     tHeader.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
                     tHeader.style.fontSize = '14px';
-                    tHeader.style.fontWight = '500';
+                    tHeader.style.fontWeight = '500';
                     tHeader.style.lineHeight = '1.30';
                     tHeader.style.color = CONFIG.THEME.PRIMARY;
                     tHeader.textContent = '🧠 Thought Process:';
@@ -1247,21 +1283,31 @@
     function injectHeaderTrigger(openSidebarFn) {
         if (document.getElementById('ns-vibe-header-btn')) return;
 
-        const rightContainer = document.querySelector(CONFIG.SELECTORS.RIGHT_ACTION_CONTAINER);
-        if (!rightContainer) return;
+        // Primary: exact title wrapper container from header HTML
+        let titleWrapper = document.querySelector(CONFIG.SELECTORS.TITLE_WRAPPER);
+
+        // Fallback: locate via the Radix conversation title menu button
+        if (!titleWrapper) {
+            const titleMenuBtn = document.querySelector('div.flex-row.items-center button[aria-haspopup="menu"]');
+            titleWrapper = titleMenuBtn?.parentElement || null;
+        }
+
+        if (!titleWrapper || !titleWrapper.parentElement) return;
 
         const triggerBtn = document.createElement('button');
         triggerBtn.id = 'ns-vibe-header-btn';
+        triggerBtn.type = 'button';
         triggerBtn.className = 'ns-vibe-header-btn';
         triggerBtn.setAttribute('aria-label', 'Export Chat');
+        triggerBtn.title = 'Export Chat (Noosphere Reflect)';
         triggerBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke-miterlimit="10" stroke-linecap="square"><path d="M12 3V15" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/><path d="M4 18L4 20L20 20L20 18" stroke="currentColor" stroke-width="2" stroke-linecap="square" fill="none"/></svg>`;
         triggerBtn.onclick = (e) => {
             e.stopPropagation();
             openSidebarFn();
         };
 
-        // Insert as first child (to the left of the star icon)
-        rightContainer.prepend(triggerBtn);
+        // Insert directly to the right of the conversation title wrapper
+        titleWrapper.insertAdjacentElement('afterend', triggerBtn);
     }
 
     function createSidebarUI() {
@@ -1304,8 +1350,8 @@
         document.body.appendChild(overlay);
         document.body.appendChild(sidebar);
 
-        const openSidebar = () => {
-            scanThreadMessages();
+        const openSidebar = async () => {
+            await scanThreadMessages();
             renderMessageList();
             overlay.classList.add('active');
             sidebar.classList.add('active');
@@ -1352,7 +1398,7 @@
 
     function init() {
         console.log('🔥 Noosphere Reflect — Mistral Vibe Native Exporter Initialized');
-        ThemeManager.init(); // Detects theme, sets CONFIG.THEME, injects styles
+        ThemeManager.init();
         createSidebarUI();
     }
 
